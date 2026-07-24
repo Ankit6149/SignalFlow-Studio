@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main, master]
 
-permissions:
-  contents: write
-
 jobs:
   python-tests:
     runs-on: ubuntu-latest
@@ -45,75 +42,3 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
-
-  finalize-studio:
-    if: github.event_name == 'pull_request' && github.head_ref == 'product/studio-luxury-ux' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout source branch
-        uses: actions/checkout@v4
-        with:
-          ref: product/studio-luxury-ux
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Apply final safeguards
-        run: python scripts/studio_connector_finish.py
-
-      - name: Verify patch integrity
-        run: git diff --check
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build patched frontend
-        id: patched-build
-        continue-on-error: true
-        working-directory: frontend
-        run: npm run build 2>&1 | tee ../FINALIZER_BUILD.log
-
-      - name: Publish concise build diagnostic
-        if: steps.patched-build.outcome == 'failure'
-        run: |
-          tail -n 100 FINALIZER_BUILD.log > FINALIZER_ERROR.txt
-          git config user.name "SignalFlow Studio Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add FINALIZER_ERROR.txt
-          git commit -m "chore: capture finalizer build diagnostic"
-          git push origin HEAD:product/studio-luxury-ux
-          exit 1
-
-      - name: Commit publishing safeguards
-        if: steps.patched-build.outcome == 'success'
-        run: |
-          git config user.name "SignalFlow Studio Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add frontend/app/page.js frontend/app/studio-luxury.css frontend/lib/social/socialConfig.js frontend/lib/social/socialProviders.js frontend/.env.example
-          git commit -m "fix: align Studio validation with live publishing"
-
-      - name: Commit current connector prerequisites
-        if: steps.patched-build.outcome == 'success'
-        run: |
-          git add docs/CONNECTOR_READINESS.md
-          git commit -m "docs: record current platform access requirements"
-
-      - name: Restore CI and remove temporary payloads
-        if: steps.patched-build.outcome == 'success'
-        run: |
-          git rm scripts/studio_connector_finish.py .github/workflows/studio-connector-finish.yml
-          git checkout origin/master -- .github/workflows/ci.yml
-          git add .github/workflows/ci.yml
-          git commit -m "chore: remove final safeguard runners"
-
-      - name: Push completed branch
-        if: steps.patched-build.outcome == 'success'
-        run: git push origin HEAD:product/studio-luxury-ux

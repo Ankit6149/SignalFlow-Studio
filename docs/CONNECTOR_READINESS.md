@@ -6,15 +6,15 @@ SignalFlow Studio implements official connector paths for LinkedIn, X, and Reddi
 
 A connector is production-complete only after:
 
-1. Developer application exists.
-2. Production client ID and secret are configured server-side.
-3. Canonical callback URL is registered exactly.
-4. Required scopes/products are approved.
-5. A real account completes OAuth.
-6. A real approved test post receives platform confirmation.
-7. Access-token expiry and refresh behavior are verified.
-8. Missing permission, revoked token, invalid content, and rate-limit responses are verified.
-9. The UI reports truthful failure and provides a manual fallback.
+- Developer application exists.
+- Production client ID and secret are configured server-side.
+- Canonical callback URL is registered exactly.
+- Required scopes/products are approved.
+- A real account completes OAuth.
+- A real approved test post receives platform confirmation.
+- Access-token expiry and refresh behavior are verified.
+- Missing permission, revoked token, invalid content, and rate-limit responses are verified.
+- The UI reports truthful failure and provides a manual fallback.
 
 ## Canonical Environment
 

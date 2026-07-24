@@ -3,7 +3,7 @@ import "../app/connector.css";
 import "../app/living-ui.css";
 import "../app/living-ui-tuning.css";
 import "../app/professional-polish.css";
-import "../app/studio-luxury.css";
+import "../app/app-workspace.css";
 import SessionBridge from "../components/SessionBridge";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";
@@ -196,11 +196,8 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3efe5" },
-    { media: "(prefers-color-scheme: dark)", color: "#11110f" },
-  ],
-  colorScheme: "light dark",
+  themeColor: "#f5f5f2",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }) {

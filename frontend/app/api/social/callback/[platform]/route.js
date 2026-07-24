@@ -12,7 +12,7 @@ import {
  * in an HTTP-only cookie scoped to this browser.
  */
 export async function GET(request, { params }) {
-  const platformId = params.platform;
+  const { platform: platformId } = await params;
   const platform = SOCIAL_PLATFORMS[platformId];
 
   if (!platform) {

@@ -1,19 +1,20 @@
 name: Apply professional product pass
 
 on:
-  push:
+  pull_request:
     branches:
-      - product/professional-polish-discovery
+      - master
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'product/professional-polish-discovery' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout release branch
         uses: actions/checkout@v4
         with:
           ref: product/professional-polish-discovery

@@ -6,32 +6,107 @@ import { generateJSON } from "./generateJSON";
 import { buildMarkdown } from "../export/markdown";
 import { PROVIDERS } from "./types";
 
-/**
- * Main orchestration entry point.
- * Generates the full Studio content package based on model route and ingested context.
- */
+const DEFAULT_CHANNELS = ["linkedin", "x", "instagram", "reddit", "newsletter"];
+
+function slug(value) {
+  return String(value || "signalflow-campaign")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "") || "signalflow-campaign";
+}
+
+function escapeXml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderReleaseNotes(releaseNotes) {
+  if (!releaseNotes) return "";
+  const title = releaseNotes.title ? `# ${releaseNotes.title}\n\n` : "";
+  const sections = Array.isArray(releaseNotes.sections)
+    ? releaseNotes.sections.map((section) => {
+        const items = Array.isArray(section.items)
+          ? section.items.map((item) => `- ${item}`).join("\n")
+          : String(section.items || section.body || "");
+        return `## ${section.title || "Update"}\n${items}`;
+      }).join("\n\n")
+    : "";
+  return `${title}${sections}`.trim();
+}
+
+function flattenPackagePosts(pkg) {
+  return {
+    linkedin: pkg?.posts?.linkedin?.body || "",
+    x: Array.isArray(pkg?.posts?.x?.posts) ? pkg.posts.x.posts.join("\n\n") : pkg?.posts?.x?.body || "",
+    instagram: pkg?.posts?.instagram?.caption || "",
+    reddit: [pkg?.posts?.reddit?.title, pkg?.posts?.reddit?.body].filter(Boolean).join("\n\n"),
+    facebook: pkg?.posts?.facebook?.body || "",
+    threads: pkg?.posts?.threads?.body || "",
+    youtube: [pkg?.posts?.youtube?.title, pkg?.posts?.youtube?.description].filter(Boolean).join("\n\n"),
+    tiktok: [pkg?.posts?.tiktok?.hook, pkg?.posts?.tiktok?.caption].filter(Boolean).join("\n\n"),
+    hackernews: [pkg?.posts?.hackernews?.title, pkg?.posts?.hackernews?.body].filter(Boolean).join("\n\n"),
+    hn: [pkg?.posts?.hackernews?.title, pkg?.posts?.hackernews?.body].filter(Boolean).join("\n\n"),
+    newsletter: [pkg?.posts?.newsletter?.subject, pkg?.posts?.newsletter?.body].filter(Boolean).join("\n\n"),
+    blog: pkg?.posts?.blog?.draft || "",
+    release_notes: renderReleaseNotes(pkg?.posts?.releaseNotes),
+  };
+}
+
+function selectPosts(pkg, selectedChannels) {
+  const flattened = flattenPackagePosts(pkg);
+  const channels = selectedChannels.length ? selectedChannels : DEFAULT_CHANNELS;
+  return {
+    channels,
+    posts: Object.fromEntries(channels.map((channel) => [channel, flattened[channel] || ""])),
+  };
+}
+
+function buildCampaignCard(name, description) {
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#11110f"/>
+  <circle cx="1030" cy="50" r="350" fill="#d8bd7c" opacity="0.14"/>
+  <rect x="58" y="58" width="1084" height="514" rx="34" fill="#191914" stroke="#fffdf8" stroke-opacity="0.13"/>
+  <text x="96" y="132" fill="#d8bd7c" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="5">SIGNALFLOW CAMPAIGN</text>
+  <text x="96" y="236" fill="#fffdf8" font-family="Georgia, serif" font-size="66">${escapeXml(String(name || "Campaign").slice(0, 34))}</text>
+  <foreignObject x="96" y="278" width="930" height="150">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;color:rgba(255,253,248,.64);font-size:30px;line-height:1.45">${escapeXml(String(description || "Review-ready campaign draft").slice(0, 170))}</div>
+  </foreignObject>
+  <rect x="96" y="492" width="260" height="48" rx="24" fill="#d8bd7c"/>
+  <text x="134" y="524" fill="#171714" font-family="Arial, sans-serif" font-size="19" font-weight="700">REVIEW-READY DRAFT</text>
+</svg>`;
+}
+
+function templateResult(inputs, warning, contextWarnings = []) {
+  const local = generateLocalTemplatePackage(inputs);
+  return {
+    ...local,
+    warnings: Array.from(new Set([warning, ...(local.warnings || []), ...contextWarnings].filter(Boolean))),
+  };
+}
+
+/** Main campaign generation orchestration across local and configured model routes. */
 export async function generateStudioPackage(inputs) {
   const {
-    projectName = "SignalFlow Studio",
+    projectName = "SignalFlow campaign",
     notes = "",
-    audience = "general tech audience",
+    audience = "builders, founders, and early users",
     repoContext = null,
     linksContext = [],
     fileNames = [],
     mediaItems = [],
     selectedChannels = [],
     selectedOutputs = [],
-    generator = "prompt", // Selected provider ID
-    model_name = "",       // Optional model name override
-    model_endpoint = "",    // Optional custom endpoint override
+    generator = "template",
+    model_name = "",
     appUrl = "",
-    config = {}
+    config = {},
   } = inputs;
 
-  const warnings = [];
-
-  // Compile context first
-  const context = buildUnifiedContext({
+  const generationInputs = {
     projectName,
     notes,
     audience,
@@ -41,305 +116,146 @@ export async function generateStudioPackage(inputs) {
     mediaItems,
     selectedChannels,
     selectedOutputs,
-    appUrl
-  });
+    appUrl,
+  };
 
-  if (context.warnings?.length) {
-    warnings.push(...context.warnings);
-  }
-
-  // Build the generation prompt (which is needed for both AI and Prompt modes)
+  const context = buildUnifiedContext(generationInputs);
+  const contextWarnings = Array.isArray(context.warnings) ? context.warnings : [];
   const studioPrompt = buildStudioPrompt(context);
 
-  // Mode 1: Prompt mode
   if (generator === "prompt") {
-    // Generate fallback template package locally so the UI displays complete structures
-    const localPkgResult = generateLocalTemplatePackage({
-      projectName,
-      notes,
-      audience,
-      repoContext,
-      linksContext,
-      fileNames,
-      mediaItems,
-      selectedChannels,
-      selectedOutputs,
-      appUrl
-    });
-
+    const result = templateResult(
+      generationInputs,
+      "Prompt route selected. A complete deterministic campaign is shown while the structured prompt remains available for an external model.",
+      contextWarnings,
+    );
     return {
-      ...localPkgResult,
+      ...result,
       providerUsed: "prompt",
       fallbackUsed: true,
       chatbot_prompt: studioPrompt,
-      warnings: [
-        "Prompt mode active. Copy the chatbot prompt details below and paste into any external chatbot. Review fallback template results in the preview sections.",
-        ...warnings
-      ]
     };
   }
 
-  // Mode 2: Deterministic local template mode
-  if (generator === "template") {
-    const localPkgResult = generateLocalTemplatePackage({
-      projectName,
-      notes,
-      audience,
-      repoContext,
-      linksContext,
-      fileNames,
-      mediaItems,
-      selectedChannels,
-      selectedOutputs,
-      appUrl
-    });
-
+  if (generator === "template" || generator === "offline") {
+    const result = templateResult(
+      generationInputs,
+      "Local template route created the campaign without an external model call.",
+      contextWarnings,
+    );
     return {
-      ...localPkgResult,
+      ...result,
       providerUsed: "template",
       fallbackUsed: true,
       chatbot_prompt: studioPrompt,
-      warnings: [
-        "Local template mode active. Generating deterministic package without AI calls.",
-        ...warnings
-      ]
     };
   }
 
-  // Mode 3: AI Provider Mode
   const providerMeta = PROVIDERS[generator];
   if (!providerMeta) {
-    // Unknown provider fallback
-    const localPkgResult = generateLocalTemplatePackage({
-      projectName,
-      notes,
-      audience,
-      repoContext,
-      linksContext,
-      fileNames,
-      mediaItems,
-      selectedChannels,
-      selectedOutputs,
-      appUrl
-    });
+    const result = templateResult(
+      generationInputs,
+      `Unknown provider "${generator}". The local template route was used instead.`,
+      contextWarnings,
+    );
     return {
-      ...localPkgResult,
+      ...result,
       providerUsed: "template",
       fallbackUsed: true,
-      warnings: [`Unknown generator "${generator}". Falling back to templates.`, ...warnings]
+      chatbot_prompt: studioPrompt,
     };
   }
 
-  // Determine if the provider is usable:
-  // - Local providers (ollama, lmstudio) never need an API key
-  // - Cloud providers need either an env key OR a temporary key from config
-  // - Custom gateway needs either env base URL OR a temporary baseUrl from config
-  const hasTemporaryKey = Boolean(config?.apiKey);
-  const hasTemporaryBaseUrl = Boolean(config?.baseUrl);
-  const isLocalProvider = providerMeta.isLocal; // ollama, lmstudio
-  const isEnvConfigured = providerMeta.isConfigured();
+  const temporaryKey = Boolean(config?.apiKey);
+  const temporaryBaseUrl = Boolean(config?.baseUrl);
+  const localProvider = Boolean(providerMeta.isLocal);
+  const environmentConfigured = providerMeta.isConfigured();
+  const configured = localProvider
+    ? true
+    : generator === "custom"
+      ? Boolean(process.env.CUSTOM_OPENAI_BASE_URL) || temporaryBaseUrl
+      : environmentConfigured || temporaryKey;
 
-  let isEffectivelyConfigured = false;
-  if (isLocalProvider) {
-    isEffectivelyConfigured = true;
-  } else if (generator === "custom") {
-    isEffectivelyConfigured = Boolean(process.env.CUSTOM_OPENAI_BASE_URL) || hasTemporaryBaseUrl;
-  } else {
-    isEffectivelyConfigured = isEnvConfigured || hasTemporaryKey;
-  }
-
-  if (!isEffectivelyConfigured) {
-    // Fall back to template, notify user
-    const localPkgResult = generateLocalTemplatePackage({
-      projectName,
-      notes,
-      audience,
-      repoContext,
-      linksContext,
-      fileNames,
-      mediaItems,
-      selectedChannels,
-      selectedOutputs,
-      appUrl
-    });
-
-    const missingHint = generator === "custom"
-      ? "missing API key/base URL"
-      : `missing ${(providerMeta.requiredEnv || []).join(" or ")} environment variable`;
-
+  if (!configured) {
+    const requirement = generator === "custom"
+      ? "an OpenAI-compatible base URL"
+      : (providerMeta.requiredEnv || []).join(" or ") || "provider credentials";
+    const result = templateResult(
+      generationInputs,
+      `${providerMeta.label} is not configured. Add ${requirement} or a temporary personal key; the local template route was used for this campaign.`,
+      contextWarnings,
+    );
     return {
-      ...localPkgResult,
+      ...result,
       providerUsed: generator,
       fallbackUsed: true,
       chatbot_prompt: studioPrompt,
-      warnings: [
-        `Provider "${providerMeta.label}" is not configured (${missingHint}). To use this provider, set the environment variable or paste a temporary API key in the UI. Fell back to deterministic template generation.`,
-        ...warnings
-      ]
     };
   }
 
-  // Note: baseUrl overrides for ollama/lmstudio/custom are passed via config.baseUrl
-  // directly to provider adapters — no process.env mutation needed.
-
-  const modelOverride = model_name || providerMeta.defaultModel;
+  const modelOverride = model_name || config?.modelName || providerMeta.defaultModel;
 
   try {
-    // Generate JSON response using dynamic provider adapters
-    const rawJsonPkg = await generateJSON({
+    const rawPackage = await generateJSON({
       provider: generator,
       prompt: studioPrompt,
       modelOverride,
-      config
+      config,
     });
 
-    // Normalize response JSON to fit V1 package schema perfectly
-    const normalizedPkg = normalizePackage(rawJsonPkg, {
-      projectName,
-      notes,
-      audience,
-      repoContext,
-      linksContext,
-      fileNames,
-      mediaItems,
-      selectedChannels,
-      selectedOutputs,
-      appUrl
-    });
-
-    // Generate output assets format
-    const name = normalizedPkg.project.name || projectName;
-    const desc = normalizedPkg.project.description || notes || "";
-    
-    // Compile platform drafts dictionary
-    const postsDict = {};
-    const channels = selectedChannels.length ? selectedChannels : ["linkedin", "x", "instagram", "newsletter"];
-    
-    channels.forEach(ch => {
-      if (ch === "linkedin" && normalizedPkg.posts.linkedin) {
-        postsDict.linkedin = normalizedPkg.posts.linkedin.body || normalizedPkg.posts.linkedin;
-      } else if (ch === "x" && normalizedPkg.posts.x) {
-        postsDict.x = Array.isArray(normalizedPkg.posts.x.posts) 
-          ? normalizedPkg.posts.x.posts.join("\n\n") 
-          : (normalizedPkg.posts.x.body || normalizedPkg.posts.x);
-      } else if (ch === "instagram" && normalizedPkg.posts.instagram) {
-        postsDict.instagram = normalizedPkg.posts.instagram.caption || normalizedPkg.posts.instagram;
-      } else if (ch === "reddit" && normalizedPkg.posts.reddit) {
-        postsDict.reddit = normalizedPkg.posts.reddit.body || normalizedPkg.posts.reddit;
-      } else if (ch === "hn" && normalizedPkg.posts.hackernews) {
-        postsDict.hn = normalizedPkg.posts.hackernews.body || normalizedPkg.posts.hackernews;
-      } else if (ch === "blog" && normalizedPkg.posts.blog) {
-        postsDict.blog = normalizedPkg.posts.blog.draft || normalizedPkg.posts.blog;
-      } else if (ch === "newsletter" && normalizedPkg.posts.newsletter) {
-        postsDict.newsletter = normalizedPkg.posts.newsletter.body || normalizedPkg.posts.newsletter;
-      } else if (ch === "release_notes" && normalizedPkg.posts.releaseNotes) {
-        const rn = normalizedPkg.posts.releaseNotes;
-        postsDict.release_notes = rn.sections 
-          ? rn.sections.map(s => `### ${s.title}\n${Array.isArray(s.items) ? s.items.map(i => `- ${i}`).join("\n") : s.items}`).join("\n\n")
-          : rn;
-      }
-    });
-
-    // Build SVG visual asset card data URI
-    const svgContent = `
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#0f1720"/>
-  <rect x="54" y="54" width="1092" height="522" rx="24" fill="#1e293b"/>
-  <text x="92" y="132" fill="#10b981" font-family="Segoe UI, Arial" font-size="28" font-weight="800">LAUNCH KIT</text>
-  <text x="92" y="232" fill="#f8fafc" font-family="Segoe UI, Arial" font-size="68" font-weight="900">${escapeXml(name)}</text>
-  <foreignObject x="92" y="278" width="980" height="190">
-    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Segoe UI, Arial; color:#94a3b8; font-size:34px; line-height:1.35">${escapeXml(desc.substring(0, 150))}...</div>
-  </foreignObject>
-  <rect x="92" y="500" width="240" height="52" rx="26" fill="#10b981"/>
-  <text x="135" y="535" fill="#0f1720" font-family="Segoe UI, Arial" font-size="24" font-weight="900">AI Synthesized</text>
-</svg>
-    `;
+    const pkg = normalizePackage(rawPackage, generationInputs);
+    const { channels, posts } = selectPosts(pkg, selectedChannels);
+    const name = pkg.project.name || projectName;
+    const description = pkg.project.description || notes || pkg.project.oneLine || "Review-ready campaign draft";
+    const fileSlug = slug(name);
+    const svgContent = buildCampaignCard(name, description);
 
     return {
       ok: true,
       providerUsed: generator,
       fallbackUsed: false,
       chatbot_prompt: studioPrompt,
-      warnings,
-      package: normalizedPkg,
-      posts: postsDict,
+      warnings: Array.from(new Set(contextWarnings)),
+      package: pkg,
+      posts,
       channels,
       outputs: selectedOutputs,
-      markdown: buildMarkdown({ projectName: name, package: normalizedPkg, prompt: studioPrompt }),
-      json: normalizedPkg,
-      media_plan: normalizedPkg.media.assetChecklist.map((item, idx) => ({
-        type: item.toLowerCase().includes("video") || item.toLowerCase().includes("recording") ? "video" : "screenshot",
-        title: item,
-        summary: `Asset checklist requirement generated by model.`
+      markdown: buildMarkdown({ projectName: name, package: pkg, prompt: studioPrompt }),
+      json: pkg,
+      media_plan: (pkg.media.assetChecklist || []).map((item, index) => ({
+        type: /video|recording|walkthrough/i.test(String(item)) ? "video" : "screenshot",
+        title: String(item),
+        summary: `Campaign asset ${index + 1}.`,
       })),
       documents: [
-        { title: "Strategy Document", summary: normalizedPkg.strategy.positioning },
-        { title: "Release Changelog", summary: normalizedPkg.posts.releaseNotes?.title || "Changelog" }
+        { title: "Campaign strategy", summary: pkg.strategy.positioning },
+        { title: "Release notes", summary: pkg.posts.releaseNotes?.title || "Release notes" },
       ],
       assets: {
-        markdown: `${name.toLowerCase().replace(/\s+/g, "-")}-package.md`,
-        summary: `${name.toLowerCase().replace(/\s+/g, "-")}-package.json`,
-        code_image: "browser-generated-post-card.svg"
+        markdown: `${fileSlug}-campaign.md`,
+        summary: `${fileSlug}-campaign.json`,
+        code_image: `${fileSlug}-campaign-card.svg`,
       },
       image_mime: "image/svg+xml",
       image_base64: Buffer.from(svgContent.trim()).toString("base64"),
       integration_config: {
         mode: "review_first",
-        manual: true,
-        webhookReady: true,
         officialApisOnly: true,
-        platforms: {
-          linkedin: { 
-            supported: "manual_or_official_api", 
-            configured: Boolean(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_ORGANIZATION_ID),
-            notes: [] 
-          },
-          instagram: { 
-            supported: "official_meta_api_only", 
-            configured: Boolean(process.env.META_ACCESS_TOKEN && process.env.META_IG_USER_ID),
-            notes: [] 
-          },
-          x: { 
-            supported: "official_api_only", 
-            configured: Boolean(process.env.X_ACCESS_TOKEN && process.env.X_API_KEY && process.env.X_API_SECRET),
-            notes: [] 
-          }
-        }
-      }
+        directPlatforms: ["linkedin", "x", "reddit"],
+        manualPlatforms: ["instagram", "facebook", "threads", "youtube", "tiktok", "hackernews", "newsletter", "blog", "release_notes"],
+      },
     };
-
-  } catch (err) {
-    // Model generation failed - fallback gracefully
-    const localPkgResult = generateLocalTemplatePackage({
-      projectName,
-      notes,
-      audience,
-      repoContext,
-      linksContext,
-      fileNames,
-      mediaItems,
-      selectedChannels,
-      selectedOutputs,
-      appUrl
-    });
-
+  } catch (error) {
+    const result = templateResult(
+      generationInputs,
+      `${providerMeta.label} generation failed: ${error.message}. A complete local template campaign was created instead.`,
+      contextWarnings,
+    );
     return {
-      ...localPkgResult,
+      ...result,
       providerUsed: generator,
       fallbackUsed: true,
       chatbot_prompt: studioPrompt,
-      warnings: [
-        `Generation failed for provider "${providerMeta.label}": ${err.message}. Local template fallback was used.`,
-        ...warnings
-      ]
     };
   }
-}
-
-function escapeXml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }

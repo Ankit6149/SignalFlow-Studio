@@ -1,4 +1,17 @@
 User-agent: *
 Allow: /
+Disallow: /api/
 
-Sitemap: https://github.com/Ankit6149/SignalFlow-Studio
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+
+Sitemap: https://signal-flow-studio.vercel.app/sitemap.xml

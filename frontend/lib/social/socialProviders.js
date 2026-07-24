@@ -1,303 +1,282 @@
 import { SOCIAL_PLATFORMS } from "./socialConfig.js";
-import { getAccessToken, getRefreshToken, isTokenExpired, updateAccessToken } from "./tokenStore.js";
-
-/**
- * Platform-specific posting functions.
- * Each function takes a decrypted token and content, then posts to the platform's API.
- */
-
-// ─── Token Refresh ───
+import { isTokenExpired, updateTokenSession } from "./tokenStore.js";
 
 async function refreshLinkedInToken(refreshToken) {
   const platform = SOCIAL_PLATFORMS.linkedin;
-  const resp = await fetch(platform.tokenUrl, {
+  const response = await fetch(platform.tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshToken,
       client_id: process.env[platform.clientEnvKey],
-      client_secret: process.env[platform.secretEnvKey]
-    })
+      client_secret: process.env[platform.secretEnvKey],
+    }),
   });
-  if (!resp.ok) throw new Error("LinkedIn token refresh failed");
-  return resp.json();
+  if (!response.ok) throw new Error(`LinkedIn token refresh failed (${response.status})`);
+  return response.json();
 }
 
 async function refreshXToken(refreshToken) {
   const platform = SOCIAL_PLATFORMS.x;
   const credentials = Buffer.from(
-    `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`
+    `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`,
   ).toString("base64");
-  const resp = await fetch(platform.tokenUrl, {
+  const response = await fetch(platform.tokenUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${credentials}`
+      Authorization: `Basic ${credentials}`,
     },
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      refresh_token: refreshToken
-    })
+      refresh_token: refreshToken,
+    }),
   });
-  if (!resp.ok) throw new Error("X token refresh failed");
-  return resp.json();
+  if (!response.ok) throw new Error(`X token refresh failed (${response.status})`);
+  return response.json();
 }
 
 async function refreshRedditToken(refreshToken) {
   const platform = SOCIAL_PLATFORMS.reddit;
   const credentials = Buffer.from(
-    `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`
+    `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`,
   ).toString("base64");
-  const resp = await fetch(platform.tokenUrl, {
+  const response = await fetch(platform.tokenUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${credentials}`
+      Authorization: `Basic ${credentials}`,
     },
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      refresh_token: refreshToken
-    })
+      refresh_token: refreshToken,
+    }),
   });
-  if (!resp.ok) throw new Error("Reddit token refresh failed");
-  return resp.json();
+  if (!response.ok) throw new Error(`Reddit token refresh failed (${response.status})`);
+  return response.json();
 }
 
-/**
- * Ensures a valid access token is available, refreshing if needed.
- */
-async function ensureValidToken(platformId) {
-  let token = getAccessToken(platformId);
-  if (!token) {
-    throw new Error(`No access token stored for ${platformId}. Please connect your account first.`);
+async function ensureValidToken(platformId, tokenSession) {
+  if (!tokenSession?.access_token) {
+    throw new Error(`No OAuth session is available for ${platformId}. Connect the account again.`);
   }
 
-  if (isTokenExpired(platformId)) {
-    const refreshToken = getRefreshToken(platformId);
-    if (!refreshToken) {
-      throw new Error(`Token for ${platformId} has expired and no refresh token is available. Please reconnect your account.`);
+  let nextSession = tokenSession;
+  if (isTokenExpired(nextSession)) {
+    if (!nextSession.refresh_token) {
+      throw new Error(`The ${platformId} session expired. Reconnect the account before publishing.`);
     }
 
     let newTokenData;
     switch (platformId) {
       case "linkedin":
-        newTokenData = await refreshLinkedInToken(refreshToken);
+        newTokenData = await refreshLinkedInToken(nextSession.refresh_token);
         break;
       case "x":
-        newTokenData = await refreshXToken(refreshToken);
+        newTokenData = await refreshXToken(nextSession.refresh_token);
         break;
       case "reddit":
-        newTokenData = await refreshRedditToken(refreshToken);
+        newTokenData = await refreshRedditToken(nextSession.refresh_token);
         break;
       default:
-        throw new Error(`Token refresh not supported for ${platformId}`);
+        throw new Error(`Token refresh is not supported for ${platformId}`);
     }
 
-    updateAccessToken(platformId, newTokenData);
-    token = newTokenData.access_token;
+    nextSession = updateTokenSession(nextSession, newTokenData);
   }
 
-  return token;
+  return { token: nextSession.access_token, tokenSession: nextSession };
 }
 
-// ─── LinkedIn Posting ───
+export async function postToLinkedIn(content, projectName = "", tokenSession) {
+  const valid = await ensureValidToken("linkedin", tokenSession);
 
-export async function postToLinkedIn(content, projectName = "") {
-  const token = await ensureValidToken("linkedin");
-
-  // Get user profile URN
-  const profileResp = await fetch("https://api.linkedin.com/v2/userinfo", {
-    headers: { Authorization: `Bearer ${token}` }
+  const profileResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
+    headers: { Authorization: `Bearer ${valid.token}` },
   });
-
-  if (!profileResp.ok) {
-    const errText = await profileResp.text();
-    throw new Error(`LinkedIn profile fetch failed: ${errText}`);
+  if (!profileResponse.ok) {
+    const errorText = await profileResponse.text();
+    throw new Error(`LinkedIn profile fetch failed: ${errorText}`);
   }
 
-  const profile = await profileResp.json();
+  const profile = await profileResponse.json();
   const authorUrn = `urn:li:person:${profile.sub}`;
-
-  // Create UGC Post
   const postBody = {
     author: authorUrn,
     lifecycleState: "PUBLISHED",
     specificContent: {
       "com.linkedin.ugc.ShareContent": {
-        shareCommentary: {
-          text: content.substring(0, 3000) // LinkedIn 3000 char limit
-        },
-        shareMediaCategory: "NONE"
-      }
+        shareCommentary: { text: content.substring(0, 3000) },
+        shareMediaCategory: "NONE",
+      },
     },
     visibility: {
-      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-    }
+      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+    },
   };
 
-  const postResp = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+  const postResponse = await fetch("https://api.linkedin.com/v2/ugcPosts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      "X-Restli-Protocol-Version": "2.0.0"
+      Authorization: `Bearer ${valid.token}`,
+      "X-Restli-Protocol-Version": "2.0.0",
     },
-    body: JSON.stringify(postBody)
+    body: JSON.stringify(postBody),
   });
-
-  if (!postResp.ok) {
-    const errText = await postResp.text();
-    throw new Error(`LinkedIn post failed (${postResp.status}): ${errText}`);
+  if (!postResponse.ok) {
+    const errorText = await postResponse.text();
+    throw new Error(`LinkedIn post failed (${postResponse.status}): ${errorText}`);
   }
 
-  const result = await postResp.json();
-  const postId = result.id || "";
-  const postUrl = postId
-    ? `https://www.linkedin.com/feed/update/${postId}/`
-    : "https://www.linkedin.com/feed/";
-
+  const responseBody = await postResponse.json().catch(() => ({}));
+  const postId = responseBody.id || postResponse.headers.get("x-restli-id") || "";
   return {
-    ok: true,
-    platform: "linkedin",
-    postId,
-    postUrl,
-    message: "Successfully published to LinkedIn!"
+    result: {
+      ok: true,
+      platform: "linkedin",
+      postId,
+      postUrl: postId ? `https://www.linkedin.com/feed/update/${postId}/` : "https://www.linkedin.com/feed/",
+      message: `Published${projectName ? ` ${projectName}` : ""} to LinkedIn.`,
+    },
+    tokenSession: valid.tokenSession,
   };
 }
 
-// ─── X/Twitter Posting ───
-
-export async function postToX(content) {
-  const token = await ensureValidToken("x");
-
-  // For threads, split by double newline
-  const parts = content.split(/\n\n+/).filter(Boolean);
+export async function postToX(content, tokenSession) {
+  const valid = await ensureValidToken("x", tokenSession);
+  const parts = content.split(/\n\n+/).map((part) => part.trim()).filter(Boolean);
 
   if (parts.length === 1 || content.length <= 280) {
-    // Single tweet
-    const tweetResp = await fetch("https://api.twitter.com/2/tweets", {
+    const response = await fetch("https://api.twitter.com/2/tweets", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${valid.token}`,
       },
-      body: JSON.stringify({ text: content.substring(0, 280) })
+      body: JSON.stringify({ text: content.substring(0, 280) }),
     });
-
-    if (!tweetResp.ok) {
-      const errText = await tweetResp.text();
-      throw new Error(`X post failed (${tweetResp.status}): ${errText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`X post failed (${response.status}): ${errorText}`);
     }
 
-    const result = await tweetResp.json();
-    const tweetId = result.data?.id || "";
+    const body = await response.json();
+    const postId = body.data?.id || "";
     return {
-      ok: true,
-      platform: "x",
-      postId: tweetId,
-      postUrl: tweetId ? `https://x.com/i/status/${tweetId}` : "https://x.com",
-      message: "Successfully posted to X!"
+      result: {
+        ok: true,
+        platform: "x",
+        postId,
+        postUrl: postId ? `https://x.com/i/status/${postId}` : "https://x.com",
+        message: "Published to X.",
+      },
+      tokenSession: valid.tokenSession,
     };
   }
 
-  // Thread posting
-  let previousTweetId = null;
-  let firstTweetId = null;
+  let previousPostId = null;
+  let firstPostId = null;
+  const threadParts = parts.slice(0, 25);
 
-  for (const part of parts.slice(0, 25)) { // Max 25 tweets in thread
-    const tweetBody = { text: part.substring(0, 280) };
-    if (previousTweetId) {
-      tweetBody.reply = { in_reply_to_tweet_id: previousTweetId };
+  for (let index = 0; index < threadParts.length; index += 1) {
+    const tweetBody = { text: threadParts[index].substring(0, 280) };
+    if (previousPostId) {
+      tweetBody.reply = { in_reply_to_tweet_id: previousPostId };
     }
 
-    const tweetResp = await fetch("https://api.twitter.com/2/tweets", {
+    const response = await fetch("https://api.twitter.com/2/tweets", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${valid.token}`,
       },
-      body: JSON.stringify(tweetBody)
+      body: JSON.stringify(tweetBody),
     });
-
-    if (!tweetResp.ok) {
-      const errText = await tweetResp.text();
-      throw new Error(`X thread post failed at tweet ${parts.indexOf(part) + 1}: ${errText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`X thread failed at post ${index + 1} (${response.status}): ${errorText}`);
     }
 
-    const result = await tweetResp.json();
-    previousTweetId = result.data?.id;
-    if (!firstTweetId) firstTweetId = previousTweetId;
+    const body = await response.json();
+    previousPostId = body.data?.id || null;
+    if (!firstPostId) firstPostId = previousPostId;
   }
 
   return {
-    ok: true,
-    platform: "x",
-    postId: firstTweetId,
-    postUrl: firstTweetId ? `https://x.com/i/status/${firstTweetId}` : "https://x.com",
-    message: `Successfully posted thread (${Math.min(parts.length, 25)} tweets) to X!`
+    result: {
+      ok: true,
+      platform: "x",
+      postId: firstPostId,
+      postUrl: firstPostId ? `https://x.com/i/status/${firstPostId}` : "https://x.com",
+      message: `Published a ${threadParts.length}-post thread to X.`,
+    },
+    tokenSession: valid.tokenSession,
   };
 }
 
-// ─── Reddit Posting ───
-
-export async function postToReddit(content, options = {}) {
-  const token = await ensureValidToken("reddit");
-
+export async function postToReddit(content, options = {}, tokenSession) {
+  const valid = await ensureValidToken("reddit", tokenSession);
   const subreddit = options.subreddit || "test";
   const title = options.title || options.projectName || "New Post";
 
-  const submitResp = await fetch("https://oauth.reddit.com/api/submit", {
+  const response = await fetch("https://oauth.reddit.com/api/submit", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "SignalFlowStudio/1.0"
+      Authorization: `Bearer ${valid.token}`,
+      "User-Agent": "SignalFlowStudio/1.0",
     },
     body: new URLSearchParams({
       kind: "self",
       sr: subreddit,
       title: title.substring(0, 300),
       text: content.substring(0, 40000),
-      api_type: "json"
-    })
+      api_type: "json",
+    }),
   });
-
-  if (!submitResp.ok) {
-    const errText = await submitResp.text();
-    throw new Error(`Reddit submit failed (${submitResp.status}): ${errText}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Reddit submit failed (${response.status}): ${errorText}`);
   }
 
-  const result = await submitResp.json();
-  const postUrl = result.json?.data?.url || "https://www.reddit.com";
-  const postId = result.json?.data?.id || "";
+  const body = await response.json();
+  if (body.json?.errors?.length) {
+    throw new Error(`Reddit rejected the post: ${JSON.stringify(body.json.errors)}`);
+  }
 
+  const postUrl = body.json?.data?.url || "https://www.reddit.com";
+  const postId = body.json?.data?.id || "";
   return {
-    ok: true,
-    platform: "reddit",
-    postId,
-    postUrl,
-    message: `Successfully posted to r/${subreddit}!`
+    result: {
+      ok: true,
+      platform: "reddit",
+      postId,
+      postUrl,
+      message: `Published to r/${subreddit}.`,
+    },
+    tokenSession: valid.tokenSession,
   };
 }
 
-/**
- * Main dispatch function: routes to the correct platform posting function.
- */
-export async function publishToSocial(platformId, content, options = {}) {
+export async function publishToSocial(platformId, content, options = {}, tokenSession) {
   switch (platformId) {
     case "linkedin":
-      return postToLinkedIn(content, options.projectName);
+      return postToLinkedIn(content, options.projectName, tokenSession);
     case "x":
-      return postToX(content);
+      return postToX(content, tokenSession);
     case "reddit":
-      return postToReddit(content, options);
+      return postToReddit(content, options, tokenSession);
     default:
       return {
-        ok: false,
-        platform: platformId,
-        error: `Direct posting to "${platformId}" is not supported yet. Use manual copy & paste.`,
-        status: "manual_only"
+        result: {
+          ok: false,
+          platform: platformId,
+          error: `Direct publishing to "${platformId}" is not supported. Use manual copy or export.`,
+          status: "manual_only",
+        },
+        tokenSession,
       };
   }
 }

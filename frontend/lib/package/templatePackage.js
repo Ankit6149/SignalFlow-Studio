@@ -1,8 +1,75 @@
 import { buildMarkdown } from "../export/markdown";
 
+const DEFAULT_CHANNELS = ["linkedin", "x", "instagram", "reddit", "newsletter"];
+
+function clean(value, fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function sentence(value) {
+  const text = clean(value).replace(/\s+/g, " ");
+  if (!text) return "";
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+function truncate(value, max = 220) {
+  const text = clean(value).replace(/\s+/g, " ");
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function slug(value) {
+  return clean(value, "signalflow-campaign")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "") || "signalflow-campaign";
+}
+
+function escapeXml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function titleFromDescription(name, description) {
+  const firstLine = clean(description).split(/[\n.!?]/).find(Boolean);
+  return truncate(firstLine || `${name} product update`, 76);
+}
+
+function renderReleaseNotes(releaseNotes) {
+  return [
+    `# ${releaseNotes.title}`,
+    ...releaseNotes.sections.map((section) => [
+      `## ${section.title}`,
+      ...section.items.map((item) => `- ${item}`),
+    ].join("\n")),
+  ].join("\n\n");
+}
+
+function flattenPosts(pkg) {
+  return {
+    linkedin: pkg.posts.linkedin.body,
+    x: pkg.posts.x.posts.join("\n\n"),
+    instagram: pkg.posts.instagram.caption,
+    reddit: `${pkg.posts.reddit.title}\n\n${pkg.posts.reddit.body}`,
+    facebook: pkg.posts.facebook.body,
+    threads: pkg.posts.threads.body,
+    youtube: `${pkg.posts.youtube.title}\n\n${pkg.posts.youtube.description}`,
+    tiktok: pkg.posts.tiktok.caption,
+    hackernews: `${pkg.posts.hackernews.title}\n\n${pkg.posts.hackernews.body}`,
+    hn: `${pkg.posts.hackernews.title}\n\n${pkg.posts.hackernews.body}`,
+    newsletter: `${pkg.posts.newsletter.subject}\n\n${pkg.posts.newsletter.body}`,
+    blog: pkg.posts.blog.draft,
+    release_notes: renderReleaseNotes(pkg.posts.releaseNotes),
+  };
+}
+
 /**
- * Deterministically generates the complete "Studio Package" using local templates and input context.
- * Returns a standardized package structure.
+ * Deterministic, no-key campaign generation. The copy is intentionally plain,
+ * editable, and grounded only in the supplied context.
  */
 export function generateLocalTemplatePackage({
   projectName = "My Project",
@@ -15,333 +82,445 @@ export function generateLocalTemplatePackage({
   mediaItems = [],
   selectedChannels = [],
   selectedOutputs = [],
-  appUrl = ""
+  appUrl = "",
 }) {
-  const name = (projectName || (repoContext?.repo) || "SignalFlow Studio Project").trim();
-  const desc = (notes || (repoContext?.readme ? repoContext.readme.substring(0, 300) : "") || "A local-first product built to streamline development and content automation workflow.").trim();
-  const targetAudience = (audience || "developers, makers, and founders").trim();
-  
-  // Format inputs into facts and insights
-  const confirmedFacts = [];
-  const inferredFacts = [];
+  const name = clean(projectName, repoContext?.repo || "SignalFlow campaign");
+  const description = clean(
+    notes,
+    repoContext?.readme
+      ? truncate(repoContext.readme, 520)
+      : `${name} is a product update prepared for a public launch or progress announcement.`,
+  );
+  const audienceText = clean(audience, "builders, founders, and early users");
+  const oneLine = titleFromDescription(name, description);
+
+  const detectedStack = Array.isArray(repoContext?.detectedTechStack)
+    ? repoContext.detectedTechStack.filter(Boolean)
+    : [];
+  const techStack = detectedStack.length ? detectedStack : ["Web application"];
+
+  const detectedFeatures = Array.isArray(repoContext?.detectedFeatures)
+    ? repoContext.detectedFeatures.filter(Boolean)
+    : [];
+  const features = detectedFeatures.length
+    ? detectedFeatures.slice(0, 8)
+    : [
+        "Turns one source brief into channel-specific drafts",
+        "Keeps every draft editable before export or publishing",
+        "Supports local templates and bring-your-own-model routes",
+        "Stores saved campaign packages in the current browser",
+      ];
+
+  const confirmedFacts = [
+    `The campaign is for ${name}.`,
+    `The intended audience is ${audienceText}.`,
+  ];
+  if (description) confirmedFacts.push(`The supplied product context says: ${truncate(description, 240)}`);
+  if (appUrl) confirmedFacts.push(`A live product URL was supplied: ${appUrl}`);
+  if (repoUrl) confirmedFacts.push(`A repository reference was supplied: ${repoUrl}`);
+  if (detectedStack.length) confirmedFacts.push(`Detected technology: ${detectedStack.join(", ")}.`);
+  if (linksContext.length) confirmedFacts.push(`${linksContext.length} public link${linksContext.length === 1 ? " was" : "s were"} available as source context.`);
+  if (fileNames.length) confirmedFacts.push(`${fileNames.length} text source${fileNames.length === 1 ? " was" : "s were"} included.`);
+
   const missingContext = [];
+  if (!notes) missingContext.push("A detailed first-person product story was not provided.");
+  if (!appUrl) missingContext.push("No canonical product URL was supplied for the call to action.");
+  if (!mediaItems.length) missingContext.push("No visual assets were supplied; add screenshots before publishing visual posts.");
 
-  confirmedFacts.push(`Product is named: ${name}.`);
-  confirmedFacts.push(`Target audience is: ${targetAudience}.`);
-  if (appUrl) {
-    confirmedFacts.push(`Live App URL is located at: ${appUrl}.`);
-  }
-  if (repoUrl) {
-    confirmedFacts.push(`Source repository is configured at: ${repoUrl}.`);
-  }
-  if (notes) {
-    confirmedFacts.push(`Project core description: "${desc.slice(0, 100)}..."`);
-  }
+  const proofLines = features.slice(0, 4).map((feature) => `• ${feature}`);
+  const featureSentence = features.slice(0, 3).map((feature) => sentence(feature)).join(" ");
+  const productUrl = appUrl || repoUrl || "your product link";
 
-  const techStack = repoContext?.detectedTechStack || [];
-  if (techStack.length) {
-    confirmedFacts.push(`Tech stack detected from source files: ${techStack.join(", ")}.`);
-  } else {
-    inferredFacts.push("Appears to be built using standard web engineering tools.");
-    techStack.push("Next.js", "JavaScript");
-  }
+  const linkedinBody = [
+    `I have been working on ${name}.`,
+    "",
+    sentence(description),
+    "",
+    `It is built for ${audienceText}. The useful part is straightforward:`,
+    ...proofLines,
+    "",
+    detectedStack.length ? `The current stack includes ${detectedStack.slice(0, 5).join(", ")}.` : "",
+    "",
+    `I am sharing it now to get specific feedback on the workflow, the output quality, and what should be improved next.`,
+    appUrl || repoUrl ? `\n${productUrl}` : "",
+  ].filter(Boolean).join("\n");
 
-  const features = repoContext?.detectedFeatures || [];
-  if (features.length === 0) {
-    features.push(
-      "Automated package synthesis",
-      "Local-first static asset generation",
-      "Multi-channel formatting",
-      "Review-ready export flow"
-    );
-  }
+  const xPosts = [
+    `${name}: ${truncate(oneLine, 190)}\n\nBuilt for ${audienceText}.`,
+    `${features.slice(0, 3).map((feature) => `• ${truncate(feature, 76)}`).join("\n")}\n\nEvery output stays editable before it leaves the workspace.`,
+    `${appUrl || repoUrl ? `See it here: ${productUrl}` : "I am looking for direct feedback from people who ship product updates regularly."}`,
+  ];
 
-  const links = linksContext.map(l => l.url).filter(Boolean);
-  if (links.length) {
-    confirmedFacts.push(`Product docs links checked: ${links.join(", ")}.`);
-  } else {
-    missingContext.push("Product documentation / link scrapes are missing.");
-  }
+  const instagramCaption = [
+    `${name}.`,
+    "",
+    truncate(description, 650),
+    "",
+    features.slice(0, 4).map((feature) => `— ${feature}`).join("\n"),
+    "",
+    "Built to make the gap between shipping and explaining the work smaller.",
+    appUrl || repoUrl ? `\n${productUrl}` : "",
+    "",
+    "#buildinpublic #productdesign #creatortools #indiedev",
+  ].filter(Boolean).join("\n");
 
-  const mediaNames = mediaItems.map(m => m.name).filter(Boolean);
-  if (mediaNames.length) {
-    confirmedFacts.push(`Screenshots/recordings loaded: ${mediaNames.join(", ")}.`);
-  } else {
-    missingContext.push("Product screenshots or video captures are missing.");
-  }
+  const redditTitle = `I built ${name} to make product updates easier to turn into channel-specific drafts`;
+  const redditBody = [
+    `I have been working on ${name} for ${audienceText}.`,
+    "",
+    sentence(description),
+    "",
+    "The current workflow:",
+    ...features.slice(0, 5).map((feature) => `- ${feature}`),
+    "",
+    detectedStack.length ? `Current stack: ${detectedStack.slice(0, 6).join(", ")}.` : "",
+    "",
+    "The important limitation is that template mode is deterministic rather than deeply personalized. Every draft is intended to be reviewed and edited before use.",
+    "",
+    "I would value feedback on the workflow, the channels that matter most, and where the generated copy still feels generic.",
+  ].filter(Boolean).join("\n");
 
-  const repoInsights = [];
-  if (repoContext?.fileTreeSummary?.length) {
-    repoInsights.push(`Found ${repoContext.fileTreeSummary.length} source code nodes.`);
-    repoInsights.push(`Contains files: ${repoContext.fileTreeSummary.slice(0, 5).join(", ")}`);
-  }
+  const facebookBody = [
+    `${name} is now ready for a closer look.`,
+    "",
+    sentence(description),
+    "",
+    featureSentence,
+    "",
+    `It is designed for ${audienceText}, with a review-first workflow so nothing is treated as published until the person using it approves the final draft.`,
+    appUrl || repoUrl ? `\nLearn more: ${productUrl}` : "",
+  ].filter(Boolean).join("\n");
 
-  const docsInsights = linksContext.map(l => `Scraped ${l.title || "webpage"} (${l.url})`).slice(0, 3);
-  const linkInsights = links.length ? [`Found ${links.length} associated URL references.` ] : [];
-  const mediaInsights = mediaNames.length ? [`Prepared ${mediaNames.length} image/video references.`] : [];
+  const threadsBody = truncate(
+    `${name} is the tool I wanted after repeatedly finishing a product update and then losing another hour rewriting it for every channel. ${oneLine} Every draft stays editable, and unsupported publishing routes stay honest and manual.`,
+    500,
+  );
 
-  const coreAngle = `Showcasing ${name} as a local-first solution that solves the bottleneck of manual content assembly for ${targetAudience}.`;
-  const positioning = `A developer-friendly workspace that turns raw product code, links, and details into cohesive postings in minutes.`;
+  const youtubeTitle = truncate(`${name}: turning one product brief into a complete campaign`, 100);
+  const youtubeDescription = [
+    sentence(description),
+    "",
+    "In this walkthrough:",
+    "00:00 The problem",
+    "00:20 Adding product context",
+    "01:05 Choosing channels and a model route",
+    "01:45 Reviewing each draft",
+    "02:35 Exporting or using an official connector",
+    "",
+    `Built for ${audienceText}.`,
+    appUrl || repoUrl ? `\nProject: ${productUrl}` : "",
+  ].filter(Boolean).join("\n");
 
-  // Builds structured JSON package shape
+  const tiktokCaption = truncate(
+    `Built ${name} because shipping the product was not the end of the work. One brief now becomes editable drafts for every channel, with review before action. #buildinpublic #saas #productivity`,
+    2200,
+  );
+
+  const hackerNewsTitle = truncate(`Show HN: ${name} – ${oneLine}`, 80);
+  const hackerNewsBody = [
+    sentence(description),
+    "",
+    `It is intended for ${audienceText}. The current implementation accepts notes, public links, repository context, and text files, then creates editable channel-specific drafts and export packages.`,
+    "",
+    `The implementation currently uses ${techStack.slice(0, 6).join(", ")}.`,
+    "",
+    "Direct publishing is limited to official connectors that are actually configured. Other destinations use copy/export workflows. Saved campaigns remain in the browser.",
+    "",
+    "I would appreciate feedback on the context ingestion, the usefulness of the generated formats, and the local-first trade-offs.",
+  ].join("\n");
+
+  const newsletterSubject = truncate(`${name}: the latest product update`, 72);
+  const newsletterBody = [
+    `Hello,`,
+    "",
+    `I have been working on ${name}.`,
+    "",
+    sentence(description),
+    "",
+    "What is included in the current version:",
+    ...features.slice(0, 6).map((feature) => `- ${feature}`),
+    "",
+    `It is designed for ${audienceText}. The next step is to collect focused feedback and improve the parts that still create friction.`,
+    appUrl || repoUrl ? `\nExplore the project: ${productUrl}` : "",
+    "",
+    `— The ${name} team`,
+  ].filter(Boolean).join("\n");
+
+  const blogTitle = `Why we built ${name}`;
+  const blogDraft = [
+    `# ${blogTitle}`,
+    "",
+    `Finishing a product does not automatically make it easy to explain. The context is spread across notes, links, repositories, screenshots, and decisions that never made it into a public page.`,
+    "",
+    `That is the gap ${name} is meant to close. ${sentence(description)}`,
+    "",
+    `## Who it is for`,
+    "",
+    `${name} is designed for ${audienceText}.`,
+    "",
+    `## What the current workflow does`,
+    "",
+    ...features.slice(0, 6).map((feature) => `- ${feature}`),
+    "",
+    `## Why review comes before publishing`,
+    "",
+    `Generated content is a draft, not a fact. SignalFlow keeps each output editable and only offers direct publishing when an official connector is configured and the destination confirms success.`,
+    "",
+    `## What comes next`,
+    "",
+    `The next improvements will come from real campaigns: better source understanding, stronger platform-specific editing, and clearer publishing handoffs.`,
+  ].join("\n");
+
+  const releaseNotes = {
+    title: `${name} — current release notes`,
+    sections: [
+      { title: "What is included", items: features.slice(0, 8) },
+      {
+        title: "Source context",
+        items: [
+          notes ? "Product notes were included." : "No detailed product notes were included.",
+          repoUrl ? "Repository context was requested." : "No repository URL was supplied.",
+          linksContext.length ? `${linksContext.length} public link source${linksContext.length === 1 ? "" : "s"} were processed.` : "No public links were supplied.",
+        ],
+      },
+      {
+        title: "Known limitations",
+        items: [
+          "Template mode uses deterministic copy and should be edited for the exact launch voice.",
+          "Image uploads are references in this route; visual content is not interpreted automatically.",
+          "Direct publishing depends on configured official platform connectors.",
+        ],
+      },
+    ],
+  };
+
   const pkg = {
     project: {
       name,
-      oneLine: `Simplify and accelerate your content pipeline with ${name}.`,
-      description: desc,
-      audience: targetAudience,
-      category: "Developer Tools / Productivity",
-      stage: "V1 Launch"
+      oneLine,
+      description,
+      audience: audienceText,
+      category: "Content workflow / product marketing",
+      stage: "Campaign draft",
     },
     context: {
       confirmedFacts,
-      inferredFacts,
+      inferredFacts: [],
       missingContext,
       features,
       techStack,
-      repoInsights,
-      docsInsights,
-      linkInsights,
-      mediaInsights
+      repoInsights: repoContext?.fileTreeSummary?.length
+        ? [`Repository context includes ${repoContext.fileTreeSummary.length} indexed nodes.`]
+        : [],
+      docsInsights: linksContext.slice(0, 5).map((link) => `Source checked: ${link.title || link.url || "public link"}`),
+      linkInsights: linksContext.length ? [`${linksContext.length} public source link${linksContext.length === 1 ? "" : "s"} supplied.`] : [],
+      mediaInsights: mediaItems.length ? [`${mediaItems.length} media reference${mediaItems.length === 1 ? "" : "s"} supplied.`] : [],
     },
     strategy: {
-      coreAngle,
-      positioning,
+      coreAngle: `${name} helps ${audienceText} explain product work without rebuilding the campaign separately for every destination.`,
+      positioning: `${name} is a review-first campaign workspace that keeps source context, channel drafts, exports, and supported publishing paths together.`,
       hooks: [
-        `Tired of manually preparing posting assets for ${name}? Here is the solution.`,
-        `How we went from raw code to reviewable multi-channel post drafts in seconds.`,
-        `Local-first content studio for builders and indie developers is finally here.`
+        `The product was finished. Explaining it everywhere was still another project.`,
+        `One source brief should not become twelve disconnected writing tasks.`,
+        `Generated content should stay a draft until a person approves it.`,
       ],
-      proofPoints: [
-        `Identified ${features.length} core product features directly from workspace source.`,
-        `Exports full Markdown, JSON, and ZIP file packages in a single run.`,
-        `Runs completely locally without requiring cloud API keys.`
-      ],
-      risks: [
-        `Static templates do not change context styles dynamically.`,
-        `No advanced natural language rewriting in pure template mode.`
-      ],
+      proofPoints: features.slice(0, 5),
+      risks: missingContext,
       safeClaims: [
-        `Generates platform-ready content templates locally.`,
-        `Extracts key files and configuration details without cloning repositories.`
+        "Creates editable channel-specific drafts from supplied context.",
+        "Offers deterministic generation without requiring an API key.",
+        "Keeps direct publishing behind review and official connectors.",
       ],
       avoidClaims: [
-        `Do not claim that the tool does deep semantic code audits or full video content generation.`
-      ]
+        "Do not claim visual understanding for image-only uploads.",
+        "Do not claim a post succeeded unless the platform API confirms it.",
+        "Do not present deterministic template output as deeply personalized AI writing.",
+      ],
     },
     posts: {
       linkedin: {
-        title: `Announcing the launch of ${name}!`,
-        body: `I am excited to introduce ${name} – a local-first workspace built for ${targetAudience}.\n\nHere is what it does:\n${features.map(f => `• ${f}`).join("\n")}\n\nOur tech stack: ${techStack.join(", ")}.\n\nWhether you are launching a product, sharing an update, or creating release notes, this prepares the full package in one run. No complex setups or cloud dependencies required.\n\nTry it out and let us know what you think!`,
-        hashtags: ["IndieHackers", "DeveloperTools", "LocalFirst", "ProductLaunch"],
-        cta: "Download the source code or check the live demo!"
+        title: `${name} product update`,
+        body: linkedinBody,
+        hashtags: ["buildinpublic", "productdevelopment", "creatortools"],
+        cta: appUrl || repoUrl ? `Explore ${productUrl}` : "Share specific workflow feedback.",
       },
-      x: {
-        mode: "post_or_thread",
-        posts: [
-          `Introducing ${name} 🚀\n\nA local-first content studio built to turn descriptions, repos, and app links into structured post packages.\n\nHere is how it works: (1/3)`,
-          `⚡ Core Features:\n${features.slice(0, 3).map(f => `• ${f}`).join("\n")}\n\nBuilt using ${techStack.slice(0, 3).join(", ")}. (2/3)`,
-          `📦 Get full drafts for LinkedIn, X, Reddit, and newsletters alongside a visual media plan and ZIP exports.\n\nRuns offline/locally. Check it out! (3/3)`
-        ]
-      },
+      x: { mode: "thread", posts: xPosts },
       instagram: {
-        caption: `Automate your marketing pipeline with ${name}. Made for ${targetAudience} to save hours of manual asset building.\n\nSwipe to see features! 👉`,
-        hashtags: ["developer", "indiehackers", "solopreneur", "productivity", "coding"],
-        visualDirection: "Show a before-and-after split showing raw description notes on the left and a structured ZIP package on the right."
+        caption: instagramCaption,
+        hashtags: ["buildinpublic", "productdesign", "creatortools", "indiedev"],
+        visualDirection: "Use one clear product screenshot, one workflow detail, and one final outcome. Avoid decorative screenshots that do not prove the product claim.",
       },
       reddit: {
-        title: `I built ${name} - a local-first tool that converts code repos & links into complete post drafts`,
-        body: `Hey developers,\n\nI wanted to share ${name}, a tool I've been working on to solve the annoying chore of assembling launch posts, feature updates, and newsletter summaries.\n\nYou give it your repo URL, README, docs URL, or description, and it compiles a unified package containing platform-ready posts, media plans, and release notes.\n\nWhy local-first? It respects privacy and works offline without requiring expensive cloud subscriptions.\n\nWould love your feedback on features or integrations!`,
-        subredditSuggestions: ["r/sideproject", "r/developer", "r/indiehackers", "r/selfhosted"]
+        title: redditTitle,
+        body: redditBody,
+        subredditSuggestions: ["r/SideProject", "r/indiehackers", "r/webdev", "r/selfhosted"],
       },
-      hackernews: {
-        title: `Show HN: ${name} – Local-first content studio from repos and markdown`,
-        body: `${name} is an offline-friendly post package builder designed for developers and product founders.\n\nIt parses your local repository metadata (README, package.json, code structure) and scrapes docs URLs to generate formatted platform posts, blog summaries, and visual asset checklists.\n\nYou can review, edit, and export the generated assets as a single Markdown document, JSON data file, or a full ZIP package.\n\nProject details:\n- Ingests public repositories via GitHub trees.\n- Uses template heuristics as an offline/free fallback.\n- Generates structured ZIP packages on the fly.`
+      facebook: { body: facebookBody, cta: appUrl || repoUrl ? productUrl : "Ask for feedback." },
+      threads: { body: threadsBody },
+      youtube: {
+        title: youtubeTitle,
+        description: youtubeDescription,
+        tags: ["product demo", "build in public", "creator tools", name],
       },
-      blog: {
-        title: `Behind the Scenes: Why We Built ${name}`,
-        outline: [
-          `Introduction: The struggle of developer marketing.`,
-          `What is ${name} and who is it for?`,
-          `How local-first tools improve productivity.`,
-          `Core features: Repo ingestion and multi-format outputs.`,
-          `Future roadmap and next integrations.`
+      tiktok: {
+        caption: tiktokCaption,
+        hook: "Shipping the feature was only half the work.",
+        shotList: [
+          "Show the raw product brief.",
+          "Show channel selection and generation.",
+          "Show editing one draft and the honest publishing route.",
         ],
-        draft: `# Behind the Scenes: Why We Built ${name}\n\nEvery creator and software developer faces the same bottleneck: after building a feature or product, you must write about it across multiple channels (LinkedIn, Twitter, newsletters, blogs). This often takes hours.\n\n${name} was built to streamline this flow. By feeding in your repository, notes, and documentation, the system outputs structured platform drafts, release notes, and a visual media checklist.\n\n## Solving the Marketing Bottleneck\n\nMarketing shouldn't feel like a chore. With ${name}, you can go from raw repository files to a complete launch kit in minutes.`
+      },
+      hackernews: { title: hackerNewsTitle, body: hackerNewsBody },
+      blog: {
+        title: blogTitle,
+        outline: [
+          "The gap between shipping and explaining",
+          `Who ${name} is for`,
+          "How the review-first workflow works",
+          "Limits and next steps",
+        ],
+        draft: blogDraft,
       },
       newsletter: {
-        subject: `Introducing ${name}: The local-first content studio`,
-        preview: `Read how ${name} converts code and documentation into structured post packages.`,
-        body: `Hi there,\n\nWe just launched ${name}! It is a tool created specifically for ${targetAudience} to automate the packaging of product updates.\n\nHere is what you can do:\n${features.map(f => `- ${f}`).join("\n")}\n\nCheck out the documentation or download the project today!\n\nBest,\nThe ${name} Team`
+        subject: newsletterSubject,
+        preview: truncate(oneLine, 100),
+        body: newsletterBody,
       },
-      releaseNotes: {
-        title: `${name} V1.0.0 Release Notes`,
-        sections: [
-          {
-            title: "Features Added",
-            items: features
-          },
-          {
-            title: "Tech Stack & Configuration",
-            items: techStack.map(t => `Integrated support for ${t}`)
-          },
-          {
-            title: "Security & Safe Posting Guidelines",
-            items: [
-              "Local-first data execution. No keys leaked to browsers.",
-              "Explicit manual approval before publishing to any platform."
-            ]
-          }
-        ]
-      }
+      releaseNotes,
     },
     media: {
       screenshotPlan: [
-        `Main dashboard showing input context loaded.`,
-        `The Step 4 package review interface.`,
-        `The downloaded ZIP package contents.`
+        "The source brief with sensitive details removed.",
+        "The selected destination grid.",
+        "A platform-specific review preview.",
+        "The honest direct-publish or export route.",
       ],
       videoScript: [
-        `[0:00-0:02] Hook: Stop manual copywriting for your product updates.`,
-        `[0:02-0:08] Paste GitHub repo URL and type a brief description in ${name}.`,
-        `[0:08-0:15] Click generate and watch the multi-channel drafts appear instantly.`,
-        `[0:15-0:20] Click "Download ZIP" and show the formatted files.`
+        "0:00–0:03 — Show the finished product and the problem of rewriting the announcement.",
+        "0:03–0:10 — Add product notes, links, repository context, or text files.",
+        "0:10–0:18 — Select destinations and generate the campaign.",
+        "0:18–0:28 — Edit two contrasting channel drafts.",
+        "0:28–0:34 — Export or use a configured official connector.",
       ],
       voiceoverScript: [
-        `Tired of manually writing posting copy for updates? Check out ${name}.`,
-        `Just paste your repository, links, or notes, select outputs and channels.`,
-        `In seconds, SignalFlow generates LinkedIn posts, X threads, newsletters and media plans.`,
-        `Download the complete launch kit in Markdown, JSON, or ZIP format today!`
+        `I built ${name} because finishing the product did not finish the work of explaining it.`,
+        "One source brief becomes editable drafts for every destination.",
+        "Nothing is treated as published until I approve it and the destination confirms it.",
       ],
       shotList: [
-        `Shot 1: Close-up of developer clicking 'Generate Package'`,
-        `Shot 2: Over-the-shoulder of reviewing drafts`,
-        `Shot 3: Screencast of downloading ZIP and extracting files`
+        "Raw notes or repository context",
+        "Channel selector",
+        "Editable review preview",
+        "Export or connector status",
       ],
       recordingGuide: [
-        `Screencast of developer clicking 'Generate Package' on dashboard.`,
-        `Close-up on generated drafts in step 4 review interface.`,
-        `Screencast downloading and extracting the complete handoff ZIP file.`
+        "Use a real campaign rather than placeholder copy.",
+        "Keep private keys and account data outside the recording.",
+        "Show one correction to prove that drafts remain editable.",
       ],
       carouselPlan: [
-        `Slide 1: The Developer Content Problem (Manual writing is slow)`,
-        `Slide 2: Meet ${name} (Automated post packages)`,
-        `Slide 3: Real Ingestion (Fetches README, package.json, docs)`,
-        `Slide 4: Platform Ready (LinkedIn, X, Reddit, newsletters)`,
-        `Slide 5: Try it locally today (No cloud account needed)`
+        "Slide 1 — The context is already there",
+        "Slide 2 — One brief, multiple destination formats",
+        "Slide 3 — Review the copy beside the route",
+        "Slide 4 — Direct when official, manual when it is not",
+        "Slide 5 — Export the complete campaign",
       ],
       thumbnailIdeas: [
-        `Glow gradient background with the text "${name}" and a large ZIP file icon.`,
-        `Split image: Code on the left, social cards on the right.`
+        "A refined split between raw product context and finished channel drafts.",
+        "One central campaign card surrounded by recognizable destination icons.",
       ],
       videoTimeline: [
-        `0:00 - 0:02: Hook showing the manual content problem.`,
-        `0:02 - 0:08: Steps to paste GitHub URL and brief description.`,
-        `0:08 - 0:15: Interactive generation and output drafts display.`,
-        `0:15 - 0:20: Download exports and manual posting checklist.`
+        "0:00 Problem",
+        "0:03 Context",
+        "0:10 Generation",
+        "0:18 Review",
+        "0:28 Route and export",
       ],
       altText: [
-        `Screenshot of the ${name} Model setup screen.`,
-        `Visual schematic of the SignalFlow content pipeline.`
+        `${name} campaign brief and channel selector.`,
+        `${name} editable campaign review preview.`,
       ],
       assetChecklist: [
-        `1x Generated SVG Card (built-in)`,
-        `3x Product screenshots`,
-        `1x Short screen recording demo (WebM)`
+        "One uncluttered product hero screenshot",
+        "Two workflow screenshots",
+        "One short product walkthrough",
+        "One square or portrait social crop",
       ],
-      thumbnailPrompt: `Professional tech aesthetic screenshot mockup of the ${name} workspace showing a clean dark theme, glowing neon accents, and a large export ZIP file icon on a high-contrast background.`
+      thumbnailPrompt: `Premium editorial product image for ${name}, showing one source brief becoming multiple clean channel drafts. Warm off-white paper, dark ink interface, subtle champagne accents, restrained depth, no neon, no fake metrics.`,
     },
     publishing: {
       platformChecklist: [
-        `Review LinkedIn draft and add custom visual card.`,
-        `Copy X thread posts into scheduler.`,
-        `Review blog post markdown draft before pasting to CMS.`
+        "Verify every factual claim against the supplied source context.",
+        "Edit each draft for the account and audience actually publishing it.",
+        "Add accessible alt text to visual assets.",
+        "Use direct publishing only through a configured official connector.",
       ],
       manualPostingSteps: [
-        `1. Download the ZIP file.`,
-        `2. Extract the txt/md drafts.`,
-        `3. Copy individual posts to their respective apps.`,
-        `4. Attach screenshots or local recordings.`
+        "Copy the approved draft or export the campaign package.",
+        "Open the destination in a separate tab.",
+        "Attach the reviewed visual assets.",
+        "Check the final platform preview before publishing.",
       ],
-      apiPublishingNotes: [
-        `V1 encourages manual publishing. Official OAuth pipelines can be configured for webhooks.`
-      ],
+      apiPublishingNotes: "LinkedIn, X, and Reddit have official connector paths in the current product. Other destinations remain review, copy, export, and open-platform workflows.",
       warnings: [
-        `In Template Mode, text is static and may need minor edits to match your exact launch tone.`
-      ]
-    }
+        "Template mode is deterministic and should be edited for the exact voice and facts of the campaign.",
+      ],
+    },
   };
+
+  const allPosts = flattenPosts(pkg);
+  const channels = selectedChannels.length ? selectedChannels : DEFAULT_CHANNELS;
+  const selectedPosts = Object.fromEntries(channels.map((channel) => [channel, allPosts[channel] || ""]));
+  const fileSlug = slug(name);
+  const svgContent = `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#11110f"/>
+  <circle cx="1020" cy="80" r="330" fill="#d8bd7c" opacity="0.13"/>
+  <rect x="58" y="58" width="1084" height="514" rx="34" fill="#191914" stroke="#ffffff" stroke-opacity="0.12"/>
+  <text x="96" y="132" fill="#d8bd7c" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="5">SIGNALFLOW CAMPAIGN</text>
+  <text x="96" y="236" fill="#fffdf8" font-family="Georgia, serif" font-size="66" font-weight="500">${escapeXml(truncate(name, 30))}</text>
+  <foreignObject x="96" y="278" width="920" height="150">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;color:rgba(255,253,248,.62);font-size:30px;line-height:1.45">${escapeXml(truncate(oneLine, 150))}</div>
+  </foreignObject>
+  <rect x="96" y="492" width="260" height="48" rx="24" fill="#d8bd7c"/>
+  <text x="134" y="524" fill="#171714" font-family="Arial, sans-serif" font-size="19" font-weight="700">REVIEW-READY DRAFT</text>
+</svg>`;
 
   return {
     ok: true,
     providerUsed: "template",
     fallbackUsed: true,
-    warnings: ["System running in local template fallback mode. Connect a model API key to unlock dynamic generations."],
+    warnings: [
+      "Local template mode created a deterministic campaign without an external model call. Review and personalize every draft.",
+    ],
     package: pkg,
-    posts: {
-      linkedin: pkg.posts.linkedin.body,
-      x: pkg.posts.x.posts.join("\n\n"),
-      instagram: pkg.posts.instagram.caption,
-      reddit: pkg.posts.reddit.body,
-      hn: pkg.posts.hackernews.body,
-      blog: pkg.posts.blog.draft,
-      newsletter: pkg.posts.newsletter.body,
-      release_notes: pkg.posts.releaseNotes.sections.map(s => `### ${s.title}\n${s.items.map(i => `- ${i}`).join("\n")}`).join("\n\n")
-    },
-    channels: selectedChannels.length ? selectedChannels : ["linkedin", "x", "instagram", "newsletter"],
-    outputs: selectedOutputs.length ? selectedOutputs : ["caption", "text", "image", "video", "doc"],
-    markdown: buildMarkdown({ projectName: name, package: pkg, prompt: "Template generator fallback" }),
+    posts: selectedPosts,
+    channels,
+    outputs: selectedOutputs.length ? selectedOutputs : ["posts", "media_plan", "markdown", "json"],
+    markdown: buildMarkdown({ projectName: name, package: pkg, prompt: "Deterministic local template route" }),
     json: pkg,
-    media_plan: pkg.media.assetChecklist.map((item, idx) => ({
-      type: item.includes("recording") ? "video" : item.includes("Card") ? "image" : "screenshot",
+    media_plan: pkg.media.assetChecklist.map((item, index) => ({
+      type: /video|walkthrough|recording/i.test(item) ? "video" : "screenshot",
       title: item,
-      summary: `Asset ${idx + 1} requirement checklist item.`
+      summary: `Campaign asset ${index + 1}.`,
     })),
     documents: [
-      { title: "Release Notes", summary: pkg.posts.releaseNotes.title },
-      { title: "Newsletter draft", summary: pkg.posts.newsletter.subject }
+      { title: "Campaign strategy", summary: pkg.strategy.positioning },
+      { title: "Release notes", summary: pkg.posts.releaseNotes.title },
     ],
     assets: {
-      markdown: `${name.toLowerCase().replace(/\s+/g, "-")}-package.md`,
-      summary: `${name.toLowerCase().replace(/\s+/g, "-")}-package.json`,
-      code_image: "browser-generated-post-card.svg"
+      markdown: `${fileSlug}-campaign.md`,
+      summary: `${fileSlug}-campaign.json`,
+      code_image: `${fileSlug}-campaign-card.svg`,
     },
     image_mime: "image/svg+xml",
-    image_base64: Buffer.from(`
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#0f1720"/>
-  <rect x="54" y="54" width="1092" height="522" rx="24" fill="#1e293b"/>
-  <text x="92" y="132" fill="#38bdf8" font-family="Segoe UI, Arial" font-size="28" font-weight="800">TEMPLATE MODE</text>
-  <text x="92" y="232" fill="#f8fafc" font-family="Segoe UI, Arial" font-size="68" font-weight="900">${name}</text>
-  <foreignObject x="92" y="278" width="980" height="190">
-    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Segoe UI, Arial; color:#94a3b8; font-size:34px; line-height:1.35">${desc.substring(0, 150)}...</div>
-  </foreignObject>
-  <rect x="92" y="500" width="240" height="52" rx="26" fill="#f43f5e"/>
-  <text x="124" y="535" fill="#ffffff" font-family="Segoe UI, Arial" font-size="24" font-weight="900">Deterministic V1</text>
-</svg>
-    `).toString("base64"),
+    image_base64: Buffer.from(svgContent.trim()).toString("base64"),
     integration_config: {
       mode: "review_first",
-      manual: true,
-      webhookReady: true,
       officialApisOnly: true,
-      platforms: {
-        linkedin: { 
-          supported: "manual_or_official_api", 
-          configured: Boolean(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_ORGANIZATION_ID),
-          notes: [] 
-        },
-        instagram: { 
-          supported: "official_meta_api_only", 
-          configured: Boolean(process.env.META_ACCESS_TOKEN && process.env.META_IG_USER_ID),
-          notes: [] 
-        },
-        x: { 
-          supported: "official_api_only", 
-          configured: Boolean(process.env.X_ACCESS_TOKEN && process.env.X_API_KEY && process.env.X_API_SECRET),
-          notes: [] 
-        }
-      }
-    }
+      directPlatforms: ["linkedin", "x", "reddit"],
+      manualPlatforms: ["instagram", "facebook", "threads", "youtube", "tiktok", "hackernews", "newsletter", "blog", "release_notes"],
+    },
   };
 }

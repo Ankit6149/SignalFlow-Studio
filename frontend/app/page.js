@@ -1,29 +1,155 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import PlatformIcon from "../components/PlatformIcon";
 
 const ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
 const OFFICIAL_CONNECTORS = new Set(["linkedin", "x", "reddit"]);
 
 const CHANNELS = [
-  { id: "linkedin", label: "LinkedIn", mark: "in", tone: "Professional narrative" },
-  { id: "x", label: "X", mark: "X", tone: "Sharp, concise thread" },
-  { id: "instagram", label: "Instagram", mark: "◎", tone: "Visual caption" },
-  { id: "reddit", label: "Reddit", mark: "r/", tone: "Community-first post" },
-  { id: "newsletter", label: "Newsletter", mark: "✉", tone: "Long-form update" },
-  { id: "blog", label: "Blog", mark: "Aa", tone: "Editorial article" },
+  {
+    id: "linkedin",
+    label: "LinkedIn",
+    tone: "Founder story and professional narrative",
+    type: "Social",
+    limit: 3000,
+    openUrl: "https://www.linkedin.com/feed/",
+    featured: true,
+  },
+  {
+    id: "x",
+    label: "X",
+    tone: "Concise launch post or builder thread",
+    type: "Social",
+    limit: 280,
+    openUrl: "https://x.com/compose/post",
+    featured: true,
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    tone: "Caption, hashtags, and visual direction",
+    type: "Social",
+    limit: 2200,
+    openUrl: "https://www.instagram.com/",
+    featured: true,
+  },
+  {
+    id: "reddit",
+    label: "Reddit",
+    tone: "Useful, community-first discussion",
+    type: "Community",
+    limit: 40000,
+    openUrl: "https://www.reddit.com/submit",
+    featured: true,
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    tone: "Accessible update for pages and groups",
+    type: "Social",
+    limit: 63206,
+    openUrl: "https://www.facebook.com/",
+  },
+  {
+    id: "threads",
+    label: "Threads",
+    tone: "Conversational short-form launch note",
+    type: "Social",
+    limit: 500,
+    openUrl: "https://www.threads.net/",
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    tone: "Video title, description, and CTA",
+    type: "Video",
+    limit: 5000,
+    openUrl: "https://studio.youtube.com/",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    tone: "Hook, caption, and short-video direction",
+    type: "Video",
+    limit: 2200,
+    openUrl: "https://www.tiktok.com/upload",
+  },
+  {
+    id: "hackernews",
+    label: "Hacker News",
+    tone: "Objective Show HN launch copy",
+    type: "Community",
+    limit: 5000,
+    openUrl: "https://news.ycombinator.com/submit",
+  },
+  {
+    id: "newsletter",
+    label: "Newsletter",
+    tone: "Subject, preview, and long-form update",
+    type: "Owned",
+    limit: null,
+    openUrl: "",
+  },
+  {
+    id: "blog",
+    label: "Blog",
+    tone: "Structured editorial launch article",
+    type: "Owned",
+    limit: null,
+    openUrl: "",
+  },
+  {
+    id: "release_notes",
+    label: "Release notes",
+    tone: "Clear product changelog and rollout notes",
+    type: "Owned",
+    limit: null,
+    openUrl: "",
+  },
 ];
+
+const CORE_CHANNELS = ["linkedin", "x", "instagram", "reddit"];
+const DEFAULT_CHANNELS = ["linkedin", "x", "instagram", "reddit", "newsletter"];
 
 const PROVIDERS = [
   { id: "template", label: "Local template", hint: "Works instantly. No key required." },
-  { id: "gemini", label: "Gemini", hint: "Use your Gemini API key or server configuration." },
-  { id: "openai", label: "OpenAI", hint: "Use your OpenAI key or server configuration." },
-  { id: "claude", label: "Claude", hint: "Use your Anthropic key or server configuration." },
-  { id: "groq", label: "Groq", hint: "Fast hosted generation with your key." },
+  { id: "gemini", label: "Gemini", hint: "Paste your Gemini API key or use the server configuration." },
+  { id: "openai", label: "OpenAI", hint: "Paste your OpenAI key or use the server configuration." },
+  { id: "claude", label: "Claude", hint: "Paste your Anthropic key or use the server configuration." },
+  { id: "groq", label: "Groq", hint: "Fast hosted generation with your own key." },
   { id: "ollama", label: "Ollama", hint: "Runs against your local Ollama endpoint." },
   { id: "lmstudio", label: "LM Studio", hint: "Runs against your local LM Studio endpoint." },
-  { id: "custom", label: "Custom OpenAI-compatible", hint: "Bring your own endpoint and model." },
+  { id: "custom", label: "Custom provider", hint: "Use an OpenAI-compatible endpoint and model." },
+];
+
+const FAQS = [
+  {
+    question: "What does SignalFlow Studio actually create?",
+    answer:
+      "It turns product notes, public links, repository context, and text files into editable drafts for social, community, video, newsletter, blog, and release-note channels.",
+  },
+  {
+    question: "Does SignalFlow publish without approval?",
+    answer:
+      "No. Every draft stays reviewable. Direct publishing is only offered when an official connector is configured and the platform API confirms success.",
+  },
+  {
+    question: "Which platforms can publish directly?",
+    answer:
+      "LinkedIn, X, and Reddit have official OAuth connector paths in the current release. Other destinations use a clear copy, export, and open-platform workflow.",
+  },
+  {
+    question: "Where are campaigns and account tokens stored?",
+    answer:
+      "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript.",
+  },
+  {
+    question: "Can I use my own AI model or no AI at all?",
+    answer:
+      "Yes. SignalFlow includes a deterministic local template route and supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints.",
+  },
 ];
 
 function safeJsonParse(value, fallback) {
@@ -56,19 +182,47 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
-function BrandMark({ compact = false }) {
+function channelMeta(id) {
+  return CHANNELS.find((channel) => channel.id === id) || {
+    id,
+    label: id,
+    tone: "Campaign draft",
+    type: "Channel",
+    limit: null,
+    openUrl: "",
+  };
+}
+
+function BrandMark({ compact = false, dark = false }) {
   return (
-    <div className={`brand-mark ${compact ? "brand-mark--compact" : ""}`} aria-label="SignalFlow Studio">
-      <span className="brand-mark__glyph" aria-hidden="true"><span /><span /><span /></span>
-      <span className="brand-mark__copy"><strong>SignalFlow</strong>{!compact && <small>STUDIO</small>}</span>
-    </div>
+    <span
+      className={`brand-mark ${compact ? "brand-mark--compact" : ""} ${dark ? "brand-mark--dark" : ""}`}
+      aria-label="SignalFlow Studio"
+    >
+      <span className="brand-mark__glyph" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="brand-mark__copy">
+        <strong>SignalFlow</strong>
+        {!compact && <small>STUDIO</small>}
+      </span>
+    </span>
   );
 }
 
 function ArrowIcon() {
   return (
     <svg viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M4 10h11M11 5l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 10h11M11 5l5 5-5 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -76,7 +230,21 @@ function ArrowIcon() {
 function SparkIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2.8c.8 4.7 3.5 7.4 8.2 8.2-4.7.8-7.4 3.5-8.2 8.2-.8-4.7-3.5-7.4-8.2-8.2 4.7-.8 7.4-3.5 8.2-8.2Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M12 2.8c.8 4.7 3.5 7.4 8.2 8.2-4.7.8-7.4 3.5-8.2 8.2-.8-4.7-3.5-7.4-8.2-8.2 4.7-.8 7.4-3.5 8.2-8.2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="6.5" y="6.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M4.5 12.5h-.2a1.8 1.8 0 0 1-1.8-1.8V4.3a1.8 1.8 0 0 1 1.8-1.8h6.4a1.8 1.8 0 0 1 1.8 1.8v.2" fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }
@@ -84,66 +252,226 @@ function SparkIcon() {
 function LandingPage({ onEnter }) {
   return (
     <main className="landing-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+
       <header className="landing-nav">
-        <BrandMark />
+        <a href="/" aria-label="SignalFlow Studio home">
+          <BrandMark />
+        </a>
+        <nav className="landing-nav__links" aria-label="Landing navigation">
+          <a href="#workflow">Workflow</a>
+          <a href="#channels">Channels</a>
+          <a href="#faq">FAQ</a>
+        </nav>
         <div className="landing-nav__actions">
-          <a href="https://github.com/Ankit6149/SignalFlow-Studio" target="_blank" rel="noreferrer">GitHub</a>
-          <button className="button button--light button--small" onClick={onEnter}>Open studio <ArrowIcon /></button>
+          <a href="https://github.com/Ankit6149/SignalFlow-Studio" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <button className="button button--light button--small" onClick={onEnter}>
+            Open studio <ArrowIcon />
+          </button>
         </div>
       </header>
 
-      <section className="landing-hero">
+      <section className="landing-hero" id="main-content">
         <div className="landing-hero__copy">
-          <p className="eyebrow"><span /> One idea. Every channel. Still your voice.</p>
+          <div className="landing-announcement">
+            <span>New</span>
+            Twelve publishing destinations, one review-first campaign.
+          </div>
+          <p className="eyebrow">
+            <span /> One idea. Every channel. Still your voice.
+          </p>
           <h1>Turn what you built into content people actually stop for.</h1>
           <p className="landing-hero__lede">
-            SignalFlow turns product notes, links, repositories, and rough source material into a complete, reviewable publishing package—without forcing you through a maze of dashboards.
+            SignalFlow turns product notes, links, repositories, and source files into a complete,
+            editable campaign—without forcing you through a maze of dashboards or pretending a post
+            succeeded when it did not.
           </p>
           <div className="landing-hero__actions">
-            <button className="button button--champagne" onClick={onEnter}>Create your first campaign <ArrowIcon /></button>
+            <button className="button button--champagne button--premium" onClick={onEnter}>
+              Create your first campaign <ArrowIcon />
+            </button>
             <span>Local-first · Bring your own model · Review before publish</span>
           </div>
           <div className="landing-proof">
-            <div><strong>01</strong><span>Add context</span></div>
-            <div><strong>02</strong><span>Shape the story</span></div>
-            <div><strong>03</strong><span>Approve each channel</span></div>
+            <div>
+              <strong>12</strong>
+              <span>Output destinations</span>
+            </div>
+            <div>
+              <strong>3</strong>
+              <span>Official connectors</span>
+            </div>
+            <div>
+              <strong>0</strong>
+              <span>Fake publish states</span>
+            </div>
           </div>
         </div>
 
         <div className="landing-hero__visual" aria-label="SignalFlow campaign preview">
           <div className="visual-glow" />
-          <div className="visual-photo"><img src="/creator-working.png" alt="Creator working at a refined desk" /><span>Raw material</span></div>
+          <div className="visual-photo">
+            <img src="/creator-working.png" alt="Creator preparing a campaign at a refined workspace" />
+            <span>Raw material</span>
+          </div>
           <article className="floating-card floating-card--main">
-            <header><div className="mini-brand"><span className="mini-brand__dot" /> SignalFlow campaign</div><span className="status-pill">Ready to review</span></header>
+            <header>
+              <div className="mini-brand">
+                <span className="mini-brand__dot" /> SignalFlow campaign
+              </div>
+              <span className="status-pill">Ready to review</span>
+            </header>
             <div className="floating-card__headline">A launch story, shaped for every room it enters.</div>
-            <div className="floating-card__channels"><span>in</span><span>X</span><span>◎</span><span>✉</span></div>
-            <div className="floating-card__bars"><i /><i /><i /></div>
+            <div className="floating-card__channels">
+              {CORE_CHANNELS.map((platform) => (
+                <span key={platform}>
+                  <PlatformIcon platform={platform} size={16} />
+                </span>
+              ))}
+            </div>
+            <div className="floating-card__bars">
+              <i />
+              <i />
+              <i />
+            </div>
           </article>
-          <article className="floating-card floating-card--note"><small>VOICE DIRECTION</small><strong>Confident, human, precise.</strong></article>
-          <article className="floating-card floating-card--metric"><small>FROM ONE BRIEF</small><strong>6 channel-ready drafts</strong></article>
+          <article className="floating-card floating-card--note">
+            <small>VOICE DIRECTION</small>
+            <strong>Confident, human, precise.</strong>
+          </article>
+          <article className="floating-card floating-card--metric">
+            <small>FROM ONE BRIEF</small>
+            <strong>12 editable outputs</strong>
+          </article>
         </div>
       </section>
 
-      <section className="landing-strip">
-        <span>Describe once</span><i /><span>Extract the signal</span><i /><span>Preview natively</span><i /><span>Publish only after approval</span>
+      <section className="landing-strip" aria-label="SignalFlow workflow summary">
+        <span>Describe once</span>
+        <i />
+        <span>Extract the signal</span>
+        <i />
+        <span>Preview natively</span>
+        <i />
+        <span>Publish only after approval</span>
       </section>
 
-      <section className="landing-editorial">
+      <section className="landing-editorial" id="workflow">
         <div className="landing-editorial__intro">
-          <p className="eyebrow eyebrow--dark"><span /> Built around the real job</p>
+          <p className="eyebrow eyebrow--dark">
+            <span /> Built around the real job
+          </p>
           <h2>Not another content dashboard. A clear path from proof to post.</h2>
+          <p>
+            SignalFlow keeps context, generation, review, platform routing, and export in one understandable
+            flow. Every important action remains visible.
+          </p>
         </div>
         <div className="editorial-grid">
-          <article><span className="editorial-index">A</span><h3>Bring the evidence</h3><p>Paste a product brief, launch URL, repository context, research links, or text files. SignalFlow keeps everything in one campaign.</p></article>
-          <article><span className="editorial-index">B</span><h3>See the actual output</h3><p>Edit each channel beside a platform-style preview. No hidden generation step and no unexplained workspace objects.</p></article>
-          <article><span className="editorial-index">C</span><h3>Stay in control</h3><p>Nothing is marked as published unless an official connector confirms it. Manual-only channels remain honestly manual.</p></article>
+          <article>
+            <span className="editorial-index">A</span>
+            <h3>Bring the evidence</h3>
+            <p>
+              Paste a product brief, launch URL, repository context, research links, or text files. The
+              campaign begins with facts instead of generic prompts.
+            </p>
+          </article>
+          <article>
+            <span className="editorial-index">B</span>
+            <h3>Shape each output</h3>
+            <p>
+              Edit channel-specific copy beside a focused preview, see character guidance, and keep every
+              destination attached to the same campaign.
+            </p>
+          </article>
+          <article>
+            <span className="editorial-index">C</span>
+            <h3>Route it honestly</h3>
+            <p>
+              Direct publishing appears only for configured official connectors. Every other destination gets
+              a deliberate copy, export, and open-platform path.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="channel-showcase" id="channels">
+        <div className="channel-showcase__copy">
+          <p className="eyebrow eyebrow--dark">
+            <span /> One system, the right format
+          </p>
+          <h2>Your campaign should travel without losing its voice.</h2>
+          <p>
+            Generate for professional networks, social feeds, communities, video platforms, newsletters,
+            blogs, and product updates from the same source of truth.
+          </p>
+          <button className="button button--dark" onClick={onEnter}>
+            Build a multi-channel campaign <ArrowIcon />
+          </button>
+        </div>
+        <div className="channel-showcase__grid">
+          {CHANNELS.map((channel) => (
+            <article key={channel.id} className="channel-showcase__card">
+              <span className="channel-showcase__icon">
+                <PlatformIcon platform={channel.id} size={22} branded />
+              </span>
+              <div>
+                <strong>{channel.label}</strong>
+                <small>{OFFICIAL_CONNECTORS.has(channel.id) ? "Official connector available" : "Review and export path"}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-faq" id="faq">
+        <div className="landing-faq__heading">
+          <p className="eyebrow eyebrow--dark">
+            <span /> Clear answers
+          </p>
+          <h2>What teams need to know before trusting the flow.</h2>
+        </div>
+        <div className="landing-faq__list">
+          {FAQS.map((item, index) => (
+            <details key={item.question} open={index === 0}>
+              <summary>{item.question}</summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
         </div>
       </section>
 
       <section className="landing-cta">
-        <div><p className="eyebrow"><span /> Your work already has a story</p><h2>Give it a publishing system worthy of it.</h2></div>
-        <button className="button button--champagne" onClick={onEnter}>Enter SignalFlow <ArrowIcon /></button>
+        <div>
+          <p className="eyebrow">
+            <span /> Your work already has a story
+          </p>
+          <h2>Give it a publishing system worthy of it.</h2>
+        </div>
+        <button className="button button--champagne button--premium" onClick={onEnter}>
+          Enter SignalFlow <ArrowIcon />
+        </button>
       </section>
+
+      <footer className="site-footer">
+        <div>
+          <BrandMark />
+          <p>Review-first campaign creation for builders, founders, and small teams.</p>
+        </div>
+        <nav aria-label="Footer navigation">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/llms.txt">llms.txt</a>
+          <a href="/llms-full.txt">AI context</a>
+          <a href="https://github.com/Ankit6149/SignalFlow-Studio" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        </nav>
+      </footer>
     </main>
   );
 }
@@ -163,7 +491,7 @@ export default function Home() {
     model: "",
     baseUrl: "",
   });
-  const [channels, setChannels] = useState(["linkedin", "x", "instagram"]);
+  const [channels, setChannels] = useState(DEFAULT_CHANNELS);
   const [files, setFiles] = useState([]);
   const [documentText, setDocumentText] = useState([]);
   const [result, setResult] = useState(null);
@@ -179,10 +507,20 @@ export default function Home() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const fileInputRef = useRef(null);
 
-  const provider = useMemo(() => PROVIDERS.find((item) => item.id === form.provider) || PROVIDERS[0], [form.provider]);
+  const provider = useMemo(
+    () => PROVIDERS.find((item) => item.id === form.provider) || PROVIDERS[0],
+    [form.provider],
+  );
+  const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
   const currentConnection = connections[activeChannel] || null;
-  const canPublishCurrent = Boolean(currentConnection?.connected && !currentConnection?.expired && !currentConnection?.manualOnly);
+  const canPublishCurrent = Boolean(
+    currentConnection?.connected && !currentConnection?.expired && !currentConnection?.manualOnly,
+  );
+  const characterPercent = activeMeta.limit
+    ? Math.min(100, Math.round((currentPost.length / activeMeta.limit) * 100))
+    : 0;
+  const isOverLimit = Boolean(activeMeta.limit && currentPost.length > activeMeta.limit);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -195,7 +533,10 @@ export default function Home() {
     if (socialStatus) {
       setEntered(true);
       setSection("connections");
-      setMessage({ type: socialStatus === "success" ? "success" : "error", text: socialMessage || "Connector flow completed." });
+      setMessage({
+        type: socialStatus === "success" ? "success" : "error",
+        text: socialMessage || "Connector flow completed.",
+      });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -211,11 +552,28 @@ export default function Home() {
     }
   }, [channels, activeChannel]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+  }, [entered, section]);
+
   function authHeaders(extra = {}) {
     return {
       ...extra,
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     };
+  }
+
+  function enterStudio() {
+    setEntered(true);
+    setSection("studio");
+    setStage("compose");
+  }
+
+  function navigateSection(nextSection) {
+    setSection(nextSection);
   }
 
   function updateForm(key, value) {
@@ -231,6 +589,15 @@ export default function Home() {
     });
   }
 
+  function useCoreChannels() {
+    setChannels(CORE_CHANNELS);
+    setActiveChannel(CORE_CHANNELS[0]);
+  }
+
+  function selectAllChannels() {
+    setChannels(CHANNELS.map((channel) => channel.id));
+  }
+
   async function handleFiles(event) {
     const picked = Array.from(event.target.files || []);
     if (!picked.length) return;
@@ -238,7 +605,9 @@ export default function Home() {
     const nextFiles = [];
     const nextText = [];
     for (const file of picked) {
-      const isText = file.type.startsWith("text/") || /\.(md|txt|json|csv|log|js|jsx|ts|tsx|py|go|rs)$/i.test(file.name);
+      const isText =
+        file.type.startsWith("text/") ||
+        /\.(md|txt|json|csv|log|js|jsx|ts|tsx|py|go|rs|java|cpp|c|h|html|css)$/i.test(file.name);
       let extracted = false;
       if (isText && file.size <= 500000) {
         try {
@@ -254,12 +623,14 @@ export default function Home() {
         type: file.type || "file",
         size: file.size,
         extracted,
-        description: extracted ? "Text content extracted in the browser." : "Asset metadata supplied as a creative reference; visual analysis is not enabled in this route.",
+        description: extracted
+          ? "Text content extracted in the browser."
+          : "Asset metadata supplied as a creative reference; visual analysis is not enabled in this route.",
       });
     }
 
-    setFiles((previous) => [...previous, ...nextFiles].slice(0, 10));
-    setDocumentText((previous) => [...previous, ...nextText].slice(0, 10));
+    setFiles((previous) => [...previous, ...nextFiles].slice(0, 12));
+    setDocumentText((previous) => [...previous, ...nextText].slice(0, 12));
     event.target.value = "";
   }
 
@@ -274,7 +645,10 @@ export default function Home() {
 
   async function generateCampaign() {
     if (!form.notes.trim() && !form.links.trim() && !form.repo.trim() && documentText.length === 0) {
-      setMessage({ type: "error", text: "Add a brief, link, repository, or extractable text file before generating." });
+      setMessage({
+        type: "error",
+        text: "Add a brief, link, repository, or extractable text file before generating.",
+      });
       return;
     }
 
@@ -297,7 +671,12 @@ export default function Home() {
           providerModelName: form.model.trim(),
           providerBaseUrl: form.baseUrl.trim(),
           document_text: documentText,
-          media_items: files.map(({ name, type, size, description }) => ({ name, type, size, description })),
+          media_items: files.map(({ name, type, size, description }) => ({
+            name,
+            type,
+            size,
+            description,
+          })),
         }),
       });
 
@@ -314,7 +693,7 @@ export default function Home() {
       setMessage({
         type: data.fallbackUsed ? "warning" : "success",
         text: data.fallbackUsed
-          ? "Campaign created with a fallback route. Review the provider note before publishing."
+          ? "Campaign created with a fallback route. Review the generation note before publishing."
           : `Campaign generated with ${data.providerUsed || provider.label}.`,
       });
     } catch (error) {
@@ -354,7 +733,7 @@ export default function Home() {
     setResult(item.result || { markdown: item.markdown, warnings: item.warnings || [] });
     setActiveChannel((item.channels || ["linkedin"])[0]);
     setStage("review");
-    setSection("studio");
+    navigateSection("studio");
   }
 
   function deleteCampaign(id) {
@@ -363,36 +742,106 @@ export default function Home() {
     window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
   }
 
-  async function copyCurrentPost() {
-    if (!currentPost) return;
-    await navigator.clipboard.writeText(currentPost);
-    setMessage({ type: "success", text: `${CHANNELS.find((item) => item.id === activeChannel)?.label || "Post"} copied.` });
+  async function copyCurrentPost(showMessage = true) {
+    if (!currentPost) return false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(currentPost);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = currentPost;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      }
+    } catch {
+      setMessage({ type: "error", text: "The browser blocked clipboard access. Select the draft and copy it manually." });
+      return false;
+    }
+    if (showMessage) {
+      setMessage({ type: "success", text: `${activeMeta.label} draft copied.` });
+    }
+    return true;
+  }
+
+  async function copyAndOpenCurrent() {
+    const copied = await copyCurrentPost(false);
+    if (!copied) return;
+
+    if (activeMeta.openUrl) {
+      window.open(activeMeta.openUrl, "_blank", "noopener,noreferrer");
+      setMessage({
+        type: "success",
+        text: `${activeMeta.label} draft copied. The platform was opened in a new tab.`,
+      });
+      return;
+    }
+
+    setMessage({
+      type: "success",
+      text: `${activeMeta.label} draft copied. Paste it into your publishing tool.`,
+    });
   }
 
   function exportMarkdown() {
-    const name = (form.projectName || "signalflow-campaign").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    const fallbackMarkdown = channels.map((channel) => `## ${CHANNELS.find((item) => item.id === channel)?.label || channel}\n\n${posts[channel] || ""}`).join("\n\n---\n\n");
-    downloadText(`${name || "signalflow-campaign"}.md`, result?.markdown || fallbackMarkdown, "text/markdown");
+    const name = (form.projectName || "signalflow-campaign")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const approvedDrafts = channels
+      .map((channel) => `## ${channelMeta(channel).label}\n\n${posts[channel] || "No draft generated."}`)
+      .join("\n\n---\n\n");
+    const strategy = result?.markdown ? `${result.markdown}\n\n---\n\n# Approved channel drafts\n\n` : "";
+    downloadText(
+      `${name || "signalflow-campaign"}.md`,
+      `${strategy}${approvedDrafts}`,
+      "text/markdown",
+    );
   }
 
   function exportJson() {
-    const name = (form.projectName || "signalflow-campaign").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    downloadText(`${name || "signalflow-campaign"}.json`, JSON.stringify({ campaign: form.projectName, channels, posts, result }, null, 2), "application/json");
+    const name = (form.projectName || "signalflow-campaign")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    downloadText(
+      `${name || "signalflow-campaign"}.json`,
+      JSON.stringify({ campaign: form.projectName, channels, posts, result }, null, 2),
+      "application/json",
+    );
   }
 
   async function publishCurrentPost() {
     if (!currentPost) return;
     if (!canPublishCurrent) {
+      if (OFFICIAL_CONNECTORS.has(activeChannel)) {
+        navigateSection("connections");
+        setMessage({
+          type: "warning",
+          text: currentConnection?.expired
+            ? "This connector session expired. Reconnect the account before publishing."
+            : currentConnection?.reason ||
+              `${activeMeta.label} is not connected yet. Configure the official connector or use the copy-and-open route.`,
+        });
+      } else {
+        await copyAndOpenCurrent();
+      }
+      return;
+    }
+
+    if (isOverLimit) {
       setMessage({
-        type: "warning",
-        text: currentConnection?.expired
-          ? "This connector session expired. Reconnect the account before publishing."
-          : currentConnection?.reason || `${CHANNELS.find((item) => item.id === activeChannel)?.label || activeChannel} is not connected. Copy or export this draft instead.`,
+        type: "error",
+        text: `This ${activeMeta.label} draft is over the ${activeMeta.limit.toLocaleString()} character guide.`,
       });
       return;
     }
 
-    if (!window.confirm(`Publish this approved draft to ${CHANNELS.find((item) => item.id === activeChannel)?.label}?`)) return;
+    if (!window.confirm(`Publish this approved draft to ${activeMeta.label}?`)) return;
 
     setBusy(true);
     setMessage(null);
@@ -400,11 +849,18 @@ export default function Home() {
       const response = await fetch("/api/publish", {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ platform: activeChannel, content: currentPost, projectName: form.projectName }),
+        body: JSON.stringify({
+          platform: activeChannel,
+          content: currentPost,
+          projectName: form.projectName,
+        }),
       });
       const data = await response.json();
       if (!data.ok) throw new Error(data.error || "The platform did not confirm publication.");
-      setMessage({ type: "success", text: data.message || `Published to ${CHANNELS.find((item) => item.id === activeChannel)?.label}.` });
+      setMessage({
+        type: "success",
+        text: data.message || `Published to ${activeMeta.label}.`,
+      });
       await refreshConnections();
     } catch (error) {
       setMessage({ type: "error", text: error.message });
@@ -429,8 +885,11 @@ export default function Home() {
 
   function connectPlatform(platform) {
     if (!accessToken) {
-      setSection("settings");
-      setMessage({ type: "warning", text: "Unlock the owner session before connecting an official account." });
+      navigateSection("settings");
+      setMessage({
+        type: "warning",
+        text: "Unlock the owner session before connecting an official account.",
+      });
       return;
     }
     window.location.assign(`/api/social/connect?platform=${encodeURIComponent(platform)}`);
@@ -446,7 +905,9 @@ export default function Home() {
         body: JSON.stringify({ platform }),
       });
       const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || "Could not disconnect this account.");
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Could not disconnect this account.");
+      }
       setMessage({ type: "success", text: data.message });
       await refreshConnections();
     } catch (error) {
@@ -471,7 +932,12 @@ export default function Home() {
       window.localStorage.setItem(ACCESS_TOKEN_KEY, data.token || "");
       setAccessToken(data.token || "");
       setOwnerKey("");
-      setMessage({ type: "success", text: data.locked === false ? "Access lock is disabled for this deployment." : "Owner session unlocked." });
+      setMessage({
+        type: "success",
+        text: data.locked === false
+          ? "Access lock is disabled for this deployment."
+          : "Owner session unlocked.",
+      });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
     } finally {
@@ -487,170 +953,729 @@ export default function Home() {
     setMessage({ type: "success", text: "Owner session closed." });
   }
 
-  if (!entered) return <LandingPage onEnter={() => setEntered(true)} />;
+  if (!entered) return <LandingPage onEnter={enterStudio} />;
+
+  const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#workspace-content">
+        Skip to workspace
+      </a>
+
       <header className="app-header">
-        <button className="brand-button" onClick={() => setEntered(false)}><BrandMark compact /></button>
+        <button className="brand-button" onClick={() => setEntered(false)} aria-label="Return to SignalFlow home">
+          <BrandMark compact />
+        </button>
         <nav className="app-nav" aria-label="Primary navigation">
-          {[["studio", "Studio"], ["library", "Library"], ["connections", "Connections"], ["settings", "Settings"]].map(([id, label]) => (
-            <button key={id} className={section === id ? "is-active" : ""} onClick={() => setSection(id)}>{label}</button>
+          {[
+            ["studio", "Studio"],
+            ["library", "Library"],
+            ["connections", "Connections"],
+            ["settings", "Settings"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              className={section === id ? "is-active" : ""}
+              onClick={() => navigateSection(id)}
+              aria-current={section === id ? "page" : undefined}
+            >
+              {label}
+            </button>
           ))}
         </nav>
-        <div className="app-header__status"><span className={`connection-light ${accessToken ? "connection-light--on" : ""}`} />{accessToken ? "Owner session" : "Local mode"}</div>
+        <div className="app-header__status">
+          <span className={`connection-light ${accessToken ? "connection-light--on" : ""}`} />
+          <span>{accessToken ? "Owner session" : "Local mode"}</span>
+        </div>
       </header>
 
-      {message && <div className={`toast toast--${message.type}`} role="status"><span>{message.text}</span><button aria-label="Dismiss message" onClick={() => setMessage(null)}>×</button></div>}
+      {message && (
+        <div className={`toast toast--${message.type}`} role="status" aria-live="polite">
+          <span>{message.text}</span>
+          <button aria-label="Dismiss message" onClick={() => setMessage(null)}>
+            ×
+          </button>
+        </div>
+      )}
 
       {section === "studio" && (
-        <main className="studio-page">
+        <main className="studio-page" id="workspace-content">
           <header className="studio-heading">
             <div>
-              <p className="eyebrow eyebrow--dark"><span /> Campaign studio</p>
-              <h1>{stage === "compose" ? "What are we telling the world?" : "Shape every draft before it leaves."}</h1>
-              <p>{stage === "compose" ? "Bring the raw material. SignalFlow will turn it into one coherent, channel-ready campaign." : "Edit the words, inspect the route, then publish or export deliberately."}</p>
+              <p className="eyebrow eyebrow--dark">
+                <span /> Campaign studio
+              </p>
+              <h1>
+                {stage === "compose"
+                  ? "What are we telling the world?"
+                  : "Shape every draft before it leaves."}
+              </h1>
+              <p>
+                {stage === "compose"
+                  ? "Bring the raw material. SignalFlow will turn it into one coherent, channel-ready campaign."
+                  : "Edit the words, watch platform guidance, then publish or export deliberately."}
+              </p>
             </div>
-            {stage === "review" && <button className="button button--outline" onClick={() => setStage("compose")}>Edit campaign brief</button>}
+            {stage === "review" && (
+              <button className="button button--outline" onClick={() => setStage("compose")}>
+                Edit campaign brief
+              </button>
+            )}
           </header>
 
           <div className={`studio-grid ${stage === "review" ? "studio-grid--review" : ""}`}>
             <section className="panel composer-panel">
-              <div className="panel-kicker"><span>01</span> Campaign brief</div>
-              <label className="field"><span>Campaign name</span><input value={form.projectName} onChange={(event) => updateForm("projectName", event.target.value)} placeholder="e.g. SignalFlow public beta" /></label>
+              <div className="panel-kicker">
+                <span>01</span> Campaign brief
+              </div>
+
+              <label className="field">
+                <span>Campaign name</span>
+                <input
+                  value={form.projectName}
+                  onChange={(event) => updateForm("projectName", event.target.value)}
+                  placeholder="e.g. SignalFlow public beta"
+                />
+              </label>
+
               <label className="field field--large">
                 <span>What happened, and why should anyone care?</span>
-                <textarea value={form.notes} onChange={(event) => updateForm("notes", event.target.value)} placeholder="Paste the messy version: what you built, the problem, proof, launch details, quotes, numbers, and the action you want people to take." />
+                <textarea
+                  value={form.notes}
+                  onChange={(event) => updateForm("notes", event.target.value)}
+                  placeholder="Paste the messy version: what you built, the problem, proof, launch details, quotes, numbers, and the action you want people to take."
+                />
                 <small>{form.notes.length.toLocaleString()} characters</small>
               </label>
 
               <div className="source-grid">
-                <label className="field"><span>Links to extract</span><textarea className="compact-textarea" value={form.links} onChange={(event) => updateForm("links", event.target.value)} placeholder="Docs, landing page, research links…" /></label>
-                <label className="field"><span>GitHub repository</span><input value={form.repo} onChange={(event) => updateForm("repo", event.target.value)} placeholder="https://github.com/owner/repo" /></label>
+                <label className="field">
+                  <span>Links to extract</span>
+                  <textarea
+                    className="compact-textarea"
+                    value={form.links}
+                    onChange={(event) => updateForm("links", event.target.value)}
+                    placeholder="Docs, landing page, research links…"
+                  />
+                </label>
+                <label className="field">
+                  <span>GitHub repository</span>
+                  <input
+                    value={form.repo}
+                    onChange={(event) => updateForm("repo", event.target.value)}
+                    placeholder="https://github.com/owner/repo"
+                  />
+                </label>
               </div>
 
-              <div className="upload-zone" onClick={() => fileInputRef.current?.click()} role="button" tabIndex={0} onKeyDown={(event) => event.key === "Enter" && fileInputRef.current?.click()}>
+              <div
+                className="upload-zone"
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+              >
                 <input ref={fileInputRef} type="file" multiple hidden onChange={handleFiles} />
                 <div className="upload-zone__icon">＋</div>
-                <div><strong>Add source files</strong><span>Text and code are extracted; images are listed as asset references.</span></div>
-                <button type="button" className="text-button">Browse</button>
+                <div>
+                  <strong>Add source files</strong>
+                  <span>Text and code are extracted; images stay honest asset references.</span>
+                </div>
+                <span className="text-button" aria-hidden="true">
+                  Browse
+                </span>
               </div>
 
               {files.length > 0 && (
                 <div className="file-list">
                   {files.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="file-chip"><span>{file.name}</span><small>{file.extracted ? "Extracted" : `${Math.max(1, Math.round(file.size / 1024))} KB`}</small><button aria-label={`Remove ${file.name}`} onClick={(event) => { event.stopPropagation(); removeFile(index); }}>×</button></div>
+                    <div key={`${file.name}-${index}`} className="file-chip">
+                      <span>{file.name}</span>
+                      <small>
+                        {file.extracted ? "Extracted" : `${Math.max(1, Math.round(file.size / 1024))} KB`}
+                      </small>
+                      <button
+                        aria-label={`Remove ${file.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeFile(index);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
 
-              <button className="advanced-toggle" onClick={() => setShowAdvanced((value) => !value)}><span>Voice and model route</span><span>{showAdvanced ? "−" : "+"}</span></button>
+              <button
+                className="advanced-toggle"
+                onClick={() => setShowAdvanced((value) => !value)}
+                aria-expanded={showAdvanced}
+              >
+                <span>Voice and model route</span>
+                <span>{showAdvanced ? "−" : "+"}</span>
+              </button>
+
               {showAdvanced && (
                 <div className="advanced-panel">
-                  <label className="field"><span>Audience</span><input value={form.audience} onChange={(event) => updateForm("audience", event.target.value)} /></label>
-                  <label className="field"><span>Generation route</span><select value={form.provider} onChange={(event) => updateForm("provider", event.target.value)}>{PROVIDERS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{provider.hint}</small></label>
-                  {form.provider !== "template" && !["ollama", "lmstudio"].includes(form.provider) && <label className="field"><span>Temporary API key</span><input type="password" value={form.apiKey} onChange={(event) => updateForm("apiKey", event.target.value)} placeholder="Used only for this request" autoComplete="off" /></label>}
-                  {["ollama", "lmstudio", "custom"].includes(form.provider) && <label className="field"><span>Base URL</span><input value={form.baseUrl} onChange={(event) => updateForm("baseUrl", event.target.value)} placeholder="http://localhost:11434" /></label>}
-                  {form.provider !== "template" && <label className="field"><span>Model override</span><input value={form.model} onChange={(event) => updateForm("model", event.target.value)} placeholder="Leave blank for the default model" /></label>}
+                  <label className="field">
+                    <span>Audience</span>
+                    <input
+                      value={form.audience}
+                      onChange={(event) => updateForm("audience", event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Generation route</span>
+                    <select
+                      value={form.provider}
+                      onChange={(event) => updateForm("provider", event.target.value)}
+                    >
+                      {PROVIDERS.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                    <small>{provider.hint}</small>
+                  </label>
+                  {form.provider !== "template" &&
+                    !["ollama", "lmstudio"].includes(form.provider) && (
+                      <label className="field">
+                        <span>Temporary API key</span>
+                        <input
+                          type="password"
+                          value={form.apiKey}
+                          onChange={(event) => updateForm("apiKey", event.target.value)}
+                          placeholder="Used only for this request"
+                          autoComplete="off"
+                        />
+                      </label>
+                    )}
+                  {["ollama", "lmstudio", "custom"].includes(form.provider) && (
+                    <label className="field">
+                      <span>Base URL</span>
+                      <input
+                        value={form.baseUrl}
+                        onChange={(event) => updateForm("baseUrl", event.target.value)}
+                        placeholder="http://localhost:11434"
+                      />
+                    </label>
+                  )}
+                  {form.provider !== "template" && (
+                    <label className="field">
+                      <span>Model override</span>
+                      <input
+                        value={form.model}
+                        onChange={(event) => updateForm("model", event.target.value)}
+                        placeholder="Leave blank for the default model"
+                      />
+                    </label>
+                  )}
                 </div>
               )}
             </section>
 
             <section className="panel output-panel">
-              <div className="panel-kicker"><span>02</span> Channels and output</div>
+              <div className="panel-kicker panel-kicker--with-actions">
+                <span>02</span>
+                <b>Channels and output</b>
+                <div>
+                  <button onClick={useCoreChannels}>Core</button>
+                  <button onClick={selectAllChannels}>All</button>
+                </div>
+              </div>
+
               <div className="channel-picker">
                 {CHANNELS.map((channel) => {
                   const selected = channels.includes(channel.id);
-                  return <button key={channel.id} className={selected ? "channel-option is-selected" : "channel-option"} onClick={() => toggleChannel(channel.id)}><span className="channel-option__mark">{channel.mark}</span><span><strong>{channel.label}</strong><small>{channel.tone}</small></span><i>{selected ? "✓" : "+"}</i></button>;
+                  return (
+                    <button
+                      key={channel.id}
+                      className={selected ? "channel-option is-selected" : "channel-option"}
+                      onClick={() => toggleChannel(channel.id)}
+                      aria-pressed={selected}
+                    >
+                      <span className="channel-option__mark">
+                        <PlatformIcon platform={channel.id} size={18} branded={!selected} />
+                      </span>
+                      <span>
+                        <strong>{channel.label}</strong>
+                        <small>{channel.tone}</small>
+                      </span>
+                      <i>{selected ? "✓" : "+"}</i>
+                    </button>
+                  );
                 })}
               </div>
 
               {stage === "compose" ? (
                 <div className="output-empty">
-                  <div className="output-empty__art"><div className="ghost-post ghost-post--one"><span /><i /><i /><i /></div><div className="ghost-post ghost-post--two"><span /><i /><i /></div><div className="ghost-post ghost-post--three"><span /><i /><i /><i /></div></div>
+                  <div className="output-empty__art">
+                    <div className="ghost-post ghost-post--one">
+                      <span />
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                    <div className="ghost-post ghost-post--two">
+                      <span />
+                      <i />
+                      <i />
+                    </div>
+                    <div className="ghost-post ghost-post--three">
+                      <span />
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                  </div>
                   <h3>Your campaign will appear here.</h3>
-                  <p>SignalFlow creates editable drafts, a media direction, warnings, and export files from the same brief.</p>
+                  <p>
+                    SignalFlow creates editable drafts, platform guidance, media direction, warnings,
+                    and export files from the same brief.
+                  </p>
                 </div>
               ) : (
                 <div className="review-workspace">
-                  <div className="review-tabs">
+                  <div className="review-tabs" aria-label="Campaign channels">
                     {channels.map((channelId) => {
-                      const meta = CHANNELS.find((item) => item.id === channelId);
-                      return <button key={channelId} className={activeChannel === channelId ? "is-active" : ""} onClick={() => setActiveChannel(channelId)}><span>{meta?.mark}</span>{meta?.label}</button>;
+                      const meta = channelMeta(channelId);
+                      return (
+                        <button
+                          key={channelId}
+                          className={activeChannel === channelId ? "is-active" : ""}
+                          onClick={() => setActiveChannel(channelId)}
+                        >
+                          <span>
+                            <PlatformIcon platform={channelId} size={13} />
+                          </span>
+                          {meta.label}
+                        </button>
+                      );
                     })}
                   </div>
-                  <div className="native-preview">
-                    <header><div className="preview-avatar">SF</div><div><strong>SignalFlow campaign</strong><span>Draft preview · {CHANNELS.find((item) => item.id === activeChannel)?.label}</span></div><span className={`connection-badge ${canPublishCurrent ? "connection-badge--ready" : ""}`}>{canPublishCurrent ? "Connected" : "Review mode"}</span></header>
-                    <textarea value={currentPost} onChange={(event) => setPosts((previous) => ({ ...previous, [activeChannel]: event.target.value }))} placeholder="No draft was generated for this channel." />
-                    <footer><span>{currentPost.length.toLocaleString()} characters</span><span>Editable before export or publish</span></footer>
+
+                  <div className={`native-preview native-preview--${activeChannel}`}>
+                    <header>
+                      <div className="preview-avatar">
+                        <PlatformIcon platform={activeChannel} size={19} />
+                      </div>
+                      <div>
+                        <strong>{activeMeta.label} draft</strong>
+                        <span>{activeMeta.tone}</span>
+                      </div>
+                      <span className={`connection-badge ${canPublishCurrent ? "connection-badge--ready" : ""}`}>
+                        {canPublishCurrent
+                          ? "Direct publishing"
+                          : OFFICIAL_CONNECTORS.has(activeChannel)
+                            ? "Connector optional"
+                            : "Export ready"}
+                      </span>
+                    </header>
+
+                    <textarea
+                      value={currentPost}
+                      onChange={(event) =>
+                        setPosts((previous) => ({
+                          ...previous,
+                          [activeChannel]: event.target.value,
+                        }))
+                      }
+                      placeholder="No draft was generated for this channel."
+                      aria-label={`${activeMeta.label} campaign draft`}
+                    />
+
+                    <footer>
+                      <span className={isOverLimit ? "is-over-limit" : ""}>
+                        {currentPost.length.toLocaleString()}
+                        {activeMeta.limit ? ` / ${activeMeta.limit.toLocaleString()}` : ""} characters
+                      </span>
+                      <span>Editable before export or publish</span>
+                    </footer>
+
+                    {activeMeta.limit && (
+                      <div
+                        className={`character-guide ${isOverLimit ? "is-over-limit" : ""}`}
+                        aria-label={`${characterPercent}% of character guide used`}
+                      >
+                        <span style={{ width: `${characterPercent}%` }} />
+                      </div>
+                    )}
                   </div>
+
                   <div className="review-actions">
-                    <button className="button button--outline" onClick={copyCurrentPost}>Copy draft</button>
-                    <button className="button button--outline" onClick={saveCampaign}>Save locally</button>
-                    <button className="button button--dark" onClick={publishCurrentPost} disabled={busy || !currentPost}>{canPublishCurrent ? "Publish approved draft" : "Check publishing path"}<ArrowIcon /></button>
+                    <button className="button button--outline" onClick={() => copyCurrentPost()}>
+                      <CopyIcon /> Copy draft
+                    </button>
+                    <button className="button button--outline" onClick={saveCampaign}>
+                      Save locally
+                    </button>
+                    <button
+                      className="button button--dark"
+                      onClick={canPublishCurrent ? publishCurrentPost : copyAndOpenCurrent}
+                      disabled={busy || !currentPost}
+                    >
+                      {canPublishCurrent
+                        ? "Publish approved draft"
+                        : activeMeta.openUrl
+                          ? `Copy & open ${activeMeta.label}`
+                          : "Copy approved draft"}
+                      <ArrowIcon />
+                    </button>
                   </div>
-                  {result?.warnings?.length > 0 && <details className="route-note"><summary>Generation and integration notes ({result.warnings.length})</summary><ul>{result.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
-                  <div className="export-row"><div><strong>Take the full campaign with you</strong><span>Export all approved drafts and generation metadata.</span></div><button onClick={exportMarkdown}>Markdown</button><button onClick={exportJson}>JSON</button></div>
+
+                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (
+                    <button
+                      className="publishing-route-link"
+                      onClick={() => navigateSection("connections")}
+                    >
+                      Configure the official {activeMeta.label} connector
+                      <ArrowIcon />
+                    </button>
+                  )}
+
+                  {result?.warnings?.length > 0 && (
+                    <details className="route-note">
+                      <summary>Generation and integration notes ({result.warnings.length})</summary>
+                      <ul>
+                        {result.warnings.map((warning, index) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+
+                  <div className="export-row">
+                    <div>
+                      <strong>Take the full campaign with you</strong>
+                      <span>Export every selected draft and the generation metadata.</span>
+                    </div>
+                    <button onClick={exportMarkdown}>Markdown</button>
+                    <button onClick={exportJson}>JSON</button>
+                  </div>
                 </div>
               )}
             </section>
           </div>
 
           <div className="studio-actionbar">
-            <div><span>{channels.length} channel{channels.length === 1 ? "" : "s"}</span><i /><span>{provider.label}</span><i /><span>{files.length} file{files.length === 1 ? "" : "s"}</span></div>
-            <button className="button button--champagne" onClick={generateCampaign} disabled={busy}>{busy ? "Building campaign…" : stage === "review" ? "Regenerate campaign" : "Build campaign"}{!busy && <SparkIcon />}</button>
+            <div>
+              <span>{channels.length} destinations</span>
+              <i />
+              <span>{selectedDirectCount} direct-ready</span>
+              <i />
+              <span>{provider.label}</span>
+              <i />
+              <span>{files.length} file{files.length === 1 ? "" : "s"}</span>
+            </div>
+            <button
+              className="button button--champagne button--premium"
+              onClick={generateCampaign}
+              disabled={busy}
+            >
+              {busy
+                ? "Building campaign…"
+                : stage === "review"
+                  ? "Regenerate campaign"
+                  : "Build campaign"}
+              {!busy && <SparkIcon />}
+            </button>
           </div>
         </main>
       )}
 
       {section === "library" && (
-        <main className="secondary-page">
-          <header className="secondary-heading"><div><p className="eyebrow eyebrow--dark"><span /> Local library</p><h1>Your saved campaigns.</h1><p>Stored in this browser. Nothing here is treated as published.</p></div><button className="button button--dark" onClick={() => { setSection("studio"); setStage("compose"); }}>New campaign <ArrowIcon /></button></header>
-          {library.length === 0 ? <div className="empty-library"><span>◇</span><h2>No saved campaigns yet.</h2><p>Generate a campaign, review it, then save it locally.</p></div> : (
-            <div className="library-grid">{library.map((item) => <article key={item.id} className="library-card"><div className="library-card__top"><span>{item.fallbackUsed ? "Fallback route" : item.providerUsed || "Generated"}</span><small>{formatDate(item.updatedAt)}</small></div><h2>{item.title}</h2><div className="library-card__channels">{(item.channels || []).map((id) => <span key={id}>{CHANNELS.find((channel) => channel.id === id)?.mark || id}</span>)}</div><p>{Object.values(item.posts || {})[0]?.slice(0, 170) || "Saved campaign package"}{Object.values(item.posts || {})[0]?.length > 170 ? "…" : ""}</p><footer><button onClick={() => openCampaign(item)}>Open campaign</button><button className="danger-link" onClick={() => deleteCampaign(item.id)}>Delete</button></footer></article>)}</div>
+        <main className="secondary-page" id="workspace-content">
+          <header className="secondary-heading">
+            <div>
+              <p className="eyebrow eyebrow--dark">
+                <span /> Local library
+              </p>
+              <h1>Your saved campaigns.</h1>
+              <p>Stored in this browser. Nothing here is treated as published.</p>
+            </div>
+            <button
+              className="button button--dark"
+              onClick={() => {
+                navigateSection("studio");
+                setStage("compose");
+              }}
+            >
+              New campaign <ArrowIcon />
+            </button>
+          </header>
+
+          {library.length === 0 ? (
+            <div className="empty-library">
+              <span>◇</span>
+              <h2>No saved campaigns yet.</h2>
+              <p>Generate a campaign, review it, then save it locally.</p>
+            </div>
+          ) : (
+            <div className="library-grid">
+              {library.map((item) => (
+                <article key={item.id} className="library-card">
+                  <div className="library-card__top">
+                    <span>{item.fallbackUsed ? "Fallback route" : item.providerUsed || "Generated"}</span>
+                    <small>{formatDate(item.updatedAt)}</small>
+                  </div>
+                  <h2>{item.title}</h2>
+                  <div className="library-card__channels">
+                    {(item.channels || []).map((id) => (
+                      <span key={id} title={channelMeta(id).label}>
+                        <PlatformIcon platform={id} size={14} />
+                      </span>
+                    ))}
+                  </div>
+                  <p>
+                    {Object.values(item.posts || {})[0]?.slice(0, 170) || "Saved campaign package"}
+                    {Object.values(item.posts || {})[0]?.length > 170 ? "…" : ""}
+                  </p>
+                  <footer>
+                    <button onClick={() => openCampaign(item)}>Open campaign</button>
+                    <button className="danger-link" onClick={() => deleteCampaign(item.id)}>
+                      Delete
+                    </button>
+                  </footer>
+                </article>
+              ))}
+            </div>
           )}
         </main>
       )}
 
       {section === "connections" && (
-        <main className="secondary-page">
-          <header className="secondary-heading"><div><p className="eyebrow eyebrow--dark"><span /> Publishing paths</p><h1>Know exactly what can publish.</h1><p>Official connectors are encrypted per browser. Everything else stays manual and honest.</p></div><button className="button button--outline" onClick={refreshConnections} disabled={connectionsLoading}>{connectionsLoading ? "Checking…" : "Refresh status"}</button></header>
+        <main className="secondary-page" id="workspace-content">
+          <header className="secondary-heading">
+            <div>
+              <p className="eyebrow eyebrow--dark">
+                <span /> Publishing paths
+              </p>
+              <h1>Every destination has a clear next step.</h1>
+              <p>
+                Official connectors publish only after approval. Manual destinations stay useful with a
+                copy, export, and open-platform path.
+              </p>
+            </div>
+            <button
+              className="button button--outline"
+              onClick={refreshConnections}
+              disabled={connectionsLoading}
+            >
+              {connectionsLoading ? "Checking…" : "Refresh status"}
+            </button>
+          </header>
+
+          <section className="connection-summary" aria-label="Publishing connection summary">
+            <div>
+              <strong>3</strong>
+              <span>Official OAuth routes</span>
+            </div>
+            <div>
+              <strong>{CHANNELS.length - OFFICIAL_CONNECTORS.size}</strong>
+              <span>Export-ready destinations</span>
+            </div>
+            <div>
+              <strong>100%</strong>
+              <span>Review before action</span>
+            </div>
+          </section>
+
           <div className="connections-grid">
             {CHANNELS.map((channel) => {
               const status = connections[channel.id];
+              const official = OFFICIAL_CONNECTORS.has(channel.id);
               const connected = Boolean(status?.connected && !status?.expired && !status?.manualOnly);
-              const canConnect = OFFICIAL_CONNECTORS.has(channel.id) && Boolean(status?.configured);
+              const canConnect = official && Boolean(status?.configured);
               let description = status?.reason;
-              if (!description && connected) description = `Connected as ${status?.profile?.username || status?.profile?.name || "official account"}.`;
-              if (!description && status?.expired) description = "The stored session expired. Reconnect this account.";
-              if (!description && accessToken && canConnect) description = "Official connector is configured and ready to connect.";
-              if (!description && accessToken && OFFICIAL_CONNECTORS.has(channel.id)) description = "OAuth credentials are not configured in the deployment environment.";
-              if (!description) description = "Unlock the owner session to inspect official connector status.";
+
+              if (!description && connected) {
+                description = `Connected as ${
+                  status?.profile?.username || status?.profile?.name || "official account"
+                }.`;
+              }
+              if (!description && status?.expired) {
+                description = "The stored session expired. Reconnect this account.";
+              }
+              if (!description && accessToken && canConnect) {
+                description = "Official connector is configured and ready to connect.";
+              }
+              if (!description && accessToken && official) {
+                description = "OAuth credentials are not configured in the deployment environment.";
+              }
+              if (!description && official) {
+                description = "Unlock the owner session to inspect and connect the official publishing route.";
+              }
+              if (!description) {
+                description = channel.openUrl
+                  ? `Generate the draft, copy it, and open ${channel.label} from the review workspace.`
+                  : "Generate and copy the approved draft into your existing publishing workflow.";
+              }
 
               return (
-                <article key={channel.id} className="connection-card">
-                  <div className="connection-card__mark">{channel.mark}</div>
-                  <div className="connection-card__body"><h2>{channel.label}</h2><p>{description}</p></div>
+                <article key={channel.id} className={`connection-card ${official ? "is-official" : ""}`}>
+                  <div className="connection-card__mark">
+                    <PlatformIcon platform={channel.id} size={23} branded />
+                  </div>
+                  <div className="connection-card__body">
+                    <div className="connection-card__title">
+                      <h2>{channel.label}</h2>
+                      {official && <span>Official API</span>}
+                    </div>
+                    <p>{description}</p>
+                  </div>
                   <div className="connection-card__actions">
-                    <span className={connected ? "status-tag status-tag--ready" : "status-tag"}>{connected ? "Connected" : status?.manualOnly ? "Manual" : status?.expired ? "Expired" : "Not connected"}</span>
-                    {connected && <button className="connector-action connector-action--quiet" onClick={() => disconnectPlatform(channel.id)} disabled={busy}>Disconnect</button>}
-                    {!connected && canConnect && <button className="connector-action" onClick={() => connectPlatform(channel.id)} disabled={busy}>Connect</button>}
+                    <span className={connected ? "status-tag status-tag--ready" : "status-tag"}>
+                      {connected
+                        ? "Connected"
+                        : status?.expired
+                          ? "Expired"
+                          : official
+                            ? "Not connected"
+                            : "Export ready"}
+                    </span>
+                    {connected && (
+                      <button
+                        className="connector-action connector-action--quiet"
+                        onClick={() => disconnectPlatform(channel.id)}
+                        disabled={busy}
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                    {!connected && canConnect && (
+                      <button
+                        className="connector-action"
+                        onClick={() => connectPlatform(channel.id)}
+                        disabled={busy}
+                      >
+                        Connect
+                      </button>
+                    )}
+                    {!official && (
+                      <button
+                        className="connector-action connector-action--quiet"
+                        onClick={() => {
+                          navigateSection("studio");
+                          setStage(result ? "review" : "compose");
+                          if (!channels.includes(channel.id)) {
+                            setChannels((previous) => [...previous, channel.id]);
+                          }
+                          setActiveChannel(channel.id);
+                        }}
+                      >
+                        Use in Studio
+                      </button>
+                    )}
                   </div>
                 </article>
               );
             })}
           </div>
-          <div className="truth-panel"><div><span>Why this matters</span><h2>SignalFlow no longer simulates a successful post.</h2></div><p>The publish button reports success only after the platform API confirms it. OAuth state and tokens are encrypted in HTTP-only cookies, so Vercel does not depend on temporary memory or files.</p></div>
+
+          <div className="truth-panel">
+            <div>
+              <span>Why this matters</span>
+              <h2>Professional automation starts with truthful states.</h2>
+            </div>
+            <p>
+              SignalFlow reports success only after a platform API confirms it. OAuth state and tokens are
+              encrypted in HTTP-only cookies, while manual channels remain explicit instead of pretending to
+              be connected.
+            </p>
+          </div>
         </main>
       )}
 
       {section === "settings" && (
-        <main className="secondary-page settings-page">
-          <header className="secondary-heading"><div><p className="eyebrow eyebrow--dark"><span /> Product settings</p><h1>Keep setup out of the creative flow.</h1><p>Advanced access and provider details live here—not in the middle of every campaign.</p></div></header>
+        <main className="secondary-page settings-page" id="workspace-content">
+          <header className="secondary-heading">
+            <div>
+              <p className="eyebrow eyebrow--dark">
+                <span /> Product settings
+              </p>
+              <h1>Keep setup out of the creative flow.</h1>
+              <p>Advanced access and provider details live here—not in the middle of every campaign.</p>
+            </div>
+          </header>
+
           <div className="settings-grid">
-            <section className="settings-card"><span className="settings-card__number">01</span><h2>Owner access</h2><p>Unlock server-configured model routes and official social connectors for this hosted instance.</p>{accessToken ? <div className="settings-success"><span /> Owner session is active.<button onClick={lockOwnerSession}>Close session</button></div> : <div className="settings-form"><input type="password" value={ownerKey} onChange={(event) => setOwnerKey(event.target.value)} placeholder="Owner access key" /><button className="button button--dark" onClick={unlockOwnerSession} disabled={busy}>Unlock</button></div>}</section>
-            <section className="settings-card"><span className="settings-card__number">02</span><h2>Local data</h2><p>Saved campaigns live in this browser. Export anything important before clearing local storage.</p><div className="settings-actions"><button onClick={() => downloadText("signalflow-local-library.json", JSON.stringify(library, null, 2), "application/json")}>Export library</button><button className="danger-link" onClick={() => { if (window.confirm("Clear the local campaign library?")) { setLibrary([]); window.localStorage.removeItem(LIBRARY_KEY); } }}>Clear library</button></div></section>
-            <section className="settings-card settings-card--wide"><span className="settings-card__number">03</span><h2>Security policy</h2><p>Temporary model keys are used only for the current generation request. Social OAuth tokens remain encrypted in HTTP-only cookies and are never returned to page JavaScript or saved in the campaign library.</p></section>
+            <section className="settings-card">
+              <span className="settings-card__number">01</span>
+              <h2>Owner access</h2>
+              <p>Unlock server-configured model routes and official social connectors for this hosted instance.</p>
+              {accessToken ? (
+                <div className="settings-success">
+                  <span /> Owner session is active.
+                  <button onClick={lockOwnerSession}>Close session</button>
+                </div>
+              ) : (
+                <div className="settings-form">
+                  <input
+                    type="password"
+                    value={ownerKey}
+                    onChange={(event) => setOwnerKey(event.target.value)}
+                    placeholder="Owner access key"
+                  />
+                  <button className="button button--dark" onClick={unlockOwnerSession} disabled={busy}>
+                    Unlock
+                  </button>
+                </div>
+              )}
+            </section>
+
+            <section className="settings-card">
+              <span className="settings-card__number">02</span>
+              <h2>Local data</h2>
+              <p>Saved campaigns live in this browser. Export anything important before clearing local storage.</p>
+              <div className="settings-actions">
+                <button
+                  onClick={() =>
+                    downloadText(
+                      "signalflow-local-library.json",
+                      JSON.stringify(library, null, 2),
+                      "application/json",
+                    )
+                  }
+                >
+                  Export library
+                </button>
+                <button
+                  className="danger-link"
+                  onClick={() => {
+                    if (window.confirm("Clear the local campaign library?")) {
+                      setLibrary([]);
+                      window.localStorage.removeItem(LIBRARY_KEY);
+                    }
+                  }}
+                >
+                  Clear library
+                </button>
+              </div>
+            </section>
+
+            <section className="settings-card settings-card--wide">
+              <span className="settings-card__number">03</span>
+              <h2>Security and publishing policy</h2>
+              <p>
+                Temporary model keys are used only for the current generation request. Social OAuth tokens
+                remain encrypted in HTTP-only cookies and are never returned to page JavaScript or saved in
+                the campaign library. Manual channels never claim API publication.
+              </p>
+              <div className="settings-links">
+                <a href="/privacy">Read privacy details</a>
+                <a href="/terms">Read product terms</a>
+                <a href="/llms.txt">Open AI-readable summary</a>
+              </div>
+            </section>
           </div>
         </main>
       )}

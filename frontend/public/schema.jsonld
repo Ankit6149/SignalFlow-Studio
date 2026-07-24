@@ -3,75 +3,117 @@
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://github.com/Ankit6149/SignalFlow-Studio#organization",
+      "@id": "https://signal-flow-studio.vercel.app/#organization",
       "name": "SignalFlow Studio",
-      "url": "https://github.com/Ankit6149/SignalFlow-Studio"
+      "url": "https://signal-flow-studio.vercel.app",
+      "logo": "https://signal-flow-studio.vercel.app/icon.svg",
+      "sameAs": [
+        "https://github.com/Ankit6149/SignalFlow-Studio"
+      ]
     },
     {
-      "@type": ["SoftwareApplication", "WebApplication"],
-      "@id": "https://github.com/Ankit6149/SignalFlow-Studio#software",
+      "@type": "WebSite",
+      "@id": "https://signal-flow-studio.vercel.app/#website",
+      "url": "https://signal-flow-studio.vercel.app",
       "name": "SignalFlow Studio",
+      "alternateName": "SignalFlow",
+      "description": "A review-first campaign workspace that turns product context into editable drafts for social, community, video, newsletter, blog, and release-note destinations.",
+      "publisher": {
+        "@id": "https://signal-flow-studio.vercel.app/#organization"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": [
+        "SoftwareApplication",
+        "WebApplication"
+      ],
+      "@id": "https://signal-flow-studio.vercel.app/#software",
+      "name": "SignalFlow Studio",
+      "alternateName": "SignalFlow",
       "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "AI social media automation",
+      "applicationSubCategory": "Campaign creation and product marketing workflow",
       "operatingSystem": "Web",
-      "url": "https://github.com/Ankit6149/SignalFlow-Studio",
+      "browserRequirements": "Requires a modern browser with JavaScript enabled.",
+      "url": "https://signal-flow-studio.vercel.app",
       "codeRepository": "https://github.com/Ankit6149/SignalFlow-Studio",
+      "downloadUrl": "https://github.com/Ankit6149/SignalFlow-Studio",
       "isAccessibleForFree": true,
       "license": "https://github.com/Ankit6149/SignalFlow-Studio/blob/master/LICENSE",
       "creator": {
-        "@id": "https://github.com/Ankit6149/SignalFlow-Studio#organization"
+        "@id": "https://signal-flow-studio.vercel.app/#organization"
       },
-      "description": "SignalFlow Studio is a local-first AI social media automation workspace that turns one description, data, screenshots, and screen recordings into formatted posting packages for selected social media accounts.",
+      "description": "SignalFlow Studio turns product notes, public links, GitHub repository context, and uploaded text files into editable channel-specific campaign drafts. It supports local templates, bring-your-own-model generation, browser-local campaign saving, Markdown and JSON exports, and confirmed-only publishing through configured official connectors.",
       "keywords": [
-        "AI social media automation",
-        "autoposting",
-        "social media post generator",
-        "screen recording to social post",
-        "screenshot to social post",
-        "formatted posting package",
-        "creator tools",
-        "developer marketing",
-        "local-first"
+        "campaign creation software",
+        "product launch content generator",
+        "social media draft generator",
+        "developer marketing tool",
+        "repository to campaign",
+        "review before publish",
+        "local-first creator tool",
+        "bring your own AI model"
       ],
       "featureList": [
-        "Generate formatted posts for selected social media accounts",
-        "Create visual media plans for screenshots, screen recordings, GIFs, and cards",
-        "Capture screenshots and screen recordings in the web app",
-        "Generate Markdown and JSON posting packages",
-        "Prepare reviewable publishing handoff through manual exports, webhooks, or official APIs"
+        "Create editable drafts for twelve publishing destinations",
+        "Extract context from public links and GitHub repositories",
+        "Read uploaded text, Markdown, CSV, JSON, and code files in the browser",
+        "Use deterministic local templates without an API key",
+        "Use Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, or custom compatible endpoints",
+        "Save campaign packages in the current browser",
+        "Export approved campaigns as Markdown and JSON",
+        "Publish through configured LinkedIn, X, and Reddit official connectors after approval",
+        "Keep social OAuth sessions encrypted in HTTP-only cookies"
       ],
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/OnlineOnly"
       }
     },
     {
       "@type": "FAQPage",
-      "@id": "https://github.com/Ankit6149/SignalFlow-Studio#faq",
+      "@id": "https://signal-flow-studio.vercel.app/#faq",
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What is SignalFlow Studio?",
+          "name": "What does SignalFlow Studio actually create?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "SignalFlow Studio is an open-source autoposting workspace that turns one description, data, screenshots, and screen recordings into formatted posting packages for selected social media accounts."
+            "text": "It turns product notes, public links, repository context, and text files into editable drafts for social, community, video, newsletter, blog, and release-note channels."
           }
         },
         {
           "@type": "Question",
-          "name": "Does SignalFlow Studio need a separate backend?",
+          "name": "Does SignalFlow publish without approval?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. SignalFlow Studio is designed as one hosted Next.js app with UI, generation routes, media capture, and package formatting together."
+            "text": "No. Every draft stays reviewable. Direct publishing is only offered when an official connector is configured and the platform API confirms success."
           }
         },
         {
           "@type": "Question",
-          "name": "What can SignalFlow Studio generate?",
+          "name": "Which platforms can publish directly?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It generates platform-specific post drafts, visual media plans, generated cards, model prompts, Markdown exports, JSON summaries, and safe publishing handoff metadata."
+            "text": "LinkedIn, X, and Reddit have official OAuth connector paths in the current release. Other destinations use a clear copy, export, and open-platform workflow."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where are campaigns and account tokens stored?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use my own AI model or no AI at all?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. SignalFlow includes a deterministic local template route and supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints."
           }
         }
       ]

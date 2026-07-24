@@ -1,20 +1,17 @@
 {
   "name": "signalflow-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Local-first autoposting workspace for generating formatted social media posting packages from descriptions, data, screenshots, and screen recordings.",
+  "description": "A review-first campaign studio that turns product context into editable channel-specific drafts and confirmed publishing handoffs.",
   "keywords": [
     "ai",
+    "content-campaign",
     "social-media",
-    "social-media-automation",
-    "autoposting",
     "post-generator",
     "content-automation",
-    "screen-recording",
-    "screenshot",
-    "gif-generator",
     "creator-tools",
     "developer-marketing",
+    "review-before-publish",
     "local-first"
   ],
   "scripts": {
@@ -23,9 +20,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "jszip": "^3.10.1",
-    "next": "^13.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "jszip": "3.10.1",
+    "next": "15.5.21",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   }
 }

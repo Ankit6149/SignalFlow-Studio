@@ -15,12 +15,14 @@ export const SOCIAL_PLATFORMS = {
     scopes: ["openid", "profile", "w_member_social"],
     clientEnvKey: "LINKEDIN_CLIENT_ID",
     secretEnvKey: "LINKEDIN_CLIENT_SECRET",
+    versionEnvKey: "LINKEDIN_API_VERSION",
+    defaultApiVersion: "202607",
     grantType: "authorization_code",
     responseType: "code",
     tokenExpiry: 60 * 24 * 60 * 60,
     postMaxLength: 3000,
     supportsMedia: true,
-    postEndpoint: "https://api.linkedin.com/v2/ugcPosts",
+    postEndpoint: "https://api.linkedin.com/rest/posts",
     setupUrl: "https://www.linkedin.com/developers/apps",
     setupSteps: [
       "Go to LinkedIn Developer Portal → Create App",
@@ -35,9 +37,9 @@ export const SOCIAL_PLATFORMS = {
     label: "X (Twitter)",
     icon: "𝕏",
     color: "#000000",
-    authUrl: "https://twitter.com/i/oauth2/authorize",
-    tokenUrl: "https://api.twitter.com/2/oauth2/token",
-    profileUrl: "https://api.twitter.com/2/users/me",
+    authUrl: "https://x.com/i/oauth2/authorize",
+    tokenUrl: "https://api.x.com/2/oauth2/token",
+    profileUrl: "https://api.x.com/2/users/me",
     scopes: ["tweet.read", "tweet.write", "users.read", "offline.access"],
     clientEnvKey: "X_CLIENT_ID",
     secretEnvKey: "X_CLIENT_SECRET",
@@ -48,8 +50,8 @@ export const SOCIAL_PLATFORMS = {
     postMaxLength: 280,
     threadMaxLength: 25,
     supportsMedia: true,
-    postEndpoint: "https://api.twitter.com/2/tweets",
-    setupUrl: "https://developer.twitter.com/en/portal/dashboard",
+    postEndpoint: "https://api.x.com/2/tweets",
+    setupUrl: "https://developer.x.com/en/portal/dashboard",
     setupSteps: [
       "Go to X Developer Portal → Create a Project & App",
       "Set up User Authentication with OAuth 2.0",
@@ -103,6 +105,11 @@ export function getCallbackUrl(platform) {
     "http://localhost:3000";
 
   return `${base}/api/social/callback/${platform}`;
+}
+
+export function getLinkedInApiVersion() {
+  const platform = SOCIAL_PLATFORMS.linkedin;
+  return process.env[platform.versionEnvKey] || platform.defaultApiVersion;
 }
 
 export function isPlatformConfigured(platformId) {

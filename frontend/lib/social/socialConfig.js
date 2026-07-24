@@ -1,6 +1,6 @@
 /**
  * Social platform OAuth configuration registry.
- * Each platform defines its OAuth endpoints, scopes, and env variable keys.
+ * Each platform defines its OAuth endpoints, scopes, and environment keys.
  */
 
 export const SOCIAL_PLATFORMS = {
@@ -17,7 +17,7 @@ export const SOCIAL_PLATFORMS = {
     secretEnvKey: "LINKEDIN_CLIENT_SECRET",
     grantType: "authorization_code",
     responseType: "code",
-    tokenExpiry: 60 * 24 * 60 * 60, // 60 days default
+    tokenExpiry: 60 * 24 * 60 * 60,
     postMaxLength: 3000,
     supportsMedia: true,
     postEndpoint: "https://api.linkedin.com/v2/ugcPosts",
@@ -26,8 +26,8 @@ export const SOCIAL_PLATFORMS = {
       "Go to LinkedIn Developer Portal → Create App",
       "Add 'Sign In with LinkedIn using OpenID Connect' and 'Share on LinkedIn' products",
       "Set Redirect URL to: {callbackUrl}",
-      "Copy Client ID and Client Secret to .env.local"
-    ]
+      "Copy Client ID and Client Secret to the deployment environment",
+    ],
   },
 
   x: {
@@ -43,8 +43,8 @@ export const SOCIAL_PLATFORMS = {
     secretEnvKey: "X_CLIENT_SECRET",
     grantType: "authorization_code",
     responseType: "code",
-    usePKCE: true, // X requires PKCE for OAuth 2.0
-    tokenExpiry: 2 * 60 * 60, // 2 hours (uses refresh tokens)
+    usePKCE: true,
+    tokenExpiry: 2 * 60 * 60,
     postMaxLength: 280,
     threadMaxLength: 25,
     supportsMedia: true,
@@ -54,8 +54,8 @@ export const SOCIAL_PLATFORMS = {
       "Go to X Developer Portal → Create a Project & App",
       "Set up User Authentication with OAuth 2.0",
       "Set Type to 'Web App' and Redirect URL to: {callbackUrl}",
-      "Copy Client ID and Client Secret to .env.local"
-    ]
+      "Copy Client ID and Client Secret to the deployment environment",
+    ],
   },
 
   reddit: {
@@ -71,33 +71,40 @@ export const SOCIAL_PLATFORMS = {
     secretEnvKey: "REDDIT_CLIENT_SECRET",
     grantType: "authorization_code",
     responseType: "code",
-    tokenExpiry: 60 * 60, // 1 hour (uses refresh tokens)
+    tokenExpiry: 60 * 60,
     postMaxLength: 40000,
-    supportsMedia: false, // Text posts only in V1
+    supportsMedia: false,
     postEndpoint: "https://oauth.reddit.com/api/submit",
     setupUrl: "https://www.reddit.com/prefs/apps",
     setupSteps: [
       "Go to Reddit Apps Preferences → Create App",
       "Select 'web app' type",
       "Set Redirect URI to: {callbackUrl}",
-      "Copy App ID (under app name) and Secret to .env.local"
-    ]
-  }
+      "Copy App ID and Secret to the deployment environment",
+    ],
+  },
 };
 
-/**
- * Returns the callback URL for a given platform.
- */
-export function getCallbackUrl(platform) {
-  const base = process.env.NEXTAUTH_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
-  return `${base}/api/social/callback/${platform}`;
+function normalizeOrigin(value) {
+  const text = String(value || "").trim().replace(/\/+$/, "");
+  if (!text) return "";
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
 }
 
 /**
- * Checks if a platform's OAuth client credentials are configured.
+ * Returns a stable OAuth callback URL. NEXTAUTH_URL wins because it can point
+ * at the canonical custom domain; Vercel production/preview hosts are fallbacks.
  */
+export function getCallbackUrl(platform) {
+  const base =
+    normalizeOrigin(process.env.NEXTAUTH_URL) ||
+    normalizeOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ||
+    normalizeOrigin(process.env.VERCEL_URL) ||
+    "http://localhost:3000";
+
+  return `${base}/api/social/callback/${platform}`;
+}
+
 export function isPlatformConfigured(platformId) {
   const platform = SOCIAL_PLATFORMS[platformId];
   if (!platform) return false;
@@ -107,9 +114,6 @@ export function isPlatformConfigured(platformId) {
   );
 }
 
-/**
- * Returns configuration status for all platforms.
- */
 export function getAllPlatformStatus() {
   const status = {};
   for (const [key, platform] of Object.entries(SOCIAL_PLATFORMS)) {
@@ -122,9 +126,9 @@ export function getAllPlatformStatus() {
       postMaxLength: platform.postMaxLength,
       supportsMedia: platform.supportsMedia,
       setupUrl: platform.setupUrl,
-      setupSteps: platform.setupSteps.map(s =>
-        s.replace("{callbackUrl}", getCallbackUrl(key))
-      )
+      setupSteps: platform.setupSteps.map((step) =>
+        step.replace("{callbackUrl}", getCallbackUrl(key)),
+      ),
     };
   }
   return status;

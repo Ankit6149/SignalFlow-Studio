@@ -59,7 +59,10 @@ export async function GET(request) {
   }
 
   const authorizationUrl = `${platform.authUrl}?${params.toString()}`;
-  const response = Response.redirect(authorizationUrl, 302);
+  const response = new Response(null, {
+    status: 302,
+    headers: { Location: authorizationUrl },
+  });
   response.headers.append("Set-Cookie", createOAuthStateCookie(stateData));
   return response;
 }

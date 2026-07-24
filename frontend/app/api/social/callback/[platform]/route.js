@@ -152,7 +152,10 @@ function buildRedirect(request, status, message, cookies = []) {
     social_status: status,
     social_message: message,
   });
-  const response = Response.redirect(`${baseUrl}/?${params.toString()}`, 302);
+  const response = new Response(null, {
+    status: 302,
+    headers: { Location: `${baseUrl}/?${params.toString()}` },
+  });
   cookies.forEach((cookie) => response.headers.append("Set-Cookie", cookie));
   return response;
 }

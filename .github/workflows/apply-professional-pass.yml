@@ -1,0 +1,39 @@
+name: Apply professional product pass
+
+on:
+  push:
+    branches:
+      - product/professional-polish-discovery
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: product/professional-polish-discovery
+          fetch-depth: 0
+
+      - name: Reconstruct reviewed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/payload/professional-pass-*.b64 | tr -d '\n\r' | base64 --decode > /tmp/professional-pass.tar.gz
+          tar -xzf /tmp/professional-pass.tar.gz -C .
+          rm -rf .github/payload
+          rm -f .github/workflows/apply-professional-pass.yml
+
+      - name: Commit release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "SignalFlow Release Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Polish SignalFlow into a professional multi-channel product" || exit 0
+          git push origin HEAD:product/professional-polish-discovery

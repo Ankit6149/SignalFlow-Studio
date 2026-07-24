@@ -1,0 +1,1 @@
+Read `AGENTS.md` before changing SignalFlow Studio. Preserve review-first publishing, truthful connector states, local-first storage, and the warm luxurious creative direction. Use `rem` for Studio UI dimensions, avoid tiny functional text, run `cd frontend && npm run build`, and never claim a connector is complete without live external verification.

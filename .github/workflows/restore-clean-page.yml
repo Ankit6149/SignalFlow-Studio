@@ -1,0 +1,40 @@
+name: Restore clean page source
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.head_ref == 'product/professional-polish-discovery' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: product/professional-polish-discovery
+          fetch-depth: 0
+
+      - name: Restore and verify page source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/pagefix/pagejs-*.b64 | tr -d '\n\r' | base64 --decode | gzip -dc > frontend/app/page.js
+          echo "d6f0424ee3c975680d16ee8a6e993e8e50bf85e1d4743fe8b17c786c81de5821  frontend/app/page.js" | sha256sum --check -
+          node --check frontend/app/page.js
+          rm -rf .github/pagefix
+          rm -f .github/workflows/restore-clean-page.yml
+
+      - name: Commit clean source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "SignalFlow Release Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: restore clean professional page source"
+          git push origin HEAD:product/professional-polish-discovery

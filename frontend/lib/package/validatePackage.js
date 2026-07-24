@@ -1,13 +1,18 @@
+import {
+  normalizeDocumentText,
+  normalizeTextInput,
+} from "./inputNormalization.mjs";
+
 /**
  * Validates the generation inputs from the client.
  * Returns { valid: boolean, errors: string[] }
  */
-export function validateGenerationInputs(body) {
+export function validateGenerationInputs(body = {}) {
   const errors = [];
 
-  const notes = (body.notes || "").trim();
-  const repo = (body.repo || "").trim();
-  const documentText = (body.document_text || "").trim();
+  const notes = normalizeTextInput(body?.notes);
+  const repo = normalizeTextInput(body?.repo);
+  const documentText = normalizeDocumentText(body?.document_text).join("\n\n");
 
   // Validate that at least one main input exists
   if (!notes && !repo && !documentText) {
@@ -31,11 +36,11 @@ export function validateGenerationInputs(body) {
   }
 
   // Validate research URLs if provided
-  const researchUrl = (body.research_url || "").trim();
+  const researchUrl = normalizeTextInput(body?.research_url ?? body?.docs_url);
   if (researchUrl) {
     // Can be multiple urls separated by whitespace or newlines
     const urls = researchUrl.split(/\s+/).filter(Boolean);
-    urls.forEach(u => {
+    urls.forEach((u) => {
       let checkUrl = u;
       if (!checkUrl.startsWith("http://") && !checkUrl.startsWith("https://")) {
         checkUrl = "https://" + checkUrl;
@@ -50,6 +55,6 @@ export function validateGenerationInputs(body) {
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }

@@ -842,3 +842,40 @@
     bottom: 0.5rem;
   }
 }
+
+.review-publish-fields {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 0.0625rem solid rgba(23, 23, 20, 0.1);
+  display: grid;
+  gap: 0.7rem;
+}
+
+.review-publish-fields label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.review-publish-fields label > span,
+.review-publish-fields small {
+  color: rgba(23, 23, 20, 0.5);
+  font-size: var(--sf-type-meta);
+}
+
+.review-publish-fields input {
+  width: 100%;
+  min-height: 2.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 0.0625rem solid var(--line);
+  border-radius: 0.7rem;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-size: var(--sf-type-support);
+}
+
+.review-publish-fields input:focus {
+  border-color: rgba(201, 120, 93, 0.58);
+  box-shadow: 0 0 0 0.2rem rgba(201, 120, 93, 0.08);
+  background: var(--white);
+}

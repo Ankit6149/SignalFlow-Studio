@@ -532,6 +532,9 @@ export default function Home() {
   const [accessToken, setAccessToken] = useState("");
   const [ownerKey, setOwnerKey] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [publishOptions, setPublishOptions] = useState({
+    reddit: { subreddit: "", title: "" },
+  });
   const fileInputRef = useRef(null);
 
   const provider = useMemo(
@@ -544,10 +547,24 @@ export default function Home() {
   const canPublishCurrent = Boolean(
     currentConnection?.connected && !currentConnection?.expired && !currentConnection?.manualOnly,
   );
+  const xThreadParts = activeChannel === "x"
+    ? currentPost.split(/
+
++/).map((part) => part.trim()).filter(Boolean)
+    : [];
+  const xThreadMode = activeChannel === "x" && currentPost.length > activeMeta.limit && xThreadParts.length > 1;
+  const xLongestPart = xThreadParts.reduce((longest, part) => Math.max(longest, part.length), 0);
+  const characterValue = xThreadMode ? xLongestPart : currentPost.length;
   const characterPercent = activeMeta.limit
-    ? Math.min(100, Math.round((currentPost.length / activeMeta.limit) * 100))
+    ? Math.min(100, Math.round((characterValue / activeMeta.limit) * 100))
     : 0;
-  const isOverLimit = Boolean(activeMeta.limit && currentPost.length > activeMeta.limit);
+  const isOverLimit = Boolean(
+    activeMeta.limit && (
+      xThreadMode
+        ? xThreadParts.length > 25 || xThreadParts.some((part) => part.length > activeMeta.limit)
+        : currentPost.length > activeMeta.limit
+    )
+  );
   const sourceSignals = [
     form.notes.trim(),
     form.links.trim(),
@@ -616,6 +633,22 @@ export default function Home() {
 
   function updateForm(key, value) {
     setForm((previous) => ({ ...previous, [key]: value }));
+  }
+
+  function updatePublishOption(platform, key, value) {
+    setPublishOptions((previous) => ({
+      ...previous,
+      [platform]: { ...(previous[platform] || {}), [key]: value },
+    }));
+  }
+
+  function navigateStudioFlow(targetStage, elementId) {
+    if (targetStage === "compose") setStage("compose");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
   }
 
   function toggleChannel(channelId) {
@@ -763,6 +796,7 @@ export default function Home() {
       markdown: result.markdown || "",
       result,
       brief: { ...form, apiKey: "" },
+      publishOptions,
     };
     const next = [item, ...library.filter((entry) => entry.title !== item.title)].slice(0, 30);
     setLibrary(next);
@@ -775,6 +809,7 @@ export default function Home() {
     setChannels(item.channels || ["linkedin"]);
     setPosts(item.posts || {});
     setResult(item.result || { markdown: item.markdown, warnings: item.warnings || [] });
+    setPublishOptions(item.publishOptions || { reddit: { subreddit: "", title: "" } });
     setActiveChannel((item.channels || ["linkedin"])[0]);
     setStage("review");
     navigateSection("studio");
@@ -854,7 +889,7 @@ export default function Home() {
       .replace(/(^-|-$)/g, "");
     downloadText(
       `${name || "signalflow-campaign"}.json`,
-      JSON.stringify({ campaign: form.projectName, channels, posts, result }, null, 2),
+      JSON.stringify({ campaign: form.projectName, channels, posts, publishOptions, result }, null, 2),
       "application/json",
     );
   }
@@ -880,9 +915,28 @@ export default function Home() {
     if (isOverLimit) {
       setMessage({
         type: "error",
-        text: `This ${activeMeta.label} draft is over the ${activeMeta.limit.toLocaleString()} character guide.`,
+        text: activeChannel === "x" && xThreadMode
+          ? "Every X thread post must stay within 280 characters and a thread may contain at most 25 posts."
+          : `This ${activeMeta.label} draft is over the ${activeMeta.limit.toLocaleString()} character guide.`,
       });
       return;
+    }
+
+    let options = {};
+    if (activeChannel === "reddit") {
+      const subreddit = String(publishOptions.reddit?.subreddit || "")
+        .trim()
+        .replace(/^r\//i, "");
+      const title = String(publishOptions.reddit?.title || form.projectName || "").trim();
+      if (!/^[A-Za-z0-9_]{2,21}$/.test(subreddit)) {
+        setMessage({ type: "error", text: "Enter a valid subreddit name before publishing. Do not include spaces or the r/ prefix." });
+        return;
+      }
+      if (!title) {
+        setMessage({ type: "error", text: "Add a Reddit post title before publishing." });
+        return;
+      }
+      options = { subreddit, title };
     }
 
     if (!window.confirm(`Publish this approved draft to ${activeMeta.label}?`)) return;
@@ -897,6 +951,7 @@ export default function Home() {
           platform: activeChannel,
           content: currentPost,
           projectName: form.projectName,
+          options,
         }),
       });
       const data = await response.json();
@@ -1072,7 +1127,7 @@ export default function Home() {
             <button
               type="button"
               className={stage === "compose" ? "is-active" : ""}
-              onClick={() => document.getElementById("campaign-source")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => navigateStudioFlow("compose", "campaign-source")}
             >
               <span className="studio-flow__index">01</span>
               <span><strong>Source</strong><small>Bring the facts and proof</small></span>
@@ -1080,7 +1135,7 @@ export default function Home() {
             <button
               type="button"
               className={stage === "compose" ? "is-active" : ""}
-              onClick={() => document.getElementById("campaign-destinations")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => navigateStudioFlow("compose", "campaign-destinations")}
             >
               <span className="studio-flow__index">02</span>
               <span><strong>Destinations</strong><small>Choose where the story travels</small></span>
@@ -1383,8 +1438,9 @@ export default function Home() {
 
                     <footer>
                       <span className={isOverLimit ? "is-over-limit" : ""}>
-                        {currentPost.length.toLocaleString()}
-                        {activeMeta.limit ? ` / ${activeMeta.limit.toLocaleString()}` : ""} characters
+                        {xThreadMode
+                          ? `${xThreadParts.length} posts · longest ${xLongestPart.toLocaleString()} / ${activeMeta.limit.toLocaleString()} characters`
+                          : `${currentPost.length.toLocaleString()}${activeMeta.limit ? ` / ${activeMeta.limit.toLocaleString()}` : ""} characters`}
                       </span>
                       <span>Editable before export or publish</span>
                     </footer>
@@ -1405,9 +1461,30 @@ export default function Home() {
                     <dl>
                       <div><dt>Voice</dt><dd>{activeMeta.tone}</dd></div>
                       <div><dt>Route</dt><dd>{canPublishCurrent ? "Connected official API" : OFFICIAL_CONNECTORS.has(activeChannel) ? "Official connector available; manual handoff remains available" : "Review, copy, export, and open-platform handoff"}</dd></div>
-                      <div><dt>Length</dt><dd>{activeMeta.limit ? `${currentPost.length.toLocaleString()} of ${activeMeta.limit.toLocaleString()} characters` : `${currentPost.length.toLocaleString()} characters; no fixed guide`}</dd></div>
+                      <div><dt>Length</dt><dd>{xThreadMode ? `${xThreadParts.length} posts; longest is ${xLongestPart} of ${activeMeta.limit} characters` : activeMeta.limit ? `${currentPost.length.toLocaleString()} of ${activeMeta.limit.toLocaleString()} characters` : `${currentPost.length.toLocaleString()} characters; no fixed guide`}</dd></div>
                       <div><dt>Campaign context</dt><dd>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}, {files.length} attached file{files.length === 1 ? "" : "s"}</dd></div>
                     </dl>
+                    {activeChannel === "reddit" && (
+                      <div className="review-publish-fields">
+                        <label>
+                          <span>Subreddit</span>
+                          <input
+                            value={publishOptions.reddit?.subreddit || ""}
+                            onChange={(event) => updatePublishOption("reddit", "subreddit", event.target.value)}
+                            placeholder="e.g. SideProject"
+                          />
+                        </label>
+                        <label>
+                          <span>Post title</span>
+                          <input
+                            value={publishOptions.reddit?.title || ""}
+                            onChange={(event) => updatePublishOption("reddit", "title", event.target.value)}
+                            placeholder={form.projectName || "A clear, factual title"}
+                          />
+                        </label>
+                        <small>Required for direct Reddit publishing. Community rules still apply.</small>
+                      </div>
+                    )}
                   </aside>
 
                   <div className="review-actions">
@@ -1471,7 +1548,7 @@ export default function Home() {
               <i />
               <span>{channels.length} destinations</span>
               <i />
-              <span>{connectedOfficialCount}/{selectedDirectCount} selected connectors live</span>
+              <span>{selectedDirectCount ? `${connectedOfficialCount}/${selectedDirectCount} selected connectors live` : "manual routes selected"}</span>
               <i />
               <span>{provider.label}</span>
             </div>
@@ -1598,17 +1675,27 @@ export default function Home() {
             <div className="connector-readiness__grid">
               {Array.from(OFFICIAL_CONNECTORS).map((platformId) => {
                 const status = connections[platformId] || {};
-                const ready = Boolean(status.configured && status.connected && !status.expired);
+                const inspected = Boolean(accessToken && Object.keys(connections).length > 0);
+                const ready = Boolean(inspected && status.configured && status.connected && !status.expired);
+                const readinessLabel = connectionsLoading
+                  ? "Checking"
+                  : !inspected
+                    ? "Unlock to inspect"
+                    : ready
+                      ? "Authorized"
+                      : status.configured
+                        ? "Needs authorization"
+                        : "Needs credentials";
                 return (
                   <article key={platformId} className="connector-readiness__card">
                     <header>
                       <h3>{channelMeta(platformId).label}</h3>
-                      <span className={`readiness-state ${ready ? "is-ready" : ""}`}>{ready ? "Authorized" : status.configured ? "Needs authorization" : "Needs credentials"}</span>
+                      <span className={`readiness-state ${ready ? "is-ready" : ""}`}>{readinessLabel}</span>
                     </header>
                     <ul>
-                      <li>Credentials: {status.configured ? "configured" : "missing in deployment"}</li>
-                      <li>Authorization: {status.expired ? "expired" : status.connected ? "active" : "not completed"}</li>
-                      <li>Refresh: {status.hasRefreshToken ? "available" : "not yet verified"}</li>
+                      <li>Credentials: {!inspected ? "unlock and refresh to inspect" : status.configured ? "configured" : "missing in deployment"}</li>
+                      <li>Authorization: {!inspected ? "not inspected" : status.expired ? "expired" : status.connected ? "active" : "not completed"}</li>
+                      <li>Refresh: {!inspected ? "not inspected" : status.hasRefreshToken ? "available" : "not yet verified"}</li>
                       <li>Live post test: {status.readiness?.publishTest === "verified" ? "verified" : "required"}</li>
                       {status.callbackUrl && <li>Callback: <code>{status.callbackUrl}</code></li>}
                       {status.scopes?.length > 0 && <li>Scopes: {status.scopes.join(" · ")}</li>}

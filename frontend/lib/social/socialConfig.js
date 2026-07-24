@@ -71,6 +71,7 @@ export const SOCIAL_PLATFORMS = {
     scopes: ["identity", "submit", "read"],
     clientEnvKey: "REDDIT_CLIENT_ID",
     secretEnvKey: "REDDIT_CLIENT_SECRET",
+    requiredEnvKeys: ["REDDIT_USER_AGENT"],
     grantType: "authorization_code",
     responseType: "code",
     tokenExpiry: 60 * 60,
@@ -79,10 +80,10 @@ export const SOCIAL_PLATFORMS = {
     postEndpoint: "https://oauth.reddit.com/api/submit",
     setupUrl: "https://www.reddit.com/prefs/apps",
     setupSteps: [
-      "Go to Reddit Apps Preferences → Create App",
-      "Select 'web app' type",
-      "Set Redirect URI to: {callbackUrl}",
+      "Request and receive Reddit Data API approval under the Responsible Builder Policy",
+      "Create a web app and set Redirect URI to: {callbackUrl}",
       "Copy App ID and Secret to the deployment environment",
+      "Set REDDIT_USER_AGENT to an identifiable app/version and Reddit username",
     ],
   },
 };
@@ -115,10 +116,12 @@ export function getLinkedInApiVersion() {
 export function isPlatformConfigured(platformId) {
   const platform = SOCIAL_PLATFORMS[platformId];
   if (!platform) return false;
-  return Boolean(
-    process.env[platform.clientEnvKey] &&
-    process.env[platform.secretEnvKey]
-  );
+  const requiredKeys = [
+    platform.clientEnvKey,
+    platform.secretEnvKey,
+    ...(platform.requiredEnvKeys || []),
+  ];
+  return requiredKeys.every((key) => Boolean(process.env[key]));
 }
 
 export function getAllPlatformStatus() {

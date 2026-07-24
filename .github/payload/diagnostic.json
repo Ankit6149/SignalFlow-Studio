@@ -17,13 +17,16 @@
       "characters": 7000,
       "prefix": "gOisBcmHb+ibF\n1a",
       "suffix": "Gjv9drw9iDu42Hjz"
+    },
+    {
+      "name": "professional-pass-03.b64",
+      "characters": 7000,
+      "prefix": "tfBygGsvhm3aBMwG",
+      "suffix": "Ar4hK0yByovQg0tx"
     }
   ],
-  "encoded_characters": 20728,
-  "encoded_mod_4": 0,
-  "archive_bytes": 15546,
-  "archive_prefix_hex": "1f8b0800000000000003edfddb721bd9993088fa9a4f9146",
-  "archive_sha256": "f43ba6a97f4eab37663f28119074090246577c5e93f861e11d98b47c6cf09720",
-  "error": "EOFError('Compressed file ended before the end-of-stream marker was reached')",
-  "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 29, in <module>\n  File \"/usr/lib/python3.12/tarfile.py\", line 2074, in getmembers\n    self._load()        # all members, we first have to\n    ^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/tarfile.py\", line 2854, in _load\n    while self.next() is not None:\n          ^^^^^^^^^^^\n  File \"/usr/lib/python3.12/tarfile.py\", line 2760, in next\n    self.fileobj.seek(self.offset - 1)\n  File \"/usr/lib/python3.12/gzip.py\", line 421, in seek\n    return self._buffer.seek(offset, whence)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/_compression.py\", line 153, in seek\n    data = self.read(min(io.DEFAULT_BUFFER_SIZE, offset))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/gzip.py\", line 547, in read\n    raise EOFError(\"Compressed file ended before the \"\nEOFError: Compressed file ended before the end-of-stream marker was reached\n"
+  "encoded_characters": 27637,
+  "encoded_mod_4": 1,
+  "error": "Error('Invalid base64-encoded string: number of data characters (27637) cannot be 1 more than a multiple of 4')",
+  "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 20, in <module>\n  File \"/usr/lib/python3.12/base64.py\", line 88, in b64decode\n    return binascii.a2b_base64(s, strict_mode=validate)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbinascii.Error: Invalid base64-encoded string: number of data characters (27637) cannot be 1 more than a multiple of 4\n"
 }

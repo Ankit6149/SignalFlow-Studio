@@ -1,44 +1,36 @@
 # SignalFlow Studio
 
-> SignalFlow Studio is a local-first autoposting workspace that turns a user description, data, and captured media into formatted posting packages for selected social platforms.
+> SignalFlow Studio is an open-source, review-first campaign workspace that turns product notes, public links, GitHub repository context, and uploaded text files into editable drafts for twelve publishing destinations.
 
-## What SignalFlow Studio Does
+## Use this summary
 
-- Accepts one primary user description plus useful data such as links, notes, repositories, research, metrics, screenshots, and screen recordings.
-- Helps users avoid manually creating screenshots, GIFs, short clips, captions, and platform-specific variants.
-- Generates reviewable posting packages with channel-specific copy, visual media plans, generated cards, model prompts, Markdown exports, and JSON summaries.
-- Supports selected social/output channels such as LinkedIn, X, Instagram, blog posts, newsletters, and release notes.
-- Keeps publishing explicit and safe through manual review, exports, webhooks, or official platform APIs.
+SignalFlow helps founders, developers, creators, and small teams prepare one coherent campaign instead of rewriting the same product update separately for every channel. Users add source context, select destinations, choose a deterministic local template or a supported model route, review each draft, and then export it or use a genuinely configured publishing path.
 
-## Best Summary
+## Core capabilities
 
-SignalFlow Studio is for creators, founders, builders, developers, DevRel teams, and small teams who want to describe something once and receive platform-ready post assets without building every caption, screenshot, GIF, or posting format manually.
+- Creates editable drafts for LinkedIn, X, Instagram, Reddit, Facebook, Threads, YouTube, TikTok, Hacker News, newsletters, blogs, and release notes.
+- Extracts context from public links and public GitHub repositories.
+- Reads supported text, Markdown, CSV, JSON, and code files in the browser.
+- Includes a deterministic local template route that needs no API key.
+- Supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints.
+- Saves campaign packages in the current browser and exports Markdown or JSON.
+- Offers direct publishing only through configured official LinkedIn, X, and Reddit connectors after explicit review.
+- Treats image and video uploads as asset references in the active route; it does not claim automatic visual understanding.
 
-## Core User Flow
+## Important limitations
 
-1. Describe what should be posted.
-2. Add data, links, assets, repository context, or research.
-3. Capture screenshots or screen recordings when useful.
-4. Choose selected social channels or use defaults.
-5. Generate a formatted post package for review and export.
+- Every generated output is a draft and must be fact-checked and edited before use.
+- Direct publishing is not available for every destination.
+- A publish action is shown as successful only after the destination API confirms it.
+- The public hosted instance may require owner access for server-configured providers and social connectors.
+- llms.txt is provided as machine-readable product context; it does not guarantee search ranking or AI citation.
 
-## Key Repository Files
+## Canonical links
 
-- [README.md](README.md): product overview, quick start, and commands.
-- [ROADMAP.md](ROADMAP.md): product direction and priorities.
-- [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md): model, channel, and publishing integration strategy.
-- [SECURITY.md](SECURITY.md): safety and platform-compliance rules.
-- [frontend/app/page.js](frontend/app/page.js): main web workspace.
-- [frontend/app/api/launch_kit/route.js](frontend/app/api/launch_kit/route.js): hosted app post-package generation route.
-
-## Important Boundaries
-
-- SignalFlow Studio should not scrape private platform APIs.
-- SignalFlow Studio should not harvest credentials.
-- SignalFlow Studio should not bypass rate limits or authentication.
-- SignalFlow Studio should not publish without explicit user approval.
-- SignalFlow Studio should prefer official APIs, local exports, webhooks, and manual review.
-
-## Suggested Search Terms
-
-AI social media automation, autoposting tool, social media post generator, local-first content automation, screenshot to social post, screen recording to GIF, AI post package generator, developer marketing automation, launch post generator, social media workflow automation.
+- Product: https://signal-flow-studio.vercel.app/
+- Full AI context: https://signal-flow-studio.vercel.app/llms-full.txt
+- Privacy: https://signal-flow-studio.vercel.app/privacy
+- Terms: https://signal-flow-studio.vercel.app/terms
+- Structured data: https://signal-flow-studio.vercel.app/schema.jsonld
+- Sitemap: https://signal-flow-studio.vercel.app/sitemap.xml
+- Source code: https://github.com/Ankit6149/SignalFlow-Studio

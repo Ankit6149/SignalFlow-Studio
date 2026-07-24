@@ -1,5 +1,6 @@
 import "../app/globals.css";
 import "../app/connector.css";
+import "../app/living-ui.css";
 import SessionBridge from "../components/SessionBridge";
 
 const schema = {

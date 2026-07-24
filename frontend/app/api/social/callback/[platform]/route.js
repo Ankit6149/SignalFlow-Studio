@@ -1,18 +1,22 @@
 import { SOCIAL_PLATFORMS, getCallbackUrl } from "../../../../../lib/social/socialConfig.js";
-import { storeToken } from "../../../../../lib/social/tokenStore.js";
-import { pendingStates } from "../../connect/route.js";
+import {
+  clearOAuthStateCookie,
+  createTokenCookie,
+  createTokenSession,
+  readOAuthState,
+} from "../../../../../lib/social/tokenStore.js";
 
 /**
  * GET /api/social/callback/[platform]
- * Handles the OAuth callback from the social platform.
- * Exchanges authorization code for access token, stores encrypted token, and redirects back to app.
+ * Exchanges an OAuth authorization code and stores the encrypted token session
+ * in an HTTP-only cookie scoped to this browser.
  */
 export async function GET(request, { params }) {
   const platformId = params.platform;
   const platform = SOCIAL_PLATFORMS[platformId];
 
   if (!platform) {
-    return buildRedirect("error", `Unknown platform: ${platformId}`);
+    return buildRedirect(request, "error", `Unknown platform: ${platformId}`);
   }
 
   const { searchParams } = new URL(request.url);
@@ -21,59 +25,60 @@ export async function GET(request, { params }) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  // Handle error responses from the platform
   if (error) {
-    return buildRedirect("error", errorDescription || error);
+    return buildRedirect(request, "error", errorDescription || error, [clearOAuthStateCookie()]);
   }
 
   if (!code || !state) {
-    return buildRedirect("error", "Missing authorization code or state parameter.");
+    return buildRedirect(request, "error", "Missing authorization code or state parameter.", [clearOAuthStateCookie()]);
   }
 
-  // Verify state to prevent CSRF
-  const stateData = pendingStates.get(state);
-  if (!stateData || stateData.platform !== platformId) {
-    return buildRedirect("error", "Invalid or expired state parameter. Please try connecting again.");
+  const stateData = readOAuthState(request);
+  if (
+    !stateData ||
+    stateData.platform !== platformId ||
+    stateData.state !== state
+  ) {
+    return buildRedirect(
+      request,
+      "error",
+      "Invalid or expired OAuth state. Start the connection again from SignalFlow.",
+      [clearOAuthStateCookie()],
+    );
   }
-  pendingStates.delete(state);
 
   try {
-    // Exchange authorization code for access token
     const tokenData = await exchangeCodeForToken(platformId, platform, code, stateData);
-
-    // Fetch user profile
     const profile = await fetchUserProfile(platformId, platform, tokenData.access_token);
+    const tokenSession = createTokenSession(tokenData, profile);
 
-    // Store encrypted token
-    storeToken(platformId, tokenData, profile);
-
-    return buildRedirect("success", `Connected to ${platform.label} as ${profile.name || profile.username || "user"}`);
-
+    return buildRedirect(
+      request,
+      "success",
+      `Connected to ${platform.label} as ${profile.name || profile.username || "user"}`,
+      [createTokenCookie(platformId, tokenSession), clearOAuthStateCookie()],
+    );
   } catch (err) {
     console.error(`OAuth callback error for ${platformId}:`, err.message);
-    return buildRedirect("error", err.message);
+    return buildRedirect(request, "error", err.message, [clearOAuthStateCookie()]);
   }
 }
 
-/**
- * Exchanges the authorization code for an access token.
- */
 async function exchangeCodeForToken(platformId, platform, code, stateData) {
   const tokenParams = {
     grant_type: "authorization_code",
     code,
-    redirect_uri: getCallbackUrl(platformId)
+    redirect_uri: getCallbackUrl(platformId),
   };
 
-  let headers = { "Content-Type": "application/x-www-form-urlencoded" };
+  const headers = { "Content-Type": "application/x-www-form-urlencoded" };
 
   if (platformId === "linkedin") {
     tokenParams.client_id = process.env[platform.clientEnvKey];
     tokenParams.client_secret = process.env[platform.secretEnvKey];
   } else if (platformId === "x") {
-    // X uses Basic auth + PKCE code_verifier
     const credentials = Buffer.from(
-      `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`
+      `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`,
     ).toString("base64");
     headers.Authorization = `Basic ${credentials}`;
     if (stateData.codeVerifier) {
@@ -81,64 +86,57 @@ async function exchangeCodeForToken(platformId, platform, code, stateData) {
     }
   } else if (platformId === "reddit") {
     const credentials = Buffer.from(
-      `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`
+      `${process.env[platform.clientEnvKey]}:${process.env[platform.secretEnvKey]}`,
     ).toString("base64");
     headers.Authorization = `Basic ${credentials}`;
   }
 
-  const resp = await fetch(platform.tokenUrl, {
+  const response = await fetch(platform.tokenUrl, {
     method: "POST",
     headers,
-    body: new URLSearchParams(tokenParams)
+    body: new URLSearchParams(tokenParams),
   });
 
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Token exchange failed for ${platform.label} (${resp.status}): ${errText}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Token exchange failed for ${platform.label} (${response.status}): ${errorText}`);
   }
 
-  return resp.json();
+  return response.json();
 }
 
-/**
- * Fetches the user's profile from the platform.
- */
 async function fetchUserProfile(platformId, platform, accessToken) {
-  const headers = {
-    Authorization: `Bearer ${accessToken}`
-  };
+  const headers = { Authorization: `Bearer ${accessToken}` };
 
-  // Reddit requires User-Agent
   if (platformId === "reddit") {
     headers["User-Agent"] = "SignalFlowStudio/1.0";
   }
 
   try {
-    const resp = await fetch(platform.profileUrl, { headers });
-    if (!resp.ok) {
+    const response = await fetch(platform.profileUrl, { headers });
+    if (!response.ok) {
       return { name: "Unknown", username: "unknown", id: "" };
     }
 
-    const data = await resp.json();
-
+    const data = await response.json();
     switch (platformId) {
       case "linkedin":
         return {
           name: data.name || `${data.given_name || ""} ${data.family_name || ""}`.trim(),
           username: data.email || data.sub || "",
-          id: data.sub || ""
+          id: data.sub || "",
         };
       case "x":
         return {
           name: data.data?.name || "",
           username: data.data?.username || "",
-          id: data.data?.id || ""
+          id: data.data?.id || "",
         };
       case "reddit":
         return {
           name: data.name || "",
           username: `u/${data.name || ""}`,
-          id: data.id || ""
+          id: data.id || "",
         };
       default:
         return { name: "Unknown", username: "unknown", id: "" };
@@ -148,18 +146,16 @@ async function fetchUserProfile(platformId, platform, accessToken) {
   }
 }
 
-/**
- * Builds a redirect response back to the app with status info.
- */
-function buildRedirect(status, message) {
-  const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
-
+function buildRedirect(request, status, message, cookies = []) {
+  const baseUrl = process.env.NEXTAUTH_URL || new URL(request.url).origin;
   const params = new URLSearchParams({
     social_status: status,
-    social_message: message
+    social_message: message,
   });
-
-  return Response.redirect(`${baseUrl}/?${params.toString()}`, 302);
+  const response = new Response(null, {
+    status: 302,
+    headers: { Location: `${baseUrl}/?${params.toString()}` },
+  });
+  cookies.forEach((cookie) => response.headers.append("Set-Cookie", cookie));
+  return response;
 }

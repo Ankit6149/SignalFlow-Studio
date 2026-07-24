@@ -4,9 +4,8 @@ import { getAllPlatformStatus } from "../../../../lib/social/socialConfig.js";
 
 /**
  * GET /api/social/status
- * Returns the connection status for all social platforms.
- * Shows: configured (OAuth credentials exist), connected (user has authed), profile info.
- * Never returns raw tokens.
+ * Returns official connector configuration and the current browser's encrypted
+ * OAuth session status. Raw tokens never leave the server route.
  */
 export async function GET(request) {
   const accessError = requireOwnerAccess(request);
@@ -14,9 +13,8 @@ export async function GET(request) {
 
   try {
     const platformConfig = getAllPlatformStatus();
-    const connections = getAllConnectionStatus();
+    const connections = getAllConnectionStatus(request, Object.keys(platformConfig));
 
-    // Merge configuration status with connection status
     const result = {};
     for (const [key, config] of Object.entries(platformConfig)) {
       const connection = connections[key] || { connected: false };
@@ -26,11 +24,10 @@ export async function GET(request) {
         profile: connection.profile || null,
         connectedAt: connection.connectedAt || null,
         expired: connection.expired || false,
-        hasRefreshToken: connection.hasRefreshToken || false
+        hasRefreshToken: connection.hasRefreshToken || false,
       };
     }
 
-    // Add manual-only platforms
     result.instagram = {
       id: "instagram",
       label: "Instagram",
@@ -39,9 +36,9 @@ export async function GET(request) {
       configured: false,
       connected: false,
       manualOnly: true,
-      reason: "Instagram API requires Meta Business account and media URL uploads. Use manual posting for now.",
+      reason: "Instagram publishing requires a Meta Business account and hosted media URLs. Use the approved manual draft until that media pipeline is configured.",
       supportsMedia: true,
-      postMaxLength: 2200
+      postMaxLength: 2200,
     };
 
     result.hn = {
@@ -52,9 +49,9 @@ export async function GET(request) {
       configured: false,
       connected: false,
       manualOnly: true,
-      reason: "Hacker News has no official posting API. Submit manually at news.ycombinator.com.",
+      reason: "Hacker News has no official posting API. Submit the approved draft manually.",
       supportsMedia: false,
-      postMaxLength: null
+      postMaxLength: null,
     };
 
     result.blog = {
@@ -65,9 +62,9 @@ export async function GET(request) {
       configured: false,
       connected: false,
       manualOnly: true,
-      reason: "Blog publishing depends on your CMS. Use the exported markdown file.",
+      reason: "Blog publishing depends on your CMS. Use the exported Markdown file.",
       supportsMedia: true,
-      postMaxLength: null
+      postMaxLength: null,
     };
 
     result.newsletter = {
@@ -78,9 +75,9 @@ export async function GET(request) {
       configured: false,
       connected: false,
       manualOnly: true,
-      reason: "Newsletter sending depends on your email provider (Substack, Buttondown, etc.). Copy the generated content.",
+      reason: "Newsletter sending depends on your email provider. Copy or export the approved content.",
       supportsMedia: true,
-      postMaxLength: null
+      postMaxLength: null,
     };
 
     result.release_notes = {
@@ -91,20 +88,19 @@ export async function GET(request) {
       configured: false,
       connected: false,
       manualOnly: true,
-      reason: "Release notes are exported as markdown. Paste into GitHub Releases or your changelog.",
+      reason: "Release notes are exported as Markdown for GitHub Releases or your changelog.",
       supportsMedia: false,
-      postMaxLength: null
+      postMaxLength: null,
     };
 
     return new Response(JSON.stringify({ platforms: result }), {
       status: 200,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
-
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   }
 }

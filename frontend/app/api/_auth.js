@@ -4,6 +4,7 @@ import { isAccessLocked } from "../../lib/hostedMode.js";
 const ACCESS_HEADER = "x-signalflow-access-key";
 const AUTH_HEADER = "authorization";
 const SESSION_DAYS = 30;
+export const SESSION_COOKIE_NAME = "signalflow_owner_session";
 
 function base64Url(input) {
   return Buffer.from(input).toString("base64url");
@@ -24,6 +25,36 @@ function safeEqual(left, right) {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+export function getRequestCookie(request, name) {
+  const cookieHeader = request?.headers?.get("cookie") || "";
+  for (const part of cookieHeader.split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const separator = trimmed.indexOf("=");
+    const key = separator >= 0 ? trimmed.slice(0, separator) : trimmed;
+    if (key !== name) continue;
+    const raw = separator >= 0 ? trimmed.slice(separator + 1) : "";
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+  return "";
+}
+
+function cookieSecurityAttributes() {
+  return process.env.NODE_ENV === "production" ? "; Secure" : "";
+}
+
+export function createSessionCookie(token) {
+  const maxAge = SESSION_DAYS * 24 * 60 * 60;
+  return `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Priority=High${cookieSecurityAttributes()}`;
+}
+
+export function clearSessionCookie() {
+  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Priority=High${cookieSecurityAttributes()}`;
+}
 
 export function createSessionToken() {
   const secret = process.env.SIGNALFLOW_ACCESS_KEY;
@@ -77,9 +108,10 @@ export function requireOwnerAccess(request) {
 
   const provided = request.headers.get(ACCESS_HEADER) || "";
   const bearer = request.headers.get(AUTH_HEADER) || "";
-  const token = bearer.startsWith("Bearer ") ? bearer.slice("Bearer ".length) : "";
+  const bearerToken = bearer.startsWith("Bearer ") ? bearer.slice("Bearer ".length) : "";
+  const cookieToken = getRequestCookie(request, SESSION_COOKIE_NAME);
 
-  if (provided === expected || verifySessionToken(token)) {
+  if (provided === expected || verifySessionToken(bearerToken) || verifySessionToken(cookieToken)) {
     return null;
   }
 

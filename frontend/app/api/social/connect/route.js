@@ -1,28 +1,12 @@
 import crypto from "crypto";
 import { SOCIAL_PLATFORMS, getCallbackUrl, isPlatformConfigured } from "../../../../lib/social/socialConfig.js";
+import { createOAuthStateCookie } from "../../../../lib/social/tokenStore.js";
 import { requireOwnerAccess } from "../../_auth.js";
 
 /**
- * In-memory state store for OAuth CSRF protection.
- * In production, use a proper session store.
- */
-const pendingStates = new Map();
-
-// Clean up expired states every 10 minutes
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of pendingStates.entries()) {
-      if (now - value.created > 10 * 60 * 1000) {
-        pendingStates.delete(key);
-      }
-    }
-  }, 10 * 60 * 1000);
-}
-
-/**
  * GET /api/social/connect?platform=linkedin|x|reddit
- * Initiates OAuth flow by redirecting to the platform's authorization page.
+ * Initiates a stateless OAuth flow. CSRF state and PKCE data are encrypted in
+ * a short-lived HTTP-only cookie so the callback works reliably on serverless hosts.
  */
 export async function GET(request) {
   const accessError = requireOwnerAccess(request);
@@ -33,24 +17,23 @@ export async function GET(request) {
 
   if (!platformId || !SOCIAL_PLATFORMS[platformId]) {
     return new Response(JSON.stringify({
-      error: `Unknown platform "${platformId}". Supported: ${Object.keys(SOCIAL_PLATFORMS).join(", ")}`
+      error: `Unknown platform "${platformId}". Supported: ${Object.keys(SOCIAL_PLATFORMS).join(", ")}`,
     }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 
   if (!isPlatformConfigured(platformId)) {
     const platform = SOCIAL_PLATFORMS[platformId];
     return new Response(JSON.stringify({
-      error: `OAuth not configured for ${platform.label}. Set ${platform.clientEnvKey} and ${platform.secretEnvKey} in your .env.local file.`,
+      error: `OAuth not configured for ${platform.label}. Set ${platform.clientEnvKey} and ${platform.secretEnvKey} in the deployment environment.`,
       setupUrl: platform.setupUrl,
-      setupSteps: platform.setupSteps.map(s => s.replace("{callbackUrl}", getCallbackUrl(platformId)))
+      setupSteps: platform.setupSteps.map((step) => step.replace("{callbackUrl}", getCallbackUrl(platformId))),
     }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 
   const platform = SOCIAL_PLATFORMS[platformId];
   const state = crypto.randomBytes(32).toString("hex");
-  const stateData = { platform: platformId, created: Date.now() };
+  const stateData = { platform: platformId, state, created: Date.now() };
 
-  // Generate PKCE challenge for X/Twitter
   if (platform.usePKCE) {
     const codeVerifier = crypto.randomBytes(32).toString("base64url");
     const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
@@ -58,32 +41,28 @@ export async function GET(request) {
     stateData.codeChallenge = codeChallenge;
   }
 
-  pendingStates.set(state, stateData);
-
-  // Build authorization URL
   const params = new URLSearchParams({
     response_type: platform.responseType,
     client_id: process.env[platform.clientEnvKey],
     redirect_uri: getCallbackUrl(platformId),
     scope: platform.scopes.join(" "),
-    state
+    state,
   });
 
-  // Add PKCE parameters for X
   if (platform.usePKCE) {
     params.set("code_challenge", stateData.codeChallenge);
     params.set("code_challenge_method", "S256");
   }
 
-  // Reddit requires duration=permanent for refresh tokens
   if (platformId === "reddit") {
     params.set("duration", "permanent");
   }
 
   const authorizationUrl = `${platform.authUrl}?${params.toString()}`;
-
-  return Response.redirect(authorizationUrl, 302);
+  const response = new Response(null, {
+    status: 302,
+    headers: { Location: authorizationUrl },
+  });
+  response.headers.append("Set-Cookie", createOAuthStateCookie(stateData));
+  return response;
 }
-
-// Export for callback route to access pending states
-export { pendingStates };

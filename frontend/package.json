@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "dev": "next dev",
+    "test": "node --test tests/*.test.mjs",
     "build": "next build",
     "start": "next start"
   },

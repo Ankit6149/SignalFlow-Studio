@@ -1,5 +1,6 @@
 import { getLinkedInApiVersion, SOCIAL_PLATFORMS } from "./socialConfig.js";
 import { isTokenExpired, updateTokenSession } from "./tokenStore.js";
+import { createSocialApiError } from "./socialErrors.js";
 
 async function refreshLinkedInToken(refreshToken) {
   const platform = SOCIAL_PLATFORMS.linkedin;
@@ -13,7 +14,7 @@ async function refreshLinkedInToken(refreshToken) {
       client_secret: process.env[platform.secretEnvKey],
     }),
   });
-  if (!response.ok) throw new Error(`LinkedIn token refresh failed (${response.status})`);
+  if (!response.ok) throw await createSocialApiError(response, "LinkedIn", "token refresh");
   return response.json();
 }
 
@@ -33,7 +34,7 @@ async function refreshXToken(refreshToken) {
       refresh_token: refreshToken,
     }),
   });
-  if (!response.ok) throw new Error(`X token refresh failed (${response.status})`);
+  if (!response.ok) throw await createSocialApiError(response, "X", "token refresh");
   return response.json();
 }
 
@@ -53,7 +54,7 @@ async function refreshRedditToken(refreshToken) {
       refresh_token: refreshToken,
     }),
   });
-  if (!response.ok) throw new Error(`Reddit token refresh failed (${response.status})`);
+  if (!response.ok) throw await createSocialApiError(response, "Reddit", "token refresh");
   return response.json();
 }
 
@@ -97,8 +98,7 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
     headers: { Authorization: `Bearer ${valid.token}` },
   });
   if (!profileResponse.ok) {
-    const errorText = await profileResponse.text();
-    throw new Error(`LinkedIn profile fetch failed: ${errorText}`);
+    throw await createSocialApiError(profileResponse, "LinkedIn", "profile lookup");
   }
 
   const profile = await profileResponse.json();
@@ -131,8 +131,7 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
     body: JSON.stringify(postBody),
   });
   if (!postResponse.ok) {
-    const errorText = await postResponse.text();
-    throw new Error(`LinkedIn post failed (${postResponse.status}): ${errorText}`);
+    throw await createSocialApiError(postResponse, "LinkedIn", "publishing");
   }
 
   const postId = postResponse.headers.get("x-restli-id") || "";
@@ -165,8 +164,7 @@ export async function postToX(content, tokenSession) {
       body: JSON.stringify({ text: content.substring(0, platform.postMaxLength) }),
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`X post failed (${response.status}): ${errorText}`);
+      throw await createSocialApiError(response, "X", "publishing");
     }
 
     const body = await response.json();
@@ -202,8 +200,8 @@ export async function postToX(content, tokenSession) {
       body: JSON.stringify(postBody),
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`X thread failed at post ${index + 1} (${response.status}): ${errorText}`);
+      const error = await createSocialApiError(response, "X", `publishing thread post ${index + 1}`);
+      throw error;
     }
 
     const body = await response.json();
@@ -245,8 +243,7 @@ export async function postToReddit(content, options = {}, tokenSession) {
     }),
   });
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Reddit submit failed (${response.status}): ${errorText}`);
+    throw await createSocialApiError(response, "Reddit", "publishing");
   }
 
   const body = await response.json();

@@ -124,18 +124,31 @@ export function isPlatformConfigured(platformId) {
 export function getAllPlatformStatus() {
   const status = {};
   for (const [key, platform] of Object.entries(SOCIAL_PLATFORMS)) {
+    const configured = isPlatformConfigured(key);
+    const callbackUrl = getCallbackUrl(key);
     status[key] = {
       id: platform.id,
       label: platform.label,
       icon: platform.icon,
       color: platform.color,
-      configured: isPlatformConfigured(key),
+      configured,
+      callbackUrl,
+      scopes: [...platform.scopes],
       postMaxLength: platform.postMaxLength,
       supportsMedia: platform.supportsMedia,
       setupUrl: platform.setupUrl,
       setupSteps: platform.setupSteps.map((step) =>
-        step.replace("{callbackUrl}", getCallbackUrl(key)),
+        step.replace("{callbackUrl}", callbackUrl),
       ),
+      readiness: {
+        implementation: "ready",
+        credentials: configured ? "ready" : "missing",
+        callback: configured ? "needs_platform_confirmation" : "blocked",
+        authorization: "pending",
+        publishTest: "required",
+        refreshTest: "required",
+        rejectionTest: "required",
+      },
     };
   }
   return status;

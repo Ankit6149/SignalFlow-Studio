@@ -1,4 +1,4 @@
-import { SOCIAL_PLATFORMS } from "./socialConfig.js";
+import { getLinkedInApiVersion, SOCIAL_PLATFORMS } from "./socialConfig.js";
 import { isTokenExpired, updateTokenSession } from "./tokenStore.js";
 
 async function refreshLinkedInToken(refreshToken) {
@@ -90,9 +90,10 @@ async function ensureValidToken(platformId, tokenSession) {
 }
 
 export async function postToLinkedIn(content, projectName = "", tokenSession) {
+  const platform = SOCIAL_PLATFORMS.linkedin;
   const valid = await ensureValidToken("linkedin", tokenSession);
 
-  const profileResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
+  const profileResponse = await fetch(platform.profileUrl, {
     headers: { Authorization: `Bearer ${valid.token}` },
   });
   if (!profileResponse.ok) {
@@ -101,27 +102,31 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
   }
 
   const profile = await profileResponse.json();
+  if (!profile.sub) {
+    throw new Error("LinkedIn did not return the authenticated member identifier.");
+  }
+
   const authorUrn = `urn:li:person:${profile.sub}`;
   const postBody = {
     author: authorUrn,
+    commentary: content.substring(0, platform.postMaxLength),
+    visibility: "PUBLIC",
+    distribution: {
+      feedDistribution: "MAIN_FEED",
+      targetEntities: [],
+      thirdPartyDistributionChannels: [],
+    },
     lifecycleState: "PUBLISHED",
-    specificContent: {
-      "com.linkedin.ugc.ShareContent": {
-        shareCommentary: { text: content.substring(0, 3000) },
-        shareMediaCategory: "NONE",
-      },
-    },
-    visibility: {
-      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-    },
+    isReshareDisabledByAuthor: false,
   };
 
-  const postResponse = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+  const postResponse = await fetch(platform.postEndpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${valid.token}`,
       "X-Restli-Protocol-Version": "2.0.0",
+      "Linkedin-Version": getLinkedInApiVersion(),
     },
     body: JSON.stringify(postBody),
   });
@@ -130,14 +135,15 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
     throw new Error(`LinkedIn post failed (${postResponse.status}): ${errorText}`);
   }
 
-  const responseBody = await postResponse.json().catch(() => ({}));
-  const postId = responseBody.id || postResponse.headers.get("x-restli-id") || "";
+  const postId = postResponse.headers.get("x-restli-id") || "";
   return {
     result: {
       ok: true,
       platform: "linkedin",
       postId,
-      postUrl: postId ? `https://www.linkedin.com/feed/update/${postId}/` : "https://www.linkedin.com/feed/",
+      postUrl: postId
+        ? `https://www.linkedin.com/feed/update/${encodeURIComponent(postId)}/`
+        : "https://www.linkedin.com/feed/",
       message: `Published${projectName ? ` ${projectName}` : ""} to LinkedIn.`,
     },
     tokenSession: valid.tokenSession,
@@ -145,17 +151,18 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
 }
 
 export async function postToX(content, tokenSession) {
+  const platform = SOCIAL_PLATFORMS.x;
   const valid = await ensureValidToken("x", tokenSession);
   const parts = content.split(/\n\n+/).map((part) => part.trim()).filter(Boolean);
 
-  if (parts.length === 1 || content.length <= 280) {
-    const response = await fetch("https://api.twitter.com/2/tweets", {
+  if (parts.length === 1 || content.length <= platform.postMaxLength) {
+    const response = await fetch(platform.postEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${valid.token}`,
       },
-      body: JSON.stringify({ text: content.substring(0, 280) }),
+      body: JSON.stringify({ text: content.substring(0, platform.postMaxLength) }),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -178,21 +185,21 @@ export async function postToX(content, tokenSession) {
 
   let previousPostId = null;
   let firstPostId = null;
-  const threadParts = parts.slice(0, 25);
+  const threadParts = parts.slice(0, platform.threadMaxLength);
 
   for (let index = 0; index < threadParts.length; index += 1) {
-    const tweetBody = { text: threadParts[index].substring(0, 280) };
+    const postBody = { text: threadParts[index].substring(0, platform.postMaxLength) };
     if (previousPostId) {
-      tweetBody.reply = { in_reply_to_tweet_id: previousPostId };
+      postBody.reply = { in_reply_to_tweet_id: previousPostId };
     }
 
-    const response = await fetch("https://api.twitter.com/2/tweets", {
+    const response = await fetch(platform.postEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${valid.token}`,
       },
-      body: JSON.stringify(tweetBody),
+      body: JSON.stringify(postBody),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -217,11 +224,12 @@ export async function postToX(content, tokenSession) {
 }
 
 export async function postToReddit(content, options = {}, tokenSession) {
+  const platform = SOCIAL_PLATFORMS.reddit;
   const valid = await ensureValidToken("reddit", tokenSession);
   const subreddit = options.subreddit || "test";
   const title = options.title || options.projectName || "New Post";
 
-  const response = await fetch("https://oauth.reddit.com/api/submit", {
+  const response = await fetch(platform.postEndpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -232,7 +240,7 @@ export async function postToReddit(content, options = {}, tokenSession) {
       kind: "self",
       sr: subreddit,
       title: title.substring(0, 300),
-      text: content.substring(0, 40000),
+      text: content.substring(0, platform.postMaxLength),
       api_type: "json",
     }),
   });

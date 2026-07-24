@@ -6,8 +6,8 @@ SignalFlow Studio implements official connector paths for LinkedIn, X, and Reddi
 
 A connector is production-complete only after:
 
-- Developer application exists.
-- Production client ID and secret are configured server-side.
+- Developer application exists and any required platform/API access approval is granted.
+- Production client ID, secret, and platform-specific identification settings are configured server-side.
 - Canonical callback URL is registered exactly.
 - Required scopes/products are approved.
 - A real account completes OAuth.
@@ -46,15 +46,20 @@ Scopes: tweet.read tweet.write users.read offline.access
 Authentication: OAuth 2.0 Authorization Code with PKCE
 ```
 
+The X API currently uses pay-per-use credits. The developer app must be approved, funded for write requests, and protected with a spending limit before a live test.
+
 ### Reddit
 
 ```text
 REDDIT_CLIENT_ID=
 REDDIT_CLIENT_SECRET=
+REDDIT_USER_AGENT=web:signalflow-studio:0.2.0 (by /u/<owner_username>)
 Callback: https://signal-flow-studio.vercel.app/api/social/callback/reddit
 Scopes: identity submit read
-Application type: web app
+Application type: Data API web app
 ```
+
+Creating an app record is not sufficient. Reddit currently requires explicit Data API approval under its Responsible Builder Policy, OAuth authentication, and an identifiable user agent. Direct publishing must remain unavailable until all three requirements are satisfied.
 
 ## Live Verification Protocol
 
@@ -107,3 +112,11 @@ Every failure should preserve the draft and offer copy/manual publication.
 - Rejection/rate-limit handling: normalized in code; external responses still require live verification
 
 Never replace these distinctions with a single "connected" or "done" claim.
+
+## Platform Documentation Check — July 24, 2026
+
+- LinkedIn's current Marketing API version header is `202607`; the Posts API requires `Linkedin-Version`, `X-Restli-Protocol-Version: 2.0.0`, and `w_member_social` for member publishing.
+- X supports `POST /2/tweets` with user OAuth, uses OAuth 2.0 PKCE scopes including `tweet.write`, and currently charges write operations through pay-per-use credits.
+- Reddit requires OAuth and explicit Data API approval under the Responsible Builder Policy; clients must use an identifiable user agent and `submit` permission for post creation.
+
+Re-check official documentation before every production credential rollout because platform access, pricing, scopes, and review requirements change independently of this repository.

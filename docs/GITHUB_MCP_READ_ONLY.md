@@ -20,13 +20,14 @@ Never put a token in this repository, an agent prompt, `.env.example`, screensho
 
 1. `AGENTS.md`
 2. `README.md`
-3. `docs/STUDIO_UX_SYSTEM.md`
-4. `docs/CONNECTOR_READINESS.md`
-5. `frontend/app/page.js`
-6. `frontend/app/studio-luxury.css`
-7. `frontend/app/api/launch_kit/route.js`
-8. `frontend/app/api/social/` and `frontend/lib/social/`
-9. `SECURITY.md`
+3. `docs/APP_WORKSPACE_SYSTEM.md`
+4. `docs/STUDIO_UX_SYSTEM.md`
+5. `docs/CONNECTOR_READINESS.md`
+6. `frontend/app/page.js`
+7. `frontend/app/app-workspace.css`
+8. `frontend/app/api/launch_kit/route.js`
+9. `frontend/app/api/social/` and `frontend/lib/social/`
+10. `SECURITY.md`
 
 ## Suggested Agent Instruction
 

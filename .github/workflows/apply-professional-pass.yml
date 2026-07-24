@@ -20,12 +20,33 @@ jobs:
           ref: product/professional-polish-discovery
           fetch-depth: 0
 
-      - name: Reconstruct reviewed release
+      - name: Reconstruct and verify reviewed release
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/payload/professional-pass-*.b64 | tr -d '\n\r' | base64 --decode > /tmp/professional-pass.tar.gz
-          tar -xzf /tmp/professional-pass.tar.gz -C .
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, gzip, hashlib, tarfile
+
+          chunks = sorted(Path('.github/payload').glob('professional-pass-*.b64'))
+          if not chunks:
+              raise SystemExit('No release payload chunks were found.')
+          encoded = ''.join(path.read_text(encoding='utf-8') for path in chunks)
+          encoded = ''.join(encoded.split())
+          encoded += '=' * (-len(encoded) % 4)
+          payload = base64.b64decode(encoded, validate=False)
+          archive = Path('/tmp/professional-pass.tar.gz')
+          archive.write_bytes(payload)
+          print(f'chunks={len(chunks)} encoded_bytes={len(encoded)} archive_bytes={len(payload)} sha256={hashlib.sha256(payload).hexdigest()}')
+          with gzip.open(archive, 'rb') as stream:
+              stream.peek(1)
+          with tarfile.open(archive, 'r:gz') as tar:
+              members = tar.getmembers()
+              if not members:
+                  raise SystemExit('Release archive is empty.')
+              print('archive members:', ', '.join(member.name for member in members[:30]))
+              tar.extractall('.')
+          PY
           rm -rf .github/payload
           rm -f .github/workflows/apply-professional-pass.yml
 

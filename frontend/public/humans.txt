@@ -5,6 +5,7 @@ Public application: https://signal-flow-studio.vercel.app/
 Maintainer: Ankit6149
 Technology: Next.js, React, JavaScript, Vercel
 Principles: review before publish, honest integration states, local browser storage, official APIs only for direct publishing
+Public product context last reviewed: July 24, 2026
 
 Please report product or security concerns through the GitHub issue tracker without including credentials or private campaign data:
 https://github.com/Ankit6149/SignalFlow-Studio/issues

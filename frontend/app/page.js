@@ -548,9 +548,7 @@ export default function Home() {
     currentConnection?.connected && !currentConnection?.expired && !currentConnection?.manualOnly,
   );
   const xThreadParts = activeChannel === "x"
-    ? currentPost.split(/
-
-+/).map((part) => part.trim()).filter(Boolean)
+    ? currentPost.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
     : [];
   const xThreadMode = activeChannel === "x" && currentPost.length > activeMeta.limit && xThreadParts.length > 1;
   const xLongestPart = xThreadParts.reduce((longest, part) => Math.max(longest, part.length), 0);

@@ -1,43 +1,58 @@
 # SignalFlow Studio
 
-SignalFlow Studio is a local-first AI social media automation workspace. Describe what you want to post, add data or assets, choose selected social media accounts, and generate a reviewable posting package with formatted copy, visual-media plans, generated cards, prompts, and export files.
+SignalFlow Studio is a review-first, local-first campaign workspace. Give it a product brief, public links, repository context, and text or code files; it creates one coherent campaign with editable drafts for twelve destinations.
 
-The project is intentionally local-first. It is useful for creators, builders, founders, developers, maintainers, and small teams who do not want to manually create screenshots, GIFs, short clips, captions, and platform variants from scratch.
+The product is designed for founders, builders, maintainers, creators, and small teams that want a clear path from evidence to publishable content without hiding important decisions behind fake automation.
 
-The product goal is low-click autopilot: the user provides information, connects or selects a model route once, and SignalFlow Studio prepares the full formatted package for every selected channel with sensible defaults. Advanced controls stay available, but they should not be required for the first successful run.
+## Current Product Flow
 
-Good search summary: **AI autoposting tool that turns descriptions, screenshots, screen recordings, links, and data into formatted social media posts for LinkedIn, X, Instagram, blogs, newsletters, and release notes.**
+1. Add a campaign name, source brief, audience, public links, repository, and optional files.
+2. Select destinations across social, community, video, and owned channels.
+3. Generate with the deterministic local template or a configured/BYOK model route.
+4. Review and edit each channel in the Studio workspace.
+5. Save locally, export Markdown/JSON, copy and open a platform, or publish through a configured official connector.
 
-## Product Direction
+## Twelve Destinations
 
-SignalFlow Studio is being built as a **product-grade open-source local-first studio**. It should work as a serious personal tool while keeping the codebase modular, secure, and easy to extend.
+- Social: LinkedIn, X, Instagram, Facebook, Threads
+- Community: Reddit, Hacker News
+- Video: YouTube, TikTok
+- Owned: Newsletter, Blog, Release notes
 
-Current priority:
-
-```text
-local-first product quality
-open-source distribution
-BYOK and local model support
-clean modular architecture
-```
-
-See [docs/PRODUCT_GRADE_OPEN_SOURCE.md](docs/PRODUCT_GRADE_OPEN_SOURCE.md) for the product direction.
+LinkedIn, X, and Reddit have official OAuth connector paths. Every other destination uses an explicit review, copy, export, and open-platform handoff.
 
 ## What Works Today
 
-- Generate platform drafts from descriptions, pasted notes, changelogs, code snippets, screenshots text, repository context, or research excerpts.
-- Produce a visual media plan for screenshots, screen recordings, GIF/video loops, generated cards, and platform variants.
-- Generate selected channel formats for LinkedIn, X, Instagram, blogs, newsletters, and release notes.
-- Export a model prompt for local SLMs, API models, or free chatbots.
-- Configure input sources, model adapter details, selected channels, export folder, and safe distribution mode from the frontend.
-- Use the frontend in autopilot mode with one description field and defaults for model route, platforms, media plan, and export.
-- Keep distribution safe through manual review, files, webhooks, or official platform APIs.
-- Run as a standalone Next.js app for the normal personal workflow.
-- Includes `llms.txt`, `llms-full.txt`, `robots.txt`, and a discoverability checklist for AI/search visibility.
+- Browser-based campaign composition and review
+- Public link and public GitHub repository context extraction
+- Browser extraction for supported text, Markdown, JSON, CSV, and code files
+- Honest image/video asset references without pretending visual analysis occurred
+- Deterministic no-key campaign generation
+- Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom compatible model routes
+- Automatic fallback generation when a provider route fails
+- Editable drafts and platform character guidance
+- Browser-local campaign library
+- Markdown and JSON export
+- Official connector architecture for LinkedIn, X, and Reddit
+- Manual handoff flows for the remaining destinations
+- Public Privacy, Terms, sitemap, structured data, `llms.txt`, and `llms-full.txt` surfaces
+
+## Connector Completion Is Deliberately Explicit
+
+Connector code existing is not the same as a connector being production-proven. A connector is complete only after all of these are true:
+
+- Platform developer application created
+- Production client ID and secret configured
+- Canonical callback URL approved
+- Required scopes approved
+- A real account authorizes successfully
+- A real test post is confirmed by the platform API
+- Refresh and expired-session behavior is verified
+- Rejection, permission, and rate-limit behavior is verified
+
+See [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md) for the exact checklist and current truth boundaries.
 
 ## Quick Start
-
-Run the app:
 
 ```bash
 cd frontend
@@ -47,9 +62,16 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-For open-source hosting, deploy the repository to Vercel as a Next.js app and set the Vercel root directory to `frontend`. The app builds as one hosted product: UI, generation routes, media capture, crawler files, and package formatting live together.
+Build verification:
 
-Vercel settings:
+```bash
+cd frontend
+npm run build
+```
+
+## Vercel
+
+Use these settings:
 
 ```text
 Root Directory: frontend
@@ -59,67 +81,44 @@ Build Command: npm run build
 Output Directory: .next
 ```
 
-Do not use `npm install --prefix frontend` when Vercel Root Directory is already set to `frontend`; that makes Vercel look for `frontend/frontend/package.json`.
+Copy `frontend/.env.example` to `.env.local` for local configuration. Never commit real secrets and never prefix server credentials with `NEXT_PUBLIC_`.
 
-### Protect Your Hosted Demo
-
-For your personal Vercel link, add this environment variable:
+For a protected personal deployment:
 
 ```text
-SIGNALFLOW_ACCESS_KEY=make-a-long-private-key-here
+SIGNALFLOW_ACCESS_KEY=use-a-long-private-value
+SIGNALFLOW_PUBLIC_HOSTED=true
+NEXTAUTH_URL=https://your-canonical-domain.example
 ```
 
-When this is set, visitors can still see the product, docs, and UI, but they cannot generate post packages unless they enter the owner key. After the key is entered once, SignalFlow Studio stores a signed 30-day browser session token, so you do not have to remember or paste the key every time.
+## Repository Map
 
-Do not create this as a `NEXT_PUBLIC_` variable. `SIGNALFLOW_ACCESS_KEY` is read only by server-side API routes. The browser receives only a signed session token, not the secret environment value.
+- `frontend/app/page.js` — primary Studio, Library, Connections, and Settings experience
+- `frontend/app/*.css` — visual system and responsive workspace layers
+- `frontend/app/api/launch_kit/` — campaign generation route
+- `frontend/app/api/social/` — OAuth status, connect, callback, and disconnect routes
+- `frontend/app/api/publish/` — confirmed-only publishing route
+- `frontend/lib/context/` — repository, URL, and file context extraction
+- `frontend/lib/ai/` — model adapters and routing
+- `frontend/lib/social/` — connector configuration, token storage, and providers
+- `frontend/lib/package/` — campaign package normalization
+- `extension/` — browser capture companion
+- `docs/` — product, architecture, discoverability, UX, and connector documentation
 
-For local use or someone else's self-hosted install, this variable can be left empty. In that mode generation is unlocked by default.
+## Agent and MCP Handoff
 
-From the frontend you can choose the input type, paste source material, select output channels, capture media, and prepare a manual, file, webhook, or official-API distribution config.
+Start with [AGENTS.md](AGENTS.md). It gives coding agents the product truth, architecture map, build command, UX rules, and connector limitations.
 
-API keys are not required for the default open-source workflow. Use demo/template mode, local models, session-only keys, or your own provider setup.
+For read-only GitHub MCP access, see [docs/GITHUB_MCP_READ_ONLY.md](docs/GITHUB_MCP_READ_ONLY.md). Repository files can document the required permissions and reading order, but an external coding client must still authorize its own GitHub MCP connection.
 
-## Chrome Extension Setup
+## Product Principles
 
-The repository includes a companion Chrome Extension in the `extension/` folder for clipping URLs and notes instantly from any browser tab into your SignalFlow Studio instance.
+- Review before publish
+- Truthful connector and success states
+- Useful without an API key
+- Local-first by default
+- No credential harvesting or platform bypasses
+- Luxurious, creative, calm workspace rather than a crowded dashboard
+- Advanced controls remain available without blocking the first successful run
 
-To load the extension:
-1. Open Google Chrome and navigate to `chrome://extensions/`.
-2. Toggle the **"Developer mode"** switch (top-right) to **ON**.
-3. Click the **"Load unpacked"** button (top-left) and select the `extension/` directory of your cloned repository.
-4. Pin the extension. Open it, configure your destination Studio URL (e.g., `http://localhost:3000` or your hosted Vercel link), and click **"Send to SignalFlow Studio"** to transfer clip context.
-
-## Useful Commands
-
-Build the frontend:
-
-```bash
-cd frontend
-npm run build
-```
-
-Create a post package through the standalone frontend API:
-
-```bash
-curl -X POST http://127.0.0.1:3000/api/launch_kit \
-  -H "Content-Type: application/json" \
-  -d '{"input_type":"brief","notes":"raw post brief","project_name":"My Project","channels":["linkedin","x"],"generator":"standalone"}'
-```
-
-## Project Structure
-
-- `frontend/` - the hosted SignalFlow Studio product: UI, app API routes, crawler files, media capture, and generation workflow.
-- `extension/` - Chrome/WebExtension scaffold for future browser capture and handoff workflows.
-- `signalflow/` - engine research code used to evolve ingestion, model adapters, and media utilities.
-- `docs/` - architecture, integration, security, and discoverability notes.
-
-## Open-Source Direction
-
-The strongest product angle is: **a local-first autoposting engine that turns descriptions, data, and captured media into platform-ready posting packages**.
-
-See [ROADMAP.md](ROADMAP.md) for the path from prototype to a product people can understand, try, and contribute to.
-See [docs/PRODUCT_GRADE_OPEN_SOURCE.md](docs/PRODUCT_GRADE_OPEN_SOURCE.md) for the product-grade open-source direction.
-See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for the asset-to-model and channel integration strategy.
-See [docs/DISCOVERABILITY.md](docs/DISCOVERABILITY.md) for GitHub topics, search keywords, and AI visibility setup.
-
-Security and ethics: see [SECURITY.md](SECURITY.md). SignalFlow Studio must not harvest credentials, bypass platform protections, or publish to third-party services without official APIs and explicit user approval.
+Security and ethics: see [SECURITY.md](SECURITY.md).

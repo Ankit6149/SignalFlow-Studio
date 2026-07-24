@@ -113,6 +113,33 @@ const CHANNELS = [
 const CORE_CHANNELS = ["linkedin", "x", "instagram", "reddit"];
 const DEFAULT_CHANNELS = ["linkedin", "x", "instagram", "reddit", "newsletter"];
 
+const CHANNEL_GROUPS = [
+  {
+    id: "social",
+    label: "Social",
+    description: "Daily feeds and professional networks",
+    channels: ["linkedin", "x", "instagram", "facebook", "threads"],
+  },
+  {
+    id: "community",
+    label: "Community",
+    description: "Conversation-led technical communities",
+    channels: ["reddit", "hackernews"],
+  },
+  {
+    id: "video",
+    label: "Video",
+    description: "Titles, hooks, descriptions, and direction",
+    channels: ["youtube", "tiktok"],
+  },
+  {
+    id: "owned",
+    label: "Owned",
+    description: "Long-form channels you control",
+    channels: ["newsletter", "blog", "release_notes"],
+  },
+];
+
 const PROVIDERS = [
   { id: "template", label: "Local template", hint: "Works instantly. No key required." },
   { id: "gemini", label: "Gemini", hint: "Paste your Gemini API key or use the server configuration." },
@@ -505,6 +532,9 @@ export default function Home() {
   const [accessToken, setAccessToken] = useState("");
   const [ownerKey, setOwnerKey] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [publishOptions, setPublishOptions] = useState({
+    reddit: { subreddit: "", title: "" },
+  });
   const fileInputRef = useRef(null);
 
   const provider = useMemo(
@@ -517,10 +547,33 @@ export default function Home() {
   const canPublishCurrent = Boolean(
     currentConnection?.connected && !currentConnection?.expired && !currentConnection?.manualOnly,
   );
+  const xThreadParts = activeChannel === "x"
+    ? currentPost.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
+    : [];
+  const xThreadMode = activeChannel === "x" && currentPost.length > activeMeta.limit && xThreadParts.length > 1;
+  const xLongestPart = xThreadParts.reduce((longest, part) => Math.max(longest, part.length), 0);
+  const characterValue = xThreadMode ? xLongestPart : currentPost.length;
   const characterPercent = activeMeta.limit
-    ? Math.min(100, Math.round((currentPost.length / activeMeta.limit) * 100))
+    ? Math.min(100, Math.round((characterValue / activeMeta.limit) * 100))
     : 0;
-  const isOverLimit = Boolean(activeMeta.limit && currentPost.length > activeMeta.limit);
+  const isOverLimit = Boolean(
+    activeMeta.limit && (
+      xThreadMode
+        ? xThreadParts.length > 25 || xThreadParts.some((part) => part.length > activeMeta.limit)
+        : currentPost.length > activeMeta.limit
+    )
+  );
+  const sourceSignals = [
+    form.notes.trim(),
+    form.links.trim(),
+    form.repo.trim(),
+    ...documentText,
+  ].filter(Boolean).length;
+  const composeReady = sourceSignals > 0 && channels.length > 0;
+  const connectedOfficialCount = Array.from(OFFICIAL_CONNECTORS).filter(
+    (id) => connections[id]?.connected && !connections[id]?.expired,
+  ).length;
+  const reviewIndex = Math.max(0, channels.indexOf(activeChannel));
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -580,6 +633,22 @@ export default function Home() {
     setForm((previous) => ({ ...previous, [key]: value }));
   }
 
+  function updatePublishOption(platform, key, value) {
+    setPublishOptions((previous) => ({
+      ...previous,
+      [platform]: { ...(previous[platform] || {}), [key]: value },
+    }));
+  }
+
+  function navigateStudioFlow(targetStage, elementId) {
+    if (targetStage === "compose") setStage("compose");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
   function toggleChannel(channelId) {
     setChannels((previous) => {
       if (previous.includes(channelId)) {
@@ -596,6 +665,12 @@ export default function Home() {
 
   function selectAllChannels() {
     setChannels(CHANNELS.map((channel) => channel.id));
+  }
+
+  function moveReviewChannel(direction) {
+    if (!channels.length) return;
+    const nextIndex = (reviewIndex + direction + channels.length) % channels.length;
+    setActiveChannel(channels[nextIndex]);
   }
 
   async function handleFiles(event) {
@@ -719,6 +794,7 @@ export default function Home() {
       markdown: result.markdown || "",
       result,
       brief: { ...form, apiKey: "" },
+      publishOptions,
     };
     const next = [item, ...library.filter((entry) => entry.title !== item.title)].slice(0, 30);
     setLibrary(next);
@@ -731,6 +807,7 @@ export default function Home() {
     setChannels(item.channels || ["linkedin"]);
     setPosts(item.posts || {});
     setResult(item.result || { markdown: item.markdown, warnings: item.warnings || [] });
+    setPublishOptions(item.publishOptions || { reddit: { subreddit: "", title: "" } });
     setActiveChannel((item.channels || ["linkedin"])[0]);
     setStage("review");
     navigateSection("studio");
@@ -810,7 +887,7 @@ export default function Home() {
       .replace(/(^-|-$)/g, "");
     downloadText(
       `${name || "signalflow-campaign"}.json`,
-      JSON.stringify({ campaign: form.projectName, channels, posts, result }, null, 2),
+      JSON.stringify({ campaign: form.projectName, channels, posts, publishOptions, result }, null, 2),
       "application/json",
     );
   }
@@ -836,9 +913,28 @@ export default function Home() {
     if (isOverLimit) {
       setMessage({
         type: "error",
-        text: `This ${activeMeta.label} draft is over the ${activeMeta.limit.toLocaleString()} character guide.`,
+        text: activeChannel === "x" && xThreadMode
+          ? "Every X thread post must stay within 280 characters and a thread may contain at most 25 posts."
+          : `This ${activeMeta.label} draft is over the ${activeMeta.limit.toLocaleString()} character guide.`,
       });
       return;
+    }
+
+    let options = {};
+    if (activeChannel === "reddit") {
+      const subreddit = String(publishOptions.reddit?.subreddit || "")
+        .trim()
+        .replace(/^r\//i, "");
+      const title = String(publishOptions.reddit?.title || form.projectName || "").trim();
+      if (!/^[A-Za-z0-9_]{2,21}$/.test(subreddit)) {
+        setMessage({ type: "error", text: "Enter a valid subreddit name before publishing. Do not include spaces or the r/ prefix." });
+        return;
+      }
+      if (!title) {
+        setMessage({ type: "error", text: "Add a Reddit post title before publishing." });
+        return;
+      }
+      options = { subreddit, title };
     }
 
     if (!window.confirm(`Publish this approved draft to ${activeMeta.label}?`)) return;
@@ -853,6 +949,7 @@ export default function Home() {
           platform: activeChannel,
           content: currentPost,
           projectName: form.projectName,
+          options,
         }),
       });
       const data = await response.json();
@@ -1000,7 +1097,7 @@ export default function Home() {
       )}
 
       {section === "studio" && (
-        <main className="studio-page" id="workspace-content">
+        <main className="studio-page" id="workspace-content" data-stage={stage}>
           <header className="studio-heading">
             <div>
               <p className="eyebrow eyebrow--dark">
@@ -1024,8 +1121,35 @@ export default function Home() {
             )}
           </header>
 
+          <nav className="studio-flow" aria-label="Campaign creation steps">
+            <button
+              type="button"
+              className={stage === "compose" ? "is-active" : ""}
+              onClick={() => navigateStudioFlow("compose", "campaign-source")}
+            >
+              <span className="studio-flow__index">01</span>
+              <span><strong>Source</strong><small>Bring the facts and proof</small></span>
+            </button>
+            <button
+              type="button"
+              className={stage === "compose" ? "is-active" : ""}
+              onClick={() => navigateStudioFlow("compose", "campaign-destinations")}
+            >
+              <span className="studio-flow__index">02</span>
+              <span><strong>Destinations</strong><small>Choose where the story travels</small></span>
+            </button>
+            <button
+              type="button"
+              className={stage === "review" ? "is-active" : ""}
+              onClick={() => document.getElementById("campaign-command")?.scrollIntoView({ behavior: "smooth", block: "end" })}
+            >
+              <span className="studio-flow__index">03</span>
+              <span><strong>{stage === "review" ? "Review" : "Generate"}</strong><small>{stage === "review" ? "Shape and route every draft" : "Build the campaign package"}</small></span>
+            </button>
+          </nav>
+
           <div className={`studio-grid ${stage === "review" ? "studio-grid--review" : ""}`}>
-            <section className="panel composer-panel">
+            <section className="panel composer-panel" id="campaign-source">
               <div className="panel-kicker">
                 <span>01</span> Campaign brief
               </div>
@@ -1183,7 +1307,7 @@ export default function Home() {
               )}
             </section>
 
-            <section className="panel output-panel">
+            <section className="panel output-panel" id="campaign-destinations">
               <div className="panel-kicker panel-kicker--with-actions">
                 <span>02</span>
                 <b>Channels and output</b>
@@ -1193,55 +1317,67 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="channel-picker">
-                {CHANNELS.map((channel) => {
-                  const selected = channels.includes(channel.id);
+              <div className="channel-groups">
+                {CHANNEL_GROUPS.map((group) => {
+                  const groupChannels = group.channels.map(channelMeta);
+                  const selectedCount = groupChannels.filter((channel) => channels.includes(channel.id)).length;
                   return (
-                    <button
-                      key={channel.id}
-                      className={selected ? "channel-option is-selected" : "channel-option"}
-                      onClick={() => toggleChannel(channel.id)}
-                      aria-pressed={selected}
-                    >
-                      <span className="channel-option__mark">
-                        <PlatformIcon platform={channel.id} size={18} branded={!selected} />
-                      </span>
-                      <span>
-                        <strong>{channel.label}</strong>
-                        <small>{channel.tone}</small>
-                      </span>
-                      <i>{selected ? "✓" : "+"}</i>
-                    </button>
+                    <section className="channel-group" key={group.id} aria-labelledby={`channel-group-${group.id}`}>
+                      <header className="channel-group__header">
+                        <div>
+                          <strong id={`channel-group-${group.id}`}>{group.label}</strong>
+                          <small>{group.description}</small>
+                        </div>
+                        <span>{selectedCount}/{groupChannels.length} selected</span>
+                      </header>
+                      <div className="channel-picker">
+                        {groupChannels.map((channel) => {
+                          const selected = channels.includes(channel.id);
+                          return (
+                            <button
+                              key={channel.id}
+                              className={selected ? "channel-option is-selected" : "channel-option"}
+                              onClick={() => toggleChannel(channel.id)}
+                              aria-pressed={selected}
+                            >
+                              <span className="channel-option__mark">
+                                <PlatformIcon platform={channel.id} size={18} branded={!selected} />
+                              </span>
+                              <span>
+                                <strong>{channel.label}</strong>
+                                <small>{channel.tone}</small>
+                              </span>
+                              <i>{selected ? "✓" : "+"}</i>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
                   );
                 })}
               </div>
 
               {stage === "compose" ? (
                 <div className="output-empty">
-                  <div className="output-empty__art">
-                    <div className="ghost-post ghost-post--one">
-                      <span />
-                      <i />
-                      <i />
-                      <i />
+                  <div className="compose-readiness">
+                    <div className="compose-readiness__top">
+                      <div>
+                        <span>Campaign readiness</span>
+                        <h3>{composeReady ? "Ready to shape the campaign." : "Bring one strong source signal."}</h3>
+                      </div>
+                      <b className={composeReady ? "is-ready" : ""}>{composeReady ? "Ready" : "Needs source"}</b>
                     </div>
-                    <div className="ghost-post ghost-post--two">
-                      <span />
-                      <i />
-                      <i />
-                    </div>
-                    <div className="ghost-post ghost-post--three">
-                      <span />
-                      <i />
-                      <i />
-                      <i />
+                    <p>
+                      {composeReady
+                        ? "SignalFlow has enough context to build editable drafts. You remain in control of every output and publishing step."
+                        : "Add a brief, public link, repository, or extractable text file. Keep the first run simple; advanced model controls can stay closed."}
+                    </p>
+                    <div className="compose-readiness__metrics">
+                      <div><strong>{sourceSignals}</strong><span>source signals</span></div>
+                      <div><strong>{channels.length}</strong><span>destinations</span></div>
+                      <div><strong>{provider.label}</strong><span>generation route</span></div>
                     </div>
                   </div>
-                  <h3>Your campaign will appear here.</h3>
-                  <p>
-                    SignalFlow creates editable drafts, platform guidance, media direction, warnings,
-                    and export files from the same brief.
-                  </p>
                 </div>
               ) : (
                 <div className="review-workspace">
@@ -1261,6 +1397,11 @@ export default function Home() {
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div className="review-nav" aria-label="Move between campaign drafts">
+                    <button type="button" onClick={() => moveReviewChannel(-1)}>← Previous</button>
+                    <button type="button" onClick={() => moveReviewChannel(1)}>Next →</button>
                   </div>
 
                   <div className={`native-preview native-preview--${activeChannel}`}>
@@ -1295,8 +1436,9 @@ export default function Home() {
 
                     <footer>
                       <span className={isOverLimit ? "is-over-limit" : ""}>
-                        {currentPost.length.toLocaleString()}
-                        {activeMeta.limit ? ` / ${activeMeta.limit.toLocaleString()}` : ""} characters
+                        {xThreadMode
+                          ? `${xThreadParts.length} posts · longest ${xLongestPart.toLocaleString()} / ${activeMeta.limit.toLocaleString()} characters`
+                          : `${currentPost.length.toLocaleString()}${activeMeta.limit ? ` / ${activeMeta.limit.toLocaleString()}` : ""} characters`}
                       </span>
                       <span>Editable before export or publish</span>
                     </footer>
@@ -1310,6 +1452,38 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+
+                  <aside className="review-inspector" aria-label={`${activeMeta.label} draft guidance`}>
+                    <div className="review-inspector__eyebrow">Channel intelligence</div>
+                    <h3>{activeMeta.label}</h3>
+                    <dl>
+                      <div><dt>Voice</dt><dd>{activeMeta.tone}</dd></div>
+                      <div><dt>Route</dt><dd>{canPublishCurrent ? "Connected official API" : OFFICIAL_CONNECTORS.has(activeChannel) ? "Official connector available; manual handoff remains available" : "Review, copy, export, and open-platform handoff"}</dd></div>
+                      <div><dt>Length</dt><dd>{xThreadMode ? `${xThreadParts.length} posts; longest is ${xLongestPart} of ${activeMeta.limit} characters` : activeMeta.limit ? `${currentPost.length.toLocaleString()} of ${activeMeta.limit.toLocaleString()} characters` : `${currentPost.length.toLocaleString()} characters; no fixed guide`}</dd></div>
+                      <div><dt>Campaign context</dt><dd>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}, {files.length} attached file{files.length === 1 ? "" : "s"}</dd></div>
+                    </dl>
+                    {activeChannel === "reddit" && (
+                      <div className="review-publish-fields">
+                        <label>
+                          <span>Subreddit</span>
+                          <input
+                            value={publishOptions.reddit?.subreddit || ""}
+                            onChange={(event) => updatePublishOption("reddit", "subreddit", event.target.value)}
+                            placeholder="e.g. SideProject"
+                          />
+                        </label>
+                        <label>
+                          <span>Post title</span>
+                          <input
+                            value={publishOptions.reddit?.title || ""}
+                            onChange={(event) => updatePublishOption("reddit", "title", event.target.value)}
+                            placeholder={form.projectName || "A clear, factual title"}
+                          />
+                        </label>
+                        <small>Required for direct Reddit publishing. Community rules still apply.</small>
+                      </div>
+                    )}
+                  </aside>
 
                   <div className="review-actions">
                     <button className="button button--outline" onClick={() => copyCurrentPost()}>
@@ -1366,15 +1540,15 @@ export default function Home() {
             </section>
           </div>
 
-          <div className="studio-actionbar">
+          <div className="studio-actionbar" id="campaign-command">
             <div>
+              <span>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}</span>
+              <i />
               <span>{channels.length} destinations</span>
               <i />
-              <span>{selectedDirectCount} direct-ready</span>
+              <span>{selectedDirectCount ? `${connectedOfficialCount}/${selectedDirectCount} selected connectors live` : "manual routes selected"}</span>
               <i />
               <span>{provider.label}</span>
-              <i />
-              <span>{files.length} file{files.length === 1 ? "" : "s"}</span>
             </div>
             <button
               className="button button--champagne button--premium"
@@ -1486,6 +1660,47 @@ export default function Home() {
             <div>
               <strong>100%</strong>
               <span>Review before action</span>
+            </div>
+          </section>
+
+          <section className="connector-readiness" aria-labelledby="connector-readiness-title">
+            <div className="connector-readiness__heading">
+              <div>
+                <h2 id="connector-readiness-title">Official connector readiness</h2>
+                <p>Implementation, deployment credentials, account authorization, and live post verification are separate gates.</p>
+              </div>
+            </div>
+            <div className="connector-readiness__grid">
+              {Array.from(OFFICIAL_CONNECTORS).map((platformId) => {
+                const status = connections[platformId] || {};
+                const inspected = Boolean(accessToken && Object.keys(connections).length > 0);
+                const ready = Boolean(inspected && status.configured && status.connected && !status.expired);
+                const readinessLabel = connectionsLoading
+                  ? "Checking"
+                  : !inspected
+                    ? "Unlock to inspect"
+                    : ready
+                      ? "Authorized"
+                      : status.configured
+                        ? "Needs authorization"
+                        : "Needs credentials";
+                return (
+                  <article key={platformId} className="connector-readiness__card">
+                    <header>
+                      <h3>{channelMeta(platformId).label}</h3>
+                      <span className={`readiness-state ${ready ? "is-ready" : ""}`}>{readinessLabel}</span>
+                    </header>
+                    <ul>
+                      <li>Credentials: {!inspected ? "unlock and refresh to inspect" : status.configured ? "configured" : "missing in deployment"}</li>
+                      <li>Authorization: {!inspected ? "not inspected" : status.expired ? "expired" : status.connected ? "active" : "not completed"}</li>
+                      <li>Refresh: {!inspected ? "not inspected" : status.hasRefreshToken ? "available" : "not yet verified"}</li>
+                      <li>Live post test: {status.readiness?.publishTest === "verified" ? "verified" : "required"}</li>
+                      {status.callbackUrl && <li>Callback: <code>{status.callbackUrl}</code></li>}
+                      {status.scopes?.length > 0 && <li>Scopes: {status.scopes.join(" · ")}</li>}
+                    </ul>
+                  </article>
+                );
+              })}
             </div>
           </section>
 

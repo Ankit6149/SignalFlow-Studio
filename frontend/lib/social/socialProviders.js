@@ -1,5 +1,6 @@
 import { getLinkedInApiVersion, SOCIAL_PLATFORMS } from "./socialConfig.js";
 import { isTokenExpired, updateTokenSession } from "./tokenStore.js";
+import { createSocialApiError } from "./socialErrors.js";
 
 async function refreshLinkedInToken(refreshToken) {
   const platform = SOCIAL_PLATFORMS.linkedin;
@@ -13,7 +14,7 @@ async function refreshLinkedInToken(refreshToken) {
       client_secret: process.env[platform.secretEnvKey],
     }),
   });
-  if (!response.ok) throw new Error(`LinkedIn token refresh failed (${response.status})`);
+  if (!response.ok) throw await createSocialApiError(response, "LinkedIn", "token refresh");
   return response.json();
 }
 
@@ -33,7 +34,7 @@ async function refreshXToken(refreshToken) {
       refresh_token: refreshToken,
     }),
   });
-  if (!response.ok) throw new Error(`X token refresh failed (${response.status})`);
+  if (!response.ok) throw await createSocialApiError(response, "X", "token refresh");
   return response.json();
 }
 
@@ -53,7 +54,7 @@ async function refreshRedditToken(refreshToken) {
       refresh_token: refreshToken,
     }),
   });
-  if (!response.ok) throw new Error(`Reddit token refresh failed (${response.status})`);
+  if (!response.ok) throw await createSocialApiError(response, "Reddit", "token refresh");
   return response.json();
 }
 
@@ -97,8 +98,7 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
     headers: { Authorization: `Bearer ${valid.token}` },
   });
   if (!profileResponse.ok) {
-    const errorText = await profileResponse.text();
-    throw new Error(`LinkedIn profile fetch failed: ${errorText}`);
+    throw await createSocialApiError(profileResponse, "LinkedIn", "profile lookup");
   }
 
   const profile = await profileResponse.json();
@@ -131,8 +131,7 @@ export async function postToLinkedIn(content, projectName = "", tokenSession) {
     body: JSON.stringify(postBody),
   });
   if (!postResponse.ok) {
-    const errorText = await postResponse.text();
-    throw new Error(`LinkedIn post failed (${postResponse.status}): ${errorText}`);
+    throw await createSocialApiError(postResponse, "LinkedIn", "publishing");
   }
 
   const postId = postResponse.headers.get("x-restli-id") || "";
@@ -155,18 +154,17 @@ export async function postToX(content, tokenSession) {
   const valid = await ensureValidToken("x", tokenSession);
   const parts = content.split(/\n\n+/).map((part) => part.trim()).filter(Boolean);
 
-  if (parts.length === 1 || content.length <= platform.postMaxLength) {
+  if (content.length <= platform.postMaxLength) {
     const response = await fetch(platform.postEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${valid.token}`,
       },
-      body: JSON.stringify({ text: content.substring(0, platform.postMaxLength) }),
+      body: JSON.stringify({ text: content }),
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`X post failed (${response.status}): ${errorText}`);
+      throw await createSocialApiError(response, "X", "publishing");
     }
 
     const body = await response.json();
@@ -183,12 +181,23 @@ export async function postToX(content, tokenSession) {
     };
   }
 
+  if (parts.length < 2) {
+    throw new Error("This X draft is longer than 280 characters. Separate thread posts with a blank line before publishing.");
+  }
+  if (parts.length > platform.threadMaxLength) {
+    throw new Error(`X threads are limited to ${platform.threadMaxLength} posts in SignalFlow.`);
+  }
+  const oversizedPart = parts.findIndex((part) => part.length > platform.postMaxLength);
+  if (oversizedPart >= 0) {
+    throw new Error(`X thread post ${oversizedPart + 1} is longer than ${platform.postMaxLength} characters.`);
+  }
+
   let previousPostId = null;
   let firstPostId = null;
-  const threadParts = parts.slice(0, platform.threadMaxLength);
+  const threadParts = parts;
 
   for (let index = 0; index < threadParts.length; index += 1) {
-    const postBody = { text: threadParts[index].substring(0, platform.postMaxLength) };
+    const postBody = { text: threadParts[index] };
     if (previousPostId) {
       postBody.reply = { in_reply_to_tweet_id: previousPostId };
     }
@@ -202,8 +211,8 @@ export async function postToX(content, tokenSession) {
       body: JSON.stringify(postBody),
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`X thread failed at post ${index + 1} (${response.status}): ${errorText}`);
+      const error = await createSocialApiError(response, "X", `publishing thread post ${index + 1}`);
+      throw error;
     }
 
     const body = await response.json();
@@ -226,27 +235,39 @@ export async function postToX(content, tokenSession) {
 export async function postToReddit(content, options = {}, tokenSession) {
   const platform = SOCIAL_PLATFORMS.reddit;
   const valid = await ensureValidToken("reddit", tokenSession);
-  const subreddit = options.subreddit || "test";
-  const title = options.title || options.projectName || "New Post";
+  const subreddit = String(options.subreddit || "").trim().replace(/^r\//i, "");
+  const title = String(options.title || options.projectName || "").trim();
+  const userAgent = String(process.env.REDDIT_USER_AGENT || "").trim();
+
+  if (!/^[A-Za-z0-9_]{2,21}$/.test(subreddit)) {
+    throw new Error("A valid subreddit name is required for Reddit publishing.");
+  }
+  if (!title) throw new Error("A Reddit post title is required.");
+  if (title.length > 300) throw new Error("Reddit post titles must be 300 characters or fewer.");
+  if (content.length > platform.postMaxLength) {
+    throw new Error(`Reddit post body exceeds ${platform.postMaxLength.toLocaleString()} characters.`);
+  }
+  if (!userAgent) {
+    throw new Error("REDDIT_USER_AGENT must be configured with an identifiable app and Reddit username before publishing.");
+  }
 
   const response = await fetch(platform.postEndpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: `Bearer ${valid.token}`,
-      "User-Agent": "SignalFlowStudio/1.0",
+      "User-Agent": userAgent,
     },
     body: new URLSearchParams({
       kind: "self",
       sr: subreddit,
-      title: title.substring(0, 300),
-      text: content.substring(0, platform.postMaxLength),
+      title,
+      text: content,
       api_type: "json",
     }),
   });
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Reddit submit failed (${response.status}): ${errorText}`);
+    throw await createSocialApiError(response, "Reddit", "publishing");
   }
 
   const body = await response.json();

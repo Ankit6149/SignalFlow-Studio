@@ -25,6 +25,17 @@ export async function GET(request) {
         connectedAt: connection.connectedAt || null,
         expired: connection.expired || false,
         hasRefreshToken: connection.hasRefreshToken || false,
+        readiness: {
+          ...config.readiness,
+          authorization: connection.expired
+            ? "expired"
+            : connection.connected
+              ? "ready"
+              : "pending",
+          refreshTest: connection.hasRefreshToken ? "available_for_live_test" : "required",
+          publishTest: "required",
+          rejectionTest: "required",
+        },
       };
     }
 

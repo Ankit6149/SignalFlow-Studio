@@ -26,36 +26,57 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import base64, gzip, hashlib, tarfile
+          import base64, gzip, hashlib, json, tarfile, traceback
 
-          chunks = sorted(Path('.github/payload').glob('professional-pass-*.b64'))
-          if not chunks:
-              raise SystemExit('No release payload chunks were found.')
-          encoded = ''.join(path.read_text(encoding='utf-8') for path in chunks)
-          encoded = ''.join(encoded.split())
-          encoded += '=' * (-len(encoded) % 4)
-          payload = base64.b64decode(encoded, validate=False)
-          archive = Path('/tmp/professional-pass.tar.gz')
-          archive.write_bytes(payload)
-          print(f'chunks={len(chunks)} encoded_bytes={len(encoded)} archive_bytes={len(payload)} sha256={hashlib.sha256(payload).hexdigest()}')
-          with gzip.open(archive, 'rb') as stream:
-              stream.peek(1)
-          with tarfile.open(archive, 'r:gz') as tar:
-              members = tar.getmembers()
-              if not members:
-                  raise SystemExit('Release archive is empty.')
-              print('archive members:', ', '.join(member.name for member in members[:30]))
-              tar.extractall('.')
+          diagnostics = {}
+          try:
+              chunks = sorted(Path('.github/payload').glob('professional-pass-*.b64'))
+              diagnostics['chunks'] = [{
+                  'name': path.name,
+                  'characters': len(path.read_text(encoding='utf-8')),
+                  'prefix': path.read_text(encoding='utf-8')[:16],
+                  'suffix': path.read_text(encoding='utf-8')[-16:],
+              } for path in chunks]
+              if not chunks:
+                  raise RuntimeError('No release payload chunks were found.')
+              encoded = ''.join(path.read_text(encoding='utf-8') for path in chunks)
+              encoded = ''.join(encoded.split())
+              diagnostics['encoded_characters'] = len(encoded)
+              diagnostics['encoded_mod_4'] = len(encoded) % 4
+              encoded += '=' * (-len(encoded) % 4)
+              payload = base64.b64decode(encoded, validate=False)
+              diagnostics['archive_bytes'] = len(payload)
+              diagnostics['archive_prefix_hex'] = payload[:24].hex()
+              diagnostics['archive_sha256'] = hashlib.sha256(payload).hexdigest()
+              archive = Path('/tmp/professional-pass.tar.gz')
+              archive.write_bytes(payload)
+              with gzip.open(archive, 'rb') as stream:
+                  stream.peek(1)
+              with tarfile.open(archive, 'r:gz') as tar:
+                  members = tar.getmembers()
+                  diagnostics['members'] = [member.name for member in members]
+                  if not members:
+                      raise RuntimeError('Release archive is empty.')
+                  tar.extractall('.')
+              Path('/tmp/professional-pass-ok').write_text('ok')
+          except Exception as error:
+              diagnostics['error'] = repr(error)
+              diagnostics['traceback'] = traceback.format_exc()
+              Path('.github/payload/diagnostic.json').write_text(json.dumps(diagnostics, indent=2), encoding='utf-8')
           PY
-          rm -rf .github/payload
-          rm -f .github/workflows/apply-professional-pass.yml
 
-      - name: Commit release files
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name "SignalFlow Release Bot"
           git config user.email "actions@users.noreply.github.com"
+
+          if [[ ! -f /tmp/professional-pass-ok ]]; then
+            git add .github/payload/diagnostic.json
+            git commit -m "chore: record professional pass payload diagnostics" || true
+            git push origin HEAD:product/professional-polish-discovery
+            exit 1
+          fi
+
+          rm -rf .github/payload
+          rm -f .github/workflows/apply-professional-pass.yml
           git add -A
           git commit -m "Polish SignalFlow into a professional multi-channel product" || exit 0
           git push origin HEAD:product/professional-polish-discovery

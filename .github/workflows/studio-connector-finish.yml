@@ -61,3 +61,5 @@ jobs:
 
       - name: Push completed branch
         run: git push origin HEAD:product/studio-luxury-ux
+
+# Triggered after the workflow existed on the branch.

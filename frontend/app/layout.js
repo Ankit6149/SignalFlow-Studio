@@ -1,5 +1,6 @@
 import "../app/globals.css";
 import "../app/connector.css";
+import SessionBridge from "../components/SessionBridge";
 
 const schema = {
   "@context": "https://schema.org",
@@ -110,7 +111,10 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <SessionBridge />
+        {children}
+      </body>
     </html>
   );
 }

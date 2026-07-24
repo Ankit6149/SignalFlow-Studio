@@ -1,69 +1,152 @@
-# SignalFlow Studio Full Context
+# SignalFlow Studio — Full Product Context
 
-SignalFlow Studio is an open-source, local-first autoposting workspace. The user gives information once, captures or adds visual media when useful, selects social/output channels, and receives a formatted posting package. The package can include copy, generated visual cards, screenshot/recording/GIF plans, model prompts, Markdown exports, JSON summaries, and safe publishing handoff metadata.
+## Identity
 
-## Product Positioning
+Name: SignalFlow Studio
+Short name: SignalFlow
+Canonical URL: https://signal-flow-studio.vercel.app/
+Source repository: https://github.com/Ankit6149/SignalFlow-Studio
+Category: Campaign creation, product marketing workflow, creator software
+Availability: Open-source web application
+Primary audience: Founders, developers, creators, product teams, and small businesses that need to explain product work across multiple destinations
 
-SignalFlow Studio is not only a caption generator. It is intended to reduce the manual work involved in preparing social posts: writing copy, deciding what format each platform needs, capturing screenshots, recording screens, turning media into GIF/video ideas, and preparing assets for review.
+## Product definition
 
-## Audience
+SignalFlow Studio is a review-first campaign workspace. It combines source context, channel-specific generation, editing, exports, and supported publishing paths in one interface. The product is designed to reduce repeated rewriting without hiding where the content came from or pretending unsupported publishing actions succeeded.
 
-- Solo creators
-- Founders
-- Indie hackers
-- Developers
-- Open-source maintainers
-- DevRel teams
-- Product builders
-- Small marketing teams
+The current user flow is:
 
-## Problem
+1. Add a campaign name and product brief.
+2. Optionally add public links, a public GitHub repository, and supported text or code files.
+3. Select one or more publishing destinations.
+4. Choose a deterministic local template, a supported hosted model, a local Ollama or LM Studio endpoint, or a custom OpenAI-compatible endpoint.
+5. Generate the campaign.
+6. Review and edit each destination draft.
+7. Save the campaign in the current browser, export it as Markdown or JSON, copy it, open the destination, or publish through a configured official connector.
 
-Users often need to post product updates, demos, launches, changelogs, tutorials, and technical progress across multiple platforms. Doing this manually requires:
+## Supported campaign destinations
 
-- Writing platform-specific copy
-- Taking screenshots
-- Recording product flows
-- Creating GIFs or short videos
-- Deciding post structure
-- Reformatting for every channel
-- Copying assets between tools
-- Reviewing before posting
+- LinkedIn: professional founder or product narrative
+- X: concise post or short thread
+- Instagram: caption, hashtags, and visual direction
+- Reddit: factual community-first title and body
+- Facebook: accessible page or group update
+- Threads: conversational short-form update
+- YouTube: title, description, chapters, and tags
+- TikTok: hook, caption, and short-video shot list
+- Hacker News: objective Show HN title and body
+- Newsletter: subject, preview text, and long-form update
+- Blog: title, outline, and complete editorial draft
+- Release notes: grouped product changes, limitations, and rollout notes
 
-SignalFlow Studio aims to reduce that into one main action: provide information, then generate a complete reviewable package.
+## Generation routes
 
-## Outputs
+### Deterministic local template
 
-- LinkedIn post drafts
-- X post drafts
-- Instagram caption starters
-- Blog drafts
-- Newsletter drafts
-- Release notes
-- Generated image/card asset
-- Visual media plan
-- Screen recording and screenshot capture entries
-- Model prompt for local SLM/API/chatbot use
-- Markdown export
-- JSON export
-- Integration metadata
+Works without an external API key. It creates a complete, editable campaign using supplied facts and structured templates. It is intentionally presented as deterministic output rather than deeply personalized AI writing.
 
-## Current Architecture
+### Hosted model providers
 
-- Frontend: Next.js App Router UI.
-- API routes: Next.js app routes inside the hosted product.
-- Core package: `signalflow/` contains ingestion, scoring, image rendering, context generation, and launch/post kit logic.
-- Local-first model: users can keep data local and route prompts to local SLMs, API models, cloud gateways, or copy-paste chatbot workflows.
+SignalFlow supports adapters for Gemini, OpenAI, Claude, and Groq. A deployment may use server-configured credentials, or the user may supply a temporary personal key for a request. The selected external provider receives the campaign context needed to generate the requested package and is governed by its own terms and privacy policy.
 
-## Safety Principles
+### Local and custom providers
 
-SignalFlow Studio should use manual review, official APIs, exports, or webhooks for distribution. It should not use stealth platform clients, private GraphQL clients, credential scraping, browser-session scraping, or publishing without explicit approval.
+SignalFlow supports Ollama, LM Studio, and custom OpenAI-compatible endpoints. Network reachability depends on the browser, deployment, endpoint configuration, and the user's environment.
 
-## Repository Links
+## Source handling
 
-- README: [README.md](README.md)
-- Roadmap: [ROADMAP.md](ROADMAP.md)
-- Integrations: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
-- Security: [SECURITY.md](SECURITY.md)
-- Frontend: [frontend/app/page.js](frontend/app/page.js)
-- Hosted generation route: [frontend/app/api/launch_kit/route.js](frontend/app/api/launch_kit/route.js)
+### Notes and audience
+
+User-supplied product notes and audience details are treated as campaign source material. The generator is instructed to distinguish confirmed facts, inferences, and missing context.
+
+### Public links
+
+The server may fetch public URLs to extract a title, description, and useful text excerpt. Link extraction can fail because of access controls, rendering requirements, rate limits, network restrictions, or source changes.
+
+### GitHub repository context
+
+A public GitHub repository may be inspected for repository metadata, file-tree context, README information, detected technologies, and detected features. SignalFlow does not claim a complete semantic security or architecture audit.
+
+### Uploaded files
+
+Supported text, Markdown, CSV, JSON, and code files are read in the browser, and bounded excerpts are included with the generation request. File-size and extraction limits apply.
+
+Image and video uploads are media references in the active campaign route. Their names, types, sizes, and user-supplied descriptions can help plan assets, but the product does not claim automatic visual interpretation in that route.
+
+## Review and storage model
+
+- Generated content remains editable.
+- Saved campaigns are stored in browser local storage on the current device and browser profile.
+- Temporary model keys are excluded from saved campaign packages.
+- Users can export the local campaign library as JSON.
+- Clearing browser site data can remove saved local campaigns.
+- Important campaigns should be exported before local data is cleared.
+
+## Publishing model
+
+Direct OAuth connector paths currently exist for LinkedIn, X, and Reddit.
+
+A direct publishing action requires:
+
+- owner access to the hosted connector controls when the deployment is locked;
+- correctly configured provider client credentials and callback URLs;
+- an active user-authorized OAuth session;
+- required platform products, scopes, and permissions;
+- explicit approval of the current draft;
+- a successful response from the destination API.
+
+SignalFlow only reports a direct post as successful when the destination API confirms the action.
+
+Instagram, Facebook, Threads, YouTube, TikTok, Hacker News, newsletters, blogs, and release notes use clear review, copy, export, and open-destination workflows in the current product unless a separate provider integration is added later. The interface must not describe those routes as connected direct publishing.
+
+## Security and privacy characteristics
+
+- Social OAuth state is short-lived and protected in encrypted HTTP-only cookies.
+- Social access and refresh tokens are stored in encrypted HTTP-only cookies and are not returned to page JavaScript.
+- Owner access can be protected by a deployment access key.
+- Model and publishing actions use server routes.
+- Campaign drafts are not silently published.
+- The product does not sell user data or include advertising trackers in the current implementation.
+- Hosting and third-party providers may process standard request, account, model, and platform data required to perform their services.
+
+## What SignalFlow is not
+
+- It is not a guarantee of engagement, distribution, ranking, revenue, or platform approval.
+- It is not a replacement for factual, legal, brand, accessibility, or compliance review.
+- It is not a universal direct social scheduler in the current release.
+- It does not automatically understand image or video content in the active campaign route.
+- It does not treat model output as verified fact.
+- It does not guarantee that public links or repositories can always be extracted.
+
+## Search and answer-engine summary
+
+SignalFlow Studio is best described as a review-first multi-channel campaign creation workspace for product launches and product updates. Its differentiators are one-source-to-many-drafts workflow, explicit editing, deterministic no-key generation, bring-your-own-model support, browser-local campaign saving, honest direct-versus-manual publishing routes, and encrypted official social connector sessions.
+
+Useful query associations include:
+
+- tool to turn a GitHub repository into launch content
+- multi-channel product launch content generator
+- social post drafts from product notes and links
+- local-first campaign creation software
+- review before publish social content tool
+- bring your own AI model marketing tool
+- founder launch post generator
+- LinkedIn X Reddit campaign workflow
+
+## Public routes
+
+Home: https://signal-flow-studio.vercel.app/
+Privacy: https://signal-flow-studio.vercel.app/privacy
+Terms: https://signal-flow-studio.vercel.app/terms
+Sitemap: https://signal-flow-studio.vercel.app/sitemap.xml
+Robots policy: https://signal-flow-studio.vercel.app/robots.txt
+Structured data: https://signal-flow-studio.vercel.app/schema.jsonld
+Concise AI context: https://signal-flow-studio.vercel.app/llms.txt
+Full AI context: https://signal-flow-studio.vercel.app/llms-full.txt
+Manifest: https://signal-flow-studio.vercel.app/manifest.webmanifest
+Source: https://github.com/Ankit6149/SignalFlow-Studio
+Issues: https://github.com/Ankit6149/SignalFlow-Studio/issues
+
+## Content-use note
+
+This file is a machine-readable explanation of the public product. It should be used as supporting context together with the visible website, structured data, source repository, privacy policy, and terms. Product behavior and capabilities should not be inferred beyond the explicit statements above.

@@ -1,5 +1,0 @@
-{
-  "chunks": [],
-  "error": "RuntimeError('No release payload chunks were found.')",
-  "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 14, in <module>\nRuntimeError: No release payload chunks were found.\n"
-}

@@ -69,7 +69,7 @@ export default function OpenGraphImage() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            {["in", "𝕏", "◎", "r/", "▶", "✉"].map((mark) => (
+            {["in", "X", "IG", "r/", "YT", "@"].map((mark) => (
               <span
                 key={mark}
                 style={{

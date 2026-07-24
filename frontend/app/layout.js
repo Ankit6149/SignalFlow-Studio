@@ -1,4 +1,5 @@
 import "../app/globals.css";
+import "../app/connector.css";
 
 const schema = {
   "@context": "https://schema.org",
@@ -14,9 +15,9 @@ const schema = {
       "@id": "https://github.com/Ankit6149/SignalFlow-Studio#software",
       name: "SignalFlow Studio",
       applicationCategory: "BusinessApplication",
-      applicationSubCategory: "AI social media automation",
+      applicationSubCategory: "AI-assisted content campaign studio",
       operatingSystem: "Web",
-      url: "https://github.com/Ankit6149/SignalFlow-Studio",
+      url: "https://signal-flow-studio.vercel.app/",
       codeRepository: "https://github.com/Ankit6149/SignalFlow-Studio",
       isAccessibleForFree: true,
       license: "https://github.com/Ankit6149/SignalFlow-Studio/blob/master/LICENSE",
@@ -24,24 +25,24 @@ const schema = {
         "@id": "https://github.com/Ankit6149/SignalFlow-Studio#organization",
       },
       description:
-        "SignalFlow Studio is a local-first AI social media automation workspace that turns one description, data, screenshots, and screen recordings into formatted posting packages for selected social media accounts.",
+        "SignalFlow Studio turns a product brief, public links, repository context, and text source files into editable channel-specific campaign drafts with review, export, and confirmed-only publishing paths.",
       keywords: [
-        "AI social media automation",
-        "autoposting",
+        "AI content campaign studio",
         "social media post generator",
-        "screen recording to social post",
-        "screenshot to social post",
-        "formatted posting package",
-        "creator tools",
         "developer marketing",
+        "product launch content",
+        "repository to social post",
+        "review before publish",
+        "creator tools",
         "local-first",
       ],
       featureList: [
-        "Generate formatted posts for selected social media accounts",
-        "Create visual media plans for screenshots, screen recordings, GIFs, and cards",
-        "Capture screenshots and screen recordings in the web app",
-        "Generate Markdown and JSON posting packages",
-        "Prepare reviewable publishing handoff through manual exports, webhooks, or official APIs",
+        "Extract context from public links and GitHub repositories",
+        "Read uploaded text, Markdown, CSV, JSON, and code files in the browser",
+        "Generate editable channel-specific campaign drafts",
+        "Create Markdown and JSON campaign exports",
+        "Publish only through configured official connectors after user approval",
+        "Keep OAuth sessions encrypted in HTTP-only browser cookies",
       ],
       offers: {
         "@type": "Offer",
@@ -58,7 +59,7 @@ const schema = {
           name: "What is SignalFlow Studio?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "SignalFlow Studio is an open-source autoposting workspace that turns one description, data, screenshots, and screen recordings into formatted posting packages for selected social media accounts.",
+            text: "SignalFlow Studio is an open-source campaign workspace that turns a product brief, links, repository context, and text source files into editable drafts for selected channels.",
           },
         },
         {
@@ -66,7 +67,7 @@ const schema = {
           name: "Does SignalFlow Studio need a separate backend?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "No. SignalFlow Studio is designed as one hosted Next.js app with UI, generation routes, media capture, and package formatting together.",
+            text: "No. The hosted Next.js app contains the user interface, context extraction routes, generation adapters, exports, OAuth callbacks, and publishing routes.",
           },
         },
         {
@@ -74,7 +75,7 @@ const schema = {
           name: "What can SignalFlow Studio generate?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "It generates platform-specific post drafts, visual media plans, generated cards, model prompts, Markdown exports, JSON summaries, and safe publishing handoff metadata.",
+            text: "It generates editable platform-specific drafts, media directions, Markdown exports, JSON summaries, and reviewable publishing handoff metadata.",
           },
         },
       ],
@@ -83,8 +84,8 @@ const schema = {
 };
 
 export const metadata = {
-  title: "SignalFlow Studio - Describe Once, Post Everywhere",
-  description: "Create platform-ready posting packages from descriptions, data, and assets.",
+  title: "SignalFlow Studio — One Brief, Every Channel",
+  description: "Turn product context into editable, reviewable channel-specific campaign drafts.",
   alternates: {
     types: {
       "application/ld+json": "/schema.jsonld",
@@ -109,9 +110,7 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
       </head>
-      <body>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

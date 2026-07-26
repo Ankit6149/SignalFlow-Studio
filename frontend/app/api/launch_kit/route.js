@@ -9,6 +9,8 @@ import { ingestLocalRepo } from "../../../lib/context/localRepo";
 import { fetchUrlContent } from "../../../lib/context/linkFetcher";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 
+export const maxDuration = 60;
+
 export async function POST(request) {
   const accessError = requireOwnerAccess(request);
   const isOwner = accessError === null;

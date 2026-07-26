@@ -25,6 +25,7 @@ export async function generateOpenAI(prompt, modelOverride = null, config = {}) 
         content: prompt
       }
     ],
+    max_tokens: config.maxTokens || 3000,
     temperature: 0.2
   };
 
@@ -34,7 +35,7 @@ export async function generateOpenAI(prompt, modelOverride = null, config = {}) 
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
 
   let resp;
   try {
@@ -46,7 +47,7 @@ export async function generateOpenAI(prompt, modelOverride = null, config = {}) 
     });
   } catch (err) {
     if (err.name === "AbortError") {
-      throw new Error("Request to OpenAI API timed out after 40 seconds.");
+      throw new Error("Request to OpenAI API timed out after 50 seconds.");
     }
     throw err;
   } finally {

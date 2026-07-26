@@ -32,11 +32,12 @@ export async function generateCustomOpenAI(prompt, modelOverride = null, config 
     response_format: {
       type: "json_object"
     },
+    max_tokens: config.maxTokens || 3000,
     temperature: 0.2
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
 
   let resp;
   try {
@@ -48,7 +49,7 @@ export async function generateCustomOpenAI(prompt, modelOverride = null, config 
     });
   } catch (err) {
     if (err.name === "AbortError") {
-      throw new Error("Request to custom OpenAI API timed out after 35 seconds.");
+      throw new Error("Request to custom OpenAI API timed out after 50 seconds.");
     }
     throw err;
   } finally {

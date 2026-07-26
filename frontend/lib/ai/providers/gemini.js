@@ -13,19 +13,19 @@ export async function generateGemini(prompt, modelOverride = null, config = {}) 
 
   // Attempt generating JSON response first
   try {
-    return await makeGeminiRequest(prompt, model, apiKey, true);
+    return await makeGeminiRequest(prompt, model, apiKey, true, config.maxTokens);
   } catch (jsonErr) {
     const errorMsg = jsonErr.message || "";
     // If the error message suggests responseMimeType is not supported, or it is a 400 parameter error, retry in text mode
     if (
-      errorMsg.includes("response_mime_type") || 
-      errorMsg.includes("mime") || 
-      errorMsg.includes("MIME") || 
-      errorMsg.includes("JSON") || 
+      errorMsg.includes("response_mime_type") ||
+      errorMsg.includes("mime") ||
+      errorMsg.includes("MIME") ||
+      errorMsg.includes("JSON") ||
       errorMsg.includes("400")
     ) {
       try {
-        return await makeGeminiRequest(prompt, model, apiKey, false);
+        return await makeGeminiRequest(prompt, model, apiKey, false, config.maxTokens);
       } catch (textErr) {
         throw new Error(`Gemini request failed: ${textErr.message}`);
       }
@@ -34,7 +34,7 @@ export async function generateGemini(prompt, modelOverride = null, config = {}) 
   }
 }
 
-async function makeGeminiRequest(prompt, model, apiKey, useJsonMode) {
+async function makeGeminiRequest(prompt, model, apiKey, useJsonMode, maxTokens) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const body = {
@@ -48,7 +48,8 @@ async function makeGeminiRequest(prompt, model, apiKey, useJsonMode) {
       }
     ],
     generationConfig: {
-      temperature: 0.2
+      temperature: 0.2,
+      maxOutputTokens: maxTokens || 3000
     }
   };
 
@@ -57,7 +58,7 @@ async function makeGeminiRequest(prompt, model, apiKey, useJsonMode) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
 
   let resp;
   try {
@@ -71,7 +72,7 @@ async function makeGeminiRequest(prompt, model, apiKey, useJsonMode) {
     });
   } catch (err) {
     if (err.name === "AbortError") {
-      throw new Error("Request to Gemini API timed out after 35 seconds.");
+      throw new Error("Request to Gemini API timed out after 50 seconds.");
     }
     throw err;
   } finally {
@@ -91,7 +92,7 @@ async function makeGeminiRequest(prompt, model, apiKey, useJsonMode) {
 
   const data = await resp.json();
   const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  
+
   if (!rawText) {
     throw new Error("Empty candidate response returned by Gemini API.");
   }

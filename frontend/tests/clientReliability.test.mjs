@@ -27,6 +27,13 @@ test("file selection keeps metadata and extracted text within one shared limit",
   assert.equal(result.skippedCount, 3);
 });
 
+test("a full upload set accepts no additional files", () => {
+  const result = selectAcceptedFiles([{ name: "extra.md" }], 12, 12);
+  assert.deepEqual(result.accepted, []);
+  assert.equal(result.skippedCount, 1);
+  assert.equal(result.remaining, 0);
+});
+
 test("saved campaigns preserve uploaded source context", () => {
   const snapshot = createSourceSnapshot(
     [{ name: "brief.md", type: "text/markdown", size: 20, extracted: true, description: "Extracted" }],
@@ -34,4 +41,13 @@ test("saved campaigns preserve uploaded source context", () => {
   );
   const restored = restoreSourceSnapshot(snapshot);
   assert.deepEqual(restored, snapshot);
+});
+
+test("legacy saved campaigns restore their files field safely", () => {
+  const restored = restoreSourceSnapshot({
+    files: [{ name: "legacy.txt", extracted: false }],
+    documentText: ["Legacy source"],
+  });
+  assert.equal(restored.sourceFiles[0].name, "legacy.txt");
+  assert.deepEqual(restored.documentText, ["Legacy source"]);
 });

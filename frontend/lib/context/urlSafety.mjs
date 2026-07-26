@@ -49,7 +49,7 @@ export function isPrivateAddress(address) {
   const version = net.isIP(value);
   if (version === 4) {
     const parts = value.split(".").map(Number);
-    const [a, b] = parts;
+    const [a, b, c] = parts;
     return (
       a === 0 ||
       a === 10 ||
@@ -57,8 +57,13 @@ export function isPrivateAddress(address) {
       (a === 100 && b >= 64 && b <= 127) ||
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0 && c === 0) ||
+      (a === 192 && b === 0 && c === 2) ||
+      (a === 192 && b === 88 && c === 99) ||
       (a === 192 && b === 168) ||
       (a === 198 && (b === 18 || b === 19)) ||
+      (a === 198 && b === 51 && c === 100) ||
+      (a === 203 && b === 0 && c === 113) ||
       a >= 224
     );
   }
@@ -67,6 +72,8 @@ export function isPrivateAddress(address) {
     if (value.startsWith("fc") || value.startsWith("fd")) return true;
     if (/^fe[89ab]/.test(value)) return true;
     if (value.startsWith("ff")) return true;
+    if (value.startsWith("100:")) return true;
+    if (/^2001:0?db8:/i.test(value)) return true;
     const mapped = value.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
     return mapped ? isPrivateAddress(mapped[1]) : false;
   }

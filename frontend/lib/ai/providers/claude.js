@@ -20,7 +20,7 @@ export async function generateClaude(prompt, modelOverride = null, config = {}) 
 
   const body = {
     model,
-    max_tokens: 4000,
+    max_tokens: config.maxTokens || 4000,
     messages: [
       {
         role: "user",
@@ -31,7 +31,7 @@ export async function generateClaude(prompt, modelOverride = null, config = {}) 
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
 
   let resp;
   try {
@@ -43,7 +43,7 @@ export async function generateClaude(prompt, modelOverride = null, config = {}) 
     });
   } catch (err) {
     if (err.name === "AbortError") {
-      throw new Error("Request to Anthropic Claude API timed out after 45 seconds.");
+      throw new Error("Request to Anthropic Claude API timed out after 50 seconds.");
     }
     throw err;
   } finally {

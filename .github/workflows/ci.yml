@@ -27,8 +27,8 @@ jobs:
           from pathlib import Path
           path = Path('.github/scripts/apply-public-audit-fixes.mjs')
           text = path.read_text()
-          old = r'`${fallbackMessage} (HTTP \${response.status})`'
-          new = r'`\${fallbackMessage} (HTTP \${response.status})`'
+          old = r'\`${fallbackMessage} (HTTP \${response.status})\`'
+          new = r'\`\${fallbackMessage} (HTTP \${response.status})\`'
           if old not in text:
               raise SystemExit('Expected migration template expression was not found')
           path.write_text(text.replace(old, new, 1))

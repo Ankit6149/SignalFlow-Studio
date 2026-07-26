@@ -7,7 +7,7 @@ const MAX_READ_FILES = 10;
 const MAX_FILE_BYTES = 100 * 1024;
 const MAX_TEXT_CHARS_PER_FILE = 8000;
 const HOSTED_LOCAL_SCAN_WARNING =
-  "Local folder scanning is disabled in public hosted mode. Use a public GitHub URL, uploaded files, manual notes, or local development mode instead.";
+  "Local folder scanning is disabled in hosted and production mode. Use a public GitHub URL, uploaded files, manual notes, or explicitly enable local scanning on a trusted self-hosted machine.";
 
 const IGNORED_DIRS = new Set([
   "node_modules",
@@ -40,13 +40,17 @@ const SENSITIVE_FILE_PATTERNS = [
  *
  * Security boundary:
  * - This is intended for localhost/self-hosted development only.
- * - It is deliberately disabled when SIGNALFLOW_PUBLIC_HOSTED=true.
- * - Public SaaS deployments must not scan server-local folders from user input.
+ * - Vercel and explicitly public-hosted deployments always disable it.
+ * - Production self-hosting requires SIGNALFLOW_ENABLE_LOCAL_REPO_SCAN=true.
  */
 export async function ingestLocalRepo(dirPath) {
   const warnings = [];
 
-  if (process.env.SIGNALFLOW_PUBLIC_HOSTED === "true") {
+  const hostedRuntime = process.env.SIGNALFLOW_PUBLIC_HOSTED === "true" || Boolean(process.env.VERCEL);
+  const productionWithoutOptIn =
+    process.env.NODE_ENV === "production" && process.env.SIGNALFLOW_ENABLE_LOCAL_REPO_SCAN !== "true";
+
+  if (hostedRuntime || productionWithoutOptIn) {
     return { warnings: [HOSTED_LOCAL_SCAN_WARNING] };
   }
 

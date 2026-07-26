@@ -6,44 +6,7 @@ on:
   pull_request:
     branches: [main, master]
 
-permissions:
-  contents: write
-
 jobs:
-  apply-audit-migration:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'audit/public-product-reliability' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: audit/public-product-reliability
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Correct migration template escaping
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('.github/scripts/apply-public-audit-fixes.mjs')
-          text = path.read_text()
-          old = r'\`${fallbackMessage} (HTTP \${response.status})\`'
-          new = r'\`\${fallbackMessage} (HTTP \${response.status})\`'
-          if old not in text:
-              raise SystemExit('Expected migration template expression was not found')
-          path.write_text(text.replace(old, new, 1))
-          PY
-      - name: Apply audited client migration
-        run: node .github/scripts/apply-public-audit-fixes.mjs
-      - name: Restore normal CI and commit migrated source
-        run: |
-          git checkout origin/master -- .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: complete public product reliability audit"
-          git push origin HEAD:audit/public-product-reliability
-
   python-tests:
     runs-on: ubuntu-latest
     steps:

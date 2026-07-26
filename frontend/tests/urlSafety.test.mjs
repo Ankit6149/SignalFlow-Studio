@@ -13,11 +13,26 @@ test("URL normalization accepts public web URLs and rejects credentials", () => 
   assert.throws(() => normalizeHttpUrl("https://user:pass@example.com"), /credentials/i);
 });
 
-test("private and reserved network targets are recognized", () => {
-  for (const address of ["127.0.0.1", "10.0.0.2", "169.254.169.254", "172.16.0.1", "192.168.1.4", "::1", "fd00::1", "fe80::1"]) {
+test("private, documentation, and reserved network targets are recognized", () => {
+  for (const address of [
+    "127.0.0.1",
+    "10.0.0.2",
+    "169.254.169.254",
+    "172.16.0.1",
+    "192.0.2.10",
+    "192.168.1.4",
+    "198.51.100.2",
+    "203.0.113.3",
+    "::1",
+    "100::1",
+    "2001:db8::1",
+    "fd00::1",
+    "fe80::1",
+  ]) {
     assert.equal(isPrivateAddress(address), true, address);
   }
   assert.equal(isPrivateAddress("8.8.8.8"), false);
+  assert.equal(isPrivateAddress("2606:4700:4700::1111"), false);
 });
 
 test("internal hostname patterns are blocked", () => {

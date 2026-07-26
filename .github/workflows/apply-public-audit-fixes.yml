@@ -1,6 +1,6 @@
 name: Apply public product reliability fixes
 
-# This follow-up push triggers the workflow after it is registered on the branch.
+# Registered on the audit branch; this push starts the one-time source migration.
 on:
   push:
     branches: [audit/public-product-reliability]

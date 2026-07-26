@@ -121,7 +121,10 @@ export function isPlatformConfigured(platformId) {
     platform.secretEnvKey,
     ...(platform.requiredEnvKeys || []),
   ];
-  return requiredKeys.every((key) => Boolean(process.env[key]));
+  const encryptionConfigured = Boolean(
+    process.env.SOCIAL_ENCRYPTION_KEY || process.env.SIGNALFLOW_ACCESS_KEY,
+  );
+  return encryptionConfigured && requiredKeys.every((key) => Boolean(process.env[key]));
 }
 
 export function getAllPlatformStatus() {

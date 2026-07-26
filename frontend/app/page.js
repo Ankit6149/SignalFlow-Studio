@@ -506,7 +506,7 @@ function LandingPage({ onEnter }) {
 export default function Home() {
   const [entered, setEntered] = useState(false);
   const [section, setSection] = useState("studio");
-  const [stage, setStage] = useState("compose");
+  const [stage, setStage] = useState("source");
   const [form, setForm] = useState({
     projectName: "",
     notes: "",
@@ -622,7 +622,7 @@ export default function Home() {
   function enterStudio() {
     setEntered(true);
     setSection("studio");
-    setStage("compose");
+    setStage("source");
   }
 
   function navigateSection(nextSection) {
@@ -640,11 +640,11 @@ export default function Home() {
     }));
   }
 
-  function navigateStudioFlow(targetStage, elementId) {
-    if (targetStage === "compose") setStage("compose");
+  function navigateStudioFlow(targetStage) {
+    setStage(targetStage);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        document.getElementById("workspace-content")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
   }
@@ -1104,18 +1104,22 @@ export default function Home() {
                 <span /> Campaign studio
               </p>
               <h1>
-                {stage === "compose"
+                {stage === "source"
                   ? "What are we telling the world?"
-                  : "Shape every draft before it leaves."}
+                  : stage === "destinations"
+                    ? "Where should this story travel?"
+                    : "Shape every draft before it leaves."}
               </h1>
               <p>
-                {stage === "compose"
-                  ? "Bring the raw material. SignalFlow will turn it into one coherent, channel-ready campaign."
-                  : "Edit the words, watch platform guidance, then publish or export deliberately."}
+                {stage === "source"
+                  ? "Bring the facts, proof, links, repository, and files. Keep this first step focused on product truth."
+                  : stage === "destinations"
+                    ? "Choose only the formats you need, then select the model route that will shape them."
+                    : "Edit the words, watch platform guidance, then publish or export deliberately."}
               </p>
             </div>
             {stage === "review" && (
-              <button className="button button--outline" onClick={() => setStage("compose")}>
+              <button className="button button--outline" onClick={() => setStage("source")}>
                 Edit campaign brief
               </button>
             )}
@@ -1124,32 +1128,37 @@ export default function Home() {
           <nav className="studio-flow" aria-label="Campaign creation steps">
             <button
               type="button"
-              className={stage === "compose" ? "is-active" : ""}
-              onClick={() => navigateStudioFlow("compose", "campaign-source")}
+              className={stage === "source" ? "is-active" : sourceSignals > 0 ? "is-complete" : ""}
+              onClick={() => navigateStudioFlow("source")}
+              aria-current={stage === "source" ? "step" : undefined}
             >
               <span className="studio-flow__index">01</span>
               <span><strong>Source</strong><small>Bring the facts and proof</small></span>
             </button>
             <button
               type="button"
-              className={stage === "compose" ? "is-active" : ""}
-              onClick={() => navigateStudioFlow("compose", "campaign-destinations")}
+              className={stage === "destinations" ? "is-active" : stage === "review" ? "is-complete" : ""}
+              onClick={() => navigateStudioFlow("destinations")}
+              disabled={sourceSignals === 0}
+              aria-current={stage === "destinations" ? "step" : undefined}
             >
               <span className="studio-flow__index">02</span>
-              <span><strong>Destinations</strong><small>Choose where the story travels</small></span>
+              <span><strong>Destinations & model</strong><small>Choose formats and generation route</small></span>
             </button>
             <button
               type="button"
               className={stage === "review" ? "is-active" : ""}
-              onClick={() => document.getElementById("campaign-command")?.scrollIntoView({ behavior: "smooth", block: "end" })}
+              onClick={() => result && navigateStudioFlow("review")}
+              disabled={!result}
+              aria-current={stage === "review" ? "step" : undefined}
             >
               <span className="studio-flow__index">03</span>
-              <span><strong>{stage === "review" ? "Review" : "Generate"}</strong><small>{stage === "review" ? "Shape and route every draft" : "Build the campaign package"}</small></span>
+              <span><strong>Review</strong><small>Shape and route every draft</small></span>
             </button>
           </nav>
 
           <div className={`studio-grid ${stage === "review" ? "studio-grid--review" : ""}`}>
-            <section className="panel composer-panel" id="campaign-source">
+            <section className={`panel composer-panel ${stage !== "source" ? "is-step-hidden" : ""}`} id="campaign-source">
               <div className="panel-kicker">
                 <span>01</span> Campaign brief
               </div>
@@ -1238,6 +1247,59 @@ export default function Home() {
                 </div>
               )}
 
+            </section>
+
+            <section className={`panel output-panel ${stage === "source" ? "is-step-hidden" : ""}`} id="campaign-destinations">
+              <div className="panel-kicker panel-kicker--with-actions">
+                <span>02</span>
+                <b>Channels and output</b>
+                <div>
+                  <button onClick={useCoreChannels}>Core</button>
+                  <button onClick={selectAllChannels}>All</button>
+                </div>
+              </div>
+
+              <div className="channel-groups">
+                {CHANNEL_GROUPS.map((group) => {
+                  const groupChannels = group.channels.map(channelMeta);
+                  const selectedCount = groupChannels.filter((channel) => channels.includes(channel.id)).length;
+                  return (
+                    <section className="channel-group" key={group.id} aria-labelledby={`channel-group-${group.id}`}>
+                      <header className="channel-group__header">
+                        <div>
+                          <strong id={`channel-group-${group.id}`}>{group.label}</strong>
+                          <small>{group.description}</small>
+                        </div>
+                        <span>{selectedCount}/{groupChannels.length} selected</span>
+                      </header>
+                      <div className="channel-picker">
+                        {groupChannels.map((channel) => {
+                          const selected = channels.includes(channel.id);
+                          return (
+                            <button
+                              key={channel.id}
+                              className={selected ? "channel-option is-selected" : "channel-option"}
+                              onClick={() => toggleChannel(channel.id)}
+                              aria-pressed={selected}
+                            >
+                              <span className="channel-option__mark">
+                                <PlatformIcon platform={channel.id} size={18} branded={!selected} />
+                              </span>
+                              <span>
+                                <strong>{channel.label}</strong>
+                                <small>{channel.tone}</small>
+                              </span>
+                              <i>{selected ? "✓" : "+"}</i>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+
+
               <button
                 className="advanced-toggle"
                 onClick={() => setShowAdvanced((value) => !value)}
@@ -1305,59 +1367,8 @@ export default function Home() {
                   )}
                 </div>
               )}
-            </section>
 
-            <section className="panel output-panel" id="campaign-destinations">
-              <div className="panel-kicker panel-kicker--with-actions">
-                <span>02</span>
-                <b>Channels and output</b>
-                <div>
-                  <button onClick={useCoreChannels}>Core</button>
-                  <button onClick={selectAllChannels}>All</button>
-                </div>
-              </div>
-
-              <div className="channel-groups">
-                {CHANNEL_GROUPS.map((group) => {
-                  const groupChannels = group.channels.map(channelMeta);
-                  const selectedCount = groupChannels.filter((channel) => channels.includes(channel.id)).length;
-                  return (
-                    <section className="channel-group" key={group.id} aria-labelledby={`channel-group-${group.id}`}>
-                      <header className="channel-group__header">
-                        <div>
-                          <strong id={`channel-group-${group.id}`}>{group.label}</strong>
-                          <small>{group.description}</small>
-                        </div>
-                        <span>{selectedCount}/{groupChannels.length} selected</span>
-                      </header>
-                      <div className="channel-picker">
-                        {groupChannels.map((channel) => {
-                          const selected = channels.includes(channel.id);
-                          return (
-                            <button
-                              key={channel.id}
-                              className={selected ? "channel-option is-selected" : "channel-option"}
-                              onClick={() => toggleChannel(channel.id)}
-                              aria-pressed={selected}
-                            >
-                              <span className="channel-option__mark">
-                                <PlatformIcon platform={channel.id} size={18} branded={!selected} />
-                              </span>
-                              <span>
-                                <strong>{channel.label}</strong>
-                                <small>{channel.tone}</small>
-                              </span>
-                              <i>{selected ? "✓" : "+"}</i>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-
-              {stage === "compose" ? (
+              {stage === "destinations" ? (
                 <div className="output-empty">
                   <div className="compose-readiness">
                     <div className="compose-readiness__top">
@@ -1541,27 +1552,49 @@ export default function Home() {
           </div>
 
           <div className="studio-actionbar" id="campaign-command">
-            <div>
+            <div className="studio-actionbar__summary">
               <span>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}</span>
               <i />
               <span>{channels.length} destinations</span>
               <i />
-              <span>{selectedDirectCount ? `${connectedOfficialCount}/${selectedDirectCount} selected connectors live` : "manual routes selected"}</span>
-              <i />
               <span>{provider.label}</span>
             </div>
-            <button
-              className="button button--champagne button--premium"
-              onClick={generateCampaign}
-              disabled={busy}
-            >
-              {busy
-                ? "Building campaign…"
-                : stage === "review"
-                  ? "Regenerate campaign"
-                  : "Build campaign"}
-              {!busy && <SparkIcon />}
-            </button>
+            <div className="studio-actionbar__actions">
+              {stage !== "source" && (
+                <button
+                  type="button"
+                  className="button button--outline"
+                  onClick={() => navigateStudioFlow(stage === "review" ? "destinations" : "source")}
+                  disabled={busy}
+                >
+                  Back
+                </button>
+              )}
+              {stage === "source" ? (
+                <button
+                  type="button"
+                  className="button button--champagne button--premium"
+                  onClick={() => navigateStudioFlow("destinations")}
+                  disabled={sourceSignals === 0}
+                >
+                  Continue to destinations <ArrowIcon />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="button button--champagne button--premium"
+                  onClick={generateCampaign}
+                  disabled={busy || !composeReady}
+                >
+                  {busy
+                    ? "Building campaign…"
+                    : stage === "review"
+                      ? "Regenerate campaign"
+                      : "Build campaign"}
+                  {!busy && <SparkIcon />}
+                </button>
+              )}
+            </div>
           </div>
         </main>
       )}
@@ -1580,7 +1613,7 @@ export default function Home() {
               className="button button--dark"
               onClick={() => {
                 navigateSection("studio");
-                setStage("compose");
+                setStage("source");
               }}
             >
               New campaign <ArrowIcon />

@@ -8,13 +8,13 @@ const SOCIAL_COOKIE_DAYS = 90;
 const OAUTH_STATE_SECONDS = 10 * 60;
 
 function getEncryptionKey() {
-  const envKey = process.env.SOCIAL_ENCRYPTION_KEY;
-  if (envKey && envKey.length >= 32) {
-    return Buffer.from(envKey.substring(0, 32), "utf-8");
+  const seed = process.env.SOCIAL_ENCRYPTION_KEY || process.env.SIGNALFLOW_ACCESS_KEY;
+  if (!seed) {
+    throw new Error(
+      "Social token encryption is not configured. Set SOCIAL_ENCRYPTION_KEY or SIGNALFLOW_ACCESS_KEY before enabling OAuth connectors.",
+    );
   }
-
-  const seed = process.env.SIGNALFLOW_ACCESS_KEY || "signalflow-default-encryption-seed-key";
-  return crypto.createHash("sha256").update(seed).digest().subarray(0, 32);
+  return crypto.createHash("sha256").update(String(seed)).digest().subarray(0, 32);
 }
 
 function encrypt(value) {

@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import PlatformIcon from "../components/PlatformIcon";
+import {
+  createSourceSnapshot,
+  resolveStudioStage,
+  restoreSourceSnapshot,
+  selectAcceptedFiles,
+} from "../lib/studio/clientReliability.mjs";
 
-const ACCESS_TOKEN_KEY = "signalflow_owner_token";
+const LEGACY_ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
 const OFFICIAL_CONNECTORS = new Set(["linkedin", "x", "reddit"]);
 
@@ -141,7 +147,7 @@ const CHANNEL_GROUPS = [
 ];
 
 const PROVIDERS = [
-  { id: "template", label: "Local template", hint: "Works instantly. No key required." },
+  { id: "template", label: "Local sample template", hint: "Deterministic sample copy for testing the workflow. Choose a model provider for production-quality content." },
   { id: "gemini", label: "Gemini", hint: "Paste your Gemini API key or use the server configuration." },
   { id: "openai", label: "OpenAI", hint: "Paste your OpenAI key or use the server configuration." },
   { id: "claude", label: "Claude", hint: "Paste your Anthropic key or use the server configuration." },
@@ -185,6 +191,13 @@ function safeJsonParse(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+async function readJsonResponse(response, fallbackMessage) {
+  const text = await response.text();
+  const parsed = safeJsonParse(text, null);
+  if (parsed && typeof parsed === "object") return parsed;
+  throw new Error(response.ok ? fallbackMessage : `${fallbackMessage} (HTTP ${response.status})`);
 }
 
 function downloadText(filename, value, type = "text/plain") {
@@ -577,8 +590,10 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setAccessToken(window.localStorage.getItem(ACCESS_TOKEN_KEY) || "");
+    window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+    window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     setLibrary(safeJsonParse(window.localStorage.getItem(LIBRARY_KEY), []));
+    void syncOwnerSession();
 
     const params = new URLSearchParams(window.location.search);
     const socialStatus = params.get("social_status");
@@ -612,11 +627,18 @@ export default function Home() {
     });
   }, [entered, section]);
 
+  async function syncOwnerSession() {
+    try {
+      const response = await fetch("/api/session");
+      const data = await readJsonResponse(response, "SignalFlow could not verify the owner session.");
+      setAccessToken(data.authenticated ? "cookie-session" : "");
+    } catch {
+      setAccessToken("");
+    }
+  }
+
   function authHeaders(extra = {}) {
-    return {
-      ...extra,
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    };
+    return { ...extra };
   }
 
   function enterStudio() {
@@ -641,7 +663,11 @@ export default function Home() {
   }
 
   function navigateStudioFlow(targetStage) {
-    setStage(targetStage);
+    const nextStage = resolveStudioStage(targetStage, {
+      hasSource: sourceSignals > 0,
+      hasResult: Boolean(result),
+    });
+    setStage(nextStage);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         document.getElementById("workspace-content")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -677,9 +703,17 @@ export default function Home() {
     const picked = Array.from(event.target.files || []);
     if (!picked.length) return;
 
+    const { accepted, skippedCount } = selectAcceptedFiles(picked, files.length);
+    if (!accepted.length) {
+      setMessage({ type: "warning", text: "SignalFlow accepts up to 12 source files per campaign. Remove one before adding another." });
+      event.target.value = "";
+      return;
+    }
+
     const nextFiles = [];
     const nextText = [];
-    for (const file of picked) {
+    let extractionFailures = 0;
+    for (const file of accepted) {
       const isText =
         file.type.startsWith("text/") ||
         /\.(md|txt|json|csv|log|js|jsx|ts|tsx|py|go|rs|java|cpp|c|h|html|css)$/i.test(file.name);
@@ -690,7 +724,7 @@ export default function Home() {
           nextText.push(`FILE: ${file.name}\n${text.slice(0, 12000)}`);
           extracted = true;
         } catch {
-          nextText.push(`FILE: ${file.name} (browser extraction failed)`);
+          extractionFailures += 1;
         }
       }
       nextFiles.push({
@@ -700,12 +734,22 @@ export default function Home() {
         extracted,
         description: extracted
           ? "Text content extracted in the browser."
-          : "Asset metadata supplied as a creative reference; visual analysis is not enabled in this route.",
+          : isText && file.size <= 500000
+            ? "Browser extraction failed; the file remains an asset reference."
+            : "Asset metadata supplied as a creative reference; visual analysis is not enabled in this route.",
       });
     }
 
-    setFiles((previous) => [...previous, ...nextFiles].slice(0, 12));
-    setDocumentText((previous) => [...previous, ...nextText].slice(0, 12));
+    setFiles((previous) => [...previous, ...nextFiles]);
+    setDocumentText((previous) => [...previous, ...nextText]);
+
+    if (skippedCount > 0) {
+      setMessage({ type: "warning", text: `Added ${accepted.length} file${accepted.length === 1 ? "" : "s"}; skipped ${skippedCount} because the campaign limit is 12.` });
+    } else if (extractionFailures > 0) {
+      setMessage({ type: "warning", text: `Added the files, but ${extractionFailures} text file${extractionFailures === 1 ? "" : "s"} could not be extracted in this browser.` });
+    } else if (nextText.length === 0) {
+      setMessage({ type: "warning", text: "The files were added as asset references only. Add a written brief because visual analysis is not enabled in this route yet." });
+    }
     event.target.value = "";
   }
 
@@ -755,7 +799,7 @@ export default function Home() {
         }),
       });
 
-      const data = await response.json();
+      const data = await readJsonResponse(response, "SignalFlow returned an unreadable generation response.");
       if (!response.ok || data.ok === false) {
         throw new Error(data.error || "SignalFlow could not generate this campaign.");
       }
@@ -795,11 +839,16 @@ export default function Home() {
       result,
       brief: { ...form, apiKey: "" },
       publishOptions,
+      ...createSourceSnapshot(files, documentText),
     };
     const next = [item, ...library.filter((entry) => entry.title !== item.title)].slice(0, 30);
-    setLibrary(next);
-    window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
-    setMessage({ type: "success", text: "Campaign saved to your local library." });
+    try {
+      window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+      setLibrary(next);
+      setMessage({ type: "success", text: "Campaign saved to your local library." });
+    } catch {
+      setMessage({ type: "error", text: "The browser could not save this campaign. Export it before leaving this page." });
+    }
   }
 
   function openCampaign(item) {
@@ -808,15 +857,23 @@ export default function Home() {
     setPosts(item.posts || {});
     setResult(item.result || { markdown: item.markdown, warnings: item.warnings || [] });
     setPublishOptions(item.publishOptions || { reddit: { subreddit: "", title: "" } });
+    const restoredSource = restoreSourceSnapshot(item);
+    setFiles(restoredSource.sourceFiles);
+    setDocumentText(restoredSource.documentText);
     setActiveChannel((item.channels || ["linkedin"])[0]);
     setStage("review");
     navigateSection("studio");
   }
 
   function deleteCampaign(id) {
+    if (!window.confirm("Delete this saved campaign from the current browser?")) return;
     const next = library.filter((item) => item.id !== id);
-    setLibrary(next);
-    window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+    try {
+      window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+      setLibrary(next);
+    } catch {
+      setMessage({ type: "error", text: "The browser could not update the local campaign library." });
+    }
   }
 
   async function copyCurrentPost(showMessage = true) {
@@ -846,22 +903,26 @@ export default function Home() {
   }
 
   async function copyAndOpenCurrent() {
+    let openedWindow = null;
+    if (activeMeta.openUrl) {
+      openedWindow = window.open(activeMeta.openUrl, "_blank");
+      if (openedWindow) openedWindow.opener = null;
+    }
+
     const copied = await copyCurrentPost(false);
     if (!copied) return;
 
     if (activeMeta.openUrl) {
-      window.open(activeMeta.openUrl, "_blank", "noopener,noreferrer");
       setMessage({
-        type: "success",
-        text: `${activeMeta.label} draft copied. The platform was opened in a new tab.`,
+        type: openedWindow ? "success" : "warning",
+        text: openedWindow
+          ? `${activeMeta.label} draft copied. The platform was opened in a new tab.`
+          : `${activeMeta.label} draft copied, but the browser blocked the new tab. Open the platform manually.`,
       });
       return;
     }
 
-    setMessage({
-      type: "success",
-      text: `${activeMeta.label} draft copied. Paste it into your publishing tool.`,
-    });
+    setMessage({ type: "success", text: `${activeMeta.label} draft copied. Paste it into your publishing tool.` });
   }
 
   function exportMarkdown() {
@@ -952,7 +1013,7 @@ export default function Home() {
           options,
         }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "SignalFlow returned an unreadable publishing response.");
       if (!data.ok) throw new Error(data.error || "The platform did not confirm publication.");
       setMessage({
         type: "success",
@@ -971,7 +1032,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/social/status", { headers: authHeaders() });
       if (!response.ok) throw new Error("Owner access is required to inspect official connectors.");
-      const data = await response.json();
+      const data = await readJsonResponse(response, "SignalFlow returned an unreadable connector response.");
       setConnections(data.platforms || {});
     } catch {
       setConnections({});
@@ -1001,7 +1062,7 @@ export default function Home() {
         headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ platform }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "SignalFlow returned an unreadable disconnect response.");
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "Could not disconnect this account.");
       }
@@ -1024,16 +1085,15 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ access_key: ownerKey.trim() }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response, "SignalFlow returned an unreadable session response.");
       if (!response.ok) throw new Error(data.error || "The owner key was not accepted.");
-      window.localStorage.setItem(ACCESS_TOKEN_KEY, data.token || "");
-      setAccessToken(data.token || "");
+      setAccessToken(data.authenticated ? "cookie-session" : "");
+      window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+      window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
       setOwnerKey("");
       setMessage({
         type: "success",
-        text: data.locked === false
-          ? "Access lock is disabled for this deployment."
-          : "Owner session unlocked.",
+        text: data.locked === false ? "Access lock is disabled for this deployment." : "Owner session unlocked.",
       });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
@@ -1044,7 +1104,8 @@ export default function Home() {
 
   async function lockOwnerSession() {
     await fetch("/api/session", { method: "DELETE" }).catch(() => null);
-    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+    window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     setAccessToken("");
     setConnections({});
     setMessage({ type: "success", text: "Owner session closed." });
@@ -1380,7 +1441,9 @@ export default function Home() {
                     </div>
                     <p>
                       {composeReady
-                        ? "SignalFlow has enough context to build editable drafts. You remain in control of every output and publishing step."
+                        ? form.provider === "template"
+                          ? "Ready to test the workflow. Local sample mode is deterministic and intentionally limited; choose a model provider for production-quality content."
+                          : "SignalFlow has enough context to build editable drafts. You remain in control of every output and publishing step."
                         : "Add a brief, public link, repository, or extractable text file. Keep the first run simple; advanced model controls can stay closed."}
                     </p>
                     <div className="compose-readiness__metrics">
@@ -1813,7 +1876,7 @@ export default function Home() {
                         className="connector-action connector-action--quiet"
                         onClick={() => {
                           navigateSection("studio");
-                          setStage(result ? "review" : "compose");
+                          setStage(result ? "review" : sourceSignals > 0 ? "destinations" : "source");
                           if (!channels.includes(channel.id)) {
                             setChannels((previous) => [...previous, channel.id]);
                           }

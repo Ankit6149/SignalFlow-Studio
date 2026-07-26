@@ -4,6 +4,7 @@ import "../app/living-ui.css";
 import "../app/living-ui-tuning.css";
 import "../app/professional-polish.css";
 import "../app/app-workspace.css";
+import "../app/ui-containment.css";
 import SessionBridge from "../components/SessionBridge";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";

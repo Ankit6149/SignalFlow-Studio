@@ -17,38 +17,46 @@ export async function generateOllama(prompt, modelOverride = null, config = {}) 
         content: prompt
       }
     ],
-    format: "json", // Ollama native format specification
+    format: "json",
     response_format: {
       type: "json_object"
     },
+    max_tokens: config.maxTokens || 3000,
     temperature: 0.2
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout for local running SLMs
+  const timeoutId = setTimeout(() => controller.abort(), 55000);
 
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body),
-    signal: controller.signal
-  });
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
 
-  clearTimeout(timeoutId);
+    if (!resp.ok) {
+      const errorDetails = await resp.text();
+      throw new Error(`Ollama response failed (HTTP ${resp.status}): ${errorDetails}`);
+    }
 
-  if (!resp.ok) {
-    const errorDetails = await resp.text();
-    throw new Error(`Ollama response failed (HTTP ${resp.status}): ${errorDetails}`);
+    const data = await resp.json();
+    const rawText = data?.choices?.[0]?.message?.content;
+
+    if (!rawText) {
+      throw new Error("Empty chat content returned by local Ollama.");
+    }
+
+    return rawText;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Local Ollama generation timed out after 55 seconds.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await resp.json();
-  const rawText = data?.choices?.[0]?.message?.content;
-
-  if (!rawText) {
-    throw new Error("Empty chat content returned by local Ollama.");
-  }
-
-  return rawText;
 }

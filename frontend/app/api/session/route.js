@@ -5,20 +5,28 @@ import {
   requireOwnerAccess,
 } from "../_auth";
 
+export async function GET(request) {
+  const locked = Boolean(process.env.SIGNALFLOW_ACCESS_KEY);
+  return new Response(
+    JSON.stringify({
+      authenticated: requireOwnerAccess(request) === null,
+      locked,
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
 export async function POST(request) {
   const expected = process.env.SIGNALFLOW_ACCESS_KEY;
 
   if (!expected) {
     return new Response(
       JSON.stringify({
-        token: "",
+        authenticated: true,
         locked: false,
         message: "Access lock is disabled for this deployment.",
       }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -43,10 +51,9 @@ export async function POST(request) {
   const token = createSessionToken();
   return new Response(
     JSON.stringify({
-      token,
-      token_type: "Bearer",
+      authenticated: true,
+      locked: true,
       expires_in_days: 30,
-      synchronized: !accessKeyAccepted,
     }),
     {
       status: 200,

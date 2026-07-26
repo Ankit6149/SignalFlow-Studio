@@ -1,5 +1,6 @@
 name: Apply public product reliability fixes
 
+# This follow-up push triggers the workflow after it is registered on the branch.
 on:
   push:
     branches: [audit/public-product-reliability]

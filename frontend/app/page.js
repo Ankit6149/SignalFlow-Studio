@@ -12,6 +12,13 @@ import {
   evaluateProviderReadiness,
   pickRecommendedProvider,
 } from "../lib/studio/providerReadiness.mjs";
+import {
+  createGenerationRun,
+  createGenerationSourceSnapshot,
+  getCampaignFreshness,
+  getGenerationSourceChanges,
+  restoreGenerationRun,
+} from "../lib/studio/campaignFreshness.mjs";
 
 const LEGACY_ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
@@ -539,6 +546,7 @@ export default function Home() {
   const [files, setFiles] = useState([]);
   const [documentText, setDocumentText] = useState([]);
   const [result, setResult] = useState(null);
+  const [generationRun, setGenerationRun] = useState(null);
   const [posts, setPosts] = useState({});
   const [activeChannel, setActiveChannel] = useState("linkedin");
   const [busy, setBusy] = useState(false);
@@ -563,8 +571,28 @@ export default function Home() {
   const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
   const currentConnection = connections[activeChannel] || null;
+  const currentSourceSnapshot = useMemo(
+    () =>
+      createGenerationSourceSnapshot(
+        { form, channels, files, documentText },
+        { createdAt: null },
+      ),
+    [form, channels, files, documentText],
+  );
+  const campaignFreshness = getCampaignFreshness({
+    hasResult: Boolean(result),
+    currentSourceFingerprint: currentSourceSnapshot.fingerprint,
+    generationRun,
+  });
+  const isCampaignStale = campaignFreshness.isStale;
+  const sourceChangeLabels = isCampaignStale
+    ? getGenerationSourceChanges(generationRun?.sourceSnapshot, currentSourceSnapshot)
+    : [];
   const canPublishCurrent = Boolean(
-    currentConnection?.connected && !currentConnection?.expired && !currentConnection?.manualOnly,
+    campaignFreshness.canUseCurrentGeneration &&
+      currentConnection?.connected &&
+      !currentConnection?.expired &&
+      !currentConnection?.manualOnly,
   );
   const xThreadParts = activeChannel === "x"
     ? currentPost.split(/\n\n+/).map((part) => part.trim()).filter(Boolean)
@@ -725,6 +753,13 @@ export default function Home() {
     }));
   }
 
+  function reportStaleCampaign() {
+    setMessage({
+      type: "warning",
+      text: "Source inputs changed after generation. Regenerate the campaign before copying, exporting, or publishing these drafts.",
+    });
+  }
+
   function navigateStudioFlow(targetStage) {
     const nextStage = resolveStudioStage(targetStage, {
       hasSource: sourceSignals > 0,
@@ -840,6 +875,13 @@ export default function Home() {
       return;
     }
 
+    const requestedSourceSnapshot = createGenerationSourceSnapshot({
+      form,
+      channels,
+      files,
+      documentText,
+    });
+
     setBusy(true);
     setMessage(null);
     try {
@@ -874,6 +916,13 @@ export default function Home() {
       }
 
       const generatedPosts = data.posts || {};
+      const nextGenerationRun = createGenerationRun({
+        sourceSnapshot: requestedSourceSnapshot,
+        response: data,
+        provider: form.provider,
+        model: form.model.trim(),
+      });
+      setGenerationRun(nextGenerationRun);
       setResult(data);
       setPosts(generatedPosts);
       setActiveChannel(channels.find((channel) => generatedPosts[channel]) || channels[0]);
@@ -912,6 +961,7 @@ export default function Home() {
       warnings: result.warnings || [],
       markdown: result.markdown || "",
       result,
+      generationRun,
       brief: { ...form, apiKey: "" },
       publishOptions,
       ...createSourceSnapshot(files, documentText),
@@ -927,12 +977,18 @@ export default function Home() {
   }
 
   function openCampaign(item) {
+    const restoredSource = restoreSourceSnapshot(item);
+    const restoredRun = restoreGenerationRun({
+      ...item,
+      sourceFiles: restoredSource.sourceFiles,
+      documentText: restoredSource.documentText,
+    });
     setForm((previous) => ({ ...previous, ...(item.brief || {}), apiKey: "" }));
     setChannels(item.channels || ["linkedin"]);
     setPosts(item.posts || {});
     setResult(item.result || { markdown: item.markdown, warnings: item.warnings || [] });
+    setGenerationRun(restoredRun);
     setPublishOptions(item.publishOptions || { reddit: { subreddit: "", title: "" } });
-    const restoredSource = restoreSourceSnapshot(item);
     setFiles(restoredSource.sourceFiles);
     setDocumentText(restoredSource.documentText);
     setActiveChannel((item.channels || ["linkedin"])[0]);
@@ -952,6 +1008,10 @@ export default function Home() {
   }
 
   async function copyCurrentPost(showMessage = true) {
+    if (isCampaignStale) {
+      reportStaleCampaign();
+      return false;
+    }
     if (!currentPost) return false;
     try {
       if (navigator.clipboard?.writeText) {
@@ -978,6 +1038,10 @@ export default function Home() {
   }
 
   async function copyAndOpenCurrent() {
+    if (isCampaignStale) {
+      reportStaleCampaign();
+      return;
+    }
     let openedWindow = null;
     if (activeMeta.openUrl) {
       openedWindow = window.open(activeMeta.openUrl, "_blank");
@@ -1001,6 +1065,10 @@ export default function Home() {
   }
 
   function exportMarkdown() {
+    if (isCampaignStale) {
+      reportStaleCampaign();
+      return;
+    }
     const name = (form.projectName || "signalflow-campaign")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -1017,6 +1085,10 @@ export default function Home() {
   }
 
   function exportJson() {
+    if (isCampaignStale) {
+      reportStaleCampaign();
+      return;
+    }
     const name = (form.projectName || "signalflow-campaign")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -1029,6 +1101,10 @@ export default function Home() {
   }
 
   async function publishCurrentPost() {
+    if (isCampaignStale) {
+      reportStaleCampaign();
+      return;
+    }
     if (!currentPost) return;
     if (!canPublishCurrent) {
       if (OFFICIAL_CONNECTORS.has(activeChannel)) {
@@ -1233,7 +1309,12 @@ export default function Home() {
       )}
 
       {section === "studio" && (
-        <main className="studio-page" id="workspace-content" data-stage={stage}>
+        <main
+          className="studio-page"
+          id="workspace-content"
+          data-stage={stage}
+          data-freshness={campaignFreshness.status}
+        >
           <header className="studio-heading">
             <div>
               <p className="eyebrow eyebrow--dark">
@@ -1551,7 +1632,25 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <div className="review-workspace">
+                <div className={`review-workspace ${isCampaignStale ? "has-stale-campaign" : ""}`}>
+                  {isCampaignStale && (
+                    <div className="campaign-stale-banner" role="alert" aria-live="assertive">
+                      <div className="campaign-stale-banner__copy">
+                        <span className="campaign-stale-banner__label">Source changed</span>
+                        <strong>These drafts belong to an earlier campaign snapshot.</strong>
+                      </div>
+                      <p>
+                        Review remains available, but SignalFlow blocks copy, export, and publishing until the
+                        campaign is regenerated from the current source.
+                      </p>
+                      {sourceChangeLabels.length > 0 && (
+                        <small>Changed: {sourceChangeLabels.join(", ")}.</small>
+                      )}
+                      <button type="button" onClick={() => navigateStudioFlow("destinations")}>
+                        Review changes
+                      </button>
+                    </div>
+                  )}
                   <div className="review-tabs" aria-label="Campaign channels">
                     {channels.map((channelId) => {
                       const meta = channelMeta(channelId);
@@ -1584,12 +1683,22 @@ export default function Home() {
                         <strong>{activeMeta.label} draft</strong>
                         <span>{activeMeta.tone}</span>
                       </div>
-                      <span className={`connection-badge ${canPublishCurrent ? "connection-badge--ready" : ""}`}>
-                        {canPublishCurrent
-                          ? "Direct publishing"
-                          : OFFICIAL_CONNECTORS.has(activeChannel)
-                            ? "Connector optional"
-                            : "Export ready"}
+                      <span
+                        className={`connection-badge ${
+                          isCampaignStale
+                            ? "connection-badge--stale"
+                            : canPublishCurrent
+                              ? "connection-badge--ready"
+                              : ""
+                        }`}
+                      >
+                        {isCampaignStale
+                          ? "Source changed"
+                          : canPublishCurrent
+                            ? "Direct publishing"
+                            : OFFICIAL_CONNECTORS.has(activeChannel)
+                              ? "Connector optional"
+                              : "Export ready"}
                       </span>
                     </header>
 
@@ -1629,7 +1738,18 @@ export default function Home() {
                     <h3>{activeMeta.label}</h3>
                     <dl>
                       <div><dt>Voice</dt><dd>{activeMeta.tone}</dd></div>
-                      <div><dt>Route</dt><dd>{canPublishCurrent ? "Connected official API" : OFFICIAL_CONNECTORS.has(activeChannel) ? "Official connector available; manual handoff remains available" : "Review, copy, export, and open-platform handoff"}</dd></div>
+                      <div>
+                        <dt>Route</dt>
+                        <dd>
+                          {isCampaignStale
+                            ? "Blocked until regeneration from the current source"
+                            : canPublishCurrent
+                              ? "Connected official API"
+                              : OFFICIAL_CONNECTORS.has(activeChannel)
+                                ? "Official connector available; manual handoff remains available"
+                                : "Review, copy, export, and open-platform handoff"}
+                        </dd>
+                      </div>
                       <div><dt>Length</dt><dd>{xThreadMode ? `${xThreadParts.length} posts; longest is ${xLongestPart} of ${activeMeta.limit} characters` : activeMeta.limit ? `${currentPost.length.toLocaleString()} of ${activeMeta.limit.toLocaleString()} characters` : `${currentPost.length.toLocaleString()} characters; no fixed guide`}</dd></div>
                       <div><dt>Campaign context</dt><dd>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}, {files.length} attached file{files.length === 1 ? "" : "s"}</dd></div>
                     </dl>
@@ -1657,7 +1777,11 @@ export default function Home() {
                   </aside>
 
                   <div className="review-actions">
-                    <button className="button button--outline" onClick={() => copyCurrentPost()}>
+                    <button
+                      className="button button--outline"
+                      onClick={() => copyCurrentPost()}
+                      disabled={isCampaignStale || !currentPost}
+                    >
                       <CopyIcon /> Copy draft
                     </button>
                     <button className="button button--outline" onClick={saveCampaign}>
@@ -1666,13 +1790,15 @@ export default function Home() {
                     <button
                       className="button button--dark"
                       onClick={canPublishCurrent ? publishCurrentPost : copyAndOpenCurrent}
-                      disabled={busy || !currentPost}
+                      disabled={busy || !currentPost || isCampaignStale}
                     >
-                      {canPublishCurrent
-                        ? "Publish approved draft"
-                        : activeMeta.openUrl
-                          ? `Copy & open ${activeMeta.label}`
-                          : "Copy approved draft"}
+                      {isCampaignStale
+                        ? "Regenerate to continue"
+                        : canPublishCurrent
+                          ? "Publish approved draft"
+                          : activeMeta.openUrl
+                            ? `Copy & open ${activeMeta.label}`
+                            : "Copy approved draft"}
                       <ArrowIcon />
                     </button>
                   </div>
@@ -1703,8 +1829,8 @@ export default function Home() {
                       <strong>Take the full campaign with you</strong>
                       <span>Export every selected draft and the generation metadata.</span>
                     </div>
-                    <button onClick={exportMarkdown}>Markdown</button>
-                    <button onClick={exportJson}>JSON</button>
+                    <button onClick={exportMarkdown} disabled={isCampaignStale}>Markdown</button>
+                    <button onClick={exportJson} disabled={isCampaignStale}>JSON</button>
                   </div>
                 </div>
               )}

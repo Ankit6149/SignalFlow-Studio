@@ -6,6 +6,7 @@ import "../app/professional-polish.css";
 import "../app/app-workspace.css";
 import "../app/ui-containment.css";
 import "../app/studio-product.css";
+import "../app/campaign-freshness.css";
 import SessionBridge from "../components/SessionBridge";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";

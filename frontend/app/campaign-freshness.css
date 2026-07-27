@@ -1,0 +1,99 @@
+.app-shell .review-workspace.has-stale-campaign .review-tabs {
+  grid-row: 2 / span 8;
+}
+
+.app-shell .campaign-stale-banner {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  padding: 1rem 1.1rem;
+  border: 0.0625rem solid #e2d2ad;
+  border-radius: var(--app-radius);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem 1.25rem;
+  background: var(--app-warning-soft);
+  color: var(--app-ink);
+}
+
+.app-shell .campaign-stale-banner__copy {
+  min-width: 0;
+}
+
+.app-shell .campaign-stale-banner__label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--app-warning);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.app-shell .campaign-stale-banner strong {
+  display: block;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.app-shell .campaign-stale-banner p,
+.app-shell .campaign-stale-banner small {
+  grid-column: 1;
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.app-shell .campaign-stale-banner small {
+  color: var(--app-warning);
+  font-weight: 650;
+}
+
+.app-shell .campaign-stale-banner button {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  min-height: 2.5rem;
+  padding: 0.6rem 0.85rem;
+  border: 0.0625rem solid #cfbb8d;
+  border-radius: 0.45rem;
+  background: #fffdf7;
+  color: var(--app-ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.app-shell .campaign-stale-banner button:hover {
+  border-color: var(--app-warning);
+  background: #fff;
+}
+
+.app-shell .connection-badge--stale {
+  border-color: #e2d2ad;
+  background: var(--app-warning-soft);
+  color: var(--app-warning);
+}
+
+.app-shell .export-row button:disabled,
+.app-shell .review-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 48rem) {
+  .app-shell .campaign-stale-banner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .campaign-stale-banner p,
+  .app-shell .campaign-stale-banner small,
+  .app-shell .campaign-stale-banner button {
+    grid-column: 1;
+  }
+
+  .app-shell .campaign-stale-banner button {
+    grid-row: auto;
+    justify-self: start;
+  }
+}

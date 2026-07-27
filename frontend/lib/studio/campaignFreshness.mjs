@@ -69,7 +69,6 @@ export function normalizeGenerationSource({ form = {}, channels = [], files = []
       name: normalizeText(file?.name),
       type: normalizeText(file?.type || "file").toLowerCase(),
       size: Math.max(0, Number(file?.size) || 0),
-      extracted: Boolean(file?.extracted),
       description: normalizeText(file?.description),
     })),
   );
@@ -77,7 +76,7 @@ export function normalizeGenerationSource({ form = {}, channels = [], files = []
   return {
     schemaVersion: CAMPAIGN_STATE_SCHEMA_VERSION,
     campaign: {
-      projectName: normalizeText(form.projectName),
+      projectName: normalizeText(form.projectName) || "Untitled campaign",
       notes: normalizeText(form.notes),
       audience: normalizeText(form.audience),
       links: normalizeText(form.links),
@@ -143,10 +142,16 @@ export function createGenerationRun({
 
 export function restoreGenerationRun(item) {
   const stored = item?.generationRun;
+  const storedSnapshot = stored?.sourceSnapshot;
+  const storedFingerprint = storedSnapshot?.normalizedSource
+    ? createSourceFingerprint(storedSnapshot.normalizedSource)
+    : "";
   if (
+    stored?.schemaVersion === CAMPAIGN_STATE_SCHEMA_VERSION &&
+    storedSnapshot?.schemaVersion === CAMPAIGN_STATE_SCHEMA_VERSION &&
     stored?.sourceFingerprint &&
-    stored?.sourceSnapshot?.fingerprint === stored.sourceFingerprint &&
-    stored?.sourceSnapshot?.normalizedSource
+    storedSnapshot?.fingerprint === stored.sourceFingerprint &&
+    storedFingerprint === stored.sourceFingerprint
   ) {
     return stored;
   }

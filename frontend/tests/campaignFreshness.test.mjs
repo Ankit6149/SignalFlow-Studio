@@ -53,7 +53,10 @@ const changes = [
   ["model", (input) => { input.form.model = "gpt-5"; }],
   ["endpoint", (input) => { input.form.baseUrl = "https://gateway.example/v1"; }],
   ["document text", (input) => { input.documentText[0] += "\nNew evidence"; }],
-  ["attached files", (input) => { input.files[0].description = "Updated reference"; }],
+  ["attached file name", (input) => { input.files[0].name = "launch-brief.md"; }],
+  ["attached file type", (input) => { input.files[0].type = "text/plain"; }],
+  ["attached file size", (input) => { input.files[0].size = 43; }],
+  ["attached file description", (input) => { input.files[0].description = "Updated reference"; }],
 ];
 
 for (const [label, mutate] of changes) {
@@ -70,6 +73,21 @@ test("temporary API key changes do not invalidate generated content", () => {
   const original = fingerprint(input);
   input.form.apiKey = "a-different-temporary-secret";
   assert.equal(fingerprint(input), original);
+});
+
+test("browser-only extraction metadata does not invalidate generated content", () => {
+  const input = baseInput();
+  const original = fingerprint(input);
+  input.files[0].extracted = false;
+  assert.equal(fingerprint(input), original);
+});
+
+test("an empty campaign name matches the request payload's Untitled campaign default", () => {
+  const unnamed = baseInput();
+  unnamed.form.projectName = "";
+  const explicit = baseInput();
+  explicit.form.projectName = "Untitled campaign";
+  assert.equal(fingerprint(unnamed), fingerprint(explicit));
 });
 
 test("normalization keeps equivalent whitespace, line endings, destination order, and trailing slashes stable", () => {
@@ -128,6 +146,32 @@ test("generation run and source snapshot survive save and reopen deterministical
     }).status,
     "current",
   );
+});
+
+test("tampered stored freshness metadata is rebuilt from the saved campaign source", () => {
+  const input = baseInput();
+  const sourceSnapshot = createGenerationSourceSnapshot(input, { createdAt: "2026-07-27T00:00:00.000Z" });
+  const generationRun = createGenerationRun({
+    sourceSnapshot,
+    generationRunId: "request-123",
+    createdAt: "2026-07-27T00:00:01.000Z",
+  });
+  generationRun.sourceSnapshot.normalizedSource.campaign.notes = "Tampered notes";
+
+  const restored = restoreGenerationRun({
+    id: "campaign-saved",
+    updatedAt: "2026-07-27T00:00:02.000Z",
+    brief: { ...input.form, apiKey: "" },
+    channels: input.channels,
+    sourceFiles: input.files,
+    documentText: input.documentText,
+    posts: { linkedin: "Saved post" },
+    result: { providerUsed: "gemini" },
+    generationRun,
+  });
+
+  assert.equal(restored.generationRunId, "legacy-campaign-saved");
+  assert.equal(restored.sourceFingerprint, fingerprint(input));
 });
 
 test("legacy saved campaigns receive a deterministic generation run without persisting an API key", () => {

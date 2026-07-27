@@ -10,6 +10,8 @@ import { fetchUrlContent } from "../../../lib/context/linkFetcher";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 
+const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
+
 export const maxDuration = 60;
 
 export async function POST(request) {
@@ -32,6 +34,16 @@ export async function POST(request) {
       });
     }
     const providerApiKey = normalizeTextInput(body.providerApiKey);
+
+    if (!isOwner && OWNER_ONLY_ENDPOINT_PROVIDERS.has(generator)) {
+      return accessError || new Response(JSON.stringify({
+        ok: false,
+        error: "Custom and local model endpoints require an authenticated owner session.",
+      }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     if (!isOwner && Boolean(process.env.SIGNALFLOW_ACCESS_KEY) && !providerApiKey) {
       return new Response(
@@ -77,6 +89,22 @@ export async function POST(request) {
     const providerModelName = normalizeTextInput(body.providerModelName);
     const providerBaseUrl = normalizeTextInput(body.providerBaseUrl);
     const documentText = normalizeDocumentText(body.document_text);
+
+    const publicHosted = process.env.SIGNALFLOW_PUBLIC_HOSTED === "true" || Boolean(process.env.VERCEL);
+    const configuredLocalBaseUrl = generator === "ollama"
+      ? normalizeTextInput(process.env.OLLAMA_BASE_URL)
+      : generator === "lmstudio"
+        ? normalizeTextInput(process.env.LMSTUDIO_BASE_URL)
+        : "";
+    if (["ollama", "lmstudio"].includes(generator) && publicHosted && !providerBaseUrl && !configuredLocalBaseUrl) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "This hosted deployment needs a reachable model base URL. A browser-local localhost endpoint cannot be reached from the server.",
+      }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const warnings = [];
     let repoContext = null;

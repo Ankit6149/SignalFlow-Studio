@@ -83,7 +83,7 @@ export const PROVIDERS = {
     description: "Local model running via Ollama Desktop. Requires local server running.",
     isLocal: true,
     isFree: true,
-    isConfigured: () => true, // Ollama doesn't require a key
+    isConfigured: () => true,
     defaultModel: process.env.DEFAULT_MODEL_NAME || "llama3",
     requiredEnv: ["OLLAMA_BASE_URL"],
     canTest: true,
@@ -95,7 +95,7 @@ export const PROVIDERS = {
     description: "Local model running via LM Studio client. Requires local server running.",
     isLocal: true,
     isFree: true,
-    isConfigured: () => true, // LM Studio doesn't require a key
+    isConfigured: () => true,
     defaultModel: process.env.DEFAULT_MODEL_NAME || "any",
     requiredEnv: ["LMSTUDIO_BASE_URL"],
     canTest: true,
@@ -111,23 +111,24 @@ export const PROVIDERS = {
     defaultModel: process.env.DEFAULT_MODEL_NAME || "custom-model",
     requiredEnv: ["CUSTOM_OPENAI_BASE_URL", "CUSTOM_OPENAI_API_KEY"],
     canTest: true,
+    supportsTemporaryKey: true
   }
 };
 
 export function getProviderApiKey(providerKey, config = {}) {
-  // If public hosted mode is enabled, strictly require client-supplied keys
-  if (process.env.SIGNALFLOW_PUBLIC_HOSTED === "true") {
-    return config.apiKey || "";
-  }
-  
-  // Otherwise, allow fallback to server environment variables
+  const temporaryKey = String(config.apiKey || "").trim();
+  if (temporaryKey) return temporaryKey;
+
+  const publicHosted = process.env.SIGNALFLOW_PUBLIC_HOSTED === "true";
+  if (publicHosted && !config.allowServerKey) return "";
+
   switch (providerKey) {
-    case "openai": return config.apiKey || process.env.OPENAI_API_KEY || "";
-    case "claude": return config.apiKey || process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || "";
-    case "gemini": return config.apiKey || process.env.GEMINI_API_KEY || "";
-    case "groq": return config.apiKey || process.env.GROQ_API_KEY || "";
-    case "openrouter": return config.apiKey || process.env.OPENROUTER_API_KEY || "";
-    case "custom": return config.apiKey || process.env.CUSTOM_OPENAI_API_KEY || "";
-    default: return config.apiKey || "";
+    case "openai": return process.env.OPENAI_API_KEY || "";
+    case "claude": return process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || "";
+    case "gemini": return process.env.GEMINI_API_KEY || "";
+    case "groq": return process.env.GROQ_API_KEY || "";
+    case "openrouter": return process.env.OPENROUTER_API_KEY || "";
+    case "custom": return process.env.CUSTOM_OPENAI_API_KEY || "";
+    default: return "";
   }
 }

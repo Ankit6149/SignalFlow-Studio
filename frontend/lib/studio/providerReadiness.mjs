@@ -43,10 +43,17 @@ export function evaluateProviderReadiness({ provider, apiKey = "", baseUrl = "",
   }
 
   if (LOCAL_PROVIDERS.has(id)) {
+    if (status?.requiresBaseUrl && !hasBaseUrl) {
+      return {
+        ready: false,
+        reason: "This hosted deployment cannot reach your laptop automatically. Add a reachable trusted endpoint or run SignalFlow locally.",
+        source: "missing",
+      };
+    }
     return {
       ready: true,
       reason: hasBaseUrl
-        ? "Local endpoint supplied. Test it before generation."
+        ? "Model endpoint supplied. Test it before generation."
         : "Uses the provider default local endpoint. Test it before generation.",
       source: "local",
     };

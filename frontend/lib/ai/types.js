@@ -83,7 +83,9 @@ export const PROVIDERS = {
     description: "Local model running via Ollama Desktop. Requires local server running.",
     isLocal: true,
     isFree: true,
-    isConfigured: () => true,
+    isConfigured: () => Boolean(process.env.OLLAMA_BASE_URL) || (
+      !process.env.VERCEL && process.env.SIGNALFLOW_PUBLIC_HOSTED !== "true"
+    ),
     defaultModel: process.env.DEFAULT_MODEL_NAME || "llama3",
     requiredEnv: ["OLLAMA_BASE_URL"],
     canTest: true,
@@ -95,7 +97,9 @@ export const PROVIDERS = {
     description: "Local model running via LM Studio client. Requires local server running.",
     isLocal: true,
     isFree: true,
-    isConfigured: () => true,
+    isConfigured: () => Boolean(process.env.LMSTUDIO_BASE_URL) || (
+      !process.env.VERCEL && process.env.SIGNALFLOW_PUBLIC_HOSTED !== "true"
+    ),
     defaultModel: process.env.DEFAULT_MODEL_NAME || "any",
     requiredEnv: ["LMSTUDIO_BASE_URL"],
     canTest: true,

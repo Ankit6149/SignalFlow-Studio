@@ -6,7 +6,10 @@ import {
   isForbiddenGenerationMode,
   pickRecommendedProvider,
 } from "../lib/studio/providerReadiness.mjs";
-import { assertModelGenerationProvider } from "../lib/ai/generationPolicy.mjs";
+import {
+  assertModelGenerationProvider,
+  canUseServerProviderConfiguration,
+} from "../lib/ai/generationPolicy.mjs";
 
 test("template and prompt-only modes are rejected", () => {
   for (const provider of ["", "template", "offline", "prompt"]) {
@@ -24,10 +27,40 @@ test("configured server providers are ready without exposing a key", () => {
   assert.equal(result.source, "server");
 });
 
+test("hosted server keys remain owner-only", () => {
+  assert.equal(
+    canUseServerProviderConfiguration({ publicHosted: true, allowServerKey: false }),
+    false,
+  );
+  assert.equal(
+    canUseServerProviderConfiguration({ publicHosted: true, allowServerKey: true }),
+    true,
+  );
+  assert.equal(
+    canUseServerProviderConfiguration({ publicHosted: false, allowServerKey: false }),
+    true,
+  );
+});
+
 test("cloud providers require server configuration or a temporary key", () => {
   assert.equal(evaluateProviderReadiness({ provider: "gemini" }).ready, false);
   assert.equal(
     evaluateProviderReadiness({ provider: "gemini", apiKey: "temporary-key" }).ready,
+    true,
+  );
+});
+
+test("hosted local providers require a reachable endpoint", () => {
+  assert.equal(
+    evaluateProviderReadiness({ provider: "ollama", status: { requiresBaseUrl: true } }).ready,
+    false,
+  );
+  assert.equal(
+    evaluateProviderReadiness({
+      provider: "ollama",
+      baseUrl: "https://trusted-model.example/v1",
+      status: { requiresBaseUrl: true },
+    }).ready,
     true,
   );
 });

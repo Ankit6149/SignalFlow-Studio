@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   integrate:
@@ -38,40 +39,59 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Apply source transformation
+        id: transform
         if: steps.integration.outputs.run == 'true'
-        run: node scripts/apply-campaign-freshness.mjs
+        continue-on-error: true
+        shell: bash
+        run: node scripts/apply-campaign-freshness.mjs > integration-diagnostics.txt 2>&1
+
+      - name: Report transformation failure
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo "### Campaign freshness integration diagnostic"
+            echo
+            echo '```text'
+            cat integration-diagnostics.txt
+            echo '```'
+          } > integration-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file integration-comment.md
+          exit 1
 
       - name: Install frontend dependencies
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         working-directory: frontend
         run: npm ci
 
       - name: Run frontend regression tests
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         working-directory: frontend
         run: npm test
 
       - name: Audit frontend production dependencies
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
 
       - name: Build frontend
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         working-directory: frontend
         run: npm run build
 
       - name: Run MCP tests
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         working-directory: mcp
         run: npm test
 
       - name: Remove temporary integration files
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         run: rm .github/workflows/apply-campaign-freshness.yml scripts/apply-campaign-freshness.mjs
 
       - name: Commit verified integration
-        if: steps.integration.outputs.run == 'true'
+        if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"

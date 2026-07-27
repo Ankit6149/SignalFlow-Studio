@@ -33,21 +33,18 @@ export async function POST(request) {
     }
     const providerApiKey = normalizeTextInput(body.providerApiKey);
 
-    if (!isOwner && Boolean(process.env.SIGNALFLOW_ACCESS_KEY)) {
-      if (!providerApiKey) {
-        return new Response(
-          JSON.stringify({
-            error: "This hosted workspace is private. Enter the owner's access key or supply your own personal API key in settings to use cloud providers.",
-          }),
-          {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-      }
+    if (!isOwner && Boolean(process.env.SIGNALFLOW_ACCESS_KEY) && !providerApiKey) {
+      return new Response(
+        JSON.stringify({
+          error: "This hosted workspace is private. Enter the owner's access key or supply your own personal API key to use a cloud provider.",
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
-    // 1. Validate inputs
     const validation = validateGenerationInputs(body);
     if (!validation.valid) {
       return new Response(JSON.stringify({
@@ -85,10 +82,8 @@ export async function POST(request) {
     let repoContext = null;
     const linksContext = [];
     const mediaItems = Array.isArray(body.media_items) ? [...body.media_items] : [];
-
     const githubToken = normalizeTextInput(body.github_token) || normalizeTextInput(body.githubToken);
 
-    // 2. Perform Repository Ingestion if repo URL or local path provided
     if (repoUrl) {
       try {
         const isLocal = !repoUrl.includes("github.com") &&
@@ -99,45 +94,36 @@ export async function POST(request) {
            repoUrl.startsWith(".") ||
            (!repoUrl.includes("http://") && !repoUrl.includes("https://")));
 
-        if (isLocal) {
-          repoContext = await ingestLocalRepo(repoUrl);
-        } else {
-          repoContext = await ingestGitHubRepo(repoUrl, githubToken);
-        }
-        if (repoContext?.warnings?.length) {
-          warnings.push(...repoContext.warnings);
-        }
-      } catch (err) {
-        warnings.push(`Repository ingestion failed: ${err.message}. Generating with available inputs.`);
+        repoContext = isLocal
+          ? await ingestLocalRepo(repoUrl)
+          : await ingestGitHubRepo(repoUrl, githubToken);
+
+        if (repoContext?.warnings?.length) warnings.push(...repoContext.warnings);
+      } catch (error) {
+        warnings.push(`Repository ingestion failed: ${error.message}. Generating with available inputs.`);
       }
     }
 
-    // 3. Perform Docs/Links scraping if urls provided
     if (docsUrl) {
-      // Split by spaces or newlines to support multiple links
       const urls = docsUrl.split(/\s+/).filter(Boolean);
       for (const url of urls) {
         try {
           const fetchResult = await fetchUrlContent(url);
           if (fetchResult) {
             linksContext.push(fetchResult);
-            if (fetchResult.warnings?.length) {
-              warnings.push(...fetchResult.warnings);
-            }
+            if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
           }
-        } catch (err) {
-          warnings.push(`Scraping docs link "${url}" failed: ${err.message}.`);
+        } catch (error) {
+          warnings.push(`Scraping docs link "${url}" failed: ${error.message}.`);
         }
       }
     }
 
-    // 4. In V1, automated screenshot capture is disabled in the main flow.
     if (appUrl) {
-      warnings.push("Automatic app capture is disabled in main flow. Upload screenshots or record manually.");
+      warnings.push("Automatic app capture is disabled in the main flow. Upload screenshots or record manually.");
     }
     void enableAutoCapture;
 
-    // 5. Build context & generate package (supports AI routes & templates fallbacks)
     const result = await generateStudioPackage({
       projectName,
       notes,
@@ -156,25 +142,20 @@ export async function POST(request) {
         apiKey: providerApiKey,
         baseUrl: providerBaseUrl,
         modelName: providerModelName,
+        allowServerKey: isOwner,
       },
     });
 
-    // Merge API warnings with generation warnings
     const allWarnings = Array.from(new Set([...warnings, ...(result.warnings || [])]));
-
-    return new Response(JSON.stringify({
-      ...result,
-      warnings: allWarnings,
-    }), {
+    return new Response(JSON.stringify({ ...result, warnings: allWarnings }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-
-  } catch (err) {
+  } catch (error) {
     return new Response(JSON.stringify({
       ok: false,
-      error: `Server failed to assemble kit: ${err.message}`,
-      warnings: [err.message],
+      error: `Server failed to assemble kit: ${error.message}`,
+      warnings: [error.message],
     }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

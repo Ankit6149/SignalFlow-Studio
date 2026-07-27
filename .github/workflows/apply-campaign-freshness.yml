@@ -38,6 +38,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Correct temporary codemod escaping
+        if: steps.integration.outputs.run == 'true'
+        run: node scripts/fix-campaign-freshness-codemod.mjs
+
       - name: Apply source transformation
         id: transform
         if: steps.integration.outputs.run == 'true'
@@ -88,7 +92,7 @@ jobs:
 
       - name: Remove temporary integration files
         if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'
-        run: rm .github/workflows/apply-campaign-freshness.yml scripts/apply-campaign-freshness.mjs
+        run: rm .github/workflows/apply-campaign-freshness.yml scripts/apply-campaign-freshness.mjs scripts/fix-campaign-freshness-codemod.mjs
 
       - name: Commit verified integration
         if: steps.integration.outputs.run == 'true' && steps.transform.outcome == 'success'

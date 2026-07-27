@@ -8,6 +8,10 @@ import {
   restoreSourceSnapshot,
   selectAcceptedFiles,
 } from "../lib/studio/clientReliability.mjs";
+import {
+  evaluateProviderReadiness,
+  pickRecommendedProvider,
+} from "../lib/studio/providerReadiness.mjs";
 
 const LEGACY_ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
@@ -147,14 +151,14 @@ const CHANNEL_GROUPS = [
 ];
 
 const PROVIDERS = [
-  { id: "template", label: "Local sample template", hint: "Deterministic sample copy for testing the workflow. Choose a model provider for production-quality content." },
-  { id: "gemini", label: "Gemini", hint: "Paste your Gemini API key or use the server configuration." },
-  { id: "openai", label: "OpenAI", hint: "Paste your OpenAI key or use the server configuration." },
-  { id: "claude", label: "Claude", hint: "Paste your Anthropic key or use the server configuration." },
-  { id: "groq", label: "Groq", hint: "Fast hosted generation with your own key." },
-  { id: "ollama", label: "Ollama", hint: "Runs against your local Ollama endpoint." },
-  { id: "lmstudio", label: "LM Studio", hint: "Runs against your local LM Studio endpoint." },
-  { id: "custom", label: "Custom provider", hint: "Use an OpenAI-compatible endpoint and model." },
+  { id: "gemini", label: "Gemini", hint: "Use a temporary Google AI Studio key or the securely configured server route." },
+  { id: "openai", label: "OpenAI", hint: "Use a temporary OpenAI key or the securely configured server route." },
+  { id: "claude", label: "Claude", hint: "Use a temporary Anthropic key or the securely configured server route." },
+  { id: "openrouter", label: "OpenRouter", hint: "Route generation through a model available in your OpenRouter account." },
+  { id: "groq", label: "Groq", hint: "Use a Groq key for fast hosted generation." },
+  { id: "custom", label: "Custom gateway", hint: "Use an OpenAI-compatible endpoint and model." },
+  { id: "ollama", label: "Ollama", hint: "Use a reachable Ollama endpoint in local or trusted self-hosted deployments." },
+  { id: "lmstudio", label: "LM Studio", hint: "Use a reachable LM Studio endpoint in local or trusted self-hosted deployments." },
 ];
 
 const FAQS = [
@@ -179,9 +183,9 @@ const FAQS = [
       "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript.",
   },
   {
-    question: "Can I use my own AI model or no AI at all?",
+    question: "Can I bring my own model provider?",
     answer:
-      "Yes. SignalFlow includes a deterministic local template route and supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints.",
+      "Yes. SignalFlow supports Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints. Campaign generation requires a real model route.",
   },
 ];
 
@@ -526,7 +530,7 @@ export default function Home() {
     audience: "Founders, builders, and early users",
     links: "",
     repo: "",
-    provider: "template",
+    provider: "gemini",
     apiKey: "",
     model: "",
     baseUrl: "",
@@ -542,9 +546,11 @@ export default function Home() {
   const [library, setLibrary] = useState([]);
   const [connections, setConnections] = useState({});
   const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [providerStatuses, setProviderStatuses] = useState({});
+  const [providerStatusLoading, setProviderStatusLoading] = useState(true);
+  const [providerTest, setProviderTest] = useState({ status: "idle", message: "" });
   const [accessToken, setAccessToken] = useState("");
   const [ownerKey, setOwnerKey] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [publishOptions, setPublishOptions] = useState({
     reddit: { subreddit: "", title: "" },
   });
@@ -582,7 +588,14 @@ export default function Home() {
     form.repo.trim(),
     ...documentText,
   ].filter(Boolean).length;
-  const composeReady = sourceSignals > 0 && channels.length > 0;
+  const providerReadiness = evaluateProviderReadiness({
+    provider: form.provider,
+    apiKey: form.apiKey,
+    baseUrl: form.baseUrl,
+    status: providerStatuses[form.provider],
+  });
+  const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
+  const composeReady = sourceAndChannelsReady && providerReadiness.ready;
   const connectedOfficialCount = Array.from(OFFICIAL_CONNECTORS).filter(
     (id) => connections[id]?.connected && !connections[id]?.expired,
   ).length;
@@ -612,6 +625,7 @@ export default function Home() {
   useEffect(() => {
     if (!entered) return;
     refreshConnections();
+    refreshProviderStatus();
   }, [entered, accessToken]);
 
   useEffect(() => {
@@ -626,6 +640,55 @@ export default function Home() {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     });
   }, [entered, section]);
+
+  async function refreshProviderStatus() {
+    setProviderStatusLoading(true);
+    try {
+      const response = await fetch("/api/provider_status");
+      const data = await readJsonResponse(response, "SignalFlow could not read model provider status.");
+      const statuses = data.providers || {};
+      setProviderStatuses(statuses);
+      const recommended = pickRecommendedProvider({
+        defaultProvider: data.defaultProvider,
+        statuses,
+        fallback: form.provider,
+      });
+      setForm((previous) => {
+        if (previous.apiKey.trim() || previous.baseUrl.trim() || statuses[previous.provider]?.configured) return previous;
+        return previous.provider === recommended ? previous : { ...previous, provider: recommended };
+      });
+    } catch {
+      setProviderStatuses({});
+    } finally {
+      setProviderStatusLoading(false);
+    }
+  }
+
+  async function testProviderConnection() {
+    if (!providerReadiness.ready) {
+      setProviderTest({ status: "error", message: providerReadiness.reason });
+      return;
+    }
+    setProviderTest({ status: "testing", message: "Testing model route…" });
+    try {
+      const response = await fetch("/api/provider_test", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          provider: form.provider,
+          modelName: form.model.trim(),
+          baseUrl: form.baseUrl.trim(),
+          temporaryApiKey: form.apiKey.trim(),
+        }),
+      });
+      const data = await readJsonResponse(response, "SignalFlow returned an unreadable provider test response.");
+      if (!response.ok || !data.ok) throw new Error(data.error || "Model route test failed.");
+      setProviderTest({ status: "success", message: data.message || "Model route connected successfully." });
+      void refreshProviderStatus();
+    } catch (error) {
+      setProviderTest({ status: "error", message: error.message });
+    }
+  }
 
   async function syncOwnerSession() {
     try {
@@ -771,6 +834,12 @@ export default function Home() {
       return;
     }
 
+    if (!providerReadiness.ready) {
+      setMessage({ type: "error", text: providerReadiness.reason });
+      navigateStudioFlow("destinations");
+      return;
+    }
+
     setBusy(true);
     setMessage(null);
     try {
@@ -809,10 +878,16 @@ export default function Home() {
       setPosts(generatedPosts);
       setActiveChannel(channels.find((channel) => generatedPosts[channel]) || channels[0]);
       setStage("review");
+      if (data.fallbackUsed) {
+        throw new Error("SignalFlow refused the response because it contained retired template fallback content.");
+      }
+      const failedChannels = Object.entries(data.generation_status || {})
+        .filter(([, item]) => item?.status === "failed")
+        .map(([channel]) => channel);
       setMessage({
-        type: data.fallbackUsed ? "warning" : "success",
-        text: data.fallbackUsed
-          ? "Campaign created with a fallback route. Review the generation note before publishing."
+        type: failedChannels.length ? "warning" : "success",
+        text: failedChannels.length
+          ? `Campaign generated with ${data.providerUsed || provider.label}; ${failedChannels.join(", ")} failed without template substitution.`
           : `Campaign generated with ${data.providerUsed || provider.label}.`,
       });
     } catch (error) {
@@ -1143,8 +1218,8 @@ export default function Home() {
           ))}
         </nav>
         <div className="app-header__status">
-          <span className={`connection-light ${accessToken ? "connection-light--on" : ""}`} />
-          <span>{accessToken ? "Owner session" : "Local mode"}</span>
+          <span className={`connection-light ${providerReadiness.ready ? "connection-light--on" : ""}`} />
+          <span>{providerReadiness.ready ? `${accessToken ? "Owner · " : ""}${provider.label}` : "Model setup needed"}</span>
         </div>
       </header>
 
@@ -1361,17 +1436,39 @@ export default function Home() {
               </div>
 
 
-              <button
-                className="advanced-toggle"
-                onClick={() => setShowAdvanced((value) => !value)}
-                aria-expanded={showAdvanced}
-              >
-                <span>Voice and model route</span>
-                <span>{showAdvanced ? "−" : "+"}</span>
-              </button>
+              <aside className="model-route-panel" aria-label="Model generation route">
+                <header className="model-route-panel__header">
+                  <div>
+                    <div className="model-route-panel__eyebrow">Generation engine</div>
+                    <h3>Choose the model route</h3>
+                  </div>
+                  <span className={`model-route-status ${providerReadiness.ready ? "is-ready" : ""}`}>
+                    {providerStatusLoading ? "Checking" : providerReadiness.ready ? "Ready" : "Setup needed"}
+                  </span>
+                </header>
 
-              {showAdvanced && (
-                <div className="advanced-panel">
+                <div className="model-provider-grid" role="list" aria-label="Available model providers">
+                  {PROVIDERS.map((item) => {
+                    const configured = Boolean(providerStatuses[item.id]?.configured);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`model-provider-option ${form.provider === item.id ? "is-selected" : ""}`}
+                        onClick={() => {
+                          updateForm("provider", item.id);
+                          setProviderTest({ status: "idle", message: "" });
+                        }}
+                        aria-pressed={form.provider === item.id}
+                      >
+                        <span>{item.label}</span>
+                        <small className={configured ? "is-configured" : ""} aria-label={configured ? "Configured on server" : "Not configured on server"} />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="model-route-fields">
                   <label className="field">
                     <span>Audience</span>
                     <input
@@ -1379,55 +1476,55 @@ export default function Home() {
                       onChange={(event) => updateForm("audience", event.target.value)}
                     />
                   </label>
-                  <label className="field">
-                    <span>Generation route</span>
-                    <select
-                      value={form.provider}
-                      onChange={(event) => updateForm("provider", event.target.value)}
-                    >
-                      {PROVIDERS.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                    <small>{provider.hint}</small>
-                  </label>
-                  {form.provider !== "template" &&
-                    !["ollama", "lmstudio"].includes(form.provider) && (
-                      <label className="field">
-                        <span>Temporary API key</span>
-                        <input
-                          type="password"
-                          value={form.apiKey}
-                          onChange={(event) => updateForm("apiKey", event.target.value)}
-                          placeholder="Used only for this request"
-                          autoComplete="off"
-                        />
-                      </label>
-                    )}
-                  {["ollama", "lmstudio", "custom"].includes(form.provider) && (
+                  {!['ollama', 'lmstudio'].includes(form.provider) && (
+                    <label className="field">
+                      <span>Temporary API key</span>
+                      <input
+                        type="password"
+                        value={form.apiKey}
+                        onChange={(event) => updateForm("apiKey", event.target.value)}
+                        placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}
+                        autoComplete="off"
+                      />
+                    </label>
+                  )}
+                  {['ollama', 'lmstudio', 'custom'].includes(form.provider) && (
                     <label className="field">
                       <span>Base URL</span>
                       <input
                         value={form.baseUrl}
                         onChange={(event) => updateForm("baseUrl", event.target.value)}
-                        placeholder="http://localhost:11434"
+                        placeholder={form.provider === 'ollama' ? 'http://localhost:11434/v1' : form.provider === 'lmstudio' ? 'http://localhost:1234/v1' : 'https://provider.example/v1'}
                       />
                     </label>
                   )}
-                  {form.provider !== "template" && (
-                    <label className="field">
-                      <span>Model override</span>
-                      <input
-                        value={form.model}
-                        onChange={(event) => updateForm("model", event.target.value)}
-                        placeholder="Leave blank for the default model"
-                      />
-                    </label>
-                  )}
+                  <label className="field">
+                    <span>Model override</span>
+                    <input
+                      value={form.model}
+                      onChange={(event) => updateForm("model", event.target.value)}
+                      placeholder={providerStatuses[form.provider]?.defaultModel || "Leave blank for the provider default"}
+                    />
+                  </label>
                 </div>
-              )}
+
+                <div className="model-route-actions">
+                  <button
+                    type="button"
+                    className="button button--outline"
+                    onClick={testProviderConnection}
+                    disabled={providerTest.status === "testing" || !providerReadiness.ready}
+                  >
+                    {providerTest.status === "testing" ? "Testing…" : "Test connection"}
+                  </button>
+                </div>
+                <p className={`model-route-message ${providerTest.status === "error" ? "is-error" : ""}`}>
+                  {providerTest.status === "idle" ? providerReadiness.reason : providerTest.message}
+                </p>
+                <p className="model-route-note">
+                  Temporary keys are sent only with this request. SignalFlow does not save them in the campaign library.
+                </p>
+              </aside>
 
               {stage === "destinations" ? (
                 <div className="output-empty">
@@ -1435,16 +1532,16 @@ export default function Home() {
                     <div className="compose-readiness__top">
                       <div>
                         <span>Campaign readiness</span>
-                        <h3>{composeReady ? "Ready to shape the campaign." : "Bring one strong source signal."}</h3>
+                        <h3>{!sourceAndChannelsReady ? "Choose source and destinations." : providerReadiness.ready ? "Ready to shape the campaign." : "Connect a model route."}</h3>
                       </div>
-                      <b className={composeReady ? "is-ready" : ""}>{composeReady ? "Ready" : "Needs source"}</b>
+                      <b className={composeReady ? "is-ready" : ""}>{composeReady ? "Ready" : providerReadiness.ready ? "Needs source" : "Needs model"}</b>
                     </div>
                     <p>
-                      {composeReady
-                        ? form.provider === "template"
-                          ? "Ready to test the workflow. Local sample mode is deterministic and intentionally limited; choose a model provider for production-quality content."
-                          : "SignalFlow has enough context to build editable drafts. You remain in control of every output and publishing step."
-                        : "Add a brief, public link, repository, or extractable text file. Keep the first run simple; advanced model controls can stay closed."}
+                      {!sourceAndChannelsReady
+                        ? "Add product evidence and select at least one destination."
+                        : providerReadiness.ready
+                          ? "SignalFlow has enough context and a real model route to build editable drafts."
+                          : providerReadiness.reason}
                     </p>
                     <div className="compose-readiness__metrics">
                       <div><strong>{sourceSignals}</strong><span>source signals</span></div>

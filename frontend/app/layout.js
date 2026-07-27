@@ -5,6 +5,7 @@ import "../app/living-ui-tuning.css";
 import "../app/professional-polish.css";
 import "../app/app-workspace.css";
 import "../app/ui-containment.css";
+import "../app/studio-product.css";
 import SessionBridge from "../components/SessionBridge";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";
@@ -32,9 +33,9 @@ const faq = [
       "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript.",
   },
   {
-    question: "Can I use my own AI model or no AI at all?",
+    question: "Can I bring my own model provider?",
     answer:
-      "Yes. SignalFlow includes a deterministic local template route and supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints.",
+      "Yes. SignalFlow supports Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints. Campaign generation requires a real model route.",
   },
 ];
 
@@ -76,7 +77,7 @@ const schema = {
       license: `${repositoryUrl}/blob/master/LICENSE`,
       creator: { "@id": `${siteUrl}/#organization` },
       description:
-        "SignalFlow Studio turns product notes, public links, GitHub repository context, and uploaded text files into editable channel-specific campaign drafts. It supports local templates, bring-your-own-model generation, browser-local campaign saving, Markdown and JSON exports, and confirmed-only publishing through configured official connectors.",
+        "SignalFlow Studio turns product notes, public links, GitHub repository context, and uploaded text files into editable channel-specific campaign drafts. It supports real model-provider generation, browser-local campaign saving, Markdown and JSON exports, an MCP server for AI agents, and confirmed-only publishing through configured official connectors.",
       keywords: [
         "campaign creation software",
         "product launch content generator",
@@ -91,7 +92,8 @@ const schema = {
         "Create editable drafts for twelve publishing destinations",
         "Extract context from public links and GitHub repositories",
         "Read uploaded text, Markdown, CSV, JSON, and code files in the browser",
-        "Use deterministic local templates without an API key",
+        "Use a real configured or bring-your-own model provider",
+        "Create campaigns directly through the SignalFlow MCP server",
         "Use Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, or custom compatible endpoints",
         "Save campaign packages in the current browser",
         "Export approved campaigns as Markdown and JSON",

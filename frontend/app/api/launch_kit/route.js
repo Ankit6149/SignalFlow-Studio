@@ -8,6 +8,7 @@ import { ingestGitHubRepo } from "../../../lib/context/github";
 import { ingestLocalRepo } from "../../../lib/context/localRepo";
 import { fetchUrlContent } from "../../../lib/context/linkFetcher";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
+import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 
 export const maxDuration = 60;
 
@@ -20,11 +21,20 @@ export async function POST(request) {
     const body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody)
       ? parsedBody
       : {};
-    const generator = normalizeTextInput(body.generator) || "template";
+    const requestedGenerator = normalizeTextInput(body.generator) || normalizeTextInput(process.env.DEFAULT_MODEL_PROVIDER);
+    let generator;
+    try {
+      generator = assertModelGenerationProvider(requestedGenerator);
+    } catch (error) {
+      return new Response(JSON.stringify({ ok: false, error: error.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const providerApiKey = normalizeTextInput(body.providerApiKey);
 
     if (!isOwner && Boolean(process.env.SIGNALFLOW_ACCESS_KEY)) {
-      if (generator !== "template" && generator !== "offline" && !providerApiKey) {
+      if (!providerApiKey) {
         return new Response(
           JSON.stringify({
             error: "This hosted workspace is private. Enter the owner's access key or supply your own personal API key in settings to use cloud providers.",

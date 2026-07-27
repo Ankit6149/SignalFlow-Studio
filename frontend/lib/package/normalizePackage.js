@@ -144,9 +144,49 @@ function normalizeReleaseNotes(value, fallback) {
   };
 }
 
-/** Ensures every provider response is complete and safe for the active UI. */
-export function normalizePackage(rawPackage, inputs) {
-  const baseline = generateLocalTemplatePackage(inputs).package;
+function strictBaseline(inputs = {}) {
+  return {
+    project: {
+      name: String(inputs.projectName || "SignalFlow campaign"),
+      oneLine: "",
+      description: String(inputs.notes || ""),
+      audience: String(inputs.audience || ""),
+      category: "",
+      stage: "",
+    },
+    context: {
+      confirmedFacts: [], inferredFacts: [], missingContext: [], features: [], techStack: [],
+      repoInsights: [], docsInsights: [], linkInsights: [], mediaInsights: [],
+    },
+    strategy: {
+      coreAngle: "", positioning: "", hooks: [], proofPoints: [], risks: [], safeClaims: [], avoidClaims: [],
+    },
+    posts: {
+      linkedin: { title: "", body: "", hashtags: [], cta: "" },
+      x: { mode: "post_or_thread", posts: [] },
+      instagram: { caption: "", hashtags: [], visualDirection: "" },
+      reddit: { title: "", body: "", subredditSuggestions: [] },
+      facebook: { body: "" },
+      threads: { body: "" },
+      youtube: { title: "", description: "", tags: [] },
+      tiktok: { caption: "", hook: "", shotList: [] },
+      hackernews: { title: "", body: "" },
+      blog: { title: "", outline: [], draft: "" },
+      newsletter: { subject: "", preview: "", body: "" },
+      releaseNotes: { title: "", sections: [] },
+    },
+    media: {
+      screenshotPlan: [], videoScript: [], voiceoverScript: [], shotList: [], recordingGuide: [],
+      carouselPlan: [], thumbnailIdeas: [], videoTimeline: [], altText: [], assetChecklist: [],
+      videoPrompt: "", thumbnailPrompt: "",
+    },
+    publishing: { platformChecklist: [], manualPostingSteps: [], apiPublishingNotes: "", warnings: [] },
+  };
+}
+
+/** Ensures provider responses match the active UI contract. */
+export function normalizePackage(rawPackage, inputs, { allowTemplateFallback = true } = {}) {
+  const baseline = allowTemplateFallback ? generateLocalTemplatePackage(inputs).package : strictBaseline(inputs);
   const raw = object(rawPackage);
   if (!raw) return baseline;
 
@@ -222,7 +262,7 @@ export function normalizePackage(rawPackage, inputs) {
     },
   };
 
-  if (!normalized.media.videoPrompt) {
+  if (allowTemplateFallback && !normalized.media.videoPrompt) {
     normalized.media.videoPrompt = buildVideoPrompt(normalized);
   }
 

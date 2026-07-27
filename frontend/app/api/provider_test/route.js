@@ -24,13 +24,20 @@ export async function POST(request) {
 
   const temporaryApiKey = String(body.temporaryApiKey || "").trim();
   const accessError = requireOwnerAccess(request);
-  if (accessError && (OWNER_ONLY_ENDPOINT_PROVIDERS.has(provider) || !temporaryApiKey)) {
+  const isOwner = accessError === null;
+  if (!isOwner && (OWNER_ONLY_ENDPOINT_PROVIDERS.has(provider) || !temporaryApiKey)) {
     return accessError;
   }
 
   const modelName = String(body.modelName || "").trim();
   const baseUrl = String(body.baseUrl || "").trim();
-  const config = { apiKey: temporaryApiKey, baseUrl, modelName, maxTokens: 64 };
+  const config = {
+    apiKey: temporaryApiKey,
+    baseUrl,
+    modelName,
+    maxTokens: 64,
+    allowServerKey: isOwner,
+  };
 
   try {
     await generateText({

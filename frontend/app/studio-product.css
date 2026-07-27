@@ -1,0 +1,331 @@
+/* Final product layout for the three-step Studio workflow. Loaded last. */
+
+.app-shell .studio-page[data-stage="source"],
+.app-shell .studio-page[data-stage="destinations"] {
+  width: min(88rem, calc(100% - clamp(2rem, 7vw, 7rem)));
+}
+
+.app-shell .studio-page[data-stage="source"] .composer-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(21rem, 0.82fr);
+  column-gap: clamp(2rem, 4vw, 4.25rem);
+  row-gap: 0;
+  align-items: start;
+}
+
+.app-shell .studio-page[data-stage="source"] .composer-panel > .panel-kicker {
+  grid-column: 1 / -1;
+}
+
+.app-shell .studio-page[data-stage="source"] .composer-panel > .field:not(.field--large) {
+  grid-column: 1;
+}
+
+.app-shell .studio-page[data-stage="source"] .composer-panel > .field--large {
+  grid-column: 1;
+}
+
+.app-shell .studio-page[data-stage="source"] .field--large textarea {
+  min-height: clamp(18rem, 34vh, 25rem);
+}
+
+.app-shell .studio-page[data-stage="source"] .source-grid {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0;
+  padding: 1.25rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.75rem;
+  background: var(--app-surface-subtle);
+}
+
+.app-shell .studio-page[data-stage="source"] .source-grid::before {
+  content: "Supporting evidence";
+  margin-bottom: 1rem;
+  color: var(--app-accent);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.app-shell .studio-page[data-stage="source"] .source-grid .field:last-child {
+  margin-bottom: 0;
+}
+
+.app-shell .studio-page[data-stage="source"] .upload-zone,
+.app-shell .studio-page[data-stage="source"] .file-list {
+  grid-column: 2;
+}
+
+.app-shell .studio-page[data-stage="source"] .upload-zone {
+  min-height: 7.5rem;
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  background: var(--app-surface-subtle);
+}
+
+.app-shell .studio-page[data-stage="source"] .upload-zone__icon {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.app-shell .studio-page[data-stage="destinations"] .output-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(21rem, 0.72fr);
+  gap: 1.75rem 2.25rem;
+  align-items: start;
+}
+
+.app-shell .studio-page[data-stage="destinations"] .output-panel > .panel-kicker {
+  grid-column: 1 / -1;
+  margin-bottom: 0.25rem;
+}
+
+.app-shell .studio-page[data-stage="destinations"] .channel-groups {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  min-width: 0;
+}
+
+.app-shell .studio-page[data-stage="destinations"] .channel-group {
+  padding: 1.15rem 0;
+  border-top: 0.0625rem solid var(--app-line);
+}
+
+.app-shell .studio-page[data-stage="destinations"] .channel-group:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.app-shell .studio-page[data-stage="destinations"] .channel-picker {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-shell .model-route-panel {
+  grid-column: 2;
+  grid-row: 2;
+  position: sticky;
+  top: calc(var(--app-header) + 1.25rem);
+  min-width: 0;
+  padding: 1.25rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.75rem;
+  background: var(--app-surface-subtle);
+}
+
+.app-shell .model-route-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.app-shell .model-route-panel__eyebrow {
+  color: var(--app-accent);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.app-shell .model-route-panel h3 {
+  margin: 0.35rem 0 0;
+  font-family: "Playfair Display", serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.app-shell .model-route-status {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: var(--app-warning-soft);
+  color: var(--app-warning);
+  font-size: 0.625rem;
+  font-weight: 750;
+}
+
+.app-shell .model-route-status.is-ready {
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.app-shell .model-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.app-shell .model-provider-option {
+  min-height: 3.25rem;
+  padding: 0.65rem 0.75rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  background: var(--app-surface);
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-shell .model-provider-option:hover {
+  border-color: var(--app-line-strong);
+  color: var(--app-ink);
+}
+
+.app-shell .model-provider-option.is-selected {
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+  color: var(--app-ink);
+}
+
+.app-shell .model-provider-option small {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--app-line-strong);
+}
+
+.app-shell .model-provider-option small.is-configured {
+  background: var(--app-success);
+}
+
+.app-shell .model-route-fields {
+  padding-top: 1rem;
+  border-top: 0.0625rem solid var(--app-line);
+}
+
+.app-shell .model-route-fields .field {
+  margin-bottom: 1rem;
+}
+
+.app-shell .model-route-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.app-shell .model-route-actions .button {
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+  font-size: 0.75rem;
+}
+
+.app-shell .model-route-message {
+  margin: 0.8rem 0 0;
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.app-shell .model-route-message.is-error {
+  color: var(--app-danger);
+}
+
+.app-shell .model-route-note {
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 0.0625rem solid var(--app-line);
+  color: var(--app-faint);
+  font-size: 0.6875rem;
+  line-height: 1.55;
+}
+
+.app-shell .studio-page[data-stage="destinations"] .output-empty {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 0;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.app-shell .compose-readiness {
+  width: 100%;
+  padding: 1.1rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.75rem;
+  background: var(--app-surface);
+}
+
+.app-shell .studio-actionbar {
+  max-width: none;
+  margin-top: 0;
+  padding: 0.9rem 1.1rem;
+  border: 0.0625rem solid var(--app-line);
+  border-top: 0;
+  border-radius: 0 0 var(--app-radius) var(--app-radius);
+  background: var(--app-surface);
+  color: var(--app-ink);
+  box-shadow: 0 0.75rem 2rem rgba(24, 24, 20, 0.035);
+}
+
+.app-shell .studio-actionbar__summary {
+  color: var(--app-muted);
+}
+
+.app-shell .studio-actionbar .button--outline {
+  background: var(--app-surface);
+}
+
+@media (max-width: 68rem) {
+  .app-shell .studio-page[data-stage="source"],
+  .app-shell .studio-page[data-stage="destinations"] {
+    width: min(100% - 2rem, 76rem);
+  }
+
+  .app-shell .studio-page[data-stage="source"] .composer-panel,
+  .app-shell .studio-page[data-stage="destinations"] .output-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .studio-page[data-stage="source"] .composer-panel > *,
+  .app-shell .studio-page[data-stage="destinations"] .output-panel > * {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .app-shell .studio-page[data-stage="source"] .source-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .app-shell .studio-page[data-stage="source"] .source-grid::before {
+    grid-column: 1 / -1;
+  }
+
+  .app-shell .model-route-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 44rem) {
+  .app-shell .studio-page[data-stage="source"] .source-grid,
+  .app-shell .studio-page[data-stage="destinations"] .channel-picker,
+  .app-shell .model-provider-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .studio-actionbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-shell .studio-actionbar__summary {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}

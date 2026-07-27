@@ -1,88 +1,79 @@
 import { requireOwnerAccess } from "../_auth";
 import { generateText } from "../../../lib/ai/generateText";
+import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 
-/**
- * Endpoint to test connectivity to a model provider.
- * Accepts optional temporary API keys that are used only for this request and never persisted.
- */
+const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
+
 export async function POST(request) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  let provider;
+  try {
+    provider = assertModelGenerationProvider(body.provider);
+  } catch (error) {
+    return new Response(JSON.stringify({ ok: false, error: error.message }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const temporaryApiKey = String(body.temporaryApiKey || "").trim();
   const accessError = requireOwnerAccess(request);
-  if (accessError) {
+  const isOwner = accessError === null;
+  if (!isOwner && (OWNER_ONLY_ENDPOINT_PROVIDERS.has(provider) || !temporaryApiKey)) {
     return accessError;
   }
 
+  const modelName = String(body.modelName || "").trim();
+  const baseUrl = String(body.baseUrl || "").trim();
+  const config = {
+    apiKey: temporaryApiKey,
+    baseUrl,
+    modelName,
+    maxTokens: 64,
+    allowServerKey: isOwner,
+  };
+
   try {
-    const { provider, modelName, baseUrl, temporaryApiKey } = await request.json();
-
-    if (!provider) {
-      return new Response(JSON.stringify({ ok: false, error: "Missing provider parameter" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    const testPrompt = 'Return only JSON: {"ok":true}';
-    const config = {
-      apiKey: temporaryApiKey || "",
-      baseUrl: baseUrl || "",
-      modelName: modelName || ""
-    };
-
-    let responseText;
-    try {
-      responseText = await generateText({
-        provider,
-        prompt: testPrompt,
-        modelOverride: modelName,
-        config
-      });
-    } catch (err) {
-      return new Response(JSON.stringify({
-        ok: false,
-        provider,
-        modelUsed: modelName,
-        error: err.message,
-        setupHint: getSetupHint(provider)
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
+    await generateText({
+      provider,
+      prompt: 'Return only JSON: {"ok":true}',
+      modelOverride: modelName,
+      config,
+    });
     return new Response(JSON.stringify({
       ok: true,
       provider,
       configured: true,
       modelUsed: modelName,
-      message: "Connection successful."
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ ok: false, error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+      message: "Connection successful.",
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      ok: false,
+      provider,
+      modelUsed: modelName,
+      error: error.message,
+      setupHint: getSetupHint(provider),
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 }
 
 function getSetupHint(provider) {
   switch (provider) {
-    case "gemini":
-      return "Add GEMINI_API_KEY in .env.local or Vercel Environment Variables.";
-    case "groq":
-      return "Add GROQ_API_KEY in .env.local or Vercel Environment Variables.";
-    case "openrouter":
-      return "Add OPENROUTER_API_KEY in .env.local or Vercel Environment Variables.";
-    case "custom":
-      return "Add CUSTOM_OPENAI_BASE_URL and CUSTOM_OPENAI_API_KEY in .env.local or Vercel.";
-    case "ollama":
-      return "Make sure Ollama is running locally (default: http://localhost:11434) and the requested model is pulled.";
-    case "lmstudio":
-      return "Make sure LM Studio is running locally (default: http://localhost:1234) and the requested model is loaded.";
-    default:
-      return "Configure the required environment variables or endpoint URL.";
+    case "gemini": return "Add a temporary Gemini key or configure GEMINI_API_KEY.";
+    case "openai": return "Add a temporary OpenAI key or configure OPENAI_API_KEY.";
+    case "claude": return "Add a temporary Anthropic key or configure ANTHROPIC_API_KEY.";
+    case "groq": return "Add a temporary Groq key or configure GROQ_API_KEY.";
+    case "openrouter": return "Add a temporary OpenRouter key or configure OPENROUTER_API_KEY.";
+    case "custom": return "Configure a trusted OpenAI-compatible base URL and credentials.";
+    case "ollama": return "Run SignalFlow where it can reach Ollama and load the requested model.";
+    case "lmstudio": return "Run SignalFlow where it can reach LM Studio and load the requested model.";
+    default: return "Configure the selected model provider.";
   }
 }

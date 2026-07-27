@@ -5,6 +5,7 @@ import { normalizePackage } from "../package/normalizePackage";
 import { generateJSON } from "./generateJSON";
 import { buildMarkdown } from "../export/markdown";
 import { PROVIDERS } from "./types";
+import { assertModelGenerationProvider } from "./generationPolicy.mjs";
 import {
   CHANNEL_CONTRACTS,
   assessChannelDraft,
@@ -110,7 +111,7 @@ function packageDraft(pkg, channel) {
 
 function normalizeDestinationDraft(rawDraft, channel, generationInputs) {
   const packageKey = packageKeyForChannel(channel);
-  const normalized = normalizePackage({ posts: { [packageKey]: rawDraft } }, generationInputs);
+  const normalized = normalizePackage({ posts: { [packageKey]: rawDraft } }, generationInputs, { allowTemplateFallback: false });
   return normalized.posts[packageKey];
 }
 
@@ -121,6 +122,39 @@ function statusForTemplate(channels) {
     qualityScore: null,
     issues: ["This destination uses deterministic template copy rather than model-generated editorial work."],
   }]));
+}
+
+function emptyDestinationDraft(channel) {
+  switch (channel) {
+    case "linkedin": return { title: "", body: "", hashtags: [], cta: "" };
+    case "x": return { mode: "post_or_thread", posts: [] };
+    case "instagram": return { caption: "", hashtags: [], visualDirection: "" };
+    case "reddit": return { title: "", body: "", subredditSuggestions: [] };
+    case "youtube": return { title: "", description: "", tags: [] };
+    case "tiktok": return { caption: "", hook: "", shotList: [] };
+    case "hackernews": return { title: "", body: "" };
+    case "newsletter": return { subject: "", preview: "", body: "" };
+    case "blog": return { title: "", outline: [], draft: "" };
+    case "release_notes": return { title: "", sections: [] };
+    default: return { body: "" };
+  }
+}
+
+function emptyPackagePosts() {
+  return {
+    linkedin: emptyDestinationDraft("linkedin"),
+    x: emptyDestinationDraft("x"),
+    instagram: emptyDestinationDraft("instagram"),
+    reddit: emptyDestinationDraft("reddit"),
+    facebook: emptyDestinationDraft("facebook"),
+    threads: emptyDestinationDraft("threads"),
+    youtube: emptyDestinationDraft("youtube"),
+    tiktok: emptyDestinationDraft("tiktok"),
+    hackernews: emptyDestinationDraft("hackernews"),
+    newsletter: emptyDestinationDraft("newsletter"),
+    blog: emptyDestinationDraft("blog"),
+    releaseNotes: emptyDestinationDraft("release_notes"),
+  };
 }
 
 async function generateDestination({
@@ -193,13 +227,12 @@ async function generateDestination({
       },
     };
   } catch (error) {
-    const fallback = normalizePackage({}, generationInputs).posts[packageKey];
     return {
       channel,
       packageKey,
-      draft: fallback,
+      draft: emptyDestinationDraft(channel),
       status: {
-        status: "template_fallback",
+        status: "failed",
         attempts: firstDraft ? 1 : 0,
         qualityScore: firstQuality?.score ?? null,
         issues: [`Destination generation failed: ${error.message}`],
@@ -229,11 +262,13 @@ export async function generateStudioPackage(inputs) {
     mediaItems = [],
     selectedChannels = [],
     selectedOutputs = [],
-    generator = "template",
+    generator: requestedGenerator = "",
     model_name = "",
     appUrl = "",
     config = {},
   } = inputs;
+
+  const generator = assertModelGenerationProvider(requestedGenerator);
 
   const generationInputs = {
     projectName,
@@ -253,50 +288,9 @@ export async function generateStudioPackage(inputs) {
   const contextWarnings = Array.isArray(context.warnings) ? context.warnings : [];
   const campaignBriefPrompt = buildCampaignBriefPrompt(context);
 
-  if (generator === "prompt") {
-    const result = templateResult(
-      generationInputs,
-      "Prompt route selected. The prompt now separates product strategy from destination writing instead of requesting one compressed campaign object.",
-      contextWarnings,
-    );
-    return {
-      ...result,
-      providerUsed: "prompt",
-      fallbackUsed: true,
-      generation_status: statusForTemplate(channels),
-      chatbot_prompt: buildPromptBundle(context, result.package, channels),
-    };
-  }
-
-  if (generator === "template" || generator === "offline") {
-    const result = templateResult(
-      generationInputs,
-      "Local template route created deterministic fallback copy. Connect a capable model for staged destination-specific editorial generation.",
-      contextWarnings,
-    );
-    return {
-      ...result,
-      providerUsed: "template",
-      fallbackUsed: true,
-      generation_status: statusForTemplate(channels),
-      chatbot_prompt: buildPromptBundle(context, result.package, channels),
-    };
-  }
-
   const providerMeta = PROVIDERS[generator];
   if (!providerMeta) {
-    const result = templateResult(
-      generationInputs,
-      `Unknown provider "${generator}". The local template route was used instead.`,
-      contextWarnings,
-    );
-    return {
-      ...result,
-      providerUsed: "template",
-      fallbackUsed: true,
-      generation_status: statusForTemplate(channels),
-      chatbot_prompt: buildPromptBundle(context, result.package, channels),
-    };
+    throw new Error(`Unsupported model provider: ${generator}.`);
   }
 
   const temporaryKey = Boolean(config?.apiKey);
@@ -313,18 +307,7 @@ export async function generateStudioPackage(inputs) {
     const requirement = generator === "custom"
       ? "an OpenAI-compatible base URL"
       : (providerMeta.requiredEnv || []).join(" or ") || "provider credentials";
-    const result = templateResult(
-      generationInputs,
-      `${providerMeta.label} is not configured. Add ${requirement} or a temporary personal key; the deterministic template route was used.`,
-      contextWarnings,
-    );
-    return {
-      ...result,
-      providerUsed: generator,
-      fallbackUsed: true,
-      generation_status: statusForTemplate(channels),
-      chatbot_prompt: buildPromptBundle(context, result.package, channels),
-    };
+    throw new Error(`${providerMeta.label} is not configured. Add ${requirement} or a temporary personal key.`);
   }
 
   const modelOverride = model_name || config?.modelName || providerMeta.defaultModel;
@@ -337,8 +320,9 @@ export async function generateStudioPackage(inputs) {
       config,
     });
 
-    const pkg = normalizePackage(rawBrief, generationInputs);
+    const pkg = normalizePackage(rawBrief, generationInputs, { allowTemplateFallback: false });
     pkg.strategy.destinationAngles = rawBrief?.strategy?.destinationAngles || {};
+    pkg.posts = emptyPackagePosts();
 
     const generatedDestinations = await Promise.all(channels.map((channel) => generateDestination({
       channel,
@@ -353,13 +337,18 @@ export async function generateStudioPackage(inputs) {
     const generationStatus = {};
     const generationWarnings = [];
     for (const result of generatedDestinations) {
-      pkg.posts[result.packageKey] = result.draft;
+      if (result.status.status !== "failed") pkg.posts[result.packageKey] = result.draft;
       generationStatus[result.channel] = result.status;
-      if (result.status.status === "template_fallback") {
-        generationWarnings.push(`${result.channel}: model generation failed, so deterministic fallback copy is shown.`);
+      if (result.status.status === "failed") {
+        generationWarnings.push(`${result.channel}: model generation failed and no substitute copy was inserted.`);
       } else if (result.status.status === "needs_review") {
         generationWarnings.push(`${result.channel}: the best draft still failed one or more editorial quality checks.`);
       }
+    }
+
+    const failedDestinations = generatedDestinations.filter((item) => item.status.status === "failed");
+    if (failedDestinations.length === generatedDestinations.length) {
+      throw new Error(`Every selected destination failed: ${failedDestinations.map((item) => item.channel).join(", ")}.`);
     }
 
     pkg.generation = {
@@ -375,13 +364,13 @@ export async function generateStudioPackage(inputs) {
     const description = pkg.project.description || notes || pkg.project.oneLine || "Review-ready campaign draft";
     const fileSlug = slug(name);
     const svgContent = buildCampaignCard(name, description);
-    const fallbackUsed = generatedDestinations.some((item) => item.status.status === "template_fallback");
+    const partialFailureUsed = failedDestinations.length > 0;
 
     return {
       ok: true,
       providerUsed: generator,
-      fallbackUsed,
-      partialFallbackUsed: fallbackUsed,
+      fallbackUsed: false,
+      partialFailureUsed,
       generation_status: generationStatus,
       chatbot_prompt: campaignBriefPrompt,
       warnings: Array.from(new Set([...contextWarnings, ...generationWarnings])),
@@ -415,17 +404,7 @@ export async function generateStudioPackage(inputs) {
       },
     };
   } catch (error) {
-    const result = templateResult(
-      generationInputs,
-      `${providerMeta.label} campaign strategy generation failed: ${error.message}. Deterministic fallback copy was created instead.`,
-      contextWarnings,
-    );
-    return {
-      ...result,
-      providerUsed: generator,
-      fallbackUsed: true,
-      generation_status: statusForTemplate(channels),
-      chatbot_prompt: campaignBriefPrompt,
-    };
+    throw new Error(`${providerMeta.label} campaign generation failed: ${error.message}`);
+
   }
 }

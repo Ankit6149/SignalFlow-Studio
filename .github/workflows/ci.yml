@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main, master]
 
-permissions:
-  contents: write
-
 jobs:
   mcp-tests:
     runs-on: ubuntu-latest
@@ -21,27 +18,6 @@ jobs:
       - name: Run MCP protocol and tool tests
         working-directory: mcp
         run: npm test
-
-  apply-studio-product-migration:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'product/studio-end-to-end-mcp' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: product/studio-end-to-end-mcp
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - name: Apply Studio, strict generation, and MCP migration
-        run: python .github/scripts/apply-studio-product-mcp.py
-      - name: Commit only migrated product source
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend
-          git commit -m "feat: rebuild Studio model workflow and strict generation"
-          git push origin HEAD:product/studio-end-to-end-mcp
 
   python-tests:
     runs-on: ubuntu-latest

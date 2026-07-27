@@ -28,3 +28,10 @@ export function assertModelGenerationProvider(value) {
 
   return provider;
 }
+
+export function canUseServerProviderConfiguration({
+  publicHosted = process.env.SIGNALFLOW_PUBLIC_HOSTED === "true",
+  allowServerKey = false,
+} = {}) {
+  return !publicHosted || Boolean(allowServerKey);
+}

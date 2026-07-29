@@ -43,7 +43,7 @@
       "creator": {
         "@id": "https://signal-flow-studio.vercel.app/#organization"
       },
-      "description": "SignalFlow Studio turns product notes, public links, GitHub repository context, and uploaded text files into editable channel-specific campaign drafts. It supports local templates, bring-your-own-model generation, browser-local campaign saving, Markdown and JSON exports, and confirmed-only publishing through configured official connectors.",
+      "description": "SignalFlow Studio turns product notes, public links, GitHub repository context, and supported text files into editable channel-specific drafts using a real model provider route. It supports bring-your-own-model generation, versioned browser-local campaign saving, authoritative Markdown and JSON exports, and confirmed-only publishing through configured official connectors.",
       "keywords": [
         "campaign creation software",
         "product launch content generator",
@@ -57,11 +57,10 @@
       "featureList": [
         "Create editable drafts for twelve publishing destinations",
         "Extract context from public links and GitHub repositories",
-        "Read uploaded text, Markdown, CSV, JSON, and code files in the browser",
-        "Use deterministic local templates without an API key",
-        "Use Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, or custom compatible endpoints",
-        "Save campaign packages in the current browser",
-        "Export approved campaigns as Markdown and JSON",
+        "Read supported text, Markdown, CSV, JSON, and code files in the browser",
+        "Use real model routes through Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, or compatible custom endpoints",
+        "Save versioned campaign records in the current browser",
+        "Export authoritative current drafts as deterministic Markdown and JSON",
         "Publish through configured LinkedIn, X, and Reddit official connectors after approval",
         "Keep social OAuth sessions encrypted in HTTP-only cookies"
       ],
@@ -81,7 +80,7 @@
           "name": "What does SignalFlow Studio actually create?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It turns product notes, public links, repository context, and text files into editable drafts for social, community, video, newsletter, blog, and release-note channels."
+            "text": "It turns product notes, public links, repository context, and supported text files into editable drafts for social, community, video, newsletter, blog, and release-note channels."
           }
         },
         {
@@ -105,15 +104,15 @@
           "name": "Where are campaigns and account tokens stored?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript."
+            "text": "Saved campaigns remain in versioned records in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript."
           }
         },
         {
           "@type": "Question",
-          "name": "Can I use my own AI model or no AI at all?",
+          "name": "Which model routes can I use?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. SignalFlow includes a deterministic local template route and supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints."
+            "text": "Campaign generation requires a real model route available to the current deployment and session. Supported adapters include Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and compatible custom endpoints."
           }
         }
       ]

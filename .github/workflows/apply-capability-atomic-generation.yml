@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - stabilization/capability-atomic-generation
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
 
 permissions:
   contents: write

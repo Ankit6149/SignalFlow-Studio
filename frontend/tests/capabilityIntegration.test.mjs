@@ -36,7 +36,7 @@ test("extension reads capabilities and refuses unacknowledged delivery", () => {
   assert.match(background, /acknowledged === true/);
   assert.match(content, /GET_SIGNALFLOW_CAPABILITIES/);
   assert.match(content, /SignalFlowRequestCapabilities/);
-  assert.match(popup, /capabilities\.extension\.available/);
+  assert.match(popup, /capabilities\?\.extension\?\.available/);
   assert.match(popup, /sendBtn\.disabled/);
 });
 

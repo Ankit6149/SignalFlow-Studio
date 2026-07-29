@@ -1,3 +1,4 @@
+import { parseCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
 import { signalFlowRequest } from "./httpClient.mjs";
 
 const CHANNELS = [
@@ -18,6 +19,15 @@ const CHANNELS = [
 const PROVIDERS = ["gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
 
 export const TOOL_DEFINITIONS = [
+  {
+    name: "signalflow_capabilities",
+    description: "Inspect the connected SignalFlow deployment profile, session permissions, and truthful feature availability before choosing a workflow.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
   {
     name: "signalflow_provider_status",
     description: "Inspect which real model providers are configured for the connected SignalFlow workspace.",
@@ -104,6 +114,23 @@ function requireChannels(value) {
 }
 
 export async function executeTool(name, args = {}, options = {}) {
+  if (name === "signalflow_capabilities") {
+    const raw = await signalFlowRequest("/api/capabilities", options);
+    const data = parseCapabilitySnapshot(raw);
+    const availableProviderCount = Object.values(data.capabilities.models.providers)
+      .filter((provider) => provider.available)
+      .length;
+    return {
+      content: textContent(
+        `SignalFlow deployment: ${data.deployment.profile}; session role: ${data.session.role}; ` +
+          `${availableProviderCount} model route${availableProviderCount === 1 ? "" : "s"} available; ` +
+          `cloud persistence ${data.capabilities.persistence.cloudDatabase.available ? "available" : "unavailable"}; ` +
+          `extension delivery ${data.capabilities.extension.available ? "available" : "unavailable"}.`,
+      ),
+      structuredContent: data,
+    };
+  }
+
   if (name === "signalflow_provider_status") {
     const data = await signalFlowRequest("/api/provider_status", options);
     const configured = Object.values(data.providers || {})

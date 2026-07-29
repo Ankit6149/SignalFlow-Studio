@@ -111,6 +111,17 @@ test("save, reopen, and re-export preserve the authoritative current drafts", as
     generationRun: restored.generationRun,
   });
   assert.equal(JSON.parse(reexported.content).campaign.currentDrafts.linkedin.content, campaignInput().posts.linkedin);
+
+  const resaved = await application.saveCampaign({
+    ...campaignInput(),
+    campaignId: listed.campaignId,
+    posts: restored.posts,
+    result: restored.result,
+    generationRun: restored.generationRun,
+    updatedAt: "2026-07-30T02:00:00.000Z",
+  });
+  assert.equal(resaved.drafts.linkedin.current.content, campaignInput().posts.linkedin);
+  assert.equal(resaved.drafts.linkedin.history[0].content, campaignInput().result.posts.linkedin);
 });
 
 test("legacy saved campaigns migrate with edited posts as current and original posts as history", () => {

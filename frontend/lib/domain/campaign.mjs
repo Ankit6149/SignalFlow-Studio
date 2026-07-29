@@ -96,19 +96,31 @@ function createRevision({ campaignId, channel, content, origin, createdAt }) {
   });
 }
 
-function createDraft({ campaignId, channel, currentContent, generatedContent, qualityState, updatedAt }) {
+function createDraft({
+  campaignId,
+  channel,
+  currentContent,
+  generatedContent,
+  qualityState,
+  updatedAt,
+  existingDraft = null,
+}) {
   const generated = text(generatedContent);
   const current = text(currentContent);
   const edited = Boolean(generated && generated !== current);
-  const history = edited
-    ? [createRevision({
-        campaignId,
-        channel,
-        content: generated,
-        origin: "generated",
-        createdAt: updatedAt,
-      })]
+  const history = Array.isArray(existingDraft?.history)
+    ? portableClone(existingDraft.history)
     : [];
+
+  if (edited && !history.some((revision) => revision?.content === generated && revision?.origin === "generated")) {
+    history.push(createRevision({
+      campaignId,
+      channel,
+      content: generated,
+      origin: "generated",
+      createdAt: updatedAt,
+    }));
+  }
 
   return createDomainRecord("ChannelDraft", {
     draftId: `draft-${fnv1a64(`${campaignId}:${channel}`)}`,
@@ -186,8 +198,9 @@ export function createCampaignAggregate(input = {}) {
       channel,
       currentContent,
       generatedContent: generatedPosts[channel],
-      qualityState: statuses[channel]?.status,
+      qualityState: statuses[channel]?.status || input.existingDrafts?.[channel]?.qualityState,
       updatedAt,
+      existingDraft: input.existingDrafts?.[channel] || null,
     });
   }
 

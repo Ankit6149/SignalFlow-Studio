@@ -34,6 +34,14 @@ export function evaluateProviderReadiness({ provider, apiKey = "", baseUrl = "",
     };
   }
 
+  if (status?.available === false) {
+    return {
+      ready: false,
+      reason: String(status.reason || "This model route is unavailable in the current SignalFlow session."),
+      source: "unavailable",
+    };
+  }
+
   if (serverConfigured) {
     return {
       ready: true,
@@ -93,8 +101,21 @@ export function evaluateProviderReadiness({ provider, apiKey = "", baseUrl = "",
 
 export function pickRecommendedProvider({ defaultProvider = "", statuses = {}, fallback = "gemini" } = {}) {
   const preferred = String(defaultProvider || "").trim().toLowerCase();
-  if (isModelProvider(preferred) && statuses?.[preferred]?.configured) return preferred;
+  if (
+    isModelProvider(preferred) &&
+    statuses?.[preferred]?.available !== false &&
+    statuses?.[preferred]?.configured
+  ) {
+    return preferred;
+  }
 
-  const configured = MODEL_PROVIDERS.find((provider) => statuses?.[provider]?.configured);
-  return configured || (isModelProvider(fallback) ? fallback : "gemini");
+  const configured = MODEL_PROVIDERS.find(
+    (provider) => statuses?.[provider]?.available !== false && statuses?.[provider]?.configured,
+  );
+  if (configured) return configured;
+
+  const availableFallback = isModelProvider(fallback) && statuses?.[fallback]?.available !== false
+    ? fallback
+    : MODEL_PROVIDERS.find((provider) => statuses?.[provider]?.available !== false);
+  return availableFallback || "gemini";
 }

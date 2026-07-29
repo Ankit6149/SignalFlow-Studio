@@ -1,29 +1,32 @@
 # SignalFlow Studio
 
-> SignalFlow Studio is an open-source, review-first campaign workspace that turns product notes, public links, GitHub repository context, and uploaded text files into editable drafts for twelve publishing destinations.
+> SignalFlow Studio is an open-source, review-first campaign workspace that turns product notes, public links, GitHub repository context, and supported text/code files into editable drafts for twelve publishing destinations.
 
-## Use this summary
+## Current product
 
-SignalFlow helps founders, developers, creators, and small teams prepare one coherent campaign instead of rewriting the same product update separately for every channel. Users add source context, select destinations, choose a deterministic local template or a supported model route, review each draft, and then export it or use a genuinely configured publishing path.
+Users add evidence, select destinations, choose a real model provider route, generate, review one authoritative current draft per channel, and then save locally, export, copy/open a destination, or use a genuinely configured official connector.
 
-## Core capabilities
+## Implemented capabilities
 
-- Creates editable drafts for LinkedIn, X, Instagram, Reddit, Facebook, Threads, YouTube, TikTok, Hacker News, newsletters, blogs, and release notes.
-- Extracts context from public links and public GitHub repositories.
-- Reads supported text, Markdown, CSV, JSON, and code files in the browser.
-- Includes a deterministic local template route that needs no API key.
-- Supports Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints.
-- Saves campaign packages in the current browser and exports Markdown or JSON.
-- Offers direct publishing only through configured official LinkedIn, X, and Reddit connectors after explicit review.
-- Treats image and video uploads as asset references in the active route; it does not claim automatic visual understanding.
+- Drafts for LinkedIn, X, Instagram, Facebook, Threads, Reddit, Hacker News, YouTube, TikTok, newsletters, blogs, and release notes.
+- Context extraction from public links, public GitHub repositories, and supported browser-readable files.
+- Gemini, OpenAI, Claude, OpenRouter, Groq, custom OpenAI-compatible, Ollama, and LM Studio adapters subject to deployment/session capability.
+- Versioned browser-local campaign saving and legacy migration.
+- Deterministic Markdown/JSON export from one authoritative current draft per channel.
+- Official connector code paths for LinkedIn, X, and Reddit with explicit review and destination-API-confirmed success.
+- Manual copy/export/open workflows for other destinations.
+- A versioned hosted/local/self-hosted capability endpoint at `/api/capabilities`.
+- MCP capability/provider/generation tools through the supported `mcp/` package.
 
-## Important limitations
+## Important boundaries
 
-- Every generated output is a draft and must be fact-checked and edited before use.
-- Direct publishing is not available for every destination.
-- A publish action is shown as successful only after the destination API confirms it.
-- The public hosted instance may require owner access for server-configured providers and social connectors.
-- llms.txt is provided as machine-readable product context; it does not guarantee search ranking or AI citation.
+- Campaign generation requires a real model route; retired template, offline, prompt-only, and substitute fallback output are rejected.
+- Server-configured providers and connector administration may require an authenticated owner session.
+- Saved campaigns are currently browser-local; cloud database, cross-device sync, collaboration, durable jobs, and billing quotas are not implemented.
+- Image/video uploads are metadata references in the active route, not automatic visual understanding.
+- The browser extension can perform a capability handshake, but acknowledged ingestion, screenshots, recordings, and upload queues are not implemented.
+- Direct publishing is not available for every destination and is reported successful only after the destination API confirms it.
+- Generated drafts require factual, brand, accessibility, legal, and compliance review before use.
 
 ## Canonical links
 

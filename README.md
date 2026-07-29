@@ -1,77 +1,172 @@
 # SignalFlow Studio
 
-SignalFlow Studio is a review-first, local-first campaign workspace. Give it a product brief, public links, repository context, and text or code files; it creates one coherent campaign with editable drafts for twelve destinations.
+SignalFlow Studio is an open-source, review-first campaign workspace. It turns product notes, public links, repository context, and supported text/code files into editable drafts for twelve destinations while keeping generation, review, export, and publishing states explicit.
 
-The product is designed for founders, builders, maintainers, creators, and small teams that want a clear path from evidence to publishable content without hiding important decisions behind fake automation.
+The active product **requires a real model provider**. Retired template, offline, prompt-only, and automatic fallback generation are rejected rather than presented as real campaign output.
 
-## Current Product Flow
+## Current product flow
 
-1. Add a campaign name, source brief, audience, public links, repository, and optional files.
+1. Add a campaign name, source brief, audience, public links, repository, and optional supported files.
 2. Select destinations across social, community, video, and owned channels.
-3. Generate with the deterministic local template or a configured/BYOK model route.
-4. Review and edit each channel in the Studio workspace.
-5. Save locally, export Markdown/JSON, copy and open a platform, or publish through a configured official connector.
+3. Choose an available model route for the current deployment/session.
+4. Generate a staged campaign and destination-specific drafts.
+5. Review and edit one authoritative current draft per channel.
+6. Save in the current browser, export deterministic Markdown/JSON, copy/open a destination, or publish through a genuinely configured official connector.
 
-## Twelve Destinations
+## Destinations
 
 - Social: LinkedIn, X, Instagram, Facebook, Threads
 - Community: Reddit, Hacker News
 - Video: YouTube, TikTok
 - Owned: Newsletter, Blog, Release notes
 
-LinkedIn, X, and Reddit have official OAuth connector paths. Every other destination uses an explicit review, copy, export, and open-platform handoff.
+LinkedIn, X, and Reddit have official OAuth connector code paths. Every other destination currently uses an explicit review, copy, export, and open-platform handoff.
 
-## What Works Today
+## Generation routes
 
-- Browser-based campaign composition and review
-- Public link and public GitHub repository context extraction
-- Browser extraction for supported text, Markdown, JSON, CSV, and code files
-- Honest image/video asset references without pretending visual analysis occurred
-- Deterministic no-key campaign generation
-- Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, and custom compatible model routes
-- Automatic fallback generation when a provider route fails
-- Editable drafts and platform character guidance
-- Browser-local campaign library
-- Markdown and JSON export
-- Official connector architecture for LinkedIn, X, and Reddit
-- Manual handoff flows for the remaining destinations
-- Public Privacy, Terms, sitemap, structured data, `llms.txt`, and `llms-full.txt` surfaces
+Supported adapters:
 
-## Connector Completion Is Deliberately Explicit
+- Gemini
+- OpenAI
+- Claude
+- OpenRouter
+- Groq
+- Custom OpenAI-compatible endpoint
+- Ollama
+- LM Studio
 
-Connector code existing is not the same as a connector being production-proven. A connector is complete only after all of these are true:
+A route is usable only when `GET /api/capabilities` reports it available for the current deployment and session.
 
-- Platform developer application created
-- Production client ID and secret configured
-- Canonical callback URL approved
-- Required scopes approved
-- A real account authorizes successfully
-- A real test post is confirmed by the platform API
-- Refresh and expired-session behavior is verified
-- Rejection, permission, and rate-limit behavior is verified
+- Hosted non-owner sessions can use supported temporary personal keys where the provider allows them.
+- Server-configured credentials and owner tools remain owner-only on protected/public hosted deployments.
+- Custom, Ollama, and LM Studio routes are owner/trusted-local capabilities. Hosted local-model use requires a reachable trusted base URL.
+- Temporary keys are request-scoped and excluded from saved campaigns.
 
-See [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md) for the exact checklist and current truth boundaries.
+## Storage and authoritative drafts
 
-## Quick Start
+- Saved campaigns are browser-local in the current product. There is no cloud campaign database, cross-device sync, collaboration, or account workspace yet.
+- Saved records use a versioned Campaign domain contract.
+- Each channel has one authoritative current draft.
+- Original generated text is optional revision history, never another active draft.
+- Legacy browser-library records are migrated into the canonical contract when read.
+- Clearing browser site data can remove the local library; export important campaigns first.
+
+Markdown and JSON exports are projected from the same canonical Campaign snapshot. They include campaign/source/generation IDs, provider/model, snapshot timestamp, warnings, quality states, and the authoritative current drafts. Identical campaign state produces deterministic output.
+
+## Deployment capability contract
+
+`GET /api/capabilities` is the server-owned source of truth for hosted, local, and self-hosted profiles. It describes current-session permissions and availability for models, persistence, repositories, exports, connectors, MCP, extension capture, quotas, and owner tools.
+
+Clients fail closed when a known capability is missing or discovery fails. “Configured” and “available to this session” are separate states.
+
+See [docs/CAPABILITY_MATRIX.md](docs/CAPABILITY_MATRIX.md).
+
+## Browser extension status
+
+The extension is an experimental capture client. It can perform a versioned capability handshake with an open Studio tab.
+
+**Acknowledged extension ingestion is not implemented yet.** The Send action remains disabled, and dispatching a tab message or DOM event is not reported as durable delivery. Screenshot, recording, review, upload queue, and store-release work remain tracked separately.
+
+## MCP status
+
+The `mcp/` package exposes:
+
+- deployment capability discovery;
+- provider status;
+- provider connection testing;
+- campaign creation through the canonical generation API.
+
+MCP requires an explicitly configured SignalFlow base URL and any required workspace/provider credentials in the MCP environment. Secrets are not accepted from model-authored tool arguments unless the server route intentionally supports a temporary request key.
+
+## Publishing truth
+
+Direct publishing code exists for LinkedIn, X, and Reddit, but code presence is not production proof. A connector is complete only after:
+
+- developer application and production credentials are configured;
+- canonical callback URL and required products/scopes are approved;
+- a real account authorizes;
+- a real publish succeeds and is confirmed by the destination API;
+- refresh, expiry, rejection, permission, and rate-limit behavior are verified.
+
+SignalFlow reports direct success only after the destination API confirms it. No campaign is silently published.
+
+See [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md).
+
+## Source handling boundaries
+
+Implemented:
+
+- written campaign brief and audience;
+- public link extraction with bounded failure handling;
+- public GitHub repository context;
+- opt-in trusted local repository context on eligible local/self-hosted deployments;
+- browser extraction for supported text, Markdown, CSV, JSON, and code files;
+- image/video file metadata and user descriptions as planning references.
+
+Not implemented in the active campaign route:
+
+- automatic visual understanding of uploaded image/video content;
+- durable cloud asset storage;
+- extension screenshot/recording ingestion;
+- background generation jobs.
+
+## Quick start
+
+Requirements:
+
+- Node.js 22 (the CI version)
+- npm
+- Python 3.10 only for the retained Python test suite
+- at least one real model provider route
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
-Build verification:
+Copy `frontend/.env.example` to `frontend/.env.local` and configure the chosen provider. Never commit credentials or prefix server secrets with `NEXT_PUBLIC_`.
+
+Protected hosted deployment example:
+
+```text
+SIGNALFLOW_ACCESS_KEY=use-a-long-private-value
+SIGNALFLOW_PUBLIC_HOSTED=true
+NEXTAUTH_URL=https://your-canonical-domain.example
+```
+
+## Verification
+
+Frontend:
 
 ```bash
 cd frontend
+npm ci
+npm test
+npm audit --omit=dev --audit-level=high
 npm run build
 ```
 
-## Vercel
+MCP:
 
-Use these settings:
+```bash
+cd mcp
+npm test
+```
+
+Python compatibility suite:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install pytest
+pytest -q
+```
+
+A change is not complete when only compilation succeeds. Relevant contract, regression, security, migration, and user-flow evidence must pass.
+
+## Vercel
 
 ```text
 Root Directory: frontend
@@ -81,44 +176,33 @@ Build Command: npm run build
 Output Directory: .next
 ```
 
-Copy `frontend/.env.example` to `.env.local` for local configuration. Never commit real secrets and never prefix server credentials with `NEXT_PUBLIC_`.
+## Repository map
 
-For a protected personal deployment:
-
-```text
-SIGNALFLOW_ACCESS_KEY=use-a-long-private-value
-SIGNALFLOW_PUBLIC_HOSTED=true
-NEXTAUTH_URL=https://your-canonical-domain.example
-```
-
-## Repository Map
-
-- `frontend/app/page.js` — primary Studio, Library, Connections, and Settings experience
-- `frontend/app/*.css` — visual system and responsive workspace layers
-- `frontend/app/api/launch_kit/` — campaign generation route
-- `frontend/app/api/social/` — OAuth status, connect, callback, and disconnect routes
+- `frontend/app/page.js` — current Studio, Library, Connections, and Settings UI
+- `frontend/app/api/capabilities/` — deployment/session capability document
+- `frontend/app/api/launch_kit/` — canonical campaign generation route
+- `frontend/app/api/social/` — OAuth status/connect/callback/disconnect routes
 - `frontend/app/api/publish/` — confirmed-only publishing route
+- `frontend/lib/domain/` — versioned records, invariants, serialization, and ports
+- `frontend/lib/application/` — shared campaign use cases and composition roots
+- `frontend/lib/infrastructure/` — browser, memory, and injected-store adapters
+- `frontend/lib/export/campaignExport.mjs` — authoritative deterministic export projector
 - `frontend/lib/context/` — repository, URL, and file context extraction
-- `frontend/lib/ai/` — model adapters and routing
-- `frontend/lib/social/` — connector configuration, token storage, and providers
-- `frontend/lib/package/` — campaign package normalization
-- `extension/` — browser capture companion
-- `docs/` — product, architecture, discoverability, UX, and connector documentation
+- `frontend/lib/ai/` — provider adapters, policy, and staged generation
+- `frontend/lib/social/` — connector configuration, encrypted session handling, and providers
+- `extension/` — experimental browser capture companion
+- `mcp/` — supported MCP server package
+- `docs/DOMAIN_ARCHITECTURE.md` — canonical domain/application/adapter boundaries
+- `docs/CAPABILITY_MATRIX.md` — current deployment truth
 
-## Agent and MCP Handoff
-
-Start with [AGENTS.md](AGENTS.md). It gives coding agents the product truth, architecture map, build command, UX rules, and connector limitations.
-
-For read-only GitHub MCP access, see [docs/GITHUB_MCP_READ_ONLY.md](docs/GITHUB_MCP_READ_ONLY.md). Repository files can document the required permissions and reading order, but an external coding client must still authorize its own GitHub MCP connection.
-
-## Product Principles
+## Product principles
 
 - Review before publish
-- Truthful connector and success states
-- Useful without an API key
-- Local-first by default
+- One authoritative current draft per channel
+- Real model routes only; no fake fallback output
+- Browser-local and self-hostable today, cloud-ready through adapters
+- Truthful capability, connector, extension, and success states
 - No credential harvesting or platform bypasses
-- Luxurious, creative, calm workspace rather than a crowded dashboard
-- Advanced controls remain available without blocking the first successful run
+- Calm creative workspace rather than a crowded dashboard
 
-Security and ethics: see [SECURITY.md](SECURITY.md).
+Start with [AGENTS.md](AGENTS.md) before making repository changes. Security and ethics guidance is in [SECURITY.md](SECURITY.md).

@@ -64,7 +64,7 @@ export default function OpenGraphImage() {
               Turn product context into a campaign people can trust.
             </span>
             <span style={{ marginTop: "28px", maxWidth: "820px", color: "rgba(255,253,248,.6)", fontSize: "24px", lineHeight: 1.45 }}>
-              Twelve editable destinations. Review-first publishing. Local templates or your own model.
+              Twelve editable destinations. Real model routes. Review before publishing.
             </span>
           </div>
 

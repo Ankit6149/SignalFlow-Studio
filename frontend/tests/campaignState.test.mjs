@@ -49,6 +49,21 @@ test("campaign reducer restores persisted output atomically", () => {
   assert.equal(restored.generationRun.generationRunId, "saved-run");
 });
 
+test("new campaign reset removes prior result, generation identity, and drafts", () => {
+  const existing = {
+    ...createInitialCampaignState(),
+    stage: "review",
+    result: { ok: true },
+    generationRun: { generationRunId: "saved-run" },
+    posts: { linkedin: "Edited draft" },
+    activeChannel: "linkedin",
+  };
+  assert.deepEqual(
+    campaignReducer(existing, { type: "RESET_CAMPAIGN" }),
+    createInitialCampaignState(),
+  );
+});
+
 test("editing one channel preserves every other authoritative draft", () => {
   const state = {
     ...createInitialCampaignState(),

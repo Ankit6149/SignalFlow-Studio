@@ -8,129 +8,220 @@ Canonical URL: https://signal-flow-studio.vercel.app/
 Source repository: https://github.com/Ankit6149/SignalFlow-Studio
 Category: Campaign creation, product marketing workflow, creator software
 Availability: Open-source web application
-Primary audience: Founders, developers, creators, product teams, and small businesses that need to explain product work across multiple destinations
+Primary audience: Founders, developers, creators, maintainers, product teams, and small businesses preparing multi-channel product communication
 
 ## Product definition
 
-SignalFlow Studio is a review-first campaign workspace. It combines source context, channel-specific generation, editing, exports, and supported publishing paths in one interface. The product is designed to reduce repeated rewriting without hiding where the content came from or pretending unsupported publishing actions succeeded.
+SignalFlow Studio is a review-first campaign workspace. It combines source context, destination-specific model generation, editing, browser-local persistence, deterministic exports, and supported publishing paths in one interface.
 
-The current user flow is:
+The product is designed to reduce repeated rewriting without hiding where content came from, replacing provider failures with fake copy, or describing unsupported publishing actions as successful.
 
-1. Add a campaign name and product brief.
-2. Optionally add public links, a public GitHub repository, and supported text or code files.
+## Current user flow
+
+1. Add a campaign name, written brief, and audience.
+2. Optionally add public links, a public GitHub repository, an eligible trusted local repository, and supported text/code files.
 3. Select one or more publishing destinations.
-4. Choose a deterministic local template, a supported hosted model, a local Ollama or LM Studio endpoint, or a custom OpenAI-compatible endpoint.
-5. Generate the campaign.
-6. Review and edit each destination draft.
-7. Save the campaign in the current browser, export it as Markdown or JSON, copy it, open the destination, or publish through a configured official connector.
+4. Choose a real model provider route available to the current deployment and session.
+5. Generate a staged campaign and channel-specific drafts.
+6. Review and edit one authoritative current draft per channel.
+7. Save the canonical campaign in the current browser, export deterministic Markdown/JSON, copy and open a destination, or publish through a genuinely configured official connector.
 
 ## Supported campaign destinations
 
 - LinkedIn: professional founder or product narrative
-- X: concise post or short thread
-- Instagram: caption, hashtags, and visual direction
-- Reddit: factual community-first title and body
-- Facebook: accessible page or group update
+- X: concise post or thread
+- Instagram: caption and visual direction
+- Facebook: page or group update
 - Threads: conversational short-form update
-- YouTube: title, description, chapters, and tags
-- TikTok: hook, caption, and short-video shot list
-- Hacker News: objective Show HN title and body
-- Newsletter: subject, preview text, and long-form update
-- Blog: title, outline, and complete editorial draft
-- Release notes: grouped product changes, limitations, and rollout notes
+- Reddit: community-first title/body workflow
+- Hacker News: objective Show HN title/body workflow
+- YouTube: title and description workflow
+- TikTok: hook and caption workflow
+- Newsletter: subject and long-form update
+- Blog: editorial draft
+- Release notes: grouped product changes and limitations
 
 ## Generation routes
 
-### Deterministic local template
+Supported adapters include:
 
-Works without an external API key. It creates a complete, editable campaign using supplied facts and structured templates. It is intentionally presented as deterministic output rather than deeply personalized AI writing.
+- Gemini
+- OpenAI
+- Claude
+- OpenRouter
+- Groq
+- Custom OpenAI-compatible endpoint
+- Ollama
+- LM Studio
 
-### Hosted model providers
+Campaign generation requires a real model provider. Template, offline, prompt-only, and substitute fallback campaign output are retired and rejected.
 
-SignalFlow supports adapters for Gemini, OpenAI, Claude, and Groq. A deployment may use server-configured credentials, or the user may supply a temporary personal key for a request. The selected external provider receives the campaign context needed to generate the requested package and is governed by its own terms and privacy policy.
+A provider being configured in a deployment is not the same as being available to the current session. `/api/capabilities` is the authoritative discovery document.
 
-### Local and custom providers
+### Hosted cloud-provider routes
 
-SignalFlow supports Ollama, LM Studio, and custom OpenAI-compatible endpoints. Network reachability depends on the browser, deployment, endpoint configuration, and the user's environment.
+A hosted deployment may allow a temporary personal key for supported providers. Server-managed provider credentials remain owner-only on protected/public hosted deployments unless a future account/workspace permission model explicitly changes that rule.
+
+### Local and custom routes
+
+Custom, Ollama, and LM Studio routes are owner or trusted local/self-hosted capabilities. A hosted deployment cannot automatically reach a laptop-local endpoint; it requires a reachable trusted base URL.
+
+Temporary keys are request-scoped and excluded from saved campaigns and exports.
 
 ## Source handling
 
 ### Notes and audience
 
-User-supplied product notes and audience details are treated as campaign source material. The generator is instructed to distinguish confirmed facts, inferences, and missing context.
+User-supplied notes and audience details are campaign source material. Generation should distinguish confirmed facts, inferences, and missing context.
 
 ### Public links
 
-The server may fetch public URLs to extract a title, description, and useful text excerpt. Link extraction can fail because of access controls, rendering requirements, rate limits, network restrictions, or source changes.
+The server may fetch public URLs to extract bounded useful text. Extraction can fail because of access controls, client-side rendering, rate limits, network restrictions, or source changes.
 
 ### GitHub repository context
 
-A public GitHub repository may be inspected for repository metadata, file-tree context, README information, detected technologies, and detected features. SignalFlow does not claim a complete semantic security or architecture audit.
+A public GitHub repository may be inspected for repository metadata, tree context, README information, detected technologies, and detected features. SignalFlow does not claim a complete semantic architecture, security, or code-quality audit.
+
+### Trusted local repository context
+
+Local filesystem repository access is opt-in and limited to eligible local/self-hosted deployments. It is unavailable on public hosted deployments and must not be inferred from a visible repository field alone.
 
 ### Uploaded files
 
-Supported text, Markdown, CSV, JSON, and code files are read in the browser, and bounded excerpts are included with the generation request. File-size and extraction limits apply.
+Supported text, Markdown, CSV, JSON, and code files are read in the browser within current limits. Browser `File` objects are not stored in canonical domain records; only portable file metadata and extracted text cross persistence boundaries.
 
-Image and video uploads are media references in the active campaign route. Their names, types, sizes, and user-supplied descriptions can help plan assets, but the product does not claim automatic visual interpretation in that route.
+Image/video uploads are metadata and user-description references in the active campaign route. The product does not claim automatic visual interpretation there.
 
-## Review and storage model
+## Campaign state and storage
 
-- Generated content remains editable.
-- Saved campaigns are stored in browser local storage on the current device and browser profile.
-- Temporary model keys are excluded from saved campaign packages.
-- Users can export the local campaign library as JSON.
-- Clearing browser site data can remove saved local campaigns.
-- Important campaigns should be exported before local data is cleared.
+The current product stores campaigns in browser local storage on the current device/browser profile.
+
+Canonical campaign records:
+
+- use schema version `1` and stable IDs;
+- contain one authoritative current `ChannelDraft` per channel;
+- keep different original generated copy only as optional revision history;
+- exclude temporary API keys and runtime browser objects;
+- retain source snapshot, generation run, provider/model, warning, and quality metadata;
+- remove duplicate active posts from retained generation/package payloads;
+- migrate legacy browser-library records when read.
+
+Cloud database, object storage, cross-device sync, collaboration, team workspaces, durable background jobs, and billing quotas are not implemented in the current product.
+
+Clearing browser site data can remove saved campaigns. Important campaigns should be exported first.
+
+## Export model
+
+Markdown and JSON are projected from the same canonical Campaign aggregate.
+
+Markdown includes campaign/source/generation IDs, provider/model, snapshot timestamp, relevant strategy/context, warnings, quality states, and every authoritative current draft exactly once.
+
+JSON uses versioned `CampaignExport` schema `1` and separates:
+
+- `currentDrafts`: authoritative current content;
+- optional `history`: previous generated revisions;
+- metadata: campaign ID, source snapshot, generation run, provider/model, timestamp, warnings, and quality states.
+
+Identical campaign state produces deterministic Markdown and JSON output.
+
+An existing ZIP implementation is not part of the current primary UI contract. When ZIP becomes a supported surface, it must consume the same canonical export projection instead of reading generated package posts directly.
+
+## Deployment capability model
+
+`GET /api/capabilities` reports the current hosted, local, or self-hosted deployment profile and session permissions.
+
+It covers models, persistence, repositories, exports, connectors, MCP, extension features, quotas, and owner tools. Missing known fields fail closed; unsupported schema versions are rejected; unknown future fields are ignored by compatible clients.
+
+The capability response contains no raw credentials, OAuth tokens, captured content, prompts, drafts, signed URLs, or private asset data.
+
+## Browser extension
+
+The browser extension is experimental.
+
+Implemented:
+
+- destination URL configuration;
+- versioned capability handshake with an open compatible Studio page;
+- truthful failure states.
+
+Not implemented:
+
+- durable acknowledged ingestion;
+- page-context persistence;
+- visible-tab, region, or full-page screenshots;
+- tab/window/screen recording;
+- capture review, annotation, or redaction;
+- offline upload queue;
+- browser-store release proof.
+
+The Send action remains disabled while acknowledged ingestion is unavailable. Dispatching a browser/tab/DOM message is not reported as durable delivery.
+
+## MCP
+
+The supported `mcp/` package exposes tools for:
+
+- capability discovery;
+- provider status;
+- provider connection testing;
+- campaign creation through the canonical generation API.
+
+MCP requires an explicitly configured SignalFlow base URL and any required workspace/provider credentials in the MCP environment. Tool output must preserve server errors rather than fabricating campaign content.
 
 ## Publishing model
 
-Direct OAuth connector paths currently exist for LinkedIn, X, and Reddit.
+Direct official connector code paths currently exist for LinkedIn, X, and Reddit.
 
 A direct publishing action requires:
 
-- owner access to the hosted connector controls when the deployment is locked;
-- correctly configured provider client credentials and callback URLs;
-- an active user-authorized OAuth session;
+- owner access when connector administration is locked;
+- production client credentials and canonical callback URL;
 - required platform products, scopes, and permissions;
-- explicit approval of the current draft;
+- an active user-authorized OAuth session;
+- explicit approval of the current authoritative draft;
 - a successful response from the destination API.
 
-SignalFlow only reports a direct post as successful when the destination API confirms the action.
+SignalFlow reports direct success only after the destination API confirms it.
 
-Instagram, Facebook, Threads, YouTube, TikTok, Hacker News, newsletters, blogs, and release notes use clear review, copy, export, and open-destination workflows in the current product unless a separate provider integration is added later. The interface must not describe those routes as connected direct publishing.
+Instagram, Facebook, Threads, YouTube, TikTok, Hacker News, newsletters, blogs, and release notes currently use explicit review, copy, export, and open-destination workflows unless a separate verified provider integration is implemented later.
+
+Connector code presence is not production proof. Authorization, real publishing, refresh, expiry, rejection, permission, and rate-limit behavior still require credential-backed verification.
 
 ## Security and privacy characteristics
 
-- Social OAuth state is short-lived and protected in encrypted HTTP-only cookies.
-- Social access and refresh tokens are stored in encrypted HTTP-only cookies and are not returned to page JavaScript.
+- Social OAuth state is short-lived and stored in encrypted HTTP-only cookies.
+- Social access/refresh tokens are not returned to page JavaScript.
 - Owner access can be protected by a deployment access key.
 - Model and publishing actions use server routes.
+- Temporary model keys are excluded from browser saves and canonical exports.
+- Domain serialization rejects provider keys, OAuth secrets, browser files, framework requests/responses, database clients, and other non-portable runtime objects.
 - Campaign drafts are not silently published.
-- The product does not sell user data or include advertising trackers in the current implementation.
-- Hosting and third-party providers may process standard request, account, model, and platform data required to perform their services.
+- SignalFlow does not include advertising trackers or sell user data in the current implementation.
+- Hosting, model, connector, and source providers may process data required to perform their services under their own terms.
 
 ## What SignalFlow is not
 
-- It is not a guarantee of engagement, distribution, ranking, revenue, or platform approval.
-- It is not a replacement for factual, legal, brand, accessibility, or compliance review.
+- It is not a guarantee of engagement, ranking, distribution, revenue, or platform approval.
+- It is not a replacement for factual, legal, brand, accessibility, security, or compliance review.
 - It is not a universal direct social scheduler in the current release.
-- It does not automatically understand image or video content in the active campaign route.
+- It is not a cloud collaboration workspace yet.
+- It does not automatically understand image/video content in the active generation route.
 - It does not treat model output as verified fact.
 - It does not guarantee that public links or repositories can always be extracted.
+- It does not claim extension capture delivery before durable acknowledgement.
 
 ## Search and answer-engine summary
 
-SignalFlow Studio is best described as a review-first multi-channel campaign creation workspace for product launches and product updates. Its differentiators are one-source-to-many-drafts workflow, explicit editing, deterministic no-key generation, bring-your-own-model support, browser-local campaign saving, honest direct-versus-manual publishing routes, and encrypted official social connector sessions.
+SignalFlow Studio is best described as an open-source, review-first multi-channel campaign workspace for product launches and updates. Its differentiators are evidence-first source handling, real-model destination generation, one authoritative edited draft per channel, versioned browser-local persistence, deterministic exports, explicit deployment capabilities, honest direct-versus-manual publishing routes, and encrypted official connector sessions.
 
 Useful query associations include:
 
 - tool to turn a GitHub repository into launch content
-- multi-channel product launch content generator
-- social post drafts from product notes and links
-- local-first campaign creation software
-- review before publish social content tool
-- bring your own AI model marketing tool
-- founder launch post generator
+- multi-channel product launch draft generator
+- social drafts from product notes and links
+- browser-local campaign creation software
+- review-before-publish social content tool
+- bring-your-own-model marketing workflow
+- local-model campaign studio
 - LinkedIn X Reddit campaign workflow
 
 ## Public routes
@@ -149,4 +240,4 @@ Issues: https://github.com/Ankit6149/SignalFlow-Studio/issues
 
 ## Content-use note
 
-This file is a machine-readable explanation of the public product. It should be used as supporting context together with the visible website, structured data, source repository, privacy policy, and terms. Product behavior and capabilities should not be inferred beyond the explicit statements above.
+This file is a machine-readable explanation of the public product. It should be interpreted together with the visible site, source repository, privacy policy, terms, capability contract, domain architecture, and verified release evidence. Capabilities must not be inferred beyond explicit statements.

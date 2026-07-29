@@ -1,35 +1,23 @@
 import { requireOwnerAccess } from "../../_auth";
-import { buildMarkdown } from "../../../../lib/export/markdown";
+import { createMarkdownExport } from "../../../../lib/application/exportApplication.mjs";
 
 export async function POST(request) {
   const accessError = requireOwnerAccess(request);
-  if (accessError) {
-    return accessError;
-  }
+  if (accessError) return accessError;
 
   try {
-    const { package: pkg, projectName, prompt } = await request.json();
-    if (!pkg) {
-      return new Response(JSON.stringify({ error: "Missing package object" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    const mdContent = buildMarkdown({ projectName, package: pkg, prompt });
-    const filename = `${(projectName || "project").toLowerCase().replace(/\s+/g, "-")}-package.md`;
-
-    return new Response(mdContent, {
+    const projection = createMarkdownExport(await request.json());
+    return new Response(projection.content, {
       status: 200,
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`
-      }
+        "Content-Disposition": `attachment; filename="${projection.filename}"`,
+      },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: error instanceof TypeError ? 400 : 500,
+      headers: { "Content-Type": "application/json" },
     });
   }
 }

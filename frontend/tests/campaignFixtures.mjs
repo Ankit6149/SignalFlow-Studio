@@ -1,0 +1,76 @@
+export function campaignInput(overrides = {}) {
+  const createdAt = "2026-07-30T00:00:00.000Z";
+  return {
+    title: "SignalFlow launch",
+    channels: ["linkedin", "x", "blog"],
+    posts: {
+      linkedin: "Edited LinkedIn draft — authoritative.",
+      x: "Edited X draft — authoritative.",
+      blog: "Edited blog draft — authoritative.",
+    },
+    result: {
+      ok: true,
+      providerUsed: "gemini",
+      modelUsed: "gemini-test",
+      warnings: ["Verify the launch date."],
+      generation_status: {
+        linkedin: { status: "generated", qualityScore: 92 },
+        x: { status: "needs_review", qualityScore: 75 },
+        blog: { status: "regenerated", qualityScore: 88 },
+      },
+      posts: {
+        linkedin: "Original generated LinkedIn text.",
+        x: "Original generated X text.",
+        blog: "Original generated blog text.",
+      },
+      package: {
+        project: { name: "SignalFlow launch", audience: "builders" },
+        context: { confirmedFacts: ["SignalFlow is review-first."], inferredFacts: [], missingContext: [] },
+        strategy: { coreAngle: "Evidence to campaign", positioning: "Truthful campaign workflow", hooks: ["One brief, many drafts"] },
+        posts: { linkedin: { body: "Original structured duplicate." } },
+        media: { screenshotPlan: ["Capture the review workspace"] },
+        publishing: { platformChecklist: ["Review every draft"] },
+      },
+    },
+    generationRun: {
+      schemaVersion: 1,
+      generationRunId: "run-fixture-1",
+      sourceSnapshotId: "source-fixture-1",
+      sourceFingerprint: "sf1-fixture",
+      provider: "gemini",
+      model: "gemini-test",
+      createdAt,
+      sourceSnapshot: {
+        schemaVersion: 1,
+        sourceSnapshotId: "source-fixture-1",
+        fingerprint: "sf1-fixture",
+        normalizedSource: {
+          schemaVersion: 1,
+          campaign: { projectName: "SignalFlow launch", notes: "Launch evidence" },
+          destinations: ["blog", "linkedin", "x"],
+          modelRoute: { provider: "gemini", model: "gemini-test", baseUrl: "" },
+          documents: [],
+          media: [],
+        },
+        createdAt,
+      },
+    },
+    brief: {
+      projectName: "SignalFlow launch",
+      notes: "Launch evidence",
+      audience: "builders",
+      links: "https://example.com",
+      repo: "https://github.com/example/repo",
+      provider: "gemini",
+      model: "gemini-test",
+      baseUrl: "",
+      apiKey: "must-not-persist",
+    },
+    publishOptions: { reddit: { subreddit: "signalflow", title: "Launch" } },
+    sourceFiles: [{ name: "notes.md", type: "text/markdown", size: 128, description: "Launch notes" }],
+    documentText: ["Launch evidence"],
+    createdAt,
+    updatedAt: createdAt,
+    ...overrides,
+  };
+}

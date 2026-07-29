@@ -23,14 +23,14 @@ export default function PrivacyPage() {
       <article className="legal-content">
         <p className="eyebrow eyebrow--dark"><span /> Product policy</p>
         <h1>Privacy</h1>
-        <p>Effective July 24, 2026</p>
+        <p>Effective July 30, 2026</p>
 
         <section>
           <h2>Plain-language summary</h2>
           <p>
-            SignalFlow Studio is designed around reviewable, browser-local campaign work. Saved campaigns are
-            stored in the browser you are using. The hosted application processes the information needed to
-            generate a campaign, but it does not silently publish content or sell personal data.
+            SignalFlow Studio is designed around reviewable, browser-local campaign work. Saved campaigns use a
+            versioned local record in the browser you are using. The hosted application processes the information
+            needed to generate a campaign, but it does not silently publish content or sell personal data.
           </p>
         </section>
 
@@ -46,9 +46,11 @@ export default function PrivacyPage() {
         <section>
           <h2>Browser-local campaign storage</h2>
           <p>
-            When you save a campaign to the local library, the campaign package is stored in this browser using
-            local storage. Clearing browser data, using another browser, or using another device can make that
-            local library unavailable. Export important campaigns before clearing local data.
+            When you save a campaign, SignalFlow stores a canonical Campaign record in browser local storage. The
+            record contains the authoritative current drafts, portable source and generation metadata, and optional
+            revision history. Temporary model keys and browser File objects are excluded. Clearing browser data,
+            using another browser, or using another device can make the local library unavailable. Export important
+            campaigns before clearing local data.
           </p>
         </section>
 
@@ -65,20 +67,31 @@ export default function PrivacyPage() {
         <section>
           <h2>Model providers and temporary keys</h2>
           <p>
-            When you select an external model provider, the campaign context is sent to that provider to perform
-            the requested generation. A temporary provider key entered in the studio is used for that request and
-            is not saved in the local campaign library. The chosen provider has its own terms and privacy policy.
-            The deterministic local template route does not require an external model call.
+            Campaign generation requires a real model provider route. When you select an external provider, the
+            campaign context is sent to that provider to perform the requested generation. A temporary provider key
+            entered in the Studio is used for that request and is excluded from the local campaign library and
+            canonical exports. The chosen provider has its own terms and privacy policy. Custom or local endpoints
+            are available only when the current deployment and session capability allows them.
           </p>
         </section>
 
         <section>
           <h2>Owner access and social connectors</h2>
           <p>
-            The hosted owner session uses an access cookie and may also support a browser-held bearer token for
-            compatibility. LinkedIn, X, and Reddit OAuth sessions are encrypted in HTTP-only cookies. Those raw
-            social access tokens are not returned to page JavaScript. Direct publishing is attempted only after
-            explicit approval, and success is shown only after the destination confirms it.
+            A protected deployment uses an HTTP-only owner session cookie. LinkedIn, X, and Reddit OAuth sessions
+            are encrypted in HTTP-only cookies, and raw social access tokens are not returned to page JavaScript.
+            Direct publishing is attempted only after explicit approval, and success is shown only after the
+            destination API confirms it.
+          </p>
+        </section>
+
+        <section>
+          <h2>Current cloud and extension boundaries</h2>
+          <p>
+            SignalFlow does not currently provide a cloud campaign database, cross-device synchronization,
+            collaboration, durable background jobs, or hosted asset storage. The browser extension can verify a
+            compatible Studio capability document, but acknowledged capture ingestion, screenshots, and recordings
+            are not implemented. A browser message is not treated as durable delivery.
           </p>
         </section>
 

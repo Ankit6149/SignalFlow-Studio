@@ -1,20 +1,21 @@
+import {
+  campaignFromPackagePayload,
+  migrateLegacyCampaign,
+} from "../domain/campaign.mjs";
+import { projectCampaignJson } from "./campaignExport.mjs";
+
 /**
- * Formats the package JSON for download with creation metadata.
+ * Compatibility wrapper. New callers should pass a canonical Campaign record.
+ * Legacy package payloads are translated once, then projected through the same
+ * authoritative CampaignExport schema.
  */
-export function buildJSONExport(pkg, metadata = {}) {
-  if (!pkg) return JSON.stringify({ error: "No package generated" });
-
-  const exportObj = {
-    metadata: {
-      client: "SignalFlow Studio V1",
-      createdAt: new Date().toISOString(),
-      providerUsed: metadata.providerUsed || "unknown",
-      fallbackUsed: Boolean(metadata.fallbackUsed),
-      selectedChannels: metadata.selectedChannels || [],
-      selectedOutputs: metadata.selectedOutputs || []
-    },
-    package: pkg
-  };
-
-  return JSON.stringify(exportObj, null, 2);
+export function buildJSONExport(input, metadata = {}) {
+  const campaign = input?.kind === "Campaign"
+    ? migrateLegacyCampaign(input)
+    : campaignFromPackagePayload({
+        package: input,
+        projectName: input?.project?.name,
+        metadata,
+      });
+  return projectCampaignJson(campaign).content;
 }

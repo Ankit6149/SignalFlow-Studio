@@ -1,10 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import JSZip from "jszip";
 
 import { createCampaignApplication } from "../lib/application/campaignApplication.mjs";
-import { campaignToEditorState, createCampaignAggregate, migrateLegacyCampaign } from "../lib/domain/campaign.mjs";
+import {
+  campaignFromPackagePayload,
+  campaignToEditorState,
+  createCampaignAggregate,
+  migrateLegacyCampaign,
+} from "../lib/domain/campaign.mjs";
 import { createMemoryCampaignRepository } from "../lib/infrastructure/adapters.mjs";
 import { projectCampaignJson, projectCampaignMarkdown } from "../lib/export/campaignExport.mjs";
+import { buildCampaignZipExport } from "../lib/export/campaignZip.mjs";
 import { campaignInput } from "./campaignFixtures.mjs";
 
 const fixedClock = { now: () => "2026-07-30T00:00:00.000Z" };
@@ -50,6 +57,39 @@ test("JSON export is versioned, deterministic, and separates current drafts from
   assert.equal(parsed.metadata.provider, "gemini");
   assert.equal(parsed.metadata.snapshotAt, "2026-07-30T00:00:00.000Z");
   assert.equal(parsed.metadata.qualityStates.x, "needs_review");
+});
+
+test("ZIP contains the same authoritative Markdown, JSON, and per-channel drafts", async () => {
+  const input = campaignInput();
+  const campaign = createCampaignAggregate(input);
+  const projection = await buildCampaignZipExport(campaign);
+  const zip = await JSZip.loadAsync(projection.content);
+  const markdown = await zip.file("campaign.md").async("string");
+  const json = JSON.parse(await zip.file("campaign.json").async("string"));
+  assert.equal(json.campaign.currentDrafts.linkedin.content, input.posts.linkedin);
+  assert.equal(await zip.file("drafts/linkedin.txt").async("string"), input.posts.linkedin);
+  assert.match(markdown, new RegExp(input.posts.linkedin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(markdown, /Original generated LinkedIn text/);
+});
+
+test("package compatibility canonicalizes releaseNotes into release_notes", () => {
+  const campaign = campaignFromPackagePayload({
+    package: {
+      project: { name: "Release" },
+      posts: {
+        releaseNotes: {
+          title: "Version 1",
+          sections: [{ title: "Changes", items: ["Authoritative export"] }],
+        },
+      },
+    },
+    metadata: {
+      providerUsed: "gemini",
+      createdAt: "2026-07-30T00:00:00.000Z",
+    },
+  });
+  assert.deepEqual(campaign.channels, ["release_notes"]);
+  assert.match(campaign.drafts.release_notes.current.content, /Authoritative export/);
 });
 
 test("save, reopen, and re-export preserve the authoritative current drafts", async () => {

@@ -16,6 +16,13 @@ test("Studio consumes the capability endpoint and serves the extension handshake
   assert.match(route, /Cache-Control/);
 });
 
+test("owner-only model routes match API authorization in every deployment profile", () => {
+  const route = read("../app/api/capabilities/route.js");
+  assert.match(route, /const available = !ownerOnly \|\| isOwner;/);
+  assert.doesNotMatch(route, /!ownerOnly \|\| isOwner \|\| !publicHosted/);
+  assert.match(route, /Custom and local|OWNER_ONLY_PROVIDERS|authenticated owner session/);
+});
+
 test("Studio validates a generation response before the atomic state commit", () => {
   const page = read("../app/page.js");
   const validationIndex = page.indexOf("const accepted = acceptGenerationResponse");

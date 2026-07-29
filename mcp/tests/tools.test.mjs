@@ -1,12 +1,74 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
 import { executeTool, TOOL_DEFINITIONS } from "../lib/tools.mjs";
 
-test("MCP exposes provider status, provider test, and campaign creation tools", () => {
+test("MCP exposes capabilities, provider status, provider test, and campaign creation tools", () => {
   assert.deepEqual(
     TOOL_DEFINITIONS.map((tool) => tool.name),
-    ["signalflow_provider_status", "signalflow_test_provider", "signalflow_create_campaign"],
+    [
+      "signalflow_capabilities",
+      "signalflow_provider_status",
+      "signalflow_test_provider",
+      "signalflow_create_campaign",
+    ],
+  );
+});
+
+test("capability tool consumes the versioned server contract", async () => {
+  const snapshot = createCapabilitySnapshot({
+    profile: "hosted",
+    publicHosted: true,
+    session: {
+      authenticated: false,
+      role: "anonymous",
+      canGenerate: true,
+    },
+    providers: {
+      gemini: {
+        label: "Gemini",
+        available: true,
+        supportsTemporaryKey: true,
+      },
+      ollama: {
+        label: "Ollama",
+        available: false,
+        isLocal: true,
+      },
+    },
+  });
+  const fetchImpl = async (url) => {
+    assert.equal(url, "https://signalflow.example/api/capabilities");
+    return new Response(JSON.stringify(snapshot), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const result = await executeTool("signalflow_capabilities", {}, {
+    fetchImpl,
+    env: { SIGNALFLOW_BASE_URL: "https://signalflow.example" },
+  });
+
+  assert.equal(result.structuredContent.deployment.profile, "hosted");
+  assert.equal(result.structuredContent.capabilities.models.providers.gemini.available, true);
+  assert.equal(result.structuredContent.capabilities.models.providers.ollama.available, false);
+  assert.match(result.content[0].text, /extension delivery unavailable/i);
+});
+
+test("capability tool rejects incompatible server schema", async () => {
+  const fetchImpl = async () => new Response(JSON.stringify({
+    schemaVersion: 99,
+    product: "signalflow-studio",
+  }), { status: 200, headers: { "Content-Type": "application/json" } });
+
+  await assert.rejects(
+    executeTool("signalflow_capabilities", {}, {
+      fetchImpl,
+      env: { SIGNALFLOW_BASE_URL: "https://signalflow.example" },
+    }),
+    /unsupported signalflow capability schema/i,
   );
 });
 

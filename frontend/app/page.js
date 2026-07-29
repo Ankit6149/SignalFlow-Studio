@@ -799,11 +799,31 @@ export default function Home() {
     dispatchCampaign({ type: "SET_ACTIVE_CHANNEL", channel });
   }
 
+  function startNewCampaign() {
+    setCurrentCampaignId("");
+    dispatchCampaign({ type: "RESET_CAMPAIGN" });
+    setForm({
+      projectName: "",
+      notes: "",
+      audience: "Founders, builders, and early users",
+      links: "",
+      repo: "",
+      provider: "gemini",
+      apiKey: "",
+      model: "",
+      baseUrl: "",
+    });
+    setChannels(DEFAULT_CHANNELS);
+    setFiles([]);
+    setDocumentText([]);
+    setPublishOptions({ reddit: { subreddit: "", title: "" } });
+    setMessage(null);
+    navigateSection("studio");
+  }
+
   function enterStudio() {
     setEntered(true);
-    setSection("studio");
-    setCurrentCampaignId("");
-    setStage("source");
+    startNewCampaign();
   }
 
   function navigateSection(nextSection) {
@@ -1961,10 +1981,7 @@ export default function Home() {
             </div>
             <button
               className="button button--dark"
-              onClick={() => {
-                navigateSection("studio");
-                setStage("source");
-              }}
+              onClick={startNewCampaign}
             >
               New campaign <ArrowIcon />
             </button>

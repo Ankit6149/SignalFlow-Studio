@@ -13,9 +13,16 @@ function text(value, fallback = "") {
   return normalized || fallback;
 }
 
+function canonicalChannel(value) {
+  const channel = text(value).toLowerCase();
+  if (["releasenotes", "release-notes", "release_notes"].includes(channel)) return "release_notes";
+  if (["hn", "hacker-news", "hacker_news"].includes(channel)) return "hackernews";
+  return channel;
+}
+
 function stringList(value) {
   return Array.from(new Set((Array.isArray(value) ? value : [])
-    .map((item) => text(item).toLowerCase())
+    .map(canonicalChannel)
     .filter(Boolean)));
 }
 

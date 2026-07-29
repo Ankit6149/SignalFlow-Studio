@@ -25,6 +25,7 @@ import {
 } from "../lib/studio/campaignState.mjs";
 import { acceptGenerationResponse } from "../lib/studio/generationAcceptance.mjs";
 import { parseCapabilitySnapshot } from "../lib/capabilities/capabilityContract.mjs";
+import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
 
 const LEGACY_ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
@@ -559,6 +560,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [library, setLibrary] = useState([]);
+  const [currentCampaignId, setCurrentCampaignId] = useState("");
   const [connections, setConnections] = useState({});
   const [connectionsLoading, setConnectionsLoading] = useState(false);
   const [providerStatuses, setProviderStatuses] = useState({});
@@ -571,6 +573,11 @@ export default function Home() {
     reddit: { subreddit: "", title: "" },
   });
   const fileInputRef = useRef(null);
+  const campaignApplication = useMemo(() => createBrowserCampaignApplication({
+    getStorage: () => window.localStorage,
+    key: LIBRARY_KEY,
+    limit: 30,
+  }), []);
 
   const availableProviders = useMemo(
     () => PROVIDERS.filter(
@@ -649,7 +656,12 @@ export default function Home() {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
-    setLibrary(safeJsonParse(window.localStorage.getItem(LIBRARY_KEY), []));
+    void campaignApplication.listCampaigns()
+      .then(setLibrary)
+      .catch(() => setMessage({
+        type: "error",
+        text: "The browser could not read or migrate the local campaign library.",
+      }));
     void syncOwnerSession();
     void refreshProviderStatus();
 
@@ -790,6 +802,7 @@ export default function Home() {
   function enterStudio() {
     setEntered(true);
     setSection("studio");
+    setCurrentCampaignId("");
     setStage("source");
   }
 
@@ -1003,30 +1016,29 @@ export default function Home() {
     }
   }
 
-  function saveCampaign() {
-    if (!result) return;
-    const now = new Date().toISOString();
-    const item = {
-      id: `campaign-${Date.now()}`,
+  function currentCampaignInput(overrides = {}) {
+    return {
+      campaignId: currentCampaignId,
       title: form.projectName.trim() || result?.package?.project?.name || "Untitled campaign",
-      createdAt: now,
-      updatedAt: now,
       channels: [...channels],
       posts: { ...posts },
-      providerUsed: result.providerUsed,
-      fallbackUsed: Boolean(result.fallbackUsed),
-      warnings: result.warnings || [],
-      markdown: result.markdown || "",
       result,
       generationRun,
-      brief: { ...form, apiKey: "" },
+      brief: { ...form },
       publishOptions,
       ...createSourceSnapshot(files, documentText),
+      ...overrides,
     };
-    const next = [item, ...library.filter((entry) => entry.title !== item.title)].slice(0, 30);
+  }
+
+  async function saveCampaign() {
+    if (!result) return;
     try {
-      window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
-      setLibrary(next);
+      const saved = await campaignApplication.saveCampaign(currentCampaignInput({
+        updatedAt: new Date().toISOString(),
+      }));
+      setCurrentCampaignId(saved.campaignId);
+      setLibrary(await campaignApplication.listCampaigns());
       setMessage({ type: "success", text: "Campaign saved to your local library." });
     } catch {
       setMessage({ type: "error", text: "The browser could not save this campaign. Export it before leaving this page." });
@@ -1034,36 +1046,35 @@ export default function Home() {
   }
 
   function openCampaign(item) {
-    const restoredSource = restoreSourceSnapshot(item);
-    const restoredRun = restoreGenerationRun({
-      ...item,
-      sourceFiles: restoredSource.sourceFiles,
-      documentText: restoredSource.documentText,
-    });
-    setForm((previous) => ({ ...previous, ...(item.brief || {}), apiKey: "" }));
-    const restoredChannels = item.channels || ["linkedin"];
-    setChannels(restoredChannels);
-    dispatchCampaign({
-      type: "RESTORE_CAMPAIGN",
-      payload: {
-        posts: item.posts || {},
-        result: item.result || { markdown: item.markdown, warnings: item.warnings || [] },
-        generationRun: restoredRun,
-        activeChannel: restoredChannels[0],
-      },
-    });
-    setPublishOptions(item.publishOptions || { reddit: { subreddit: "", title: "" } });
-    setFiles(restoredSource.sourceFiles);
-    setDocumentText(restoredSource.documentText);
-    navigateSection("studio");
+    try {
+      const restored = campaignApplication.openCampaign(item);
+      setCurrentCampaignId(restored.campaignId);
+      setForm((previous) => ({ ...previous, ...restored.brief, apiKey: "" }));
+      setChannels(restored.channels);
+      dispatchCampaign({
+        type: "RESTORE_CAMPAIGN",
+        payload: {
+          posts: restored.posts,
+          result: restored.result,
+          generationRun: restored.generationRun,
+          activeChannel: restored.channels[0] || "linkedin",
+        },
+      });
+      setPublishOptions(restored.publishOptions || { reddit: { subreddit: "", title: "" } });
+      setFiles(restored.sourceFiles || []);
+      setDocumentText(restored.documentText || []);
+      navigateSection("studio");
+    } catch {
+      setMessage({ type: "error", text: "This saved campaign could not be migrated or opened safely." });
+    }
   }
 
-  function deleteCampaign(id) {
+  async function deleteCampaign(campaignId) {
     if (!window.confirm("Delete this saved campaign from the current browser?")) return;
-    const next = library.filter((item) => item.id !== id);
     try {
-      window.localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
-      setLibrary(next);
+      await campaignApplication.deleteCampaign(campaignId);
+      setLibrary(await campaignApplication.listCampaigns());
+      if (currentCampaignId === campaignId) setCurrentCampaignId("");
     } catch {
       setMessage({ type: "error", text: "The browser could not update the local campaign library." });
     }
@@ -1131,19 +1142,12 @@ export default function Home() {
       reportStaleCampaign();
       return;
     }
-    const name = (form.projectName || "signalflow-campaign")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    const approvedDrafts = channels
-      .map((channel) => `## ${channelMeta(channel).label}\n\n${posts[channel] || "No draft generated."}`)
-      .join("\n\n---\n\n");
-    const strategy = result?.markdown ? `${result.markdown}\n\n---\n\n# Approved channel drafts\n\n` : "";
-    downloadText(
-      `${name || "signalflow-campaign"}.md`,
-      `${strategy}${approvedDrafts}`,
-      "text/markdown",
-    );
+    try {
+      const projection = campaignApplication.projectMarkdown(currentCampaignInput());
+      downloadText(projection.filename, projection.content, projection.mimeType);
+    } catch {
+      setMessage({ type: "error", text: "SignalFlow could not project the current campaign into Markdown." });
+    }
   }
 
   function exportJson() {
@@ -1151,15 +1155,12 @@ export default function Home() {
       reportStaleCampaign();
       return;
     }
-    const name = (form.projectName || "signalflow-campaign")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    downloadText(
-      `${name || "signalflow-campaign"}.json`,
-      JSON.stringify({ campaign: form.projectName, channels, posts, publishOptions, result }, null, 2),
-      "application/json",
-    );
+    try {
+      const projection = campaignApplication.projectJson(currentCampaignInput());
+      downloadText(projection.filename, projection.content, projection.mimeType);
+    } catch {
+      setMessage({ type: "error", text: "SignalFlow could not project the current campaign into JSON." });
+    }
   }
 
   async function publishCurrentPost() {
@@ -1978,9 +1979,9 @@ export default function Home() {
           ) : (
             <div className="library-grid">
               {library.map((item) => (
-                <article key={item.id} className="library-card">
+                <article key={item.campaignId} className="library-card">
                   <div className="library-card__top">
-                    <span>{item.fallbackUsed ? "Fallback route" : item.providerUsed || "Generated"}</span>
+                    <span>{item.providerUsed || "Generated"}</span>
                     <small>{formatDate(item.updatedAt)}</small>
                   </div>
                   <h2>{item.title}</h2>
@@ -1992,12 +1993,12 @@ export default function Home() {
                     ))}
                   </div>
                   <p>
-                    {Object.values(item.posts || {})[0]?.slice(0, 170) || "Saved campaign package"}
-                    {Object.values(item.posts || {})[0]?.length > 170 ? "…" : ""}
+                    {item.preview?.slice(0, 170) || "Saved campaign package"}
+                    {item.preview?.length > 170 ? "…" : ""}
                   </p>
                   <footer>
                     <button onClick={() => openCampaign(item)}>Open campaign</button>
-                    <button className="danger-link" onClick={() => deleteCampaign(item.id)}>
+                    <button className="danger-link" onClick={() => deleteCampaign(item.campaignId)}>
                       Delete
                     </button>
                   </footer>

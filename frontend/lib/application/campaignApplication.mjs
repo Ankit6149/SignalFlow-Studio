@@ -14,7 +14,7 @@ export function createCampaignApplication({ campaignRepository, clock = createSy
   const applicationClock = assertPort("clock", clock);
 
   function aggregateInput(input, existing = null) {
-    const snapshotAt = input.updatedAt || applicationClock.now();
+    const snapshotAt = input.updatedAt || input.generationRun?.createdAt || existing?.updatedAt || applicationClock.now();
     return createCampaignAggregate({
       ...input,
       campaignId: input.campaignId || existing?.campaignId,
@@ -38,9 +38,18 @@ export function createCampaignApplication({ campaignRepository, clock = createSy
     },
 
     async saveCampaign(input) {
-      const candidateId = input.campaignId || input.id || "";
-      const existing = candidateId ? await repository.get(candidateId) : null;
-      const campaign = aggregateInput(input, existing);
+      const firstPass = aggregateInput({
+        ...input,
+        updatedAt: input.updatedAt || applicationClock.now(),
+      });
+      const existing = await repository.get(firstPass.campaignId);
+      const campaign = existing
+        ? aggregateInput({
+            ...input,
+            campaignId: firstPass.campaignId,
+            updatedAt: firstPass.updatedAt,
+          }, existing)
+        : firstPass;
       return repository.upsert(campaign);
     },
 

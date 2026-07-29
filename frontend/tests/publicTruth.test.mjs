@@ -12,10 +12,15 @@ const publicTruthFiles = [
   "README.md",
   "AGENTS.md",
   "docs/PRODUCT_GRADE_OPEN_SOURCE.md",
+  "docs/CAPABILITY_MATRIX.md",
+  "docs/DOMAIN_ARCHITECTURE.md",
   "llms.txt",
   "llms-full.txt",
   "frontend/public/llms.txt",
   "frontend/public/llms-full.txt",
+  "frontend/app/privacy/page.js",
+  "frontend/app/opengraph-image.js",
+  "frontend/public/schema.jsonld",
 ];
 
 const affirmativeRetiredClaims = [
@@ -27,9 +32,11 @@ const affirmativeRetiredClaims = [
   /automatic fallback generation when/i,
   /demo\/template mode should work/i,
   /useful without an api key/i,
+  /local templates or your own model/i,
+  /supports local templates/i,
 ];
 
-test("public documentation does not advertise retired template or fallback generation", () => {
+test("public product surfaces do not advertise retired template or fallback generation", () => {
   for (const relative of publicTruthFiles) {
     const content = read(relative);
     for (const pattern of affirmativeRetiredClaims) {
@@ -41,6 +48,14 @@ test("public documentation does not advertise retired template or fallback gener
 test("root and deployed AI-context files remain identical", () => {
   assert.equal(read("llms.txt"), read("frontend/public/llms.txt"));
   assert.equal(read("llms-full.txt"), read("frontend/public/llms-full.txt"));
+});
+
+test("structured data is valid JSON and states real-model canonical storage behavior", () => {
+  const schema = JSON.parse(read("frontend/public/schema.jsonld"));
+  const serialized = JSON.stringify(schema);
+  assert.match(serialized, /real model provider route/i);
+  assert.match(serialized, /versioned campaign records/i);
+  assert.doesNotMatch(serialized, /deterministic local template/i);
 });
 
 test("README states the real provider, storage, extension, export, and verification boundaries", () => {

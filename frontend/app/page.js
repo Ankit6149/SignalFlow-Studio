@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import PlatformIcon from "../components/PlatformIcon";
 import {
   createSourceSnapshot,
@@ -19,6 +19,12 @@ import {
   getGenerationSourceChanges,
   restoreGenerationRun,
 } from "../lib/studio/campaignFreshness.mjs";
+import {
+  campaignReducer,
+  createInitialCampaignState,
+} from "../lib/studio/campaignState.mjs";
+import { acceptGenerationResponse } from "../lib/studio/generationAcceptance.mjs";
+import { parseCapabilitySnapshot } from "../lib/capabilities/capabilityContract.mjs";
 
 const LEGACY_ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
@@ -530,7 +536,12 @@ function LandingPage({ onEnter }) {
 export default function Home() {
   const [entered, setEntered] = useState(false);
   const [section, setSection] = useState("studio");
-  const [stage, setStage] = useState("source");
+  const [campaignState, dispatchCampaign] = useReducer(
+    campaignReducer,
+    undefined,
+    createInitialCampaignState,
+  );
+  const { stage, result, generationRun, posts, activeChannel } = campaignState;
   const [form, setForm] = useState({
     projectName: "",
     notes: "",
@@ -545,16 +556,13 @@ export default function Home() {
   const [channels, setChannels] = useState(DEFAULT_CHANNELS);
   const [files, setFiles] = useState([]);
   const [documentText, setDocumentText] = useState([]);
-  const [result, setResult] = useState(null);
-  const [generationRun, setGenerationRun] = useState(null);
-  const [posts, setPosts] = useState({});
-  const [activeChannel, setActiveChannel] = useState("linkedin");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [library, setLibrary] = useState([]);
   const [connections, setConnections] = useState({});
   const [connectionsLoading, setConnectionsLoading] = useState(false);
   const [providerStatuses, setProviderStatuses] = useState({});
+  const [capabilitySnapshot, setCapabilitySnapshot] = useState(null);
   const [providerStatusLoading, setProviderStatusLoading] = useState(true);
   const [providerTest, setProviderTest] = useState({ status: "idle", message: "" });
   const [accessToken, setAccessToken] = useState("");
@@ -564,9 +572,15 @@ export default function Home() {
   });
   const fileInputRef = useRef(null);
 
+  const availableProviders = useMemo(
+    () => PROVIDERS.filter(
+      (item) => providerStatusLoading || providerStatuses[item.id]?.available !== false,
+    ),
+    [providerStatusLoading, providerStatuses],
+  );
   const provider = useMemo(
-    () => PROVIDERS.find((item) => item.id === form.provider) || PROVIDERS[0],
-    [form.provider],
+    () => availableProviders.find((item) => item.id === form.provider) || availableProviders[0] || PROVIDERS[0],
+    [availableProviders, form.provider],
   );
   const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
@@ -620,7 +634,9 @@ export default function Home() {
     provider: form.provider,
     apiKey: form.apiKey,
     baseUrl: form.baseUrl,
-    status: providerStatuses[form.provider],
+    status: providerStatusLoading
+      ? { available: false, reason: "Checking deployment capabilities…" }
+      : providerStatuses[form.provider],
   });
   const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   const composeReady = sourceAndChannelsReady && providerReadiness.ready;
@@ -635,6 +651,7 @@ export default function Home() {
     window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     setLibrary(safeJsonParse(window.localStorage.getItem(LIBRARY_KEY), []));
     void syncOwnerSession();
+    void refreshProviderStatus();
 
     const params = new URLSearchParams(window.location.search);
     const socialStatus = params.get("social_status");
@@ -657,6 +674,19 @@ export default function Home() {
   }, [entered, accessToken]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    function respondToCapabilityRequest(event) {
+      const requestId = event?.detail?.requestId;
+      if (!requestId || !capabilitySnapshot) return;
+      window.dispatchEvent(new CustomEvent("SignalFlowCapabilitiesAvailable", {
+        detail: { requestId, snapshot: capabilitySnapshot },
+      }));
+    }
+    window.addEventListener("SignalFlowRequestCapabilities", respondToCapabilityRequest);
+    return () => window.removeEventListener("SignalFlowRequestCapabilities", respondToCapabilityRequest);
+  }, [capabilitySnapshot]);
+
+  useEffect(() => {
     if (!channels.includes(activeChannel) && channels.length) {
       setActiveChannel(channels[0]);
     }
@@ -672,21 +702,38 @@ export default function Home() {
   async function refreshProviderStatus() {
     setProviderStatusLoading(true);
     try {
-      const response = await fetch("/api/provider_status");
-      const data = await readJsonResponse(response, "SignalFlow could not read model provider status.");
-      const statuses = data.providers || {};
+      const response = await fetch("/api/capabilities", { cache: "no-store" });
+      const raw = await readJsonResponse(response, "SignalFlow could not read deployment capabilities.");
+      if (!response.ok) throw new Error(raw.error || "SignalFlow could not read deployment capabilities.");
+      const data = parseCapabilitySnapshot(raw);
+      const statuses = data.capabilities.models.providers;
+      setCapabilitySnapshot(data);
       setProviderStatuses(statuses);
       const recommended = pickRecommendedProvider({
-        defaultProvider: data.defaultProvider,
         statuses,
         fallback: form.provider,
       });
       setForm((previous) => {
-        if (previous.apiKey.trim() || previous.baseUrl.trim() || statuses[previous.provider]?.configured) return previous;
+        const current = statuses[previous.provider];
+        if (
+          current?.available !== false &&
+          (previous.apiKey.trim() || previous.baseUrl.trim() || current?.configured)
+        ) {
+          return previous;
+        }
         return previous.provider === recommended ? previous : { ...previous, provider: recommended };
       });
-    } catch {
-      setProviderStatuses({});
+    } catch (error) {
+      setCapabilitySnapshot(null);
+      setProviderStatuses(
+        Object.fromEntries(PROVIDERS.map((item) => [item.id, {
+          id: item.id,
+          label: item.label,
+          available: false,
+          configured: false,
+          reason: error.message || "SignalFlow could not verify this model route.",
+        }])),
+      );
     } finally {
       setProviderStatusLoading(false);
     }
@@ -730,6 +777,14 @@ export default function Home() {
 
   function authHeaders(extra = {}) {
     return { ...extra };
+  }
+
+  function setStage(nextStage) {
+    dispatchCampaign({ type: "SET_STAGE", stage: nextStage });
+  }
+
+  function setActiveChannel(channel) {
+    dispatchCampaign({ type: "SET_ACTIVE_CHANNEL", channel });
   }
 
   function enterStudio() {
@@ -915,24 +970,26 @@ export default function Home() {
         throw new Error(data.error || "SignalFlow could not generate this campaign.");
       }
 
-      const generatedPosts = data.posts || {};
+      const accepted = acceptGenerationResponse({
+        response: data,
+        requestedChannels: channels,
+      });
       const nextGenerationRun = createGenerationRun({
         sourceSnapshot: requestedSourceSnapshot,
-        response: data,
+        response: accepted.result,
         provider: form.provider,
         model: form.model.trim(),
       });
-      setGenerationRun(nextGenerationRun);
-      setResult(data);
-      setPosts(generatedPosts);
-      setActiveChannel(channels.find((channel) => generatedPosts[channel]) || channels[0]);
-      setStage("review");
-      if (data.fallbackUsed) {
-        throw new Error("SignalFlow refused the response because it contained retired template fallback content.");
-      }
-      const failedChannels = Object.entries(data.generation_status || {})
-        .filter(([, item]) => item?.status === "failed")
-        .map(([channel]) => channel);
+      dispatchCampaign({
+        type: "ACCEPT_GENERATION",
+        payload: {
+          result: accepted.result,
+          generationRun: nextGenerationRun,
+          posts: accepted.posts,
+          activeChannel: accepted.activeChannel,
+        },
+      });
+      const failedChannels = accepted.failedChannels;
       setMessage({
         type: failedChannels.length ? "warning" : "success",
         text: failedChannels.length
@@ -984,15 +1041,20 @@ export default function Home() {
       documentText: restoredSource.documentText,
     });
     setForm((previous) => ({ ...previous, ...(item.brief || {}), apiKey: "" }));
-    setChannels(item.channels || ["linkedin"]);
-    setPosts(item.posts || {});
-    setResult(item.result || { markdown: item.markdown, warnings: item.warnings || [] });
-    setGenerationRun(restoredRun);
+    const restoredChannels = item.channels || ["linkedin"];
+    setChannels(restoredChannels);
+    dispatchCampaign({
+      type: "RESTORE_CAMPAIGN",
+      payload: {
+        posts: item.posts || {},
+        result: item.result || { markdown: item.markdown, warnings: item.warnings || [] },
+        generationRun: restoredRun,
+        activeChannel: restoredChannels[0],
+      },
+    });
     setPublishOptions(item.publishOptions || { reddit: { subreddit: "", title: "" } });
     setFiles(restoredSource.sourceFiles);
     setDocumentText(restoredSource.documentText);
-    setActiveChannel((item.channels || ["linkedin"])[0]);
-    setStage("review");
     navigateSection("studio");
   }
 
@@ -1529,7 +1591,7 @@ export default function Home() {
                 </header>
 
                 <div className="model-provider-grid" role="list" aria-label="Available model providers">
-                  {PROVIDERS.map((item) => {
+                  {availableProviders.map((item) => {
                     const configured = Boolean(providerStatuses[item.id]?.configured);
                     return (
                       <button
@@ -1705,10 +1767,11 @@ export default function Home() {
                     <textarea
                       value={currentPost}
                       onChange={(event) =>
-                        setPosts((previous) => ({
-                          ...previous,
-                          [activeChannel]: event.target.value,
-                        }))
+                        dispatchCampaign({
+                          type: "EDIT_POST",
+                          channel: activeChannel,
+                          text: event.target.value,
+                        })
                       }
                       placeholder="No draft was generated for this channel."
                       aria-label={`${activeMeta.label} campaign draft`}

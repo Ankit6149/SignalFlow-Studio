@@ -48,22 +48,20 @@ function normalizeCapability(value, fallbackReason) {
 function normalizeProviderMap(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(
-    Object.entries(value).map(([id, provider]) => {
-      const normalized = normalizeCapability(
-        provider,
+    Object.entries(value).map(([id, provider]) => [id, {
+      id,
+      label: text(provider?.label, id),
+      available: boolean(provider?.available),
+      reason: text(
+        provider?.reason,
         `${id} is unavailable in this SignalFlow session.`,
-      );
-      return [id, {
-        ...normalized,
-        id,
-        label: text(provider?.label, id),
-        configured: boolean(provider?.configured),
-        supportsTemporaryKey: boolean(provider?.supportsTemporaryKey),
-        requiresBaseUrl: boolean(provider?.requiresBaseUrl),
-        isLocal: boolean(provider?.isLocal),
-        defaultModel: text(provider?.defaultModel),
-      }];
-    }),
+      ),
+      configured: boolean(provider?.configured),
+      supportsTemporaryKey: boolean(provider?.supportsTemporaryKey),
+      requiresBaseUrl: boolean(provider?.requiresBaseUrl),
+      isLocal: boolean(provider?.isLocal),
+      defaultModel: text(provider?.defaultModel),
+    }]),
   );
 }
 

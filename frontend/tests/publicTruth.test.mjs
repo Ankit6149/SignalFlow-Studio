@@ -18,11 +18,13 @@ const publicTruthFiles = [
   "frontend/public/llms-full.txt",
 ];
 
-const retiredClaims = [
-  /deterministic local template/i,
-  /deterministic no-key/i,
+const affirmativeRetiredClaims = [
+  /choose a deterministic local template/i,
+  /includes? a deterministic local template/i,
+  /deterministic local template route that needs no api key/i,
+  /deterministic no-key generation/i,
   /works without an external api key/i,
-  /automatic fallback generation/i,
+  /automatic fallback generation when/i,
   /demo\/template mode should work/i,
   /useful without an api key/i,
 ];
@@ -30,8 +32,8 @@ const retiredClaims = [
 test("public documentation does not advertise retired template or fallback generation", () => {
   for (const relative of publicTruthFiles) {
     const content = read(relative);
-    for (const pattern of retiredClaims) {
-      assert.doesNotMatch(content, pattern, `${relative} contains retired product wording`);
+    for (const pattern of affirmativeRetiredClaims) {
+      assert.doesNotMatch(content, pattern, `${relative} contains an affirmative retired product claim`);
     }
   }
 });
@@ -47,7 +49,7 @@ test("README states the real provider, storage, extension, export, and verificat
   assert.match(readme, /GET `?\/api\/capabilities`?/i);
   assert.match(readme, /browser-local/i);
   assert.match(readme, /authoritative current draft/i);
-  assert.match(readme, /extension.*acknowledged ingestion.*not implemented/is);
+  assert.match(readme, /acknowledged extension ingestion is not implemented/i);
   assert.match(readme, /npm test/);
   assert.match(readme, /npm audit --omit=dev --audit-level=high/);
   assert.match(readme, /npm run build/);

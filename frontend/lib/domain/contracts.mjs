@@ -46,7 +46,7 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function clonePortable(value, path = "domain", seen = new WeakSet()) {
+function clonePortable(value, path = "domain", ancestors = new WeakSet()) {
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new TypeError(`${path} contains a non-finite number.`);
@@ -57,27 +57,31 @@ function clonePortable(value, path = "domain", seen = new WeakSet()) {
     throw new TypeError(`${path} contains a non-portable ${typeof value} value.`);
   }
   if (typeof value !== "object") return value;
-  if (seen.has(value)) throw new TypeError(`${path} contains a circular reference.`);
-  seen.add(value);
+  if (ancestors.has(value)) throw new TypeError(`${path} contains a circular reference.`);
+  ancestors.add(value);
 
-  if (Array.isArray(value)) {
-    return value.map((item, index) => clonePortable(item, `${path}[${index}]`, seen));
-  }
-
-  if (!isPlainObject(value)) {
-    const name = value?.constructor?.name || "runtime object";
-    throw new TypeError(`${path} contains non-portable ${name}. Use IDs and metadata instead.`);
-  }
-
-  const result = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (FORBIDDEN_FIELD.test(key)) {
-      throw new TypeError(`${path}.${key} is forbidden in domain serialization.`);
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item, index) => clonePortable(item, `${path}[${index}]`, ancestors));
     }
-    const cloned = clonePortable(item, `${path}.${key}`, seen);
-    if (cloned !== undefined) result[key] = cloned;
+
+    if (!isPlainObject(value)) {
+      const name = value?.constructor?.name || "runtime object";
+      throw new TypeError(`${path} contains non-portable ${name}. Use IDs and metadata instead.`);
+    }
+
+    const result = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (FORBIDDEN_FIELD.test(key)) {
+        throw new TypeError(`${path}.${key} is forbidden in domain serialization.`);
+      }
+      const cloned = clonePortable(item, `${path}.${key}`, ancestors);
+      if (cloned !== undefined) result[key] = cloned;
+    }
+    return result;
+  } finally {
+    ancestors.delete(value);
   }
-  return result;
 }
 
 function canonicalize(value) {

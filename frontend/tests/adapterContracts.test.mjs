@@ -40,7 +40,11 @@ async function campaignRepositoryContract(repository) {
 
 test("memory, browser-local, and store-backed campaign repositories share one contract", async () => {
   await campaignRepositoryContract(createMemoryCampaignRepository());
-  await campaignRepositoryContract(createBrowserCampaignRepository({ getStorage: () => fakeStorage(), key: "campaigns" }));
+  const browserStorage = fakeStorage();
+  await campaignRepositoryContract(createBrowserCampaignRepository({
+    getStorage: () => browserStorage,
+    key: "campaigns",
+  }));
   await campaignRepositoryContract(createStoreBackedCampaignRepository({ store: createMemoryAsyncStore() }));
 });
 

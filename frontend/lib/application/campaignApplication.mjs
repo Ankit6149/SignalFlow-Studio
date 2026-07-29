@@ -18,6 +18,7 @@ export function createCampaignApplication({ campaignRepository, clock = createSy
     return createCampaignAggregate({
       ...input,
       campaignId: input.campaignId || existing?.campaignId,
+      existingDrafts: existing?.drafts || input.existingDrafts,
       createdAt: existing?.createdAt || input.createdAt || snapshotAt,
       updatedAt: snapshotAt,
     });

@@ -20,6 +20,9 @@ function requirePayload(action) {
 
 export function campaignReducer(state, action) {
   switch (action?.type) {
+    case "RESET_CAMPAIGN":
+      return createInitialCampaignState();
+
     case "SET_STAGE":
       return { ...state, stage: String(action.stage || "source") };
 

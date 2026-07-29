@@ -13,6 +13,36 @@ SignalFlow Studio is one product with three declared deployment profiles. Client
 
 The document contains no raw credentials, OAuth tokens, captured page content, prompts, drafts, signed URLs, or private asset data.
 
+### Minimal response shape
+
+```json
+{
+  "schemaVersion": 1,
+  "product": "signalflow-studio",
+  "deployment": { "profile": "hosted", "publicHosted": true },
+  "session": { "authenticated": false, "role": "anonymous" },
+  "permissions": { "canGenerate": true, "canUseOwnerTools": false },
+  "capabilities": {
+    "models": {
+      "providers": {
+        "gemini": {
+          "available": true,
+          "configured": false,
+          "supportsTemporaryKey": true,
+          "reason": "Gemini is available with a temporary personal key."
+        }
+      }
+    },
+    "extension": {
+      "available": false,
+      "reason": "Acknowledged extension ingestion is not ready."
+    }
+  }
+}
+```
+
+Clients must still validate the full versioned schema; this excerpt documents hierarchy rather than replacing contract validation.
+
 ## Current truthful product matrix
 
 | Capability | Hosted anonymous | Hosted owner | Local | Self-hosted |

@@ -1,0 +1,75 @@
+name: Apply domain final review fixes
+
+on:
+  push:
+    branches:
+      - domain-authoritative-exports
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-domain-final-review
+  cancel-in-progress: false
+
+jobs:
+  verify-and-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: domain-authoritative-exports
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Apply final guarded source fixes
+        run: node scripts/apply-domain-final-review.mjs
+
+      - name: Validate source formatting
+        run: git diff --check
+
+      - name: Verify frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm audit --omit=dev --audit-level=high
+          npm run build
+
+      - name: Verify MCP
+        working-directory: mcp
+        run: npm test
+
+      - name: Verify Python compatibility suite
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+          pytest -q
+
+      - name: Remove temporary review files
+        run: |
+          rm scripts/apply-domain-final-review.mjs
+          rm .github/workflows/apply-domain-final-review.yml
+
+      - name: Commit final verified source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: complete domain and export review edge cases"
+          git push origin HEAD:domain-authoritative-exports

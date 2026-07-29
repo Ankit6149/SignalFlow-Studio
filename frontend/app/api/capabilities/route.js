@@ -20,20 +20,19 @@ function deploymentProfile() {
   return DEPLOYMENT_PROFILES.LOCAL;
 }
 
-function buildProviderCapabilities({ profile, isOwner }) {
+export function buildProviderCapabilities({ profile, isOwner, providerStatus = getProviderConfigurationStatus() }) {
   const publicHosted = profile === DEPLOYMENT_PROFILES.HOSTED;
   const canUseServerCredentials = canUseServerProviderConfiguration({
     publicHosted,
     allowServerKey: isOwner,
   });
-  const providerStatus = getProviderConfigurationStatus();
 
   return Object.fromEntries(
     Object.entries(providerStatus)
       .filter(([id]) => MODEL_GENERATION_PROVIDERS.has(id))
       .map(([id, provider]) => {
         const ownerOnly = OWNER_ONLY_PROVIDERS.has(id);
-        const available = !ownerOnly || isOwner || !publicHosted;
+        const available = !ownerOnly || isOwner;
         const configured = Boolean(provider.configured && canUseServerCredentials && available);
         const requiresBaseUrl = LOCAL_PROVIDERS.has(id) && publicHosted && !configured;
         const reason = available
@@ -44,7 +43,7 @@ function buildProviderCapabilities({ profile, isOwner }) {
               : requiresBaseUrl
                 ? `${provider.label} requires a reachable trusted base URL in hosted mode.`
                 : `${provider.label} can be configured for this deployment.`
-          : `${provider.label} is restricted to authenticated owner or trusted local/self-hosted sessions.`;
+          : `${provider.label} is restricted to an authenticated owner session.`;
 
         return [id, {
           id,
@@ -133,7 +132,7 @@ export async function GET(request) {
         "Cache-Control": "no-store",
       },
     });
-  } catch (error) {
+  } catch {
     return new Response(JSON.stringify({
       error: "SignalFlow could not determine deployment capabilities.",
       code: "capability_discovery_failed",

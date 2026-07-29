@@ -57,6 +57,8 @@ The schema registry is `frontend/lib/domain/contracts.mjs`. Schema version `1` d
 - database clients or request-scoped infrastructure objects;
 - functions, symbols, bigint values, circular references, and non-finite numbers.
 
+Repeated references to the same portable value are cloned safely; only true ancestor cycles are rejected.
+
 Domain objects use IDs and metadata instead of runtime handles. Secrets remain in request-scoped provider/connector adapters.
 
 ## Canonical Campaign aggregate
@@ -76,6 +78,10 @@ A Campaign contains:
 - generation/package context with active `posts`, generated Markdown, generated JSON, and prompts removed.
 
 The current edited draft is authoritative. Generated copy is never stored as a second active draft.
+
+Channel compatibility aliases are normalized at the boundary. `releaseNotes`, `release-notes`, and `release_notes` become `release_notes`; `hn`, `hacker-news`, and `hacker_news` become `hackernews`. The canonical record never preserves competing aliases.
+
+Starting a new campaign is an explicit state transition. It clears the prior campaign ID, generation run, result, drafts, source inputs, and publishing options so a later save cannot overwrite the previously opened record accidentally.
 
 ## Legacy migration
 
@@ -151,7 +157,7 @@ JSON:
 - omits duplicate active drafts from package/generation payloads;
 - is deterministically key-sorted for identical campaign state.
 
-ZIP must be assembled from the same projection when the current ZIP route is promoted into the supported product surface. It must not read `result.package.posts` directly.
+The ZIP compatibility route is assembled from the same Markdown/JSON projections and current per-channel drafts. It does not read `result.package.posts` directly. ZIP remains a compatibility API rather than a claimed primary product surface until its packaging UX and release evidence are completed.
 
 ## Adding a vertical slice
 

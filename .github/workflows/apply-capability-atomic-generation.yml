@@ -36,8 +36,10 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Apply Studio integration
-        run: node scripts/apply-capability-atomic-generation.mjs
+      - name: Apply verified source integrations
+        run: |
+          node scripts/apply-capability-atomic-generation.mjs
+          node scripts/fix-capability-contract.mjs
 
       - name: Validate extension JavaScript
         run: |
@@ -67,6 +69,7 @@ jobs:
       - name: Remove temporary integration files
         run: |
           rm scripts/apply-capability-atomic-generation.mjs
+          rm scripts/fix-capability-contract.mjs
           rm .github/workflows/apply-capability-atomic-generation.yml
 
       - name: Commit verified integration

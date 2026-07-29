@@ -52,3 +52,11 @@ test("campaign UI delegates library persistence and export projection to the app
   assert.doesNotMatch(page, /localStorage\.setItem\(LIBRARY_KEY/);
   assert.doesNotMatch(page, /JSON\.stringify\(\{ campaign: form\.projectName, channels, posts/);
 });
+
+test("new campaign action clears the prior campaign identity and reducer output", () => {
+  const page = fs.readFileSync(path.join(frontendRoot, "app/page.js"), "utf8");
+  assert.match(page, /function startNewCampaign\(\)/);
+  assert.match(page, /setCurrentCampaignId\(""\)/);
+  assert.match(page, /type: "RESET_CAMPAIGN"/);
+  assert.match(page, /onClick=\{startNewCampaign\}/);
+});

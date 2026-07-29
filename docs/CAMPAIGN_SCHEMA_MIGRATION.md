@@ -88,3 +88,5 @@ The required automated evidence includes:
 - new-campaign identity reset;
 - local/memory and injected store-backed repository contract parity;
 - production build and dependency audit.
+
+Release evidence must identify the exact branch head that passed these checks. Evidence from an earlier head does not authorize merging a later migration or serialization change.

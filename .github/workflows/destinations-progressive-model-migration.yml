@@ -1,0 +1,82 @@
+name: One-time Destinations progressive model migration
+
+on:
+  push:
+    branches:
+      - fix/120-destinations-progressive-model
+    paths:
+      - '.github/workflows/destinations-progressive-model-migration.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-destinations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Destinations branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/120-destinations-progressive-model
+
+      - name: Add progressive model disclosure and selection controls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          page_path = Path('frontend/app/page.js')
+          page = page_path.read_text(encoding='utf-8')
+
+          old_controls = '''                  <button onClick={useCoreChannels}>Core</button>\n                  <button onClick={selectAllChannels}>All</button>'''
+          new_controls = '''                  <button onClick={useCoreChannels}>Core</button>\n                  <button onClick={selectAllChannels}>All</button>\n                  <button onClick={() => setChannels([])}>Clear</button>'''
+          if page.count(old_controls) != 1:
+              raise SystemExit(f'Expected one destination shortcut block, found {page.count(old_controls)}')
+          page = page.replace(old_controls, new_controls, 1)
+
+          old_heading = '<h3>Choose the model route</h3>'
+          if page.count(old_heading) != 1:
+              raise SystemExit(f'Expected one model heading, found {page.count(old_heading)}')
+          page = page.replace(old_heading, '<h3>Model route</h3>', 1)
+
+          old_model = '''                <div className="model-provider-grid" role="list" aria-label="Available model providers">\n                  {availableProviders.map((item) => {\n                    const configured = Boolean(providerStatuses[item.id]?.configured);\n                    return (\n                      <button\n                        key={item.id}\n                        type="button"\n                        className={`model-provider-option ${form.provider === item.id ? "is-selected" : ""}`}\n                        onClick={() => {\n                          updateForm("provider", item.id);\n                          setProviderTest({ status: "idle", message: "" });\n                        }}\n                        aria-pressed={form.provider === item.id}\n                      >\n                        <span>{item.label}</span>\n                        <small className={configured ? "is-configured" : ""} aria-label={configured ? "Configured on server" : "Not configured on server"} />\n                      </button>\n                    );\n                  })}\n                </div>\n\n                <div className="model-route-fields">\n                  <label className="field">\n                    <span>Audience</span>\n                    <input\n                      value={form.audience}\n                      onChange={(event) => updateForm("audience", event.target.value)}\n                    />\n                  </label>\n                  {!['ollama', 'lmstudio'].includes(form.provider) && (\n                    <label className="field">\n                      <span>Temporary API key</span>\n                      <input\n                        type="password"\n                        value={form.apiKey}\n                        onChange={(event) => updateForm("apiKey", event.target.value)}\n                        placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}\n                        autoComplete="off"\n                      />\n                    </label>\n                  )}\n                  {['ollama', 'lmstudio', 'custom'].includes(form.provider) && (\n                    <label className="field">\n                      <span>Base URL</span>\n                      <input\n                        value={form.baseUrl}\n                        onChange={(event) => updateForm("baseUrl", event.target.value)}\n                        placeholder={form.provider === 'ollama' ? 'http://localhost:11434/v1' : form.provider === 'lmstudio' ? 'http://localhost:1234/v1' : 'https://provider.example/v1'}\n                      />\n                    </label>\n                  )}\n                  <label className="field">\n                    <span>Model override</span>\n                    <input\n                      value={form.model}\n                      onChange={(event) => updateForm("model", event.target.value)}\n                      placeholder={providerStatuses[form.provider]?.defaultModel || "Leave blank for the provider default"}\n                    />\n                  </label>\n                </div>'''
+
+          new_model = '''                <div className="model-route-current" aria-live="polite">\n                  <div>\n                    <span>Current route</span>\n                    <strong>{provider.label}</strong>\n                  </div>\n                  <small>{providerReadiness.ready ? "Ready for this campaign" : providerReadiness.reason}</small>\n                </div>\n\n                <div className="model-route-core">\n                  <label className="field">\n                    <span>Audience</span>\n                    <input\n                      value={form.audience}\n                      onChange={(event) => updateForm("audience", event.target.value)}\n                    />\n                  </label>\n                </div>\n\n                <details className="model-route-advanced">\n                  <summary>\n                    <span>Advanced model settings</span>\n                    <small>{provider.label}</small>\n                  </summary>\n                  <div className="model-route-advanced__content">\n                    <div className="model-provider-grid" role="list" aria-label="Available model providers">\n                      {availableProviders.map((item) => {\n                        const configured = Boolean(providerStatuses[item.id]?.configured);\n                        return (\n                          <button\n                            key={item.id}\n                            type="button"\n                            className={`model-provider-option ${form.provider === item.id ? "is-selected" : ""}`}\n                            onClick={() => {\n                              updateForm("provider", item.id);\n                              setProviderTest({ status: "idle", message: "" });\n                            }}\n                            aria-pressed={form.provider === item.id}\n                          >\n                            <span>{item.label}</span>\n                            <small className={configured ? "is-configured" : ""} aria-label={configured ? "Configured on server" : "Not configured on server"} />\n                          </button>\n                        );\n                      })}\n                    </div>\n\n                    <div className="model-route-fields">\n                      {!['ollama', 'lmstudio'].includes(form.provider) && (\n                        <label className="field">\n                          <span>Temporary API key</span>\n                          <input\n                            type="password"\n                            value={form.apiKey}\n                            onChange={(event) => updateForm("apiKey", event.target.value)}\n                            placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}\n                            autoComplete="off"\n                          />\n                        </label>\n                      )}\n                      {['ollama', 'lmstudio', 'custom'].includes(form.provider) && (\n                        <label className="field">\n                          <span>Base URL</span>\n                          <input\n                            value={form.baseUrl}\n                            onChange={(event) => updateForm("baseUrl", event.target.value)}\n                            placeholder={form.provider === 'ollama' ? 'http://localhost:11434/v1' : form.provider === 'lmstudio' ? 'http://localhost:1234/v1' : 'https://provider.example/v1'}\n                          />\n                        </label>\n                      )}\n                      <label className="field">\n                        <span>Model override</span>\n                        <input\n                          value={form.model}\n                          onChange={(event) => updateForm("model", event.target.value)}\n                          placeholder={providerStatuses[form.provider]?.defaultModel || "Leave blank for the provider default"}\n                        />\n                      </label>\n                    </div>\n                  </div>\n                </details>'''
+
+          if page.count(old_model) != 1:
+              raise SystemExit(f'Expected one model settings block, found {page.count(old_model)}')
+          page = page.replace(old_model, new_model, 1)
+          page_path.write_text(page, encoding='utf-8')
+
+          css_path = Path('frontend/app/studio-product.css')
+          css = css_path.read_text(encoding='utf-8')
+          marker = '''.app-shell .model-route-status {\n  flex: 0 0 auto;'''
+          additions = '''.app-shell .model-route-current {\n  min-width: 0;\n  margin-bottom: 1rem;\n  padding: 0.9rem;\n  border: 0.0625rem solid var(--app-line);\n  border-radius: 0.6rem;\n  display: grid;\n  gap: 0.4rem;\n  background: var(--app-surface);\n}\n\n.app-shell .model-route-current > div {\n  min-width: 0;\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n  gap: 0.75rem;\n}\n\n.app-shell .model-route-current span {\n  color: var(--app-faint);\n  font-size: 0.6875rem;\n  font-weight: 700;\n  text-transform: uppercase;\n  letter-spacing: 0.08em;\n}\n\n.app-shell .model-route-current strong {\n  min-width: 0;\n  overflow: hidden;\n  color: var(--app-ink);\n  font-size: 0.8125rem;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.app-shell .model-route-current small {\n  color: var(--app-muted);\n  font-size: 0.72rem;\n  line-height: 1.5;\n  overflow-wrap: anywhere;\n}\n\n.app-shell .model-route-core {\n  margin-bottom: 1rem;\n}\n\n.app-shell .model-route-core .field {\n  margin-bottom: 0;\n}\n\n.app-shell .model-route-advanced {\n  margin-bottom: 1rem;\n  border-top: 0.0625rem solid var(--app-line);\n  border-bottom: 0.0625rem solid var(--app-line);\n}\n\n.app-shell .model-route-advanced summary {\n  position: relative;\n  min-height: 3rem;\n  padding: 0.75rem 2rem 0.75rem 0;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 0.75rem;\n  list-style: none;\n  cursor: pointer;\n  color: var(--app-ink);\n  font-size: 0.78rem;\n  font-weight: 750;\n}\n\n.app-shell .model-route-advanced summary::-webkit-details-marker {\n  display: none;\n}\n\n.app-shell .model-route-advanced summary::after {\n  content: "+";\n  position: absolute;\n  right: 0.2rem;\n  width: 1.4rem;\n  height: 1.4rem;\n  border: 0.0625rem solid var(--app-line);\n  border-radius: 50%;\n  display: grid;\n  place-items: center;\n  color: var(--app-accent);\n  font-size: 0.85rem;\n}\n\n.app-shell .model-route-advanced[open] summary::after {\n  content: "−";\n}\n\n.app-shell .model-route-advanced summary small {\n  min-width: 0;\n  overflow: hidden;\n  color: var(--app-faint);\n  font-size: 0.68rem;\n  font-weight: 600;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.app-shell .model-route-advanced summary:focus-visible {\n  outline: 0.125rem solid var(--app-accent);\n  outline-offset: 0.1875rem;\n}\n\n.app-shell .model-route-advanced__content {\n  padding: 0.25rem 0 1rem;\n}\n\n'''
+          if css.count(marker) != 1:
+              raise SystemExit(f'Expected one model status marker, found {css.count(marker)}')
+          css = css.replace(marker, additions + marker, 1)
+
+          old_fields = '''.app-shell .model-route-fields {\n  padding-top: 1rem;\n  border-top: 0.0625rem solid var(--app-line);\n}'''
+          new_fields = '''.app-shell .model-route-fields {\n  padding-top: 0.9rem;\n  border-top: 0.0625rem solid var(--app-line);\n}'''
+          if css.count(old_fields) != 1:
+              raise SystemExit(f'Expected one model fields block, found {css.count(old_fields)}')
+          css = css.replace(old_fields, new_fields, 1)
+
+          old_message = '''.app-shell .model-route-message {\n  margin: 0.8rem 0 0;\n  color: var(--app-muted);\n  font-size: 0.75rem;\n  line-height: 1.55;\n}'''
+          new_message = '''.app-shell .model-route-message {\n  margin: 0.8rem 0 0;\n  color: var(--app-muted);\n  font-size: 0.75rem;\n  line-height: 1.55;\n  overflow-wrap: anywhere;\n}'''
+          if css.count(old_message) != 1:
+              raise SystemExit(f'Expected one model message block, found {css.count(old_message)}')
+          css = css.replace(old_message, new_message, 1)
+          css_path.write_text(css, encoding='utf-8')
+
+          test_path = Path('frontend/tests/destinationsProgressiveModel.test.mjs')
+          test_path.write_text('''import assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\nimport test from "node:test";\n\nconst pageUrl = new URL("../app/page.js", import.meta.url);\nconst workflowUrl = new URL("../app/studio-product.css", import.meta.url);\n\ntest("Destinations exposes Core, All, and Clear selection shortcuts", async () => {\n  const page = await readFile(pageUrl, "utf8");\n  assert.match(page, /onClick=\\{useCoreChannels\\}>Core/);\n  assert.match(page, /onClick=\\{selectAllChannels\\}>All/);\n  assert.match(page, /onClick=\\{\\(\\) => setChannels\\(\\[\\]\\)\\}>Clear/);\n});\n\ntest("advanced provider fields use native progressive disclosure", async () => {\n  const page = await readFile(pageUrl, "utf8");\n  const audience = page.indexOf('<div className="model-route-core">');\n  const details = page.indexOf('<details className="model-route-advanced">');\n  const apiKey = page.indexOf('<span>Temporary API key</span>');\n  const modelOverride = page.indexOf('<span>Model override</span>');\n  const connectionTest = page.indexOf('onClick={testProviderConnection}');\n  assert.ok(audience > -1 && details > audience);\n  assert.ok(apiKey > details && modelOverride > details);\n  assert.ok(connectionTest > details);\n  assert.match(page, /<summary>[\\s\\S]*Advanced model settings[\\s\\S]*<\\/summary>/);\n});\n\ntest("Destinations disclosure and blocker messages remain accessible and mobile safe", async () => {\n  const css = await readFile(workflowUrl, "utf8");\n  assert.match(css, /\\.model-route-advanced summary:focus-visible/);\n  assert.match(css, /\\.model-route-message \\{[\\s\\S]*overflow-wrap:\\s*anywhere/);\n  assert.match(css, /@media \\(max-width: 68rem\\)[\\s\\S]*\\.model-route-panel \\{[\\s\\S]*position:\\s*static/);\n  assert.doesNotMatch(css, /\\.model-route-panel \\{[^}]*position:\\s*fixed/s);\n});\n''', encoding='utf-8')
+          PY
+
+      - name: Remove temporary workflow and commit Destinations migration
+        run: |
+          rm .github/workflows/destinations-progressive-model-migration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/app/page.js frontend/app/studio-product.css frontend/tests/destinationsProgressiveModel.test.mjs .github/workflows/destinations-progressive-model-migration.yml
+          git commit -m "fix(ui): add progressive model setup to Destinations"
+          git push origin HEAD:fix/120-destinations-progressive-model

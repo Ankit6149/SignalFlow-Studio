@@ -61,6 +61,19 @@ test("duplicate-title campaigns remain independent across create, update, copy, 
   assert.equal((await app.listCampaigns()).length, 2);
 });
 
+test("application methods remain valid when called without object this binding", async () => {
+  const app = application();
+  const { saveCampaign, getCampaign } = app;
+  const created = await saveCampaign(campaignInput({ campaignId: undefined }));
+  const updated = await saveCampaign(campaignInput({
+    campaignId: created.campaignId,
+    posts: { linkedin: "Detached update" },
+    channels: ["linkedin"],
+  }));
+  assert.equal(updated.campaignId, created.campaignId);
+  assert.equal((await getCampaign(created.campaignId)).drafts.linkedin.current.content, "Detached update");
+});
+
 test("save and reopen preserve drafts, statuses, archives, source state, and publishing options", async () => {
   const app = application();
   const input = campaignInput({
@@ -136,6 +149,45 @@ test("legacy records retain their stable ID and migrate without losing current d
   assert.equal(migrated.campaignId, "legacy-campaign-1");
   assert.equal(migrated.drafts.linkedin.current.content, "Legacy edited draft");
   assert.equal(app.openCampaign(migrated).generatedPosts.linkedin, "Legacy generated draft");
+});
+
+test("additive schema-v1 records are completed and written back on browser read", async () => {
+  const sourceApp = application();
+  const complete = await sourceApp.createCampaign(campaignInput({ campaignId: undefined }));
+  const incomplete = structuredClone(complete);
+  delete incomplete.archives;
+  delete incomplete.editorState;
+  for (const draft of Object.values(incomplete.drafts)) {
+    delete draft.generated;
+    delete draft.edited;
+    delete draft.approved;
+    delete draft.generationRunId;
+  }
+
+  const values = new Map([["campaigns", JSON.stringify([incomplete])]]);
+  let writes = 0;
+  const storage = {
+    getItem(key) { return values.get(key) || null; },
+    setItem(key, value) { writes += 1; values.set(key, String(value)); },
+  };
+  const app = createBrowserCampaignApplication({
+    getStorage: () => storage,
+    key: "campaigns",
+    clock: clock(),
+    idService: createDeterministicIdService("migration"),
+  });
+
+  const [migrated] = await app.listCampaigns();
+  const persisted = JSON.parse(values.get("campaigns"))[0];
+  assert.equal(writes, 1);
+  assert.equal(migrated.campaignId, complete.campaignId);
+  assert.ok(migrated.drafts.linkedin.generated.content);
+  assert.equal(typeof migrated.drafts.linkedin.approved, "boolean");
+  assert.ok(migrated.editorState);
+  assert.ok(Array.isArray(migrated.archives));
+  assert.ok(persisted.editorState);
+  assert.ok(Array.isArray(persisted.archives));
+  assert.ok(persisted.drafts.linkedin.generated.content);
 });
 
 test("browser quota errors propagate so the UI can offer export recovery", async () => {

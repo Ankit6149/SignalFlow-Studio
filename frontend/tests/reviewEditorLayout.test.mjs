@@ -20,6 +20,14 @@ test("Review keeps long-form editing and mobile channel navigation usable", asyn
   assert.match(css, /@media \(max-width: 68rem\)[\s\S]*\.review-tabs \{[\s\S]*overflow-x:\s*auto[\s\S]*scroll-snap-type:\s*inline proximity/);
   assert.match(css, /\.review-tabs button:focus-visible/);
   assert.match(css, /\.review-inspector dd \{[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(css, /@media \(max-width: 36rem\)[\s\S]*\.native-preview textarea \{[\s\S]*min-height:\s*24rem/);
+});
+
+test("Review actions remain in normal flow and wrap deliberately", async () => {
+  const css = await readFile(workspaceUrl, "utf8");
+  assert.match(css, /\.review-actions \{[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(12rem, auto\)/);
+  assert.match(css, /\.review-action-reason \{[\s\S]*grid-column:\s*1 \/ -1[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(css, /@media \(max-width: 36rem\)[\s\S]*\.review-actions,[\s\S]*\.export-row \{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
 });
 
 test("state extensions no longer mutate shared Review placement", async () => {

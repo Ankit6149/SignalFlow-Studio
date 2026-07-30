@@ -38,11 +38,47 @@ jobs:
           python scripts/apply-portable-transfer-domain.py
           git diff --check
 
-      - name: Verify frontend contracts and build
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        id: frontend_tests
+        working-directory: frontend
+        shell: bash
+        run: |
+          set +e
+          npm test > ../portable-transfer-test.log 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Write compact failure summary
+        if: steps.frontend_tests.outputs.status != '0'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          lines = Path('portable-transfer-test.log').read_text(errors='replace').splitlines()
+          indexes = [i for i, line in enumerate(lines) if line.startswith('not ok ')]
+          output = []
+          for index in indexes[:3]:
+              output.extend(lines[index:index + 28])
+              output.append('---')
+          Path('portable-transfer-failure-summary.txt').write_text('\n'.join(output) or 'Tests failed without a TAP not-ok block.')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f portable-transfer-failure-summary.txt
+          git commit -m "test: capture portable transfer assertion"
+          git push origin HEAD:architecture/portable-transfer
+
+      - name: Fail when frontend tests fail
+        if: steps.frontend_tests.outputs.status != '0'
+        run: exit 1
+
+      - name: Audit and build frontend
         working-directory: frontend
         run: |
-          npm ci
-          npm test
           npm audit --omit=dev --audit-level=high
           npm run build
 
@@ -50,6 +86,8 @@ jobs:
         run: |
           rm scripts/apply-portable-transfer-domain.py
           rm .github/workflows/apply-portable-transfer-domain.yml
+          rm portable-transfer-test.log
+          rm -f portable-transfer-failure-summary.txt
           rm -rf scripts/__pycache__
 
       - name: Commit verified core

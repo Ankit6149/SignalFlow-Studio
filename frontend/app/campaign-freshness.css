@@ -1,10 +1,4 @@
-.app-shell .review-workspace.has-stale-campaign .review-tabs {
-  grid-row: 2 / span 8;
-}
-
 .app-shell .campaign-stale-banner {
-  grid-column: 1 / -1;
-  grid-row: 1;
   padding: 1rem 1.1rem;
   border: 0.0625rem solid #e2d2ad;
   border-radius: var(--app-radius);

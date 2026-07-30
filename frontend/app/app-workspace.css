@@ -1014,16 +1014,37 @@
 }
 
 .app-shell .review-workspace {
+  min-width: 0;
   margin-top: 0;
   display: grid;
   grid-template-columns: 10.75rem minmax(0, 1fr);
-  gap: 1.5rem;
+  grid-template-areas:
+    "status status"
+    "stale stale"
+    "tabs nav"
+    "tabs editor"
+    "tabs inspector"
+    "tabs actions"
+    "tabs route"
+    "tabs notes"
+    "tabs export";
+  gap: 1rem 1.5rem;
   align-items: start;
 }
 
+.app-shell .campaign-status-strip {
+  grid-area: status;
+  min-width: 0;
+}
+
+.app-shell .campaign-stale-banner {
+  grid-area: stale;
+  min-width: 0;
+}
+
 .app-shell .review-tabs {
-  grid-column: 1;
-  grid-row: 1 / span 8;
+  grid-area: tabs;
+  min-width: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -1033,13 +1054,14 @@
 
 .app-shell .review-tabs button {
   width: 100%;
-  min-height: 2.6rem;
-  padding: 0.5rem 0.65rem;
+  min-width: 0;
+  min-height: 2.85rem;
+  padding: 0.55rem 0.65rem;
   border: 0;
   border-left: 0.15rem solid transparent;
   border-radius: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-start;
   gap: 0.55rem;
   text-align: left;
@@ -1062,9 +1084,20 @@
   color: var(--app-ink);
 }
 
-.app-shell .review-tabs button span {
+.app-shell .review-tabs button:focus-visible,
+.app-shell .review-nav button:focus-visible,
+.app-shell .review-actions button:focus-visible,
+.app-shell .publishing-route-link:focus-visible,
+.app-shell .route-note summary:focus-visible,
+.app-shell .export-row button:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.1875rem;
+}
+
+.app-shell .review-tabs button > span:first-child {
   width: 1.65rem;
   height: 1.65rem;
+  flex: 0 0 auto;
   border: 0.0625rem solid var(--app-line);
   border-radius: 50%;
   display: grid;
@@ -1073,7 +1106,8 @@
 }
 
 .app-shell .review-nav {
-  grid-column: 2;
+  grid-area: nav;
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
@@ -1099,7 +1133,8 @@
 }
 
 .app-shell .native-preview {
-  grid-column: 2;
+  grid-area: editor;
+  min-width: 0;
   margin-top: 0;
   overflow: hidden;
   border: 0.0625rem solid var(--app-line);
@@ -1109,6 +1144,7 @@
 }
 
 .app-shell .native-preview header {
+  min-width: 0;
   padding: 1rem 1.1rem;
   border-bottom: 0.0625rem solid var(--app-line);
 }
@@ -1116,6 +1152,7 @@
 .app-shell .preview-avatar {
   width: 2.2rem;
   height: 2.2rem;
+  flex: 0 0 auto;
   border: 0.0625rem solid var(--app-line);
   border-radius: 50%;
   background: var(--app-surface-subtle);
@@ -1127,6 +1164,10 @@
   font-size: 0.8125rem;
 }
 
+.app-shell .native-preview header div:nth-child(2) {
+  min-width: 0;
+}
+
 .app-shell .native-preview header div:nth-child(2) span,
 .app-shell .connection-badge,
 .app-shell .native-preview footer,
@@ -1136,12 +1177,16 @@
 }
 
 .app-shell .connection-badge {
+  max-width: min(13rem, 40%);
   padding: 0.3rem 0.5rem;
   border: 0.0625rem solid var(--app-line);
   border-radius: 999rem;
+  overflow: hidden;
   background: var(--app-surface-subtle);
   letter-spacing: 0;
+  text-overflow: ellipsis;
   text-transform: none;
+  white-space: nowrap;
 }
 
 .app-shell .connection-badge--ready {
@@ -1151,23 +1196,33 @@
 }
 
 .app-shell .native-preview textarea {
-  min-height: 25rem;
-  padding: 1.35rem;
+  width: 100%;
+  min-height: clamp(32rem, 56vh, 48rem);
+  padding: 1.5rem;
   border: 0;
+  resize: vertical;
   background: var(--app-surface);
   color: var(--app-ink);
   font-size: 0.9375rem;
   line-height: 1.75;
 }
 
+.app-shell .native-preview textarea:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: -0.125rem;
+}
+
 .app-shell .native-preview footer {
+  min-width: 0;
   padding: 0.8rem 1.1rem;
   border-top: 0.0625rem solid var(--app-line);
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
 }
 
 .app-shell .review-inspector {
-  grid-column: 2;
-  grid-row: auto;
+  grid-area: inspector;
+  min-width: 0;
   position: static;
   padding: 1rem;
   border: 0.0625rem solid var(--app-line);
@@ -1201,6 +1256,7 @@
 }
 
 .app-shell .review-inspector dl div {
+  min-width: 0;
   padding: 0.7rem;
   border-right: 0.0625rem solid var(--app-line);
   border-bottom: 0.0625rem solid var(--app-line);
@@ -1221,13 +1277,16 @@
   color: var(--app-ink);
   font-size: 0.8125rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .review-actions {
-  grid-column: 2;
+  grid-area: actions;
+  min-width: 0;
   margin-top: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(12rem, auto);
+  align-items: start;
   gap: 0.5rem;
 }
 
@@ -1239,26 +1298,50 @@
   box-shadow: none;
 }
 
-.app-shell .review-actions .button--dark {
-  margin-left: auto;
+.app-shell .review-actions .save-action-group {
+  min-width: 0;
+  justify-self: start;
 }
 
-.app-shell .review-workspace > .publishing-route-link,
-.app-shell .review-workspace > .route-note,
+.app-shell .review-actions .button--dark {
+  min-width: 12rem;
+  margin-left: 0;
+  justify-self: end;
+}
+
+.app-shell .review-action-reason {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .review-workspace > .publishing-route-link {
+  grid-area: route;
+  justify-self: start;
+}
+
+.app-shell .review-workspace > .route-note {
+  grid-area: notes;
+}
+
 .app-shell .review-workspace > .export-row {
-  grid-column: 2;
+  grid-area: export;
 }
 
 .app-shell .publishing-route-link {
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   color: var(--app-muted);
   font-size: 0.75rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .route-note {
+  min-width: 0;
   margin-top: 0;
   border: 0.0625rem solid #e5d8bd;
   border-radius: 0.5rem;
@@ -1270,6 +1353,8 @@
   color: var(--app-warning);
   font-size: 0.8125rem;
   font-weight: 700;
+  cursor: pointer;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .route-note ul {
@@ -1278,9 +1363,11 @@
   color: var(--app-muted);
   font-size: 0.8125rem;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .export-row {
+  min-width: 0;
   margin-top: 0;
   padding: 0.95rem;
   border: 0.0625rem solid var(--app-line);
@@ -1306,9 +1393,11 @@
   margin-top: 0.2rem;
   color: var(--app-muted);
   font-size: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .export-row button {
+  min-height: 2.35rem;
   padding: 0.5rem 0.65rem;
   border: 0.0625rem solid var(--app-line);
   border-radius: 0.4rem;
@@ -1700,24 +1789,27 @@
   }
 
   .app-shell .review-workspace {
-    grid-template-columns: 10.75rem minmax(0, 1fr) 16.5rem;
+    grid-template-columns: 10.75rem minmax(0, 1fr) minmax(17rem, 18.5rem);
+    grid-template-areas:
+      "status status status"
+      "stale stale stale"
+      "tabs nav inspector"
+      "tabs editor inspector"
+      "tabs actions inspector"
+      "tabs route inspector"
+      "tabs notes inspector"
+      "tabs export inspector";
   }
 
+  .app-shell .review-tabs,
   .app-shell .review-inspector {
-    grid-column: 3;
-    grid-row: 1 / span 3;
     position: sticky;
     top: calc(var(--app-header) + 1.25rem);
+    align-self: start;
   }
 
   .app-shell .review-inspector dl {
-    grid-template-columns: 1fr;
-  }
-
-  .app-shell .review-workspace > .publishing-route-link,
-  .app-shell .review-workspace > .route-note,
-  .app-shell .review-workspace > .export-row {
-    grid-column: 3;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1740,8 +1832,69 @@
   }
 
   .app-shell .review-workspace {
-    grid-template-columns: 9rem minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "status"
+      "stale"
+      "tabs"
+      "nav"
+      "editor"
+      "inspector"
+      "actions"
+      "route"
+      "notes"
+      "export";
     gap: 1rem;
+  }
+
+  .app-shell .review-tabs {
+    min-width: 0;
+    flex-direction: row;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
+  }
+
+  .app-shell .review-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-shell .review-tabs button {
+    width: auto;
+    min-width: 9.5rem;
+    flex: 0 0 auto;
+    border-left: 0;
+    border-bottom: 0.15rem solid transparent;
+    scroll-snap-align: start;
+  }
+
+  .app-shell .review-tabs button.is-active {
+    border-bottom-color: var(--app-accent);
+  }
+
+  .app-shell .review-inspector dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell .review-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell .review-actions .save-action-group {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .app-shell .review-actions > .button--outline:not(.button--dark),
+  .app-shell .review-actions .button--dark {
+    width: 100%;
+  }
+
+  .app-shell .review-actions .button--dark {
+    min-width: 0;
+    justify-self: stretch;
   }
 }
 
@@ -1850,49 +2003,6 @@
     grid-column: auto;
   }
 
-  .app-shell .review-workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .app-shell .review-tabs {
-    grid-column: 1;
-    grid-row: auto;
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-  }
-
-  .app-shell .review-tabs button {
-    width: auto;
-    flex: 0 0 auto;
-    border-left: 0;
-    border-bottom: 0.15rem solid transparent;
-  }
-
-  .app-shell .review-tabs button.is-active {
-    border-bottom-color: var(--app-accent);
-  }
-
-  .app-shell .review-nav,
-  .app-shell .native-preview,
-  .app-shell .review-inspector,
-  .app-shell .review-actions,
-  .app-shell .review-workspace > .publishing-route-link,
-  .app-shell .review-workspace > .route-note,
-  .app-shell .review-workspace > .export-row {
-    grid-column: 1;
-  }
-
-  .app-shell .review-inspector dl {
-    grid-template-columns: 1fr;
-  }
-
-  .app-shell .review-actions .button,
-  .app-shell .review-actions .button--dark {
-    width: 100%;
-    margin-left: 0;
-  }
-
   .app-shell .studio-actionbar {
     align-items: stretch;
     flex-direction: column;
@@ -1945,12 +2055,28 @@
     display: none;
   }
 
+  .app-shell .review-inspector dl,
+  .app-shell .review-actions,
   .app-shell .export-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
+  .app-shell .review-actions .save-action-group,
+  .app-shell .review-action-reason,
   .app-shell .export-row > div {
-    grid-column: 1 / -1;
+    grid-column: 1;
+  }
+
+  .app-shell .review-actions .save-action-group,
+  .app-shell .review-actions .save-action-group .button,
+  .app-shell .review-actions > .button,
+  .app-shell .export-row button {
+    width: 100%;
+  }
+
+  .app-shell .native-preview textarea {
+    min-height: 24rem;
+    padding: 1.1rem;
   }
 }
 

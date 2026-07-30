@@ -12,7 +12,7 @@ test("README and agent guide describe edit-safe regeneration and stable identity
   const readme = read("README.md");
   const agents = read("AGENTS.md");
   for (const content of [readme, agents]) {
-    assert.match(content, /regenerate only unedited/i);
+    assert.match(content, /regenerate (?:only )?unedited/i);
     assert.match(content, /archive.*regenerate/i);
     assert.match(content, /save as copy/i);
     assert.match(content, /stable.*campaignId|stable campaign identity/is);

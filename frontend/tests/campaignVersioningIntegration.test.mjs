@@ -42,11 +42,12 @@ test("Studio exposes explicit identity-safe persistence operations", () => {
   assert.match(page, /saveCampaignAsCopy/);
   assert.match(page, /Save as copy/);
   assert.match(page, /campaignApplication\.saveAsCopy/);
-  assert.match(application, /async createCampaign/);
-  assert.match(application, /async updateCampaign/);
-  assert.match(application, /async saveAsCopy/);
-  assert.match(application, /async getCampaign/);
-  assert.match(application, /async deleteCampaign/);
+  assert.match(application, /async function createCampaign/);
+  assert.match(application, /async function updateCampaign/);
+  assert.match(application, /async function saveAsCopy/);
+  assert.match(application, /async function getCampaign/);
+  assert.match(application, /async function deleteCampaign/);
+  assert.doesNotMatch(application, /this\.(?:createCampaign|updateCampaign|list|get|upsert|remove)/);
   assert.doesNotMatch(page, /filter\(\(entry\) => entry\.title/);
 });
 

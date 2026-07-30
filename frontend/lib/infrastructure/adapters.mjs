@@ -10,6 +10,39 @@ function sortCampaigns(items) {
   return [...items].sort((left, right) => String(right.updatedAt || "").localeCompare(String(left.updatedAt || "")));
 }
 
+function hasCompleteDraftShape(draft) {
+  return Boolean(
+    draft
+      && typeof draft === "object"
+      && draft.generated?.content !== undefined
+      && draft.current?.content !== undefined
+      && Array.isArray(draft.history)
+      && typeof draft.edited === "boolean"
+      && typeof draft.approved === "boolean"
+      && typeof draft.generationRunId === "string",
+  );
+}
+
+function hasCompleteCampaignShape(item) {
+  const drafts = item?.drafts;
+  return Boolean(
+    item?.kind === "Campaign"
+      && item?.schemaVersion === 1
+      && drafts
+      && typeof drafts === "object"
+      && !Array.isArray(drafts)
+      && Object.values(drafts).every(hasCompleteDraftShape)
+      && Array.isArray(item.archives)
+      && item.editorState
+      && Number.isInteger(item.editorState.revision)
+      && Object.prototype.hasOwnProperty.call(item.editorState, "savedRevision")
+      && Object.prototype.hasOwnProperty.call(item.editorState, "exportedRevision")
+      && Object.prototype.hasOwnProperty.call(item.editorState, "lastSavedAt")
+      && Object.prototype.hasOwnProperty.call(item.editorState, "lastExportedAt")
+      && typeof item.editorState.savedSourceFingerprint === "string",
+  );
+}
+
 export function createMemoryCampaignRepository(initial = []) {
   const records = new Map();
   for (const item of initial) {
@@ -58,32 +91,35 @@ export function createBrowserCampaignRepository({ getStorage, key = "signalflow_
     return normalized;
   }
 
-  return assertPort("campaignRepository", {
-    async list() {
-      const raw = readRaw();
-      const campaigns = raw.map(migrateLegacyCampaign);
-      const needsMigration = raw.some((item) => item?.kind !== "Campaign" || item?.schemaVersion !== 1);
-      const sorted = sortCampaigns(campaigns).slice(0, limit);
-      if (needsMigration) write(sorted);
-      return sorted.map(clone);
-    },
-    async get(campaignId) {
-      const items = await this.list();
-      return items.find((item) => item.campaignId === campaignId) || null;
-    },
-    async upsert(campaign) {
-      const normalized = migrateLegacyCampaign(campaign);
-      const items = await this.list();
-      write([normalized, ...items.filter((item) => item.campaignId !== normalized.campaignId)]);
-      return clone(normalized);
-    },
-    async remove(campaignId) {
-      const items = await this.list();
-      const next = items.filter((item) => item.campaignId !== campaignId);
-      write(next);
-      return next.length !== items.length;
-    },
-  });
+  async function list() {
+    const raw = readRaw();
+    const campaigns = raw.map(migrateLegacyCampaign);
+    const needsMigration = raw.some((item) => !hasCompleteCampaignShape(item));
+    const sorted = sortCampaigns(campaigns).slice(0, limit);
+    if (needsMigration) write(sorted);
+    return sorted.map(clone);
+  }
+
+  async function get(campaignId) {
+    const items = await list();
+    return items.find((item) => item.campaignId === campaignId) || null;
+  }
+
+  async function upsert(campaign) {
+    const normalized = migrateLegacyCampaign(campaign);
+    const items = await list();
+    write([normalized, ...items.filter((item) => item.campaignId !== normalized.campaignId)]);
+    return clone(normalized);
+  }
+
+  async function remove(campaignId) {
+    const items = await list();
+    const next = items.filter((item) => item.campaignId !== campaignId);
+    write(next);
+    return next.length !== items.length;
+  }
+
+  return assertPort("campaignRepository", { list, get, upsert, remove });
 }
 
 export function createMemoryAsyncStore(initial = {}) {
@@ -110,25 +146,40 @@ export function createStoreBackedCampaignRepository({ store, prefix = "campaign/
     throw new TypeError("Store-backed campaign repository requires list/get/set/remove methods.");
   }
   const keyFor = (campaignId) => `${prefix}${campaignId}`;
-  return assertPort("campaignRepository", {
-    async list() {
-      const keys = await store.list(prefix);
-      const values = await Promise.all(keys.map((key) => store.get(key)));
-      return sortCampaigns(values.filter(Boolean).map(migrateLegacyCampaign));
-    },
-    async get(campaignId) {
-      const value = await store.get(keyFor(campaignId));
-      return value ? migrateLegacyCampaign(value) : null;
-    },
-    async upsert(campaign) {
-      const normalized = migrateLegacyCampaign(campaign);
-      await store.set(keyFor(normalized.campaignId), normalized);
-      return clone(normalized);
-    },
-    async remove(campaignId) {
-      return Boolean(await store.remove(keyFor(campaignId)));
-    },
-  });
+
+  async function list() {
+    const keys = await store.list(prefix);
+    const entries = await Promise.all(keys.map(async (key) => ({ key, value: await store.get(key) })));
+    const campaigns = [];
+    for (const { key, value } of entries) {
+      if (!value) continue;
+      const normalized = migrateLegacyCampaign(value);
+      campaigns.push(normalized);
+      if (!hasCompleteCampaignShape(value)) await store.set(key, normalized);
+    }
+    return sortCampaigns(campaigns).map(clone);
+  }
+
+  async function get(campaignId) {
+    const key = keyFor(campaignId);
+    const value = await store.get(key);
+    if (!value) return null;
+    const normalized = migrateLegacyCampaign(value);
+    if (!hasCompleteCampaignShape(value)) await store.set(key, normalized);
+    return clone(normalized);
+  }
+
+  async function upsert(campaign) {
+    const normalized = migrateLegacyCampaign(campaign);
+    await store.set(keyFor(normalized.campaignId), normalized);
+    return clone(normalized);
+  }
+
+  async function remove(campaignId) {
+    return Boolean(await store.remove(keyFor(campaignId)));
+  }
+
+  return assertPort("campaignRepository", { list, get, upsert, remove });
 }
 
 export function createMemoryBlobStorage(initial = {}) {

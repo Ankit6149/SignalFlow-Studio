@@ -24,7 +24,10 @@
   --app-danger: #8d3e35;
   --app-radius: 0.625rem;
   --app-control: 2.875rem;
-  --app-header: 4.25rem;
+  --app-shell-max: 88rem;
+  --app-header-desktop: 4.5rem;
+  --app-header-mobile: 7.25rem;
+  --app-header: var(--app-header-desktop);
   min-height: 100dvh;
   overflow-x: clip;
   background: var(--app-bg);
@@ -82,25 +85,40 @@
   position: sticky;
   z-index: 50;
   top: 0;
+  width: 100%;
   height: var(--app-header);
-  padding-inline: max(1.5rem, calc((100vw - 76rem) / 2));
+  min-width: 0;
+  padding-inline: max(1.25rem, calc((100vw - var(--app-shell-max)) / 2));
   display: grid;
-  grid-template-columns: minmax(9rem, 1fr) auto minmax(9rem, 1fr);
+  grid-template-columns: minmax(11rem, 1fr) minmax(22rem, auto) minmax(11rem, 1fr);
   align-items: center;
+  gap: clamp(1rem, 2vw, 2rem);
   border: 0;
   border-bottom: 0.0625rem solid var(--app-line);
   background: rgba(255, 255, 255, 0.96);
   color: var(--app-ink);
-  box-shadow: none;
+  box-shadow: 0 0.5rem 1.5rem rgba(24, 24, 20, 0.025);
   backdrop-filter: blur(1rem);
 }
 
 .app-shell .brand-button {
+  min-width: 0;
   justify-self: start;
-  padding: 0;
+  padding: 0.35rem 0.45rem 0.35rem 0;
   border: 0;
+  border-radius: 0.45rem;
   background: transparent;
   cursor: pointer;
+}
+
+.app-shell .brand-button:hover {
+  background: transparent;
+}
+
+.app-shell .brand-button:focus-visible,
+.app-shell .app-nav button:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.1875rem;
 }
 
 .app-shell .brand-mark,
@@ -131,63 +149,79 @@
 }
 
 .app-shell .app-nav {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.25rem;
   display: flex;
   align-items: center;
-  gap: 1.65rem;
+  justify-content: center;
+  gap: 0.25rem;
   overflow: visible;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.625rem;
+  background: var(--app-surface-subtle);
 }
 
 .app-shell .app-nav button {
   position: relative;
   min-width: 0;
-  padding: 0.5rem 0;
-  border: 0;
-  border-radius: 0;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.8rem;
+  border: 0.0625rem solid transparent;
+  border-radius: 0.4rem;
   background: transparent;
   color: var(--app-muted);
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 650;
+  white-space: nowrap;
   box-shadow: none;
   cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
 .app-shell .app-nav button::after {
-  content: "";
-  position: absolute;
-  right: 50%;
-  bottom: -1.02rem;
-  left: 50%;
-  height: 0.125rem;
-  display: block;
-  background: var(--app-accent);
-  transition: right 0.18s ease, left 0.18s ease;
+  display: none;
 }
 
-.app-shell .app-nav button:hover,
-.app-shell .app-nav button.is-active {
-  border-color: transparent;
-  background: transparent;
+.app-shell .app-nav button:hover {
+  border-color: var(--app-line);
+  background: rgba(255, 255, 255, 0.72);
   color: var(--app-ink);
-  box-shadow: none;
 }
 
-.app-shell .app-nav button.is-active::after {
-  right: 0;
-  left: 0;
+.app-shell .app-nav button.is-active {
+  border-color: var(--app-line-strong);
+  background: var(--app-surface);
+  color: var(--app-ink);
+  box-shadow: 0 0.2rem 0.65rem rgba(24, 24, 20, 0.06);
 }
 
 .app-shell .app-header__status {
+  min-width: 0;
+  max-width: 15rem;
   justify-self: end;
+  padding: 0.45rem 0.65rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 999rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  background: var(--app-surface-subtle);
   color: var(--app-muted);
   font-size: 0.75rem;
+}
+
+.app-shell .app-header__status > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell .connection-light {
   width: 0.4rem;
   height: 0.4rem;
+  flex: 0 0 auto;
   border-radius: 50%;
   background: #aaa89f;
 }
@@ -1712,24 +1746,39 @@
 }
 
 @media (max-width: 52rem) {
+  .app-shell {
+    --app-header: var(--app-header-mobile);
+  }
+
   .app-shell .app-header {
-    height: auto;
+    height: var(--app-header);
     min-height: var(--app-header);
-    padding: 0.8rem 1.25rem;
-    grid-template-columns: 1fr auto;
-    row-gap: 0.65rem;
+    padding: 0.65rem 1rem 0.7rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    column-gap: 0.75rem;
+    row-gap: 0.55rem;
   }
 
   .app-shell .app-nav {
     grid-column: 1 / -1;
     width: 100%;
-    justify-content: space-between;
-    gap: 0.75rem;
+    justify-content: flex-start;
+    gap: 0.2rem;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
   }
 
-  .app-shell .app-nav button::after {
-    bottom: -0.5rem;
+  .app-shell .app-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-shell .app-nav button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
   }
 
   .app-shell .app-header__status {

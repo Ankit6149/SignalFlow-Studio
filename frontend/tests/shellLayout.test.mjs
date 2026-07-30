@@ -25,4 +25,5 @@ test("narrow navigation remains contained and keyboard visible", async () => {
   assert.match(css, /@media \(max-width: 52rem\)[\s\S]*overflow-x:\s*auto/);
   assert.match(css, /scroll-snap-type:\s*inline proximity/);
   assert.match(css, /\.app-header__status > span:last-child[\s\S]*text-overflow:\s*ellipsis/);
+  assert.doesNotMatch(css, /@media \(max-width: 52rem\)[\s\S]*justify-content:\s*space-between;[\s\S]*overflow-x:\s*auto/);
 });

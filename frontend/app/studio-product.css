@@ -7,34 +7,49 @@
 
 .app-shell .studio-page[data-stage="source"] .composer-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(21rem, 0.82fr);
+  grid-template-columns: minmax(32rem, 1.25fr) minmax(20rem, 0.75fr);
+  grid-template-areas:
+    "header header"
+    "identity evidence"
+    "brief evidence"
+    "brief upload"
+    "brief files";
   column-gap: clamp(2rem, 4vw, 4.25rem);
-  row-gap: 0;
+  row-gap: 0.9rem;
   align-items: start;
 }
 
 .app-shell .studio-page[data-stage="source"] .composer-panel > .panel-kicker {
-  grid-column: 1 / -1;
+  grid-area: header;
+  margin-bottom: 0.85rem;
 }
 
 .app-shell .studio-page[data-stage="source"] .composer-panel > .field:not(.field--large) {
-  grid-column: 1;
+  grid-area: identity;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .app-shell .studio-page[data-stage="source"] .composer-panel > .field--large {
-  grid-column: 1;
+  grid-area: brief;
+  min-width: 0;
+  min-height: 100%;
+  margin-bottom: 0;
+  display: grid;
+  grid-template-rows: auto minmax(20rem, 1fr) auto;
 }
 
 .app-shell .studio-page[data-stage="source"] .field--large textarea {
-  min-height: clamp(18rem, 34vh, 25rem);
+  height: 100%;
+  min-height: clamp(20rem, 38vh, 29rem);
 }
 
 .app-shell .studio-page[data-stage="source"] .source-grid {
-  grid-column: 2;
-  grid-row: 2 / span 2;
+  grid-area: evidence;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 0;
+  gap: 0.9rem;
   padding: 1.25rem;
   border: 0.0625rem solid var(--app-line);
   border-radius: 0.75rem;
@@ -43,7 +58,7 @@
 
 .app-shell .studio-page[data-stage="source"] .source-grid::before {
   content: "Supporting evidence";
-  margin-bottom: 1rem;
+  margin-bottom: 0.1rem;
   color: var(--app-accent);
   font-size: 0.6875rem;
   font-weight: 750;
@@ -51,26 +66,82 @@
   text-transform: uppercase;
 }
 
-.app-shell .studio-page[data-stage="source"] .source-grid .field:last-child {
+.app-shell .studio-page[data-stage="source"] .source-grid .field {
+  min-width: 0;
   margin-bottom: 0;
 }
 
-.app-shell .studio-page[data-stage="source"] .upload-zone,
-.app-shell .studio-page[data-stage="source"] .file-list {
-  grid-column: 2;
+.app-shell .studio-page[data-stage="source"] .source-grid input,
+.app-shell .studio-page[data-stage="source"] .source-grid textarea {
+  min-width: 0;
 }
 
 .app-shell .studio-page[data-stage="source"] .upload-zone {
-  min-height: 7.5rem;
-  margin-top: 1rem;
-  padding: 1.25rem;
+  grid-area: upload;
+  min-width: 0;
+  min-height: 7rem;
+  margin-top: 0;
+  padding: 1.1rem 1.25rem;
   border-radius: 0.75rem;
   background: var(--app-surface-subtle);
+}
+
+.app-shell .studio-page[data-stage="source"] .upload-zone:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.1875rem;
 }
 
 .app-shell .studio-page[data-stage="source"] .upload-zone__icon {
   background: var(--app-accent-soft);
   color: var(--app-accent);
+}
+
+.app-shell .studio-page[data-stage="source"] .file-list {
+  grid-area: files;
+  min-width: 0;
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.app-shell .studio-page[data-stage="source"] .file-chip {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.65rem 0.55rem 0.8rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.app-shell .studio-page[data-stage="source"] .file-chip span {
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .studio-page[data-stage="source"] .file-chip small {
+  white-space: nowrap;
+}
+
+.app-shell .studio-page[data-stage="source"] .file-chip button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.35rem;
+  display: grid;
+  place-items: center;
+}
+
+.app-shell .studio-page[data-stage="source"] .file-chip button:hover {
+  background: var(--app-accent-soft);
+  color: var(--app-danger);
+}
+
+.app-shell .studio-page[data-stage="source"] .file-chip button:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.125rem;
 }
 
 .app-shell .studio-page[data-stage="destinations"] .output-panel {
@@ -287,12 +358,22 @@
     width: min(100% - 2rem, 76rem);
   }
 
-  .app-shell .studio-page[data-stage="source"] .composer-panel,
+  .app-shell .studio-page[data-stage="source"] .composer-panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "header"
+      "identity"
+      "brief"
+      "evidence"
+      "upload"
+      "files";
+    row-gap: 1rem;
+  }
+
   .app-shell .studio-page[data-stage="destinations"] .output-panel {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell .studio-page[data-stage="source"] .composer-panel > *,
   .app-shell .studio-page[data-stage="destinations"] .output-panel > * {
     grid-column: 1;
     grid-row: auto;

@@ -59,6 +59,12 @@ function exportMetadata(campaign) {
   const qualityStates = Object.fromEntries(
     campaign.channels.map((channel) => [channel, campaign.drafts[channel]?.qualityState || "unknown"]),
   );
+  const approvalStates = Object.fromEntries(
+    campaign.channels.map((channel) => [channel, Boolean(campaign.drafts[channel]?.approved)]),
+  );
+  const editedStates = Object.fromEntries(
+    campaign.channels.map((channel) => [channel, Boolean(campaign.drafts[channel]?.edited)]),
+  );
   return {
     campaignId: campaign.campaignId,
     generationRunId: campaign.generationRun?.generationRunId || null,
@@ -69,6 +75,13 @@ function exportMetadata(campaign) {
     snapshotAt: campaign.updatedAt,
     warnings: campaign.warnings || [],
     qualityStates,
+    approvalStates,
+    editedStates,
+    revision: campaign.editorState?.revision ?? null,
+    savedRevision: campaign.editorState?.savedRevision ?? null,
+    exportedRevision: campaign.editorState?.exportedRevision ?? null,
+    lastSavedAt: campaign.editorState?.lastSavedAt || null,
+    lastExportedAt: campaign.editorState?.lastExportedAt || null,
   };
 }
 
@@ -82,7 +95,11 @@ export function projectCampaignExport(input) {
         channel,
         content: draft.current.content,
         origin: draft.current.origin,
+        generatedContent: draft.generated?.content || draft.current.content,
+        edited: Boolean(draft.edited),
+        approved: Boolean(draft.approved),
         qualityState: draft.qualityState,
+        generationRunId: draft.generationRunId || null,
         updatedAt: draft.updatedAt,
       }];
     }),
@@ -114,6 +131,7 @@ export function projectCampaignExport(input) {
       channels: campaign.channels,
       sourceSnapshot: campaign.sourceSnapshot,
       generationRun: campaign.generationRun,
+      editorState: campaign.editorState,
       brief: campaign.brief,
       warnings: campaign.warnings,
       package: campaign.generationResult?.package || null,
@@ -133,6 +151,7 @@ export function projectCampaignMarkdown(input) {
   content += `> Provider: ${metadata.provider}${metadata.model ? ` · ${metadata.model}` : ""}\n`;
   if (metadata.generationRunId) content += `> Generation run: ${metadata.generationRunId}\n`;
   if (metadata.sourceSnapshotId) content += `> Source snapshot: ${metadata.sourceSnapshotId}\n`;
+  if (metadata.revision !== null) content += `> Editor revision: ${metadata.revision}\n`;
   content += "\n";
 
   content += packageContextMarkdown(campaign.generationResult?.package || {});
@@ -140,7 +159,7 @@ export function projectCampaignMarkdown(input) {
   for (const channel of campaign.channels) {
     content += `### ${label(channel)}\n\n`;
     content += `${posts[channel]}\n\n`;
-    content += `*Quality state: ${metadata.qualityStates[channel]}*\n\n`;
+    content += `*State: ${metadata.approvalStates[channel] ? "approved" : metadata.editedStates[channel] ? "edited" : metadata.qualityStates[channel]}*\n\n`;
   }
 
   if (metadata.warnings.length) {

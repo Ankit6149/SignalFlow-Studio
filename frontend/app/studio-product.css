@@ -211,6 +211,119 @@
   font-weight: 500;
 }
 
+.app-shell .model-route-current {
+  min-width: 0;
+  margin-bottom: 1rem;
+  padding: 0.9rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.6rem;
+  display: grid;
+  gap: 0.4rem;
+  background: var(--app-surface);
+}
+
+.app-shell .model-route-current > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app-shell .model-route-current span {
+  color: var(--app-faint);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.app-shell .model-route-current strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-ink);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .model-route-current small {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .model-route-core {
+  margin-bottom: 1rem;
+}
+
+.app-shell .model-route-core .field {
+  margin-bottom: 0;
+}
+
+.app-shell .model-route-advanced {
+  margin-bottom: 1rem;
+  border-top: 0.0625rem solid var(--app-line);
+  border-bottom: 0.0625rem solid var(--app-line);
+}
+
+.app-shell .model-route-advanced summary {
+  position: relative;
+  min-height: 3rem;
+  padding: 0.75rem 2rem 0.75rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  list-style: none;
+  cursor: pointer;
+  color: var(--app-ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.app-shell .model-route-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-shell .model-route-advanced summary::after {
+  content: "+";
+  position: absolute;
+  right: 0.2rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--app-accent);
+  font-size: 0.85rem;
+}
+
+.app-shell .model-route-advanced[open] summary::after {
+  content: "−";
+}
+
+.app-shell .model-route-advanced summary small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .model-route-advanced summary:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.1875rem;
+}
+
+.app-shell .model-route-advanced__content {
+  padding: 0.25rem 0 1rem;
+}
+
 .app-shell .model-route-status {
   flex: 0 0 auto;
   padding: 0.35rem 0.55rem;
@@ -273,7 +386,7 @@
 }
 
 .app-shell .model-route-fields {
-  padding-top: 1rem;
+  padding-top: 0.9rem;
   border-top: 0.0625rem solid var(--app-line);
 }
 
@@ -299,6 +412,7 @@
   color: var(--app-muted);
   font-size: 0.75rem;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .model-route-message.is-error {

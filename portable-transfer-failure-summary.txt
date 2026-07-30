@@ -1,0 +1,29 @@
+not ok 133 - browser blob storage preserves bytes text and JSON independently
+  ---
+  duration_ms: 0.820506
+  type: 'test'
+  location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:77:1'
+  failureType: 'testCodeFailure'
+  error: 'object null is not iterable (cannot read property Symbol(Symbol.iterator))'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Function.from (<anonymous>)
+    TestContext.<anonymous> (file:///home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:82:26)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: transfer state covers preparation validation warnings import completion and reset
+ok 134 - transfer state covers preparation validation warnings import completion and reset
+  ---
+  duration_ms: 1.552753
+  type: 'test'
+  ...
+# Subtest: blocked and destination-selection states cannot import
+ok 135 - blocked and destination-selection states cannot import
+  ---
+  duration_ms: 0.32618
+  type: 'test'
+  ...
+# Subtest: partial and cancelled reports can resume while rolled-back reports cannot
+---

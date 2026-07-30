@@ -1,8 +1,10 @@
 /*
- * Global layout containment and scroll behavior.
+ * Global viewport and landing-page containment.
  *
- * Loaded last so viewport containment, bounded landing-page spacing, and the
- * root scrollbar remain consistent across older visual layers.
+ * This layer loads before the authoritative Studio styles. It owns root
+ * overflow, the page scrollbar, and bounded public-site spacing only. Product
+ * components and workspace layout must remain in app-workspace.css or
+ * studio-product.css so containment never patches the Studio after the fact.
  */
 
 :root {
@@ -52,7 +54,7 @@ body::-webkit-scrollbar-thumb:hover {
   background: rgba(155, 130, 72, 0.92);
 }
 
-/* Landing page: full-bleed backgrounds with a bounded content column. */
+/* Public landing page: full-bleed backgrounds with a bounded content column. */
 .landing-shell {
   width: 100%;
   max-width: 100%;
@@ -91,49 +93,6 @@ body::-webkit-scrollbar-thumb:hover {
 
 .landing-hero__copy h1 {
   max-width: 12ch;
-}
-
-/* Studio: prevent child widths and legacy motion from escaping the frame. */
-.app-shell {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.app-shell .studio-page,
-.app-shell .secondary-page,
-.app-shell .studio-page[data-stage="review"] {
-  max-width: 100%;
-}
-
-.app-shell .studio-heading,
-.app-shell .studio-flow,
-.app-shell .studio-grid,
-.app-shell .studio-actionbar,
-.app-shell .panel,
-.app-shell .source-grid,
-.app-shell .channel-picker,
-.app-shell .field,
-.app-shell .field input,
-.app-shell .field textarea,
-.app-shell .field select {
-  min-width: 0;
-}
-
-/*
- * The old entrance keyframe translated the footer by -50% because the footer
- * used to be fixed to the viewport. It is now in normal document flow, so that
- * transform caused the clipped footer shown in the reported screenshot.
- */
-.app-shell .studio-actionbar {
-  position: static;
-  right: auto;
-  left: auto;
-  width: 100%;
-  max-width: 64rem;
-  margin: 1rem auto 0;
-  animation: none;
-  transform: none;
 }
 
 @media (max-width: 52rem) {

@@ -1741,6 +1741,7 @@ export default function Home() {
                 <div>
                   <button onClick={useCoreChannels}>Core</button>
                   <button onClick={selectAllChannels}>All</button>
+                  <button onClick={() => setChannels([])}>Clear</button>
                 </div>
               </div>
 
@@ -1789,35 +1790,22 @@ export default function Home() {
                 <header className="model-route-panel__header">
                   <div>
                     <div className="model-route-panel__eyebrow">Generation engine</div>
-                    <h3>Choose the model route</h3>
+                    <h3>Model route</h3>
                   </div>
                   <span className={`model-route-status ${providerReadiness.ready ? "is-ready" : ""}`}>
                     {providerStatusLoading ? "Checking" : providerReadiness.ready ? "Ready" : "Setup needed"}
                   </span>
                 </header>
 
-                <div className="model-provider-grid" role="list" aria-label="Available model providers">
-                  {availableProviders.map((item) => {
-                    const configured = Boolean(providerStatuses[item.id]?.configured);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`model-provider-option ${form.provider === item.id ? "is-selected" : ""}`}
-                        onClick={() => {
-                          updateForm("provider", item.id);
-                          setProviderTest({ status: "idle", message: "" });
-                        }}
-                        aria-pressed={form.provider === item.id}
-                      >
-                        <span>{item.label}</span>
-                        <small className={configured ? "is-configured" : ""} aria-label={configured ? "Configured on server" : "Not configured on server"} />
-                      </button>
-                    );
-                  })}
+                <div className="model-route-current" aria-live="polite">
+                  <div>
+                    <span>Current route</span>
+                    <strong>{provider.label}</strong>
+                  </div>
+                  <small>{providerReadiness.ready ? "Ready for this campaign" : providerReadiness.reason}</small>
                 </div>
 
-                <div className="model-route-fields">
+                <div className="model-route-core">
                   <label className="field">
                     <span>Audience</span>
                     <input
@@ -1825,37 +1813,69 @@ export default function Home() {
                       onChange={(event) => updateForm("audience", event.target.value)}
                     />
                   </label>
-                  {!['ollama', 'lmstudio'].includes(form.provider) && (
-                    <label className="field">
-                      <span>Temporary API key</span>
-                      <input
-                        type="password"
-                        value={form.apiKey}
-                        onChange={(event) => updateForm("apiKey", event.target.value)}
-                        placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}
-                        autoComplete="off"
-                      />
-                    </label>
-                  )}
-                  {['ollama', 'lmstudio', 'custom'].includes(form.provider) && (
-                    <label className="field">
-                      <span>Base URL</span>
-                      <input
-                        value={form.baseUrl}
-                        onChange={(event) => updateForm("baseUrl", event.target.value)}
-                        placeholder={form.provider === 'ollama' ? 'http://localhost:11434/v1' : form.provider === 'lmstudio' ? 'http://localhost:1234/v1' : 'https://provider.example/v1'}
-                      />
-                    </label>
-                  )}
-                  <label className="field">
-                    <span>Model override</span>
-                    <input
-                      value={form.model}
-                      onChange={(event) => updateForm("model", event.target.value)}
-                      placeholder={providerStatuses[form.provider]?.defaultModel || "Leave blank for the provider default"}
-                    />
-                  </label>
                 </div>
+
+                <details className="model-route-advanced">
+                  <summary>
+                    <span>Advanced model settings</span>
+                    <small>{provider.label}</small>
+                  </summary>
+                  <div className="model-route-advanced__content">
+                    <div className="model-provider-grid" role="list" aria-label="Available model providers">
+                      {availableProviders.map((item) => {
+                        const configured = Boolean(providerStatuses[item.id]?.configured);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className={`model-provider-option ${form.provider === item.id ? "is-selected" : ""}`}
+                            onClick={() => {
+                              updateForm("provider", item.id);
+                              setProviderTest({ status: "idle", message: "" });
+                            }}
+                            aria-pressed={form.provider === item.id}
+                          >
+                            <span>{item.label}</span>
+                            <small className={configured ? "is-configured" : ""} aria-label={configured ? "Configured on server" : "Not configured on server"} />
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="model-route-fields">
+                      {!['ollama', 'lmstudio'].includes(form.provider) && (
+                        <label className="field">
+                          <span>Temporary API key</span>
+                          <input
+                            type="password"
+                            value={form.apiKey}
+                            onChange={(event) => updateForm("apiKey", event.target.value)}
+                            placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}
+                            autoComplete="off"
+                          />
+                        </label>
+                      )}
+                      {['ollama', 'lmstudio', 'custom'].includes(form.provider) && (
+                        <label className="field">
+                          <span>Base URL</span>
+                          <input
+                            value={form.baseUrl}
+                            onChange={(event) => updateForm("baseUrl", event.target.value)}
+                            placeholder={form.provider === 'ollama' ? 'http://localhost:11434/v1' : form.provider === 'lmstudio' ? 'http://localhost:1234/v1' : 'https://provider.example/v1'}
+                          />
+                        </label>
+                      )}
+                      <label className="field">
+                        <span>Model override</span>
+                        <input
+                          value={form.model}
+                          onChange={(event) => updateForm("model", event.target.value)}
+                          placeholder={providerStatuses[form.provider]?.defaultModel || "Leave blank for the provider default"}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </details>
 
                 <div className="model-route-actions">
                   <button

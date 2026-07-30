@@ -8,7 +8,7 @@ test("Source uses explicit desktop and mobile reading areas", async () => {
   const css = await readFile(workflowUrl, "utf8");
   assert.match(css, /grid-template-areas:[\s\S]*"header header"[\s\S]*"identity evidence"[\s\S]*"brief evidence"[\s\S]*"brief upload"[\s\S]*"brief files"/);
   assert.match(css, /@media \(max-width: 68rem\)[\s\S]*grid-template-areas:[\s\S]*"header"[\s\S]*"identity"[\s\S]*"brief"[\s\S]*"evidence"[\s\S]*"upload"[\s\S]*"files"/);
-  assert.doesNotMatch(css, /grid-row:\s*2 \/ span 2/);
+  assert.doesNotMatch(css, /\.studio-page\[data-stage="source"\] \.source-grid \{[^}]*grid-(column|row):/s);
 });
 
 test("Source evidence and attached files remain width safe", async () => {

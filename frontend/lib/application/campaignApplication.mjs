@@ -42,81 +42,93 @@ export function createCampaignApplication({
     return existing;
   }
 
-  return {
-    async listCampaigns() {
-      const stored = await repository.list();
-      const normalized = [];
-      for (const item of stored) {
-        const campaign = migrateLegacyCampaign(item);
-        normalized.push(campaign);
-        if (item?.kind !== "Campaign" || item?.schemaVersion !== campaign.schemaVersion) {
-          await repository.upsert(campaign);
-        }
+  async function listCampaigns() {
+    const stored = await repository.list();
+    const normalized = [];
+    for (const item of stored) {
+      const campaign = migrateLegacyCampaign(item);
+      normalized.push(campaign);
+      if (item?.kind !== "Campaign" || item?.schemaVersion !== campaign.schemaVersion) {
+        await repository.upsert(campaign);
       }
-      return normalized;
-    },
+    }
+    return normalized;
+  }
 
-    async getCampaign(campaignId) {
-      const stored = await repository.get(campaignId);
-      return stored ? migrateLegacyCampaign(stored) : null;
-    },
+  async function getCampaign(campaignId) {
+    const stored = await repository.get(campaignId);
+    return stored ? migrateLegacyCampaign(stored) : null;
+  }
 
-    async createCampaign(input) {
-      const now = input.updatedAt || applicationClock.now();
-      const campaign = aggregateInput({
-        ...input,
-        campaignId: applicationIds.create("campaign"),
-        createdAt: now,
-        updatedAt: now,
-      });
-      return repository.upsert(campaign);
-    },
+  async function createCampaign(input) {
+    const now = input.updatedAt || applicationClock.now();
+    const campaign = aggregateInput({
+      ...input,
+      campaignId: applicationIds.create("campaign"),
+      createdAt: now,
+      updatedAt: now,
+    });
+    return repository.upsert(campaign);
+  }
 
-    async updateCampaign(input) {
-      const existing = await requireExisting(input.campaignId);
-      const campaign = aggregateInput({
-        ...input,
-        campaignId: existing.campaignId,
-        updatedAt: input.updatedAt || applicationClock.now(),
-      }, existing);
-      return repository.upsert(campaign);
-    },
+  async function updateCampaign(input) {
+    const existing = await requireExisting(input.campaignId);
+    const campaign = aggregateInput({
+      ...input,
+      campaignId: existing.campaignId,
+      updatedAt: input.updatedAt || applicationClock.now(),
+    }, existing);
+    return repository.upsert(campaign);
+  }
 
-    async saveCampaign(input) {
-      return input.campaignId
-        ? this.updateCampaign(input)
-        : this.createCampaign(input);
-    },
+  async function saveCampaign(input) {
+    return input.campaignId
+      ? updateCampaign(input)
+      : createCampaign(input);
+  }
 
-    async saveAsCopy(input) {
-      const now = input.updatedAt || applicationClock.now();
-      const campaign = aggregateInput({
-        ...input,
-        campaignId: applicationIds.create("campaign"),
-        createdAt: now,
-        updatedAt: now,
-      });
-      return repository.upsert(campaign);
-    },
+  async function saveAsCopy(input) {
+    const now = input.updatedAt || applicationClock.now();
+    const campaign = aggregateInput({
+      ...input,
+      campaignId: applicationIds.create("campaign"),
+      createdAt: now,
+      updatedAt: now,
+    });
+    return repository.upsert(campaign);
+  }
 
-    openCampaign(input) {
-      return campaignToEditorState(input);
-    },
+  function openCampaign(input) {
+    return campaignToEditorState(input);
+  }
 
-    async deleteCampaign(campaignId) {
-      return repository.remove(campaignId);
-    },
+  async function deleteCampaign(campaignId) {
+    return repository.remove(campaignId);
+  }
 
-    createSnapshot(input) {
-      return aggregateInput(input);
-    },
+  function createSnapshot(input) {
+    return aggregateInput(input);
+  }
 
-    projectMarkdown(input) {
-      return projectCampaignMarkdown(aggregateInput(input));
-    },
+  function projectMarkdown(input) {
+    return projectCampaignMarkdown(aggregateInput(input));
+  }
 
-    projectJson(input) {
-      return projectCampaignJson(aggregateInput(input));
-    },
+  function projectJson(input) {
+    return projectCampaignJson(aggregateInput(input));
+  }
+
+  return {
+    listCampaigns,
+    getCampaign,
+    createCampaign,
+    updateCampaign,
+    saveCampaign,
+    saveAsCopy,
+    openCampaign,
+    deleteCampaign,
+    createSnapshot,
+    projectMarkdown,
+    projectJson,
   };
 }

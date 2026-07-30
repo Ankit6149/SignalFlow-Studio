@@ -1,12 +1,26 @@
 import { assertPort } from "../domain/ports.mjs";
 import { createDomainRecord, parseDomainRecord, portableClone, stableStringify } from "../domain/contracts.mjs";
 
+const RECORD_SPECS = Object.freeze({
+  asset: { portName: "assetRepository", kind: "Asset", idField: "assetId" },
+  sourceArtifact: { portName: "sourceArtifactRepository", kind: "SourceArtifact", idField: "sourceArtifactId" },
+  approval: { portName: "approvalRepository", kind: "Approval", idField: "approvalId" },
+  export: { portName: "exportRepository", kind: "Export", idField: "exportId" },
+  transferReport: { portName: "transferReportRepository", kind: "TransferReport", idField: "transferReportId" },
+});
+
 function clone(value) {
   return portableClone(value);
 }
 
 function sortByUpdated(items) {
   return [...items].sort((left, right) => String(right.updatedAt || right.createdAt || "").localeCompare(String(left.updatedAt || left.createdAt || "")));
+}
+
+function spec(name) {
+  const value = RECORD_SPECS[name];
+  if (!value) throw new TypeError(`Unknown transfer record repository: ${name}.`);
+  return value;
 }
 
 function normalizeRecord(kind, idField, value) {
@@ -106,64 +120,76 @@ function createBrowserRecordRepository({ getStorage, key, limit, portName, kind,
   return assertPort(portName, { list, get, upsert, remove });
 }
 
+function memoryRepository(name, initial = []) {
+  return createMemoryRecordRepository({ ...spec(name), initial });
+}
+
+function storeRepository(name, { store, prefix }) {
+  return createStoreBackedRecordRepository({ ...spec(name), store, prefix });
+}
+
+function browserRepository(name, { getStorage, key, limit }) {
+  return createBrowserRecordRepository({ ...spec(name), getStorage, key, limit });
+}
+
 export function createMemoryAssetRepository(initial = []) {
-  return createMemoryRecordRepository({
-    portName: "assetRepository",
-    kind: "Asset",
-    idField: "assetId",
-    initial,
-  });
+  return memoryRepository("asset", initial);
 }
 
 export function createStoreBackedAssetRepository({ store, prefix = "asset/" } = {}) {
-  return createStoreBackedRecordRepository({
-    store,
-    portName: "assetRepository",
-    kind: "Asset",
-    idField: "assetId",
-    prefix,
-  });
+  return storeRepository("asset", { store, prefix });
 }
 
 export function createBrowserAssetRepository({ getStorage, key = "signalflow_assets_v1", limit = 250 } = {}) {
-  return createBrowserRecordRepository({
-    getStorage,
-    key,
-    limit,
-    portName: "assetRepository",
-    kind: "Asset",
-    idField: "assetId",
-  });
+  return browserRepository("asset", { getStorage, key, limit });
+}
+
+export function createMemorySourceArtifactRepository(initial = []) {
+  return memoryRepository("sourceArtifact", initial);
+}
+
+export function createStoreBackedSourceArtifactRepository({ store, prefix = "source-artifact/" } = {}) {
+  return storeRepository("sourceArtifact", { store, prefix });
+}
+
+export function createBrowserSourceArtifactRepository({ getStorage, key = "signalflow_source_artifacts_v1", limit = 500 } = {}) {
+  return browserRepository("sourceArtifact", { getStorage, key, limit });
+}
+
+export function createMemoryApprovalRepository(initial = []) {
+  return memoryRepository("approval", initial);
+}
+
+export function createStoreBackedApprovalRepository({ store, prefix = "approval/" } = {}) {
+  return storeRepository("approval", { store, prefix });
+}
+
+export function createBrowserApprovalRepository({ getStorage, key = "signalflow_approvals_v1", limit = 500 } = {}) {
+  return browserRepository("approval", { getStorage, key, limit });
+}
+
+export function createMemoryExportRepository(initial = []) {
+  return memoryRepository("export", initial);
+}
+
+export function createStoreBackedExportRepository({ store, prefix = "export/" } = {}) {
+  return storeRepository("export", { store, prefix });
+}
+
+export function createBrowserExportRepository({ getStorage, key = "signalflow_exports_v1", limit = 500 } = {}) {
+  return browserRepository("export", { getStorage, key, limit });
 }
 
 export function createMemoryTransferReportRepository(initial = []) {
-  return createMemoryRecordRepository({
-    portName: "transferReportRepository",
-    kind: "TransferReport",
-    idField: "transferReportId",
-    initial,
-  });
+  return memoryRepository("transferReport", initial);
 }
 
 export function createStoreBackedTransferReportRepository({ store, prefix = "transfer-report/" } = {}) {
-  return createStoreBackedRecordRepository({
-    store,
-    portName: "transferReportRepository",
-    kind: "TransferReport",
-    idField: "transferReportId",
-    prefix,
-  });
+  return storeRepository("transferReport", { store, prefix });
 }
 
 export function createBrowserTransferReportRepository({ getStorage, key = "signalflow_transfer_reports_v1", limit = 50 } = {}) {
-  return createBrowserRecordRepository({
-    getStorage,
-    key,
-    limit,
-    portName: "transferReportRepository",
-    kind: "TransferReport",
-    idField: "transferReportId",
-  });
+  return browserRepository("transferReport", { getStorage, key, limit });
 }
 
 function bytesToBase64(bytes) {

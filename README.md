@@ -1,6 +1,6 @@
 # SignalFlow Studio
 
-SignalFlow Studio is an open-source, review-first campaign workspace. It turns product notes, public links, repository context, and supported text/code files into editable drafts for twelve destinations while keeping generation, review, export, and publishing states explicit.
+SignalFlow Studio is an open-source, review-first campaign workspace. It turns product notes, public links, repository context, and supported text/code files into editable drafts for twelve destinations while keeping generation, review, version, export, and publishing states explicit.
 
 The active product **requires a real model provider**. Retired template, offline, prompt-only, and automatic fallback generation are rejected rather than presented as real campaign output.
 
@@ -10,8 +10,9 @@ The active product **requires a real model provider**. Retired template, offline
 2. Select destinations across social, community, video, and owned channels.
 3. Choose an available model route for the current deployment/session.
 4. Generate a staged campaign and destination-specific drafts.
-5. Review and edit one authoritative current draft per channel.
-6. Save in the current browser, export deterministic Markdown/JSON, copy/open a destination, or publish through a genuinely configured official connector.
+5. Review, edit, and explicitly approve one authoritative current draft per channel.
+6. Regenerate one channel, regenerate only unedited channels, or archive the current version before regenerating everything.
+7. Save changes to the current stable campaign ID, save as a separate copy, export deterministic Markdown/JSON, copy/open a destination, or publish through a genuinely configured official connector.
 
 ## Destinations
 
@@ -42,16 +43,35 @@ A route is usable only when `GET /api/capabilities` reports it available for the
 - Custom, Ollama, and LM Studio routes are owner/trusted-local capabilities. Hosted local-model use requires a reachable trusted base URL.
 - Temporary keys are request-scoped and excluded from saved campaigns.
 
-## Storage and authoritative drafts
+## Edit-safe regeneration and review state
+
+SignalFlow never silently replaces a manually edited draft.
+
+When edited drafts exist, full regeneration requires a deliberate choice:
+
+- regenerate only unedited destinations and keep edited text byte-for-byte unchanged;
+- archive the complete current campaign and regenerate every selected destination;
+- cancel without sending a request or changing state.
+
+Each channel can also be regenerated independently. Failed or rejected regeneration leaves existing work intact. The current generated baseline can be restored per channel, and archived campaign versions can be restored or explicitly discarded.
+
+Persistent campaign and channel statuses show source freshness, generated/regenerated state, manual edits, needs-review state, approval, failures, unsaved changes, last save, and whether the current revision has been exported. Editing a draft clears its approval. Publishing and manual handoff require the current channel revision to be explicitly approved.
+
+See [docs/CAMPAIGN_EDITING_AND_VERSIONING.md](docs/CAMPAIGN_EDITING_AND_VERSIONING.md).
+
+## Storage, identity, and authoritative drafts
 
 - Saved campaigns are browser-local in the current product. There is no cloud campaign database, cross-device sync, collaboration, or account workspace yet.
 - Saved records use a versioned Campaign domain contract.
-- Each channel has one authoritative current draft.
-- Original generated text is optional revision history, never another active draft.
+- Every campaign has a stable opaque `campaignId`; titles are display text and are never used as identity.
+- Multiple campaigns may use the same title without overwriting one another.
+- **Save changes** updates only the current ID. **Save as copy** creates a new ID and preserves the original.
+- Each channel has one authoritative current draft and one generated baseline.
+- Original and archived text is revision history, never another active draft.
 - Legacy browser-library records are migrated into the canonical contract when read.
 - Clearing browser site data can remove the local library; export important campaigns first.
 
-Markdown and JSON exports are projected from the same canonical Campaign snapshot. They include campaign/source/generation IDs, provider/model, snapshot timestamp, warnings, quality states, and the authoritative current drafts. Identical campaign state produces deterministic output.
+Markdown and JSON exports are projected from the same canonical Campaign snapshot. They include campaign/source/generation IDs, provider/model, snapshot timestamp, editor revision, warnings, approval/edited/quality states, and authoritative current drafts. Identical campaign state produces deterministic output.
 
 ## Deployment capability contract
 
@@ -88,7 +108,7 @@ Direct publishing code exists for LinkedIn, X, and Reddit, but code presence is 
 - a real publish succeeds and is confirmed by the destination API;
 - refresh, expiry, rejection, permission, and rate-limit behavior are verified.
 
-SignalFlow reports direct success only after the destination API confirms it. No campaign is silently published.
+SignalFlow reports direct success only after the destination API confirms it. No campaign is silently published. The current channel revision must be approved before a direct or manual publishing action becomes available.
 
 See [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md).
 
@@ -164,7 +184,7 @@ python -m pip install pytest
 pytest -q
 ```
 
-A change is not complete when only compilation succeeds. Relevant contract, regression, security, migration, and user-flow evidence must pass.
+A change is not complete when only compilation succeeds. Relevant contract, regression, security, migration, accessibility, and user-flow evidence must pass.
 
 ## Vercel
 
@@ -186,6 +206,9 @@ Output Directory: .next
 - `frontend/lib/domain/` — versioned records, invariants, serialization, and ports
 - `frontend/lib/application/` — shared campaign use cases and composition roots
 - `frontend/lib/infrastructure/` — browser, memory, and injected-store adapters
+- `frontend/lib/studio/campaignState.mjs` — edit-safe reducer and editor version state
+- `frontend/lib/studio/campaignStatus.mjs` — campaign/channel/action selectors
+- `frontend/lib/studio/regenerationPolicy.mjs` — explicit regeneration policies
 - `frontend/lib/export/campaignExport.mjs` — authoritative deterministic export projector
 - `frontend/lib/context/` — repository, URL, and file context extraction
 - `frontend/lib/ai/` — provider adapters, policy, and staged generation
@@ -193,12 +216,15 @@ Output Directory: .next
 - `extension/` — experimental browser capture companion
 - `mcp/` — supported MCP server package
 - `docs/DOMAIN_ARCHITECTURE.md` — canonical domain/application/adapter boundaries
+- `docs/CAMPAIGN_EDITING_AND_VERSIONING.md` — regeneration, approval, persistence, and version rules
 - `docs/CAPABILITY_MATRIX.md` — current deployment truth
 
 ## Product principles
 
-- Review before publish
-- One authoritative current draft per channel
+- Review and explicit approval before publish
+- One authoritative current draft and generated baseline per channel
+- Never replace manual edits silently
+- Stable campaign identity independent of title
 - Real model routes only; no fake fallback output
 - Browser-local and self-hostable today, cloud-ready through adapters
 - Truthful capability, connector, extension, and success states

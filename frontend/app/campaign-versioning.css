@@ -1,0 +1,346 @@
+.app-shell .campaign-status-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.55rem;
+  background: var(--app-surface-subtle);
+}
+
+.app-shell .campaign-status-strip__primary,
+.app-shell .campaign-status-strip__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.app-shell .campaign-status-strip strong {
+  color: var(--app-ink);
+  font-size: 0.8125rem;
+}
+
+.app-shell .campaign-status-strip small {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
+.app-shell .campaign-state-badge,
+.app-shell .draft-state-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+  padding: 0.22rem 0.48rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 999rem;
+  background: var(--app-surface);
+  color: var(--app-muted);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.app-shell .campaign-state-badge.is-saved,
+.app-shell .draft-state-badge.is-approved {
+  border-color: #cdddcf;
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.app-shell .campaign-state-badge.is-unsaved,
+.app-shell .draft-state-badge.is-edited,
+.app-shell .draft-state-badge.is-needs_review {
+  border-color: #e2d2ad;
+  background: var(--app-warning-soft);
+  color: var(--app-warning);
+}
+
+.app-shell .campaign-state-badge.is-stale,
+.app-shell .draft-state-badge.is-stale,
+.app-shell .draft-state-badge.is-failed,
+.app-shell .draft-state-badge.is-empty {
+  border-color: #e5c5c0;
+  background: #fff4f1;
+  color: #9b463d;
+}
+
+.app-shell .draft-state-badge.is-generated,
+.app-shell .draft-state-badge.is-regenerated {
+  border-color: var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-muted);
+}
+
+.app-shell .review-workspace .review-tabs,
+.app-shell .review-workspace.has-stale-campaign .review-tabs {
+  grid-row: auto / span 12;
+}
+
+.app-shell .review-workspace .campaign-stale-banner {
+  grid-row: auto;
+}
+
+.app-shell .review-tabs button {
+  align-items: flex-start;
+}
+
+.app-shell .review-tabs button .review-tab__copy {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  place-items: initial;
+  gap: 0.18rem;
+  background: transparent;
+}
+
+.app-shell .review-tab__copy > strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .review-tab__status {
+  color: var(--app-faint);
+  font-size: 0.625rem;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.app-shell .review-tabs button.is-active .review-tab__status {
+  color: var(--app-accent);
+}
+
+.app-shell .draft-state-actions {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 0.0625rem solid var(--app-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-shell .draft-state-actions button,
+.app-shell .version-history-toggle,
+.app-shell .version-history-list button,
+.app-shell .regeneration-dialog button {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.75rem;
+  border: 0.0625rem solid var(--app-line-strong);
+  border-radius: 0.45rem;
+  background: var(--app-surface);
+  color: var(--app-ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.app-shell .draft-state-actions button:hover,
+.app-shell .version-history-toggle:hover,
+.app-shell .version-history-list button:hover,
+.app-shell .regeneration-dialog button:hover {
+  border-color: #b8a779;
+  background: #fffdf8;
+}
+
+.app-shell .draft-state-actions button.is-approved {
+  border-color: #cdddcf;
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.app-shell .version-history {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 0.0625rem solid var(--app-line);
+}
+
+.app-shell .version-history-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-shell .version-history-list {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.app-shell .version-history-item {
+  padding: 0.75rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.45rem;
+  background: var(--app-surface);
+}
+
+.app-shell .version-history-item header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app-shell .version-history-item strong,
+.app-shell .version-history-item small {
+  display: block;
+}
+
+.app-shell .version-history-item strong {
+  color: var(--app-ink);
+  font-size: 0.75rem;
+}
+
+.app-shell .version-history-item small {
+  margin-top: 0.2rem;
+  color: var(--app-faint);
+  font-size: 0.6875rem;
+}
+
+.app-shell .version-history-item__actions {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.app-shell .version-history-item__actions button {
+  min-height: 2rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.app-shell .version-history-item__actions button:last-child {
+  color: #9b463d;
+}
+
+.app-shell .review-action-reason {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--app-warning);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.app-shell .save-action-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.app-shell .regeneration-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  padding: 1.25rem;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 24, 20, 0.46);
+}
+
+.app-shell .regeneration-dialog {
+  width: min(34rem, 100%);
+  max-height: min(42rem, calc(100vh - 2.5rem));
+  overflow: auto;
+  padding: 1.35rem;
+  border: 0.0625rem solid var(--app-line-strong);
+  border-radius: 0.75rem;
+  background: var(--app-surface);
+  color: var(--app-ink);
+  box-shadow: 0 1.5rem 4rem rgba(24, 24, 20, 0.18);
+}
+
+.app-shell .regeneration-dialog__eyebrow {
+  color: var(--app-accent);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.app-shell .regeneration-dialog h2 {
+  margin: 0.5rem 0 0;
+  font-family: "Playfair Display", serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.app-shell .regeneration-dialog > p {
+  margin: 0.65rem 0 0;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+}
+
+.app-shell .regeneration-dialog__options {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.app-shell .regeneration-option {
+  width: 100%;
+  min-height: 0;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.app-shell .regeneration-option strong,
+.app-shell .regeneration-option span {
+  display: block;
+}
+
+.app-shell .regeneration-option span {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.app-shell .regeneration-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-shell .regeneration-dialog__footer {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 48rem) {
+  .app-shell .campaign-status-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-shell .campaign-status-strip__meta {
+    width: 100%;
+  }
+
+  .app-shell .save-action-group {
+    width: 100%;
+  }
+
+  .app-shell .save-action-group .button {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .regeneration-dialog-backdrop,
+  .app-shell .regeneration-dialog {
+    animation: none;
+  }
+}

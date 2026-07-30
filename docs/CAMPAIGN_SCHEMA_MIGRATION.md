@@ -1,4 +1,4 @@
-# Campaign schema v1 migration and rollback
+# Campaign schema v1 and editor-state v2 migration and rollback
 
 This runbook covers the browser-local migration from legacy saved campaign objects to the canonical `Campaign` domain record introduced for issues #68 and #19.
 
@@ -14,7 +14,10 @@ A migrated record has:
 - `kind: "Campaign"`;
 - a stable `campaignId`;
 - one authoritative `ChannelDraft.current` revision per selected channel;
-- optional `ChannelDraft.history` for different original generated copy;
+- one generated baseline, one authoritative current revision, and optional `ChannelDraft.history`;
+- edited, approval, quality, and per-channel generation-run state;
+- bounded regeneration archives;
+- editor revision, saved/exported revisions, save/export timestamps, and saved-source fingerprint;
 - portable source snapshot and generation run metadata;
 - provider/model, warnings, and quality states;
 - no temporary API key, browser `File`, framework request/response, database client, prompt bundle, generated Markdown/JSON duplicate, or duplicate active package posts.
@@ -29,8 +32,11 @@ A migrated record has:
 4. Missing IDs are deterministically derived from generation/source identity.
 5. `releaseNotes`, `release-notes`, and `release_notes` normalize to `release_notes`.
 6. `hn`, `hacker-news`, and `hacker_news` normalize to `hackernews`.
-7. Duplicate generated payload fields are removed.
-8. The canonical record is written back to browser storage.
+7. Missing generated baselines are reconstructed from generated history or the authoritative current draft.
+8. Missing editor version state defaults to a saved revision using the record timestamp and generation fingerprint.
+9. Missing archives default to an empty list; existing archives and draft history are preserved and deduplicated.
+10. Duplicate generated payload fields are removed.
+11. The canonical record is written back to browser storage.
 
 The operation is idempotent: reading schema v1 again validates it without creating another revision.
 
@@ -40,9 +46,10 @@ Opening a canonical campaign projects the current drafts into editor state. Savi
 
 - preserves the same `campaignId` and original `createdAt`;
 - updates `updatedAt` for the save;
-- preserves existing generated-history revisions;
-- does not duplicate an identical generated revision;
+- preserves generated baselines, approvals, channel state, archives, and existing history;
+- does not duplicate an identical generated or edited revision;
 - keeps current edited drafts authoritative;
+- updates only the stable current ID; Save as copy allocates a new ID and preserves the original;
 - excludes temporary provider credentials again.
 
 Starting a new campaign clears the previous campaign ID, generation run, result, drafts, source inputs, and publish options before another save.
@@ -82,7 +89,9 @@ The required automated evidence includes:
 - canonical round-trip serialization;
 - current-versus-history separation;
 - temporary-secret exclusion;
-- save → reopen → re-save history preservation;
+- save → reopen → re-save generated baseline, approval, archive, and editor-state preservation;
+- duplicate-title create/update/copy/read/delete behavior;
+- browser quota failure propagation and export-recovery messaging;
 - deterministic Markdown/JSON;
 - ZIP contents derived from the same projections;
 - new-campaign identity reset;
@@ -90,3 +99,10 @@ The required automated evidence includes:
 - production build and dependency audit.
 
 Release evidence must identify the exact branch head that passed these checks. Evidence from an earlier head does not authorize merging a later migration or serialization change.
+
+
+## Additive editor-state compatibility
+
+The outer domain record remains schema version `1`. ChannelDraft and Campaign gained additive fields that older schema-v1 fixtures may omit. The canonical reader reconstructs safe defaults and rewrites the complete record on the next repository read/save.
+
+The in-memory editor reducer uses schema version `2`; it is not serialized as an independent domain record. A future incompatible domain change must increment `DOMAIN_SCHEMA_VERSION` rather than overloading this additive migration.

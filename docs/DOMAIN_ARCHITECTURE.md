@@ -70,14 +70,18 @@ A Campaign contains:
 - stable campaign ID and schema version;
 - title, status, selected channels, created/updated timestamps;
 - one `ChannelDraft` per channel;
-- one authoritative `current` revision inside each draft;
-- optional generated revision history when the current text was edited;
+- one authoritative `current` revision and one generated baseline inside each draft;
+- optional generated/edited revision history;
+- explicit edited and approval state owned by the current revision;
+- generation-run ownership for every channel baseline;
+- bounded campaign archives for reversible regeneration;
+- editor revision, saved revision, exported revision, timestamps, and saved-source fingerprint;
 - source snapshot and generation run metadata;
 - provider/model, warnings, and quality states;
 - portable brief, publish options, source file metadata, and extracted document text;
 - generation/package context with active `posts`, generated Markdown, generated JSON, and prompts removed.
 
-The current edited draft is authoritative. Generated copy is never stored as a second active draft.
+The current edited draft is authoritative. Generated copy is a baseline/history record, never a second active draft. Editing clears approval. Regeneration policies and campaign/channel status selectors are pure modules under `frontend/lib/studio/`.
 
 Channel compatibility aliases are normalized at the boundary. `releaseNotes`, `release-notes`, and `release_notes` become `release_notes`; `hn`, `hacker-news`, and `hacker_news` become `hackernews`. The canonical record never preserves competing aliases.
 
@@ -103,9 +107,12 @@ This migration is intentionally local and idempotent. Hosted migrations will use
 `frontend/lib/application/campaignApplication.mjs` provides the use cases:
 
 - list and migrate saved campaigns;
-- save/upsert a canonical campaign;
+- read one campaign by stable ID;
+- create a campaign with an injected opaque ID;
+- update only an existing campaign ID;
+- save as a new copy without modifying the original;
 - open a campaign into editor state;
-- delete a saved campaign;
+- delete a saved campaign by ID;
 - create an export snapshot;
 - project Markdown and JSON.
 
@@ -153,7 +160,8 @@ JSON:
 
 - uses `CampaignExport` schema version `1`;
 - separates `currentDrafts` from optional `history`;
-- includes campaign ID, generation run, source snapshot, provider/model, snapshot timestamp, warnings, and quality states;
+- includes generated baselines, edited/approval state, and per-channel generation-run ownership;
+- includes campaign ID, generation run, source snapshot, provider/model, snapshot timestamp, editor revision, save/export timestamps, warnings, and quality states;
 - omits duplicate active drafts from package/generation payloads;
 - is deterministically key-sorted for identical campaign state.
 
@@ -172,3 +180,14 @@ The ZIP compatibility route is assembled from the same Markdown/JSON projections
 9. Update README, agent guidance, capability documentation, and public AI-context files when product truth changes.
 
 Do not add cloud database calls, object-store clients, provider SDKs, or connector SDKs directly to React components or domain modules.
+
+
+## Edit-safe regeneration and editor state
+
+The editor reducer schema is version `2`, while the additive outer domain schema remains version `1`. The reducer owns generated baselines, current posts, channel statuses, approvals, archives, editor revision, saved/exported revisions, timestamps, and the source fingerprint represented by the saved record.
+
+Full regeneration with edited drafts requires an explicit policy: regenerate unedited destinations, archive and regenerate all destinations, or cancel. Per-channel regeneration targets only the active destination. Invalid and all-failed responses are rejected before reducer mutation.
+
+Campaign titles are not identity. The ID service allocates campaign IDs; create, update, save-as-copy, read, list, and delete operate by ID.
+
+See [CAMPAIGN_EDITING_AND_VERSIONING.md](CAMPAIGN_EDITING_AND_VERSIONING.md) and [CAMPAIGN_SCHEMA_MIGRATION.md](CAMPAIGN_SCHEMA_MIGRATION.md).

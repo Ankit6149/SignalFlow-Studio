@@ -83,17 +83,24 @@ function stripDuplicateGenerationFields(result = {}) {
   });
 }
 
-function revisionId(campaignId, channel, origin, content) {
-  return `revision-${fnv1a64(`${campaignId}:${channel}:${origin}:${content}`)}`;
+function revisionId(campaignId, channel, origin, content, createdAt = "") {
+  return `revision-${fnv1a64(`${campaignId}:${channel}:${origin}:${content}:${createdAt}`)}`;
 }
 
 function createRevision({ campaignId, channel, content, origin, createdAt }) {
   return createDomainRecord("DraftRevision", {
-    revisionId: revisionId(campaignId, channel, origin, content),
+    revisionId: revisionId(campaignId, channel, origin, content, createdAt),
     content,
     origin,
     createdAt,
   });
+}
+
+function pushUniqueRevision(history, revision) {
+  if (!revision?.content) return history;
+  if (history.some((item) => item?.content === revision.content && item?.origin === revision.origin)) return history;
+  history.push(revision);
+  return history;
 }
 
 function createDraft({
@@ -104,37 +111,65 @@ function createDraft({
   qualityState,
   updatedAt,
   existingDraft = null,
+  draftState = null,
+  generationRunId = "",
 }) {
-  const generated = text(generatedContent);
-  const current = text(currentContent);
-  const edited = Boolean(generated && generated !== current);
+  const existingGenerated = text(existingDraft?.generated?.content);
+  const generated = text(generatedContent, existingGenerated || text(currentContent));
+  const current = text(currentContent, generated);
   const history = Array.isArray(existingDraft?.history)
     ? portableClone(existingDraft.history)
     : [];
 
-  if (edited && !history.some((revision) => revision?.content === generated && revision?.origin === "generated")) {
-    history.push(createRevision({
+  if (existingDraft?.generated?.content && existingDraft.generated.content !== generated) {
+    pushUniqueRevision(history, createRevision({
       campaignId,
       channel,
-      content: generated,
+      content: existingDraft.generated.content,
       origin: "generated",
-      createdAt: updatedAt,
+      createdAt: existingDraft.generated.createdAt || existingDraft.updatedAt || updatedAt,
     }));
   }
+
+  if (existingDraft?.current?.content && existingDraft.current.content !== current) {
+    pushUniqueRevision(history, createRevision({
+      campaignId,
+      channel,
+      content: existingDraft.current.content,
+      origin: existingDraft.current.origin || "edited",
+      createdAt: existingDraft.current.createdAt || existingDraft.updatedAt || updatedAt,
+    }));
+  }
+
+  const edited = current !== generated;
+  const generatedRevision = createRevision({
+    campaignId,
+    channel,
+    content: generated,
+    origin: "generated",
+    createdAt: draftState?.generatedAt || updatedAt,
+  });
+  const currentRevision = createRevision({
+    campaignId,
+    channel,
+    content: current,
+    origin: edited ? "edited" : "generated",
+    createdAt: updatedAt,
+  });
+
+  if (edited) pushUniqueRevision(history, generatedRevision);
 
   return createDomainRecord("ChannelDraft", {
     draftId: `draft-${fnv1a64(`${campaignId}:${channel}`)}`,
     campaignId,
     channel,
     qualityState: text(qualityState, "unknown"),
-    current: createRevision({
-      campaignId,
-      channel,
-      content: current,
-      origin: edited ? "edited" : "generated",
-      createdAt: updatedAt,
-    }),
+    generated: generatedRevision,
+    current: currentRevision,
     history,
+    edited,
+    approved: Boolean(draftState?.approved ?? existingDraft?.approved),
+    generationRunId: text(draftState?.generationRunId || generationRunId || existingDraft?.generationRunId),
     updatedAt,
   });
 }
@@ -163,11 +198,86 @@ function generationRunFrom(input) {
   });
 }
 
+function cleanChannelStates(value = {}) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([channel, state]) => [canonicalChannel(channel), {
+    status: text(state?.status, "generated"),
+    edited: Boolean(state?.edited),
+    approved: Boolean(state?.approved),
+    generationRunId: text(state?.generationRunId),
+  }]));
+}
+
+function cleanEditorState(value = {}, fallback = {}) {
+  const revision = Number.isInteger(value.revision) ? value.revision : Number.isInteger(fallback.revision) ? fallback.revision : 1;
+  return portableClone({
+    revision,
+    savedRevision: Number.isInteger(value.savedRevision) ? value.savedRevision : revision,
+    exportedRevision: Number.isInteger(value.exportedRevision) ? value.exportedRevision : null,
+    lastSavedAt: value.lastSavedAt || fallback.lastSavedAt || null,
+    lastExportedAt: value.lastExportedAt || fallback.lastExportedAt || null,
+    savedSourceFingerprint: text(value.savedSourceFingerprint || fallback.savedSourceFingerprint),
+  });
+}
+
+function cleanArchive(archive = {}) {
+  const posts = portableClone(archive.posts || {});
+  const generatedPosts = portableClone(archive.generatedPosts || posts);
+  return portableClone({
+    archiveId: text(archive.archiveId, `archive-${fnv1a64(stableStringify(archive))}`),
+    createdAt: archive.createdAt || new Date(0).toISOString(),
+    reason: text(archive.reason, "regeneration"),
+    generationRun: archive.generationRun ? portableClone(archive.generationRun) : null,
+    result: stripDuplicateGenerationFields(archive.result || {}),
+    posts,
+    generatedPosts,
+    channelStates: cleanChannelStates(archive.channelStates || {}),
+    activeChannel: canonicalChannel(archive.activeChannel || Object.keys(posts)[0] || DEFAULT_CHANNEL),
+    revision: Number.isInteger(archive.revision) ? archive.revision : 0,
+  });
+}
+
+function cleanArchives(input = [], existing = []) {
+  const combined = [...(Array.isArray(input) ? input : []), ...(Array.isArray(existing) ? existing : [])];
+  const byId = new Map();
+  for (const item of combined) {
+    const archive = cleanArchive(item);
+    if (!byId.has(archive.archiveId)) byId.set(archive.archiveId, archive);
+  }
+  return Array.from(byId.values())
+    .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))
+    .slice(0, 20);
+}
+
 export function currentPostsFromCampaign(campaign) {
   const parsed = parseDomainRecord(campaign, "Campaign");
   return Object.fromEntries(
     Object.entries(parsed.drafts || {}).map(([channel, draft]) => [channel, text(draft?.current?.content)]),
   );
+}
+
+export function generatedPostsFromCampaign(campaign) {
+  const parsed = parseDomainRecord(campaign, "Campaign");
+  return Object.fromEntries(
+    Object.entries(parsed.drafts || {}).map(([channel, draft]) => [
+      channel,
+      text(draft?.generated?.content || (draft?.current?.origin === "generated" ? draft.current.content : ""), draft?.current?.content || ""),
+    ]),
+  );
+}
+
+export function channelStatesFromCampaign(campaign) {
+  const parsed = parseDomainRecord(campaign, "Campaign");
+  return Object.fromEntries(Object.entries(parsed.drafts || {}).map(([channel, draft]) => {
+    const generated = text(draft?.generated?.content, draft?.current?.content || "");
+    const current = text(draft?.current?.content);
+    return [channel, {
+      status: text(draft?.qualityState, "generated"),
+      edited: current !== generated,
+      approved: Boolean(draft?.approved),
+      generationRunId: text(draft?.generationRunId),
+    }];
+  }));
 }
 
 export function createCampaignAggregate(input = {}) {
@@ -186,21 +296,25 @@ export function createCampaignAggregate(input = {}) {
   const channels = stringList(input.channels?.length ? input.channels : Object.keys(input.posts || {}));
   const activeChannels = channels.length ? channels : [DEFAULT_CHANNEL];
   const authoritativePosts = input.posts || {};
-  const generatedPosts = input.result?.posts || input.generatedPosts || {};
+  const generatedPosts = input.generatedPosts || input.result?.posts || {};
   const statuses = input.result?.generation_status || input.generationStatus || {};
+  const draftStates = cleanChannelStates(input.channelStates || {});
   const drafts = {};
 
   for (const channel of activeChannels) {
     const currentContent = text(authoritativePosts[channel]);
-    if (!currentContent) continue;
+    const generatedContent = text(generatedPosts[channel], currentContent);
+    if (!currentContent && !generatedContent) continue;
     drafts[channel] = createDraft({
       campaignId,
       channel,
       currentContent,
-      generatedContent: generatedPosts[channel],
-      qualityState: statuses[channel]?.status || input.existingDrafts?.[channel]?.qualityState,
+      generatedContent,
+      qualityState: draftStates[channel]?.status || statuses[channel]?.status || input.existingDrafts?.[channel]?.qualityState,
       updatedAt,
       existingDraft: input.existingDrafts?.[channel] || null,
+      draftState: draftStates[channel] || null,
+      generationRunId: generationRun?.generationRunId || "",
     });
   }
 
@@ -212,6 +326,11 @@ export function createCampaignAggregate(input = {}) {
   const generationResult = stripDuplicateGenerationFields(input.result || {});
   const warnings = Array.from(new Set((input.warnings || input.result?.warnings || []).map(text).filter(Boolean)));
   const firstDraft = drafts[activeChannels.find((channel) => drafts[channel]) || Object.keys(drafts)[0]];
+  const editorState = cleanEditorState(input.editorState || {}, {
+    lastSavedAt: input.lastSavedAt || updatedAt,
+    lastExportedAt: input.lastExportedAt || null,
+    savedSourceFingerprint: input.savedSourceFingerprint || generationRun?.sourceFingerprint || "",
+  });
 
   return createDomainRecord("Campaign", {
     campaignId,
@@ -224,6 +343,8 @@ export function createCampaignAggregate(input = {}) {
     sourceSnapshot,
     generationRun,
     generationResult,
+    archives: cleanArchives(input.archives, input.existingArchives),
+    editorState,
     brief: cleanBrief(input.brief || {}),
     publishOptions: portableClone(input.publishOptions || {}),
     sourceFiles: portableClone(input.sourceFiles || []),
@@ -261,9 +382,8 @@ function packagePostText(posts, channel) {
 export function campaignFromPackagePayload({ package: pkg, projectName = "", metadata = {} } = {}) {
   if (!pkg || typeof pkg !== "object") throw new TypeError("Missing package object.");
   const channels = stringList(metadata.selectedChannels?.length ? metadata.selectedChannels : Object.keys(pkg.posts || {}));
-  const normalizedChannels = channels.map((channel) => channel === "hackernews" ? "hackernews" : channel);
   const posts = Object.fromEntries(
-    normalizedChannels
+    channels
       .map((channel) => [channel, packagePostText(pkg.posts, channel)])
       .filter(([, content]) => Boolean(content)),
   );
@@ -287,6 +407,13 @@ export function campaignFromPackagePayload({ package: pkg, projectName = "", met
       model: metadata.modelUsed || "",
       createdAt,
     },
+    editorState: {
+      revision: 1,
+      savedRevision: 1,
+      exportedRevision: 1,
+      lastSavedAt: createdAt,
+      lastExportedAt: createdAt,
+    },
     createdAt,
     updatedAt: createdAt,
   });
@@ -294,18 +421,53 @@ export function campaignFromPackagePayload({ package: pkg, projectName = "", met
 
 export function migrateLegacyCampaign(input) {
   if (input?.kind === "Campaign" && input?.schemaVersion === DOMAIN_SCHEMA_VERSION) {
-    return parseDomainRecord(input, "Campaign");
+    const parsed = parseDomainRecord(input, "Campaign");
+    const posts = currentPostsFromCampaign(parsed);
+    const generatedPosts = generatedPostsFromCampaign(parsed);
+    return createCampaignAggregate({
+      ...parsed,
+      posts,
+      generatedPosts,
+      channelStates: channelStatesFromCampaign(parsed),
+      existingDrafts: parsed.drafts,
+      existingArchives: parsed.archives,
+      editorState: parsed.editorState || {
+        revision: 1,
+        savedRevision: 1,
+        lastSavedAt: parsed.updatedAt,
+        savedSourceFingerprint: parsed.generationRun?.sourceFingerprint || "",
+      },
+      result: {
+        ...parsed.generationResult,
+        providerUsed: parsed.providerUsed,
+        modelUsed: parsed.modelUsed,
+        warnings: parsed.warnings,
+        generation_status: Object.fromEntries(Object.entries(parsed.drafts || {}).map(([channel, draft]) => [channel, { status: draft.qualityState || "generated" }])),
+      },
+      generationRun: parsed.generationRun
+        ? { ...parsed.generationRun, sourceSnapshot: parsed.sourceSnapshot }
+        : null,
+      sourceSnapshot: parsed.sourceSnapshot,
+      createdAt: parsed.createdAt,
+      updatedAt: parsed.updatedAt,
+    });
   }
+
   const sourceFiles = input?.sourceSnapshot?.sourceFiles || input?.sourceFiles || input?.files || [];
+  const posts = input?.posts || {};
+  const generatedPosts = input?.generatedPosts || input?.result?.posts || posts;
+  const legacyRevision = Math.max(1, Number(input?.revision) || 1);
   return createCampaignAggregate({
     campaignId: input?.campaignId || input?.id,
     title: input?.title,
     channels: input?.channels,
-    posts: input?.posts || {},
+    posts,
+    generatedPosts,
+    channelStates: input?.channelStates || {},
     result: input?.result || {
       providerUsed: input?.providerUsed,
       warnings: input?.warnings || [],
-      posts: input?.generatedPosts || {},
+      posts: generatedPosts,
       generation_status: input?.generationStatus || {},
       package: input?.package || null,
     },
@@ -316,6 +478,15 @@ export function migrateLegacyCampaign(input) {
     documentText: input?.documentText || input?.sourceSnapshot?.documentText || [],
     providerUsed: input?.providerUsed,
     warnings: input?.warnings,
+    archives: input?.archives || [],
+    editorState: input?.editorState || {
+      revision: legacyRevision,
+      savedRevision: legacyRevision,
+      exportedRevision: null,
+      lastSavedAt: input?.updatedAt || input?.createdAt || null,
+      lastExportedAt: null,
+      savedSourceFingerprint: input?.generationRun?.sourceFingerprint || "",
+    },
     createdAt: input?.createdAt || input?.updatedAt || new Date(0).toISOString(),
     updatedAt: input?.updatedAt || input?.createdAt || new Date(0).toISOString(),
   });
@@ -324,12 +495,15 @@ export function migrateLegacyCampaign(input) {
 export function campaignToEditorState(input) {
   const campaign = migrateLegacyCampaign(input);
   const posts = currentPostsFromCampaign(campaign);
+  const generatedPosts = generatedPostsFromCampaign(campaign);
+  const channelStates = channelStatesFromCampaign(campaign);
   const result = portableClone({
     ...campaign.generationResult,
     providerUsed: campaign.providerUsed,
     modelUsed: campaign.modelUsed,
     warnings: campaign.warnings,
-    posts,
+    posts: generatedPosts,
+    generation_status: Object.fromEntries(Object.entries(channelStates).map(([channel, state]) => [channel, { status: state.status }])),
     package: campaign.generationResult?.package
       ? { ...campaign.generationResult.package, posts: {} }
       : null,
@@ -339,10 +513,19 @@ export function campaignToEditorState(input) {
     title: campaign.title,
     channels: campaign.channels,
     posts,
+    generatedPosts,
+    channelStates,
     result,
     generationRun: campaign.generationRun
       ? { ...campaign.generationRun, sourceSnapshot: campaign.sourceSnapshot }
       : null,
+    archives: portableClone(campaign.archives || []),
+    revision: campaign.editorState?.revision || 1,
+    savedRevision: campaign.editorState?.savedRevision ?? campaign.editorState?.revision ?? 1,
+    exportedRevision: campaign.editorState?.exportedRevision ?? null,
+    lastSavedAt: campaign.editorState?.lastSavedAt || campaign.updatedAt,
+    lastExportedAt: campaign.editorState?.lastExportedAt || null,
+    savedSourceFingerprint: campaign.editorState?.savedSourceFingerprint || campaign.generationRun?.sourceFingerprint || "",
     brief: campaign.brief,
     publishOptions: campaign.publishOptions,
     sourceFiles: campaign.sourceFiles,

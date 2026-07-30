@@ -32,6 +32,17 @@ export function createSystemClock() {
   };
 }
 
+export function createSystemIdService(prefix = "sf") {
+  return {
+    create(kind = "record") {
+      const normalizedKind = String(kind || "record").toLowerCase();
+      const randomId = globalThis.crypto?.randomUUID?.()
+        || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      return `${prefix}-${normalizedKind}-${randomId}`;
+    },
+  };
+}
+
 export function createDeterministicIdService(prefix = "sf") {
   let sequence = 0;
   return {

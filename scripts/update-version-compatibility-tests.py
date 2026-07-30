@@ -30,6 +30,12 @@ page = replace_once(
     '''                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (''',
     "official connector review boundary",
 )
+page = replace_once(
+    page,
+    '''  function openCampaign(item) {  function openCampaign(item) {''',
+    '''  function openCampaign(item) {''',
+    "campaign open function boundary",
+)
 page = replace_optional_once(
     page,
     '''    if (isOverLimit) {    if (isOverLimit) {''',

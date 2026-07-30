@@ -1,0 +1,58 @@
+name: Apply portable transfer domain integration
+
+on:
+  push:
+    branches:
+      - architecture/portable-transfer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-portable-transfer-domain
+  cancel-in-progress: false
+
+jobs:
+  integrate-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: architecture/portable-transfer
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Validate and apply domain migration
+        run: |
+          python -m py_compile scripts/apply-portable-transfer-domain.py
+          python scripts/apply-portable-transfer-domain.py
+          git diff --check
+
+      - name: Verify frontend contracts and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm audit --omit=dev --audit-level=high
+          npm run build
+
+      - name: Remove temporary integration files
+        run: |
+          rm scripts/apply-portable-transfer-domain.py
+          rm .github/workflows/apply-portable-transfer-domain.yml
+          rm -rf scripts/__pycache__
+
+      - name: Commit verified core
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: add portable transfer archive and import engine"
+          git push origin HEAD:architecture/portable-transfer

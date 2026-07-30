@@ -8,6 +8,13 @@ def replace_once(source: str, before: str, after: str, label: str) -> str:
     return source.replace(before, after, 1)
 
 
+def replace_optional_once(source: str, before: str, after: str, label: str) -> str:
+    count = source.count(before)
+    if count > 1:
+        raise RuntimeError(f"Expected at most one {label}, found {count}")
+    return source.replace(before, after, 1) if count == 1 else source
+
+
 page_path = Path("frontend/app/page.js")
 page = page_path.read_text()
 page = replace_once(
@@ -16,6 +23,18 @@ page = replace_once(
                     </header>''',
     '''                    </header>''',
     "review header closing boundary",
+)
+page = replace_once(
+    page,
+    '''                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (''',
+    '''                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (''',
+    "official connector review boundary",
+)
+page = replace_optional_once(
+    page,
+    '''    if (isOverLimit) {    if (isOverLimit) {''',
+    '''    if (isOverLimit) {''',
+    "publish limit boundary",
 )
 page_path.write_text(page)
 

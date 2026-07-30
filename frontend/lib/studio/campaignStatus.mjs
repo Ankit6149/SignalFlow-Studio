@@ -19,8 +19,8 @@ export function selectChannelStatus({ channelState = {}, isStale = false, conten
   else if (!text(content)) key = "empty";
   else if (isStale) key = "stale";
   else if (channelState.status === "failed") key = "failed";
-  else if (channelState.edited) key = "edited";
   else if (channelState.approved) key = "approved";
+  else if (channelState.edited) key = "edited";
   else if (channelState.status === "needs_review") key = "needs_review";
   else if (channelState.status === "regenerated") key = "regenerated";
 
@@ -28,8 +28,8 @@ export function selectChannelStatus({ channelState = {}, isStale = false, conten
     key,
     label: CHANNEL_LABELS[key],
     isBlocked: ["failed", "stale", "empty"].includes(key),
-    isApproved: key === "approved",
-    isEdited: key === "edited",
+    isApproved: Boolean(channelState.approved),
+    isEdited: Boolean(channelState.edited),
   };
 }
 
@@ -61,10 +61,10 @@ export function selectCampaignStatus({
       !sourceDirty &&
       !isStale,
   );
-  const editedCount = channelEntries.filter((item) => item.key === "edited").length;
-  const approvedCount = channelEntries.filter((item) => item.key === "approved").length;
+  const editedCount = channelEntries.filter((item) => item.isEdited).length;
+  const approvedCount = channelEntries.filter((item) => item.isApproved).length;
   const failedCount = channelEntries.filter((item) => item.key === "failed").length;
-  const needsReviewCount = channelEntries.filter((item) => ["generated", "regenerated", "needs_review", "edited"].includes(item.key)).length;
+  const needsReviewCount = channelEntries.filter((item) => !item.isApproved && ["generated", "regenerated", "needs_review", "edited"].includes(item.key)).length;
 
   let campaignKey = "not_generated";
   let campaignLabel = "Not generated";

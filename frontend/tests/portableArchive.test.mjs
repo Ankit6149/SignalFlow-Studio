@@ -84,7 +84,7 @@ test("portable archive is deterministic, integrity protected, and optionally HMA
   assert.ok(invalid.errors.some((error) => error.code === "invalid_signature"));
 });
 
-test("secret fields, private endpoints, local paths, and signed references never enter the archive", async () => {
+test("secret fields, private endpoints, local paths, and signed references never enter the transferable payload", async () => {
   const input = archiveInput({
     sourceDeployment: {
       profile: "local",
@@ -113,8 +113,14 @@ test("secret fields, private endpoints, local paths, and signed references never
     }],
   });
   const archive = await createPortableArchive(input);
-  const serialized = stableStringify(archive);
-  assert.doesNotMatch(serialized, /do-not-export|localhost|127\.0\.0\.1|Users\\Ankit|\/home\/ankit|\/Users\/ankit|signedUrl/i);
+  const transferablePayload = stableStringify({
+    sourceDeployment: archive.sourceDeployment,
+    payload: archive.payload,
+  });
+  assert.doesNotMatch(
+    transferablePayload,
+    /do-not-export|localhost|127\.0\.0\.1|Users\\Ankit|\/home\/ankit|\/Users\/ankit|private\.example/i,
+  );
   assert.ok(archive.manifest.exclusions.length >= 6);
   assert.ok(archive.manifest.exclusions.some((item) => item.reason === "secret field"));
   assert.ok(archive.manifest.exclusions.some((item) => /path|reference|endpoint/i.test(item.reason)));

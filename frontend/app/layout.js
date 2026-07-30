@@ -1,10 +1,8 @@
 import "../app/globals.css";
+import "../app/public-surfaces.css";
 import "../app/connector.css";
-import "../app/living-ui.css";
-import "../app/living-ui-tuning.css";
-import "../app/professional-polish.css";
-import "../app/app-workspace.css";
 import "../app/ui-containment.css";
+import "../app/app-workspace.css";
 import "../app/studio-product.css";
 import "../app/campaign-freshness.css";
 import "../app/campaign-versioning.css";

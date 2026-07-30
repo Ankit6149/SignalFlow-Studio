@@ -1,0 +1,52 @@
+name: Trigger Review editor layout migration
+
+on:
+  push:
+    branches:
+      - fix/122-review-editor-first
+    paths:
+      - '.github/workflows/review-editor-layout-trigger.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  run-reviewed-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Review branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/122-review-editor-first
+
+      - name: Extract and run the reviewed Python migration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/review-editor-layout-migration.yml').read_text(encoding='utf-8')
+          start = "          python - <<'PY'\n"
+          end = "          PY\n\n      - name: Remove temporary workflow"
+          if workflow.count(start) != 1 or workflow.count(end) != 1:
+              raise SystemExit('Could not locate the reviewed migration script exactly once')
+          body = workflow.split(start, 1)[1].split(end, 1)[0]
+          lines = []
+          for line in body.splitlines():
+              if line.startswith('          '):
+                  line = line[10:]
+              lines.append(line)
+          script_path = Path('/tmp/review-layout-migration.py')
+          script_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          compile(script_path.read_text(encoding='utf-8'), str(script_path), 'exec')
+          exec(script_path.read_text(encoding='utf-8'), {'__name__': '__main__'})
+          PY
+
+      - name: Remove temporary workflows and commit the migration
+        run: |
+          rm .github/workflows/review-editor-layout-migration.yml
+          rm .github/workflows/review-editor-layout-trigger.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/app/app-workspace.css frontend/app/campaign-freshness.css frontend/app/campaign-versioning.css frontend/tests/reviewEditorLayout.test.mjs .github/workflows/review-editor-layout-migration.yml .github/workflows/review-editor-layout-trigger.yml
+          git commit -m "fix(ui): make Review editor-first and responsive"
+          git push origin HEAD:fix/122-review-editor-first

@@ -14,8 +14,7 @@ page = replace_once(
     page,
     '''                    </header>                      </span>
                     </header>''',
-    '''                      </span>
-                    </header>''',
+    '''                    </header>''',
     "review header closing boundary",
 )
 page_path.write_text(page)

@@ -8,27 +8,34 @@ This document defines the production cascade and the ownership boundary for ever
 
 `frontend/app/layout.js` must import styles in this order:
 
-1. `globals.css` — resets, shared primitives, typography, and the public landing page.
-2. `connector.css` — narrowly scoped connector and authentication surfaces.
-3. `ui-containment.css` — root viewport containment, scrollbar behavior, and public landing-page bounds only.
-4. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
-5. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
-6. `campaign-freshness.css` — freshness-only states and source-change feedback.
-7. `campaign-versioning.css` — version-history and restore-only states.
+1. `globals.css` — resets, shared primitives, typography, and foundational landing styles.
+2. `public-surfaces.css` — scoped landing-page sections, footer, accessibility skip link, and legal pages.
+3. `connector.css` — narrowly scoped connector and authentication surfaces.
+4. `ui-containment.css` — root viewport containment, scrollbar behavior, and public landing-page bounds only.
+5. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
+6. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
+7. `campaign-freshness.css` — freshness-only states and source-change feedback.
+8. `campaign-versioning.css` — version-history and restore-only states.
 
 The order is enforced by `frontend/tests/styleCascade.test.mjs`.
 
 ## Retired layers
 
-The following files are historical visual systems and must not be imported by the application:
+The following historical visual systems were removed after their legitimate public rules were migrated into `public-surfaces.css`:
 
 - `living-ui.css`
 - `living-ui-tuning.css`
 - `professional-polish.css`
 
-They may remain temporarily for archaeology while dependent selectors are audited, but they are not production sources of truth and should be deleted after the final reference check.
+They must not be recreated or restored. Git history remains the source for archaeology.
 
 ## Where new styles belong
+
+### Public and legal pages
+
+Put landing sections and legal-page layout in `public-surfaces.css`. Public rules must not contain `.app-shell` selectors or redefine Studio controls.
+
+`ui-containment.css` may set root overflow and bounded public gutters, but it must not style cards, buttons, panels, forms, or product workflow elements.
 
 ### Shared Studio components
 
@@ -63,7 +70,7 @@ Do not add another global `polish`, `tuning`, `refresh`, or `final` stylesheet. 
 
 Do not:
 
-- restyle Studio selectors from `ui-containment.css`;
+- restyle Studio selectors from `public-surfaces.css` or `ui-containment.css`;
 - use `!important` to win cascade conflicts;
 - redefine the same component in multiple active files;
 - place unscoped `body`, `html`, or `:root` rules in Studio layers;

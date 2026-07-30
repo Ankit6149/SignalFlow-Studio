@@ -60,7 +60,7 @@ test("public and containment layers cannot patch Studio components", async () =>
   }
 });
 
-test("authoritative Studio layers remain scoped to the application shell", async () => {
+test("authoritative Studio layers remain scoped and free of retired wizard patches", async () => {
   const [workspace, workflow] = await Promise.all([
     readFile(workspaceUrl, "utf8"),
     readFile(workflowUrl, "utf8"),
@@ -70,6 +70,7 @@ test("authoritative Studio layers remain scoped to the application shell", async
   assert.match(workspace, /\.app-shell \.studio-page/);
   assert.match(workflow, /\.app-shell \.studio-page\[data-stage="source"\]/);
   assert.match(workflow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);
+  assert.equal(workspace.includes("Focused three-step wizard"), false);
 
   for (const source of [workspace, workflow]) {
     assert.equal(/^body\s*\{/m.test(source), false);

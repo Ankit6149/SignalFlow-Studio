@@ -3,12 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
+const publicSurfacesUrl = new URL("../app/public-surfaces.css", import.meta.url);
 const containmentUrl = new URL("../app/ui-containment.css", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
 
 const APPROVED_STYLE_ORDER = [
   "globals.css",
+  "public-surfaces.css",
   "connector.css",
   "ui-containment.css",
   "app-workspace.css",
@@ -41,11 +43,17 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   }
 });
 
-test("containment cannot patch Studio component selectors", async () => {
-  const source = await readFile(containmentUrl, "utf8");
-  assert.equal(source.includes(".app-shell"), false);
-  assert.equal(source.includes(".studio-actionbar"), false);
-  assert.equal(source.includes(".studio-grid"), false);
+test("public and containment layers cannot patch Studio components", async () => {
+  const [publicSurfaces, containment] = await Promise.all([
+    readFile(publicSurfacesUrl, "utf8"),
+    readFile(containmentUrl, "utf8"),
+  ]);
+
+  for (const source of [publicSurfaces, containment]) {
+    assert.equal(source.includes(".app-shell"), false);
+    assert.equal(source.includes(".studio-actionbar"), false);
+    assert.equal(source.includes(".studio-grid"), false);
+  }
 });
 
 test("authoritative Studio layers remain scoped to the application shell", async () => {

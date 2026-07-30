@@ -1,5 +1,4 @@
 .app-shell .campaign-status-strip {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -73,15 +72,6 @@
   border-color: var(--app-line);
   background: var(--app-surface);
   color: var(--app-muted);
-}
-
-.app-shell .review-workspace .review-tabs,
-.app-shell .review-workspace.has-stale-campaign .review-tabs {
-  grid-row: auto / span 12;
-}
-
-.app-shell .review-workspace .campaign-stale-banner {
-  grid-row: auto;
 }
 
 .app-shell .review-tabs button {

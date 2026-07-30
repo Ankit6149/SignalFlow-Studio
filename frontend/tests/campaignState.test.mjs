@@ -21,14 +21,16 @@ test("campaign reducer accepts a generation as one complete state transition", (
   };
   const after = campaignReducer(before, { type: "ACCEPT_GENERATION", payload });
 
-  assert.deepEqual(after, {
-    ...before,
-    stage: "review",
-    result: payload.result,
-    generationRun: payload.generationRun,
-    posts: payload.posts,
-    activeChannel: "x",
-  });
+  assert.equal(after.stage, "review");
+  assert.deepEqual(after.result, payload.result);
+  assert.deepEqual(after.generationRun, payload.generationRun);
+  assert.deepEqual(after.posts, payload.posts);
+  assert.deepEqual(after.generatedPosts, payload.posts);
+  assert.equal(after.activeChannel, "x");
+  assert.equal(after.channelStates.x.edited, false);
+  assert.equal(after.channelStates.x.approved, false);
+  assert.equal(after.revision, before.revision + 1);
+  assert.equal(after.savedRevision, null);
   assert.deepEqual(before.posts, { linkedin: "Existing manual edit" });
 });
 

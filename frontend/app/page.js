@@ -24,6 +24,16 @@ import {
   createInitialCampaignState,
 } from "../lib/studio/campaignState.mjs";
 import { acceptGenerationResponse } from "../lib/studio/generationAcceptance.mjs";
+import {
+  editedChannels,
+  regenerationTargets,
+  REGENERATION_POLICIES,
+} from "../lib/studio/regenerationPolicy.mjs";
+import {
+  selectCampaignStatus,
+  selectChannelStatus,
+  selectPublishAvailability,
+} from "../lib/studio/campaignStatus.mjs";
 import { parseCapabilitySnapshot } from "../lib/capabilities/capabilityContract.mjs";
 import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
 
@@ -238,6 +248,12 @@ function formatDate(value) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function createClientId(kind) {
+  const randomId = globalThis.crypto?.randomUUID?.()
+    || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  return `signalflow-${kind}-${randomId}`;
 }
 
 function channelMeta(id) {
@@ -542,7 +558,22 @@ export default function Home() {
     undefined,
     createInitialCampaignState,
   );
-  const { stage, result, generationRun, posts, activeChannel } = campaignState;
+  const {
+    stage,
+    result,
+    generationRun,
+    posts,
+    generatedPosts,
+    channelStates,
+    activeChannel,
+    archives,
+    revision,
+    savedRevision,
+    exportedRevision,
+    lastSavedAt,
+    lastExportedAt,
+    savedSourceFingerprint,
+  } = campaignState;
   const [form, setForm] = useState({
     projectName: "",
     notes: "",
@@ -561,6 +592,8 @@ export default function Home() {
   const [message, setMessage] = useState(null);
   const [library, setLibrary] = useState([]);
   const [currentCampaignId, setCurrentCampaignId] = useState("");
+  const [regenerationDialogOpen, setRegenerationDialogOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [connections, setConnections] = useState({});
   const [connectionsLoading, setConnectionsLoading] = useState(false);
   const [providerStatuses, setProviderStatuses] = useState({});
@@ -651,6 +684,32 @@ export default function Home() {
     (id) => connections[id]?.connected && !connections[id]?.expired,
   ).length;
   const reviewIndex = Math.max(0, channels.indexOf(activeChannel));
+  const campaignStatus = selectCampaignStatus({
+    state: campaignState,
+    isStale: isCampaignStale,
+    currentSourceFingerprint: currentSourceSnapshot.fingerprint,
+    hasCampaignId: Boolean(currentCampaignId),
+  });
+  const activeChannelStatus = selectChannelStatus({
+    channelState: channelStates[activeChannel],
+    isStale: isCampaignStale,
+    content: currentPost,
+  });
+  const editedDraftChannels = editedChannels({ channels, channelStates });
+  const uneditedRegenerationTargets = regenerationTargets({
+    policy: REGENERATION_POLICIES.UNEDITED,
+    channels,
+    channelStates,
+    activeChannel,
+  });
+  const publishAvailability = selectPublishAvailability({
+    channelStatus: activeChannelStatus,
+    isStale: isCampaignStale,
+    hasContent: Boolean(currentPost),
+    isOverLimit,
+    connectorReady: canPublishCurrent,
+    manualRoute: Boolean(activeMeta.openUrl || !OFFICIAL_CONNECTORS.has(activeChannel)),
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -703,6 +762,15 @@ export default function Home() {
       setActiveChannel(channels[0]);
     }
   }, [channels, activeChannel]);
+
+  useEffect(() => {
+    if (!regenerationDialogOpen) return undefined;
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setRegenerationDialogOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [regenerationDialogOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -801,6 +869,8 @@ export default function Home() {
 
   function startNewCampaign() {
     setCurrentCampaignId("");
+    setRegenerationDialogOpen(false);
+    setVersionHistoryOpen(false);
     dispatchCampaign({ type: "RESET_CAMPAIGN" });
     setForm({
       projectName: "",
@@ -948,19 +1018,13 @@ export default function Home() {
     }
   }
 
-  async function generateCampaign() {
+  async function requestGeneration(requestedChannels) {
     if (!form.notes.trim() && !form.links.trim() && !form.repo.trim() && documentText.length === 0) {
-      setMessage({
-        type: "error",
-        text: "Add a brief, link, repository, or extractable text file before generating.",
-      });
-      return;
+      throw new Error("Add a brief, link, repository, or extractable text file before generating.");
     }
-
     if (!providerReadiness.ready) {
-      setMessage({ type: "error", text: providerReadiness.reason });
       navigateStudioFlow("destinations");
-      return;
+      throw new Error(providerReadiness.reason);
     }
 
     const requestedSourceSnapshot = createGenerationSourceSnapshot({
@@ -969,65 +1033,65 @@ export default function Home() {
       files,
       documentText,
     });
+    const response = await fetch("/api/launch_kit", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        project_name: form.projectName.trim() || "Untitled campaign",
+        notes: form.notes.trim(),
+        audience: form.audience.trim(),
+        docs_url: form.links.trim(),
+        repo: form.repo.trim(),
+        channels: requestedChannels,
+        output_types: ["posts", "media_plan", "markdown", "json"],
+        generator: form.provider,
+        providerApiKey: form.apiKey.trim(),
+        providerModelName: form.model.trim(),
+        providerBaseUrl: form.baseUrl.trim(),
+        document_text: documentText,
+        media_items: files.map(({ name, type, size, description }) => ({
+          name,
+          type,
+          size,
+          description,
+        })),
+      }),
+    });
 
+    const data = await readJsonResponse(response, "SignalFlow returned an unreadable generation response.");
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || "SignalFlow could not generate this campaign.");
+    }
+    const accepted = acceptGenerationResponse({ response: data, requestedChannels });
+    const nextGenerationRun = createGenerationRun({
+      sourceSnapshot: requestedSourceSnapshot,
+      response: accepted.result,
+      provider: form.provider,
+      model: form.model.trim(),
+    });
+    return { accepted, nextGenerationRun, data };
+  }
+
+  async function generateInitialCampaign() {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/launch_kit", {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          project_name: form.projectName.trim() || "Untitled campaign",
-          notes: form.notes.trim(),
-          audience: form.audience.trim(),
-          docs_url: form.links.trim(),
-          repo: form.repo.trim(),
-          channels,
-          output_types: ["posts", "media_plan", "markdown", "json"],
-          generator: form.provider,
-          providerApiKey: form.apiKey.trim(),
-          providerModelName: form.model.trim(),
-          providerBaseUrl: form.baseUrl.trim(),
-          document_text: documentText,
-          media_items: files.map(({ name, type, size, description }) => ({
-            name,
-            type,
-            size,
-            description,
-          })),
-        }),
-      });
-
-      const data = await readJsonResponse(response, "SignalFlow returned an unreadable generation response.");
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.error || "SignalFlow could not generate this campaign.");
-      }
-
-      const accepted = acceptGenerationResponse({
-        response: data,
-        requestedChannels: channels,
-      });
-      const nextGenerationRun = createGenerationRun({
-        sourceSnapshot: requestedSourceSnapshot,
-        response: accepted.result,
-        provider: form.provider,
-        model: form.model.trim(),
-      });
+      const { accepted, nextGenerationRun, data } = await requestGeneration(channels);
       dispatchCampaign({
         type: "ACCEPT_GENERATION",
         payload: {
           result: accepted.result,
           generationRun: nextGenerationRun,
           posts: accepted.posts,
+          requestedChannels: channels,
           activeChannel: accepted.activeChannel,
         },
       });
-      const failedChannels = accepted.failedChannels;
       setMessage({
-        type: failedChannels.length ? "warning" : "success",
-        text: failedChannels.length
-          ? `Campaign generated with ${data.providerUsed || provider.label}; ${failedChannels.join(", ")} failed without template substitution.`
-          : `Campaign generated with ${data.providerUsed || provider.label}.`,
+        type: accepted.failedChannels.length ? "warning" : "success",
+        text: accepted.failedChannels.length
+          ? `Campaign generated with ${data.providerUsed || provider.label}; ${accepted.failedChannels.join(", ")} failed without replacing successful drafts.`
+          : `Campaign generated with ${data.providerUsed || provider.label}. Review and approve each destination before publishing.`,
       });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
@@ -1036,14 +1100,104 @@ export default function Home() {
     }
   }
 
+  async function performRegeneration(policy, channel = activeChannel) {
+    const targetChannels = regenerationTargets({ policy, channels, channelStates, activeChannel: channel });
+    if (!targetChannels.length) {
+      setRegenerationDialogOpen(false);
+      setMessage({ type: "warning", text: "There are no eligible destinations for this regeneration choice." });
+      return;
+    }
+
+    setRegenerationDialogOpen(false);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { accepted, nextGenerationRun, data } = await requestGeneration(targetChannels);
+      const archivedAt = new Date().toISOString();
+      dispatchCampaign({
+        type: "APPLY_REGENERATION",
+        payload: {
+          result: accepted.result,
+          generationRun: nextGenerationRun,
+          posts: accepted.posts,
+          targetChannels,
+          policy,
+          archiveId: createClientId("archive"),
+          archivedAt,
+          activeChannel: policy === REGENERATION_POLICIES.CHANNEL ? channel : activeChannel,
+        },
+      });
+      setMessage({
+        type: accepted.failedChannels.length ? "warning" : "success",
+        text: accepted.failedChannels.length
+          ? `Regeneration completed with ${data.providerUsed || provider.label}; ${accepted.failedChannels.join(", ")} failed and their existing drafts were preserved.`
+          : policy === REGENERATION_POLICIES.CHANNEL
+            ? `${channelMeta(channel).label} regenerated. Every other destination remained unchanged.`
+            : policy === REGENERATION_POLICIES.UNEDITED
+              ? `Regenerated ${targetChannels.length} unedited destinations. ${editedDraftChannels.length} edited drafts were preserved exactly.`
+              : "The previous campaign version was archived and all selected destinations were regenerated.",
+      });
+    } catch (error) {
+      setMessage({ type: "error", text: `${error.message} Existing drafts and edits were not changed.` });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleGenerationAction() {
+    if (!result) {
+      void generateInitialCampaign();
+      return;
+    }
+    if (campaignStatus.hasEditedDrafts) {
+      setRegenerationDialogOpen(true);
+      return;
+    }
+    void performRegeneration(REGENERATION_POLICIES.ARCHIVE_ALL);
+  }
+
+  function restoreArchivedVersion(archiveId) {
+    const restoredAt = new Date().toISOString();
+    dispatchCampaign({
+      type: "RESTORE_ARCHIVE",
+      payload: {
+        archiveId,
+        currentArchiveId: createClientId("archive"),
+        restoredAt,
+      },
+    });
+    setMessage({ type: "success", text: "Archived campaign version restored. Save to keep it as the current local version." });
+  }
+
+  function discardArchivedVersion(archiveId) {
+    if (!window.confirm("Discard this archived campaign version? This cannot be undone.")) return;
+    dispatchCampaign({ type: "DISCARD_ARCHIVE", archiveId });
+  }
+
+  function currentEditorState(overrides = {}) {
+    return {
+      revision,
+      savedRevision,
+      exportedRevision,
+      lastSavedAt,
+      lastExportedAt,
+      savedSourceFingerprint,
+      ...overrides,
+    };
+  }
+
   function currentCampaignInput(overrides = {}) {
     return {
       campaignId: currentCampaignId,
       title: form.projectName.trim() || result?.package?.project?.name || "Untitled campaign",
       channels: [...channels],
       posts: { ...posts },
+      generatedPosts: { ...generatedPosts },
+      channelStates: structuredClone(channelStates),
+      archives: structuredClone(archives),
       result,
       generationRun,
+      editorState: currentEditorState(),
       brief: { ...form },
       publishOptions,
       ...createSourceSnapshot(files, documentText),
@@ -1051,18 +1205,47 @@ export default function Home() {
     };
   }
 
-  async function saveCampaign() {
+  async function persistCampaign({ asCopy = false } = {}) {
     if (!result) return;
+    const savedAt = new Date().toISOString();
+    const input = currentCampaignInput({
+      updatedAt: savedAt,
+      editorState: currentEditorState({
+        savedRevision: revision,
+        lastSavedAt: savedAt,
+        savedSourceFingerprint: currentSourceSnapshot.fingerprint,
+      }),
+    });
     try {
-      const saved = await campaignApplication.saveCampaign(currentCampaignInput({
-        updatedAt: new Date().toISOString(),
-      }));
+      const saved = asCopy
+        ? await campaignApplication.saveAsCopy(input)
+        : await campaignApplication.saveCampaign(input);
       setCurrentCampaignId(saved.campaignId);
       setLibrary(await campaignApplication.listCampaigns());
-      setMessage({ type: "success", text: "Campaign saved to your local library." });
-    } catch {
-      setMessage({ type: "error", text: "The browser could not save this campaign. Export it before leaving this page." });
+      dispatchCampaign({
+        type: "MARK_SAVED",
+        payload: { savedAt, sourceFingerprint: currentSourceSnapshot.fingerprint },
+      });
+      setMessage({
+        type: "success",
+        text: asCopy
+          ? "Saved as a separate local campaign copy. The original remains unchanged."
+          : "Campaign saved to your local library.",
+      });
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: `The browser could not save this campaign${error?.name === "QuotaExceededError" ? " because local storage is full" : ""}. Export Markdown or JSON now before leaving this page.`,
+      });
     }
+  }
+
+  async function saveCampaign() {
+    await persistCampaign();
+  }
+
+  async function saveCampaignAsCopy() {
+    await persistCampaign({ asCopy: true });
   }
 
   function openCampaign(item) {
@@ -1075,14 +1258,24 @@ export default function Home() {
         type: "RESTORE_CAMPAIGN",
         payload: {
           posts: restored.posts,
+          generatedPosts: restored.generatedPosts,
+          channelStates: restored.channelStates,
+          archives: restored.archives,
           result: restored.result,
           generationRun: restored.generationRun,
+          revision: restored.revision,
+          savedRevision: restored.savedRevision,
+          exportedRevision: restored.exportedRevision,
+          lastSavedAt: restored.lastSavedAt,
+          lastExportedAt: restored.lastExportedAt,
+          savedSourceFingerprint: restored.savedSourceFingerprint,
           activeChannel: restored.channels[0] || "linkedin",
         },
       });
       setPublishOptions(restored.publishOptions || { reddit: { subreddit: "", title: "" } });
       setFiles(restored.sourceFiles || []);
       setDocumentText(restored.documentText || []);
+      setVersionHistoryOpen(false);
       navigateSection("studio");
     } catch {
       setMessage({ type: "error", text: "This saved campaign could not be migrated or opened safely." });
@@ -1158,50 +1351,42 @@ export default function Home() {
   }
 
   function exportMarkdown() {
-    if (isCampaignStale) {
-      reportStaleCampaign();
+    if (campaignStatus.exportBlockedReason) {
+      setMessage({ type: "warning", text: campaignStatus.exportBlockedReason });
       return;
     }
     try {
       const projection = campaignApplication.projectMarkdown(currentCampaignInput());
       downloadText(projection.filename, projection.content, projection.mimeType);
+      dispatchCampaign({ type: "MARK_EXPORTED", payload: { exportedAt: new Date().toISOString() } });
+      setMessage({ type: "success", text: "Current campaign revision exported as Markdown." });
     } catch {
       setMessage({ type: "error", text: "SignalFlow could not project the current campaign into Markdown." });
     }
   }
 
   function exportJson() {
-    if (isCampaignStale) {
-      reportStaleCampaign();
+    if (campaignStatus.exportBlockedReason) {
+      setMessage({ type: "warning", text: campaignStatus.exportBlockedReason });
       return;
     }
     try {
       const projection = campaignApplication.projectJson(currentCampaignInput());
       downloadText(projection.filename, projection.content, projection.mimeType);
+      dispatchCampaign({ type: "MARK_EXPORTED", payload: { exportedAt: new Date().toISOString() } });
+      setMessage({ type: "success", text: "Current campaign revision exported as versioned JSON." });
     } catch {
       setMessage({ type: "error", text: "SignalFlow could not project the current campaign into JSON." });
     }
   }
 
   async function publishCurrentPost() {
-    if (isCampaignStale) {
-      reportStaleCampaign();
+    if (!publishAvailability.ready) {
+      setMessage({ type: "warning", text: publishAvailability.reason });
       return;
     }
-    if (!currentPost) return;
     if (!canPublishCurrent) {
-      if (OFFICIAL_CONNECTORS.has(activeChannel)) {
-        navigateSection("connections");
-        setMessage({
-          type: "warning",
-          text: currentConnection?.expired
-            ? "This connector session expired. Reconnect the account before publishing."
-            : currentConnection?.reason ||
-              `${activeMeta.label} is not connected yet. Configure the official connector or use the copy-and-open route.`,
-        });
-      } else {
-        await copyAndOpenCurrent();
-      }
+      await copyAndOpenCurrent();
       return;
     }
 
@@ -1716,6 +1901,19 @@ export default function Home() {
                 </div>
               ) : (
                 <div className={`review-workspace ${isCampaignStale ? "has-stale-campaign" : ""}`}>
+                  <div className="campaign-status-strip" role="status" aria-live="polite">
+                    <div className="campaign-status-strip__primary">
+                      <span className={`campaign-state-badge is-${campaignStatus.campaignKey}`}>
+                        {campaignStatus.campaignLabel}
+                      </span>
+                      <strong>{form.projectName.trim() || "Untitled campaign"}</strong>
+                      <small>Revision {revision} · {campaignStatus.approvedCount}/{channels.length} approved · {campaignStatus.editedCount} edited</small>
+                    </div>
+                    <div className="campaign-status-strip__meta">
+                      <small>{lastSavedAt ? `Saved ${formatDate(lastSavedAt)}` : "Not saved yet"}</small>
+                      <small>{campaignStatus.isExportedCurrent ? `Exported ${formatDate(lastExportedAt)}` : lastExportedAt ? "Changed since last export" : "Not exported yet"}</small>
+                    </div>
+                  </div>
                   {isCampaignStale && (
                     <div className="campaign-stale-banner" role="alert" aria-live="assertive">
                       <div className="campaign-stale-banner__copy">
@@ -1737,16 +1935,25 @@ export default function Home() {
                   <div className="review-tabs" aria-label="Campaign channels">
                     {channels.map((channelId) => {
                       const meta = channelMeta(channelId);
+                      const status = selectChannelStatus({
+                        channelState: channelStates[channelId],
+                        isStale: isCampaignStale,
+                        content: posts[channelId] || "",
+                      });
                       return (
                         <button
                           key={channelId}
                           className={activeChannel === channelId ? "is-active" : ""}
                           onClick={() => setActiveChannel(channelId)}
+                          aria-label={`${meta.label}: ${status.label}`}
                         >
                           <span>
                             <PlatformIcon platform={channelId} size={13} />
                           </span>
-                          {meta.label}
+                          <span className="review-tab__copy">
+                            <strong>{meta.label}</strong>
+                            <small className="review-tab__status">{status.label}</small>
+                          </span>
                         </button>
                       );
                     })}
@@ -1766,22 +1973,8 @@ export default function Home() {
                         <strong>{activeMeta.label} draft</strong>
                         <span>{activeMeta.tone}</span>
                       </div>
-                      <span
-                        className={`connection-badge ${
-                          isCampaignStale
-                            ? "connection-badge--stale"
-                            : canPublishCurrent
-                              ? "connection-badge--ready"
-                              : ""
-                        }`}
-                      >
-                        {isCampaignStale
-                          ? "Source changed"
-                          : canPublishCurrent
-                            ? "Direct publishing"
-                            : OFFICIAL_CONNECTORS.has(activeChannel)
-                              ? "Connector optional"
-                              : "Export ready"}
+                      <span className={`draft-state-badge is-${activeChannelStatus.key}`}>
+                        {activeChannelStatus.label}
                       </span>
                     </header>
 
@@ -1836,7 +2029,70 @@ export default function Home() {
                       </div>
                       <div><dt>Length</dt><dd>{xThreadMode ? `${xThreadParts.length} posts; longest is ${xLongestPart} of ${activeMeta.limit} characters` : activeMeta.limit ? `${currentPost.length.toLocaleString()} of ${activeMeta.limit.toLocaleString()} characters` : `${currentPost.length.toLocaleString()} characters; no fixed guide`}</dd></div>
                       <div><dt>Campaign context</dt><dd>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}, {files.length} attached file{files.length === 1 ? "" : "s"}</dd></div>
+                      <div><dt>Draft state</dt><dd>{activeChannelStatus.label}{activeChannelStatus.isEdited && activeChannelStatus.isApproved ? " · edited and approved" : ""}</dd></div>
+                      <div><dt>Generation run</dt><dd>{channelStates[activeChannel]?.generationRunId || generationRun?.generationRunId || "Not tracked"}</dd></div>
                     </dl>
+
+                    <div className="draft-state-actions" aria-label={`${activeMeta.label} draft state actions`}>
+                      <button
+                        type="button"
+                        className={channelStates[activeChannel]?.approved ? "is-approved" : ""}
+                        onClick={() => dispatchCampaign({
+                          type: channelStates[activeChannel]?.approved ? "MARK_CHANNEL_NEEDS_REVIEW" : "MARK_CHANNEL_APPROVED",
+                          channel: activeChannel,
+                        })}
+                        disabled={!currentPost || isCampaignStale}
+                      >
+                        {channelStates[activeChannel]?.approved ? "Return to review" : "Mark approved"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void performRegeneration(REGENERATION_POLICIES.CHANNEL, activeChannel)}
+                        disabled={busy || !providerReadiness.ready}
+                      >
+                        Regenerate this channel
+                      </button>
+                      {channelStates[activeChannel]?.edited && generatedPosts[activeChannel] && (
+                        <button
+                          type="button"
+                          onClick={() => dispatchCampaign({ type: "RESTORE_GENERATED", channel: activeChannel })}
+                        >
+                          Restore generated copy
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="version-history">
+                      <button
+                        type="button"
+                        className="version-history-toggle"
+                        onClick={() => setVersionHistoryOpen((open) => !open)}
+                        aria-expanded={versionHistoryOpen}
+                      >
+                        <span>Version history</span>
+                        <span>{archives.length}</span>
+                      </button>
+                      {versionHistoryOpen && (
+                        <div className="version-history-list">
+                          {archives.length === 0 ? (
+                            <small>No archived generation versions yet.</small>
+                          ) : archives.map((archive) => (
+                            <article className="version-history-item" key={archive.archiveId}>
+                              <header>
+                                <div>
+                                  <strong>{archive.reason === "channel" ? "Channel regeneration" : archive.reason === "unedited" ? "Unedited regeneration" : "Full campaign version"}</strong>
+                                  <small>{formatDate(archive.createdAt)} · revision {archive.revision}</small>
+                                </div>
+                              </header>
+                              <div className="version-history-item__actions">
+                                <button type="button" onClick={() => restoreArchivedVersion(archive.archiveId)}>Restore</button>
+                                <button type="button" onClick={() => discardArchivedVersion(archive.archiveId)}>Discard</button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {activeChannel === "reddit" && (
                       <div className="review-publish-fields">
                         <label>
@@ -1864,20 +2120,29 @@ export default function Home() {
                     <button
                       className="button button--outline"
                       onClick={() => copyCurrentPost()}
-                      disabled={isCampaignStale || !currentPost}
+                      disabled={Boolean(campaignStatus.copyBlockedReason) || !currentPost}
+                      title={campaignStatus.copyBlockedReason || undefined}
                     >
                       <CopyIcon /> Copy draft
                     </button>
-                    <button className="button button--outline" onClick={saveCampaign}>
-                      Save locally
-                    </button>
+                    <div className="save-action-group">
+                      <button className="button button--outline" onClick={saveCampaign} disabled={busy}>
+                        {currentCampaignId ? "Save changes" : "Save locally"}
+                      </button>
+                      <button className="button button--outline" onClick={saveCampaignAsCopy} disabled={busy}>
+                        Save as copy
+                      </button>
+                    </div>
                     <button
                       className="button button--dark"
-                      onClick={canPublishCurrent ? publishCurrentPost : copyAndOpenCurrent}
-                      disabled={busy || !currentPost || isCampaignStale}
+                      onClick={publishCurrentPost}
+                      disabled={busy || !publishAvailability.ready}
+                      title={publishAvailability.reason || undefined}
                     >
-                      {isCampaignStale
-                        ? "Regenerate to continue"
+                      {!publishAvailability.ready
+                        ? channelStates[activeChannel]?.approved
+                          ? "Action unavailable"
+                          : "Approve to continue"
                         : canPublishCurrent
                           ? "Publish approved draft"
                           : activeMeta.openUrl
@@ -1885,6 +2150,9 @@ export default function Home() {
                             : "Copy approved draft"}
                       <ArrowIcon />
                     </button>
+                    {!publishAvailability.ready && (
+                      <p className="review-action-reason" role="status">{publishAvailability.reason}</p>
+                    )}
                   </div>
 
                   {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (
@@ -1913,8 +2181,8 @@ export default function Home() {
                       <strong>Take the full campaign with you</strong>
                       <span>Export every selected draft and the generation metadata.</span>
                     </div>
-                    <button onClick={exportMarkdown} disabled={isCampaignStale}>Markdown</button>
-                    <button onClick={exportJson} disabled={isCampaignStale}>JSON</button>
+                    <button onClick={exportMarkdown} disabled={Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>Markdown</button>
+                    <button onClick={exportJson} disabled={Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>JSON</button>
                   </div>
                 </div>
               )}
@@ -1953,7 +2221,7 @@ export default function Home() {
                 <button
                   type="button"
                   className="button button--champagne button--premium"
-                  onClick={generateCampaign}
+                  onClick={handleGenerationAction}
                   disabled={busy || !composeReady}
                 >
                   {busy
@@ -1967,6 +2235,51 @@ export default function Home() {
             </div>
           </div>
         </main>
+      )}
+
+      {regenerationDialogOpen && (
+        <div
+          className="regeneration-dialog-backdrop"
+          onMouseDown={() => setRegenerationDialogOpen(false)}
+        >
+          <section
+            className="regeneration-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="regeneration-dialog-title"
+            aria-describedby="regeneration-dialog-description"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="regeneration-dialog__eyebrow">Protect manual work</div>
+            <h2 id="regeneration-dialog-title">Choose how to regenerate.</h2>
+            <p id="regeneration-dialog-description">
+              {editedDraftChannels.length} destination{editedDraftChannels.length === 1 ? " has" : "s have"} manual edits. SignalFlow will never replace them without a deliberate choice.
+            </p>
+            <div className="regeneration-dialog__options">
+              <button
+                type="button"
+                className="regeneration-option"
+                autoFocus
+                onClick={() => void performRegeneration(REGENERATION_POLICIES.UNEDITED)}
+                disabled={uneditedRegenerationTargets.length === 0}
+              >
+                <strong>Regenerate only unedited destinations</strong>
+                <span>Keep all {editedDraftChannels.length} edited drafts byte-for-byte unchanged and regenerate {uneditedRegenerationTargets.length} other destinations.</span>
+              </button>
+              <button
+                type="button"
+                className="regeneration-option"
+                onClick={() => void performRegeneration(REGENERATION_POLICIES.ARCHIVE_ALL)}
+              >
+                <strong>Archive edits and regenerate everything</strong>
+                <span>Save the complete current campaign in Version history, then regenerate all {channels.length} selected destinations.</span>
+              </button>
+            </div>
+            <div className="regeneration-dialog__footer">
+              <button type="button" onClick={() => setRegenerationDialogOpen(false)}>Cancel</button>
+            </div>
+          </section>
+        </div>
       )}
 
       {section === "library" && (

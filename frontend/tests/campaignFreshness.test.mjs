@@ -210,8 +210,9 @@ test("Studio renders a persistent stale warning and blocks outbound actions", as
   assert.match(page, /className="campaign-stale-banner"/);
   assert.match(page, /role="alert"/);
   assert.match(page, /data-freshness=\{campaignFreshness\.status\}/);
-  assert.match(page, /disabled=\{isCampaignStale \|\| !currentPost\}/);
-  assert.match(page, /disabled=\{isCampaignStale\}/);
+  assert.match(page, /disabled=\{Boolean\(campaignStatus\.copyBlockedReason\) \|\| !currentPost\}/);
+  assert.match(page, /disabled=\{Boolean\(campaignStatus\.exportBlockedReason\)\}/);
+  assert.match(page, /publishAvailability\.ready/);
   assert.match(page, /generationRun,/);
   assert.match(layout, /campaign-freshness\.css/);
 });

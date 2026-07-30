@@ -18,6 +18,7 @@ test("Source evidence and attached files remain width safe", async () => {
   assert.match(css, /\.file-chip \{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto/);
   assert.match(css, /\.file-chip span \{[\s\S]*text-overflow:\s*ellipsis/);
   assert.doesNotMatch(css, /\.studio-page\[data-stage="source"\][\s\S]*overflow-y:\s*(auto|scroll)/);
+  assert.doesNotMatch(css, /\.studio-page\[data-stage="source"\] \.file-list \{[\s\S]*max-height:/);
 });
 
 test("Source upload and remove controls expose visible keyboard focus", async () => {

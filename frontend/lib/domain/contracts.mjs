@@ -60,57 +60,30 @@ function clonePortable(value, path = "domain", ancestors = new WeakSet()) {
   }
   if (typeof value !== "object") return value;
   if (ancestors.has(value)) throw new TypeError(`${path} contains a circular reference.`);
-  if (!Array.isArray(value) && !isPlainObject(value)) {
-    throw new TypeError(`${path} contains a non-portable runtime object.`);
-  }
-
   ancestors.add(value);
-  let result;
-  if (Array.isArray(value)) {
-    result = value.map((item, index) => clonePortable(item, `${path}[${index}]`, ancestors));
-  } else {
-    result = {};
+
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item, index) => clonePortable(item, `${path}[${index}]`, ancestors));
+    }
+
+    if (!isPlainObject(value)) {
+      const name = value?.constructor?.name || "runtime object";
+      throw new TypeError(`${path} contains non-portable ${name}. Use IDs and metadata instead.`);
+    }
+
+    const result = {};
     for (const [key, item] of Object.entries(value)) {
-      if (FORBIDDEN_FIELD.test(key)) throw new TypeError(`${path}.${key} is forbidden in a domain record.`);
+      if (FORBIDDEN_FIELD.test(key)) {
+        throw new TypeError(`${path}.${key} is forbidden in domain serialization.`);
+      }
       const cloned = clonePortable(item, `${path}.${key}`, ancestors);
       if (cloned !== undefined) result[key] = cloned;
     }
+    return result;
+  } finally {
+    ancestors.delete(value);
   }
-  ancestors.delete(value);
-  return result;
-}
-
-export function portableClone(value) {
-  return clonePortable(value);
-}
-
-export function createDomainRecord(kind, data = {}) {
-  const contract = DOMAIN_CONTRACTS[kind];
-  if (!contract) throw new TypeError(`Unknown domain record kind: ${kind}.`);
-  const portable = portableClone(data);
-  for (const field of contract.required) {
-    if (portable[field] === undefined || portable[field] === null || portable[field] === "") {
-      throw new TypeError(`${kind}.${field} is required.`);
-    }
-  }
-  return {
-    schemaVersion: DOMAIN_SCHEMA_VERSION,
-    kind,
-    ...portable,
-  };
-}
-
-export function parseDomainRecord(value, expectedKind) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new TypeError("Domain record must be an object.");
-  }
-  if (value.schemaVersion !== DOMAIN_SCHEMA_VERSION) {
-    throw new TypeError(`Unsupported domain schema version: ${value.schemaVersion ?? "missing"}.`);
-  }
-  if (expectedKind && value.kind !== expectedKind) {
-    throw new TypeError(`Expected ${expectedKind}, received ${value.kind || "unknown"}.`);
-  }
-  return createDomainRecord(value.kind, value);
 }
 
 function canonicalize(value) {
@@ -123,9 +96,45 @@ function canonicalize(value) {
 }
 
 export function stableStringify(value, space = 0) {
-  return JSON.stringify(canonicalize(portableClone(value)), null, space);
+  return JSON.stringify(canonicalize(clonePortable(value)), null, space);
 }
 
-export function serializeDomainRecord(record) {
-  return stableStringify(parseDomainRecord(record));
+export function assertDomainRecord(record, expectedKind = "") {
+  if (!isPlainObject(record)) throw new TypeError("Domain record must be a plain object.");
+  if (record.schemaVersion !== DOMAIN_SCHEMA_VERSION) {
+    throw new TypeError(`Unsupported domain schema version: ${record.schemaVersion ?? "missing"}.`);
+  }
+  const kind = String(record.kind || "");
+  const contract = DOMAIN_CONTRACTS[kind];
+  if (!contract) throw new TypeError(`Unknown domain record kind: ${kind || "missing"}.`);
+  if (expectedKind && kind !== expectedKind) {
+    throw new TypeError(`Expected ${expectedKind}, received ${kind}.`);
+  }
+  for (const field of contract.required) {
+    const value = record[field];
+    const missing = value === null || value === undefined || value === "";
+    if (missing) throw new TypeError(`${kind}.${field} is required.`);
+  }
+  clonePortable(record, kind);
+  return record;
+}
+
+export function createDomainRecord(kind, values = {}) {
+  if (!DOMAIN_CONTRACTS[kind]) throw new TypeError(`Unknown domain record kind: ${kind}.`);
+  const record = clonePortable({ schemaVersion: DOMAIN_SCHEMA_VERSION, kind, ...values }, kind);
+  return assertDomainRecord(record, kind);
+}
+
+export function serializeDomainRecord(record, space = 0) {
+  assertDomainRecord(record);
+  return stableStringify(record, space);
+}
+
+export function parseDomainRecord(input, expectedKind = "") {
+  const parsed = typeof input === "string" ? JSON.parse(input) : clonePortable(input);
+  return assertDomainRecord(parsed, expectedKind);
+}
+
+export function portableClone(value) {
+  return clonePortable(value);
 }

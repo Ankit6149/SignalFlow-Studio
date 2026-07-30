@@ -11,17 +11,22 @@ The active product requires a real model route. Template, offline, prompt-only, 
 1. `README.md`
 2. `docs/CAPABILITY_MATRIX.md`
 3. `docs/DOMAIN_ARCHITECTURE.md`
-4. `docs/APP_WORKSPACE_SYSTEM.md`
-5. `docs/STUDIO_UX_SYSTEM.md`
-6. `docs/CONNECTOR_READINESS.md`
-7. `docs/PRODUCT_GRADE_OPEN_SOURCE.md`
-8. `SECURITY.md`
+4. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md`
+5. `docs/CAMPAIGN_SCHEMA_MIGRATION.md`
+6. `docs/APP_WORKSPACE_SYSTEM.md`
+7. `docs/STUDIO_UX_SYSTEM.md`
+8. `docs/CONNECTOR_READINESS.md`
+9. `docs/PRODUCT_GRADE_OPEN_SOURCE.md`
+10. `SECURITY.md`
 
 ## Source of truth
 
 - Product capability discovery: `frontend/app/api/capabilities/route.js`
 - Domain records and portable serialization: `frontend/lib/domain/contracts.mjs`
 - Campaign aggregate and migration: `frontend/lib/domain/campaign.mjs`
+- Edit-safe reducer and editor revisions: `frontend/lib/studio/campaignState.mjs`
+- Campaign/channel/action state selectors: `frontend/lib/studio/campaignStatus.mjs`
+- Regeneration policies: `frontend/lib/studio/regenerationPolicy.mjs`
 - Application use cases: `frontend/lib/application/`
 - Infrastructure adapters: `frontend/lib/infrastructure/`
 - Authoritative export projection: `frontend/lib/export/campaignExport.mjs`
@@ -50,12 +55,24 @@ UI / routes / MCP / extension receiver
 
 - React components and routes must not import infrastructure adapters directly.
 - Domain modules must remain framework-independent and cannot contain browser `File` objects, database clients, provider keys, OAuth secrets, Request/Response objects, or SDK clients.
-- Current edited draft content is authoritative. Generated copy is optional revision history.
+- Current edited draft content is authoritative. Each channel also keeps one generated baseline and optional revision history.
+- A campaign title is never identity. Create/update/copy/read/delete operations use a stable `campaignId` allocated by the ID service.
 - Persisted and protocol-crossing records require stable IDs and schema versions.
 - Compatibility readers migrate into canonical records; they do not create another business-logic path.
 - Cloud/database/object-store/queue work must implement existing ports and pass the same adapter contract suites.
 
-Do not create another late-cascade application override stylesheet. Application selectors belong under `.app-shell` in `app-workspace.css` until the styling architecture issue replaces that layer deliberately.
+## Campaign editing rules
+
+- Never replace an edited draft silently.
+- Full regeneration with edited drafts requires a deliberate policy: regenerate unedited only, archive and regenerate all, or cancel.
+- Per-channel regeneration mutates only the requested channel.
+- Failed or invalid regeneration must leave current drafts unchanged.
+- Editing clears approval. Approval applies to the current revision.
+- Copy, export, and publishing availability must come from shared selectors and show an actionable blocked reason.
+- Save updates the current campaign ID. Save as copy must allocate a new ID and preserve the original.
+- Restoring an archived version first archives the current version, keeping restore reversible.
+
+Do not create another late-cascade application override stylesheet. Application selectors belong under `.app-shell`; campaign status/version rules are currently isolated in `campaign-versioning.css` until the styling architecture issue replaces these layers deliberately.
 
 ## Required verification
 
@@ -92,6 +109,7 @@ Do not report completion when a required gate fails. Do not claim a social conne
 - Direct official connector code paths: LinkedIn, X, Reddit.
 - Other destinations: review/copy/export/open-platform only.
 - Saved campaigns: versioned browser-local Campaign records in the current product.
+- Stable IDs, duplicate-title coexistence, save changes, save as copy, edit-safe regeneration, approvals, and local version archives are implemented.
 - Cloud database, account workspaces, collaboration, sync, object storage, durable jobs, and quotas: not implemented.
 - OAuth sessions: encrypted HTTP-only cookies.
 - Uploaded text/code: browser-extracted within current limits.
@@ -112,7 +130,9 @@ Do not report completion when a required gate fails. Do not claim a social conne
 - Use editorial typography selectively for identity and section emphasis, not every workspace label.
 - Common laptop widths should prioritize readability over keeping two cramped columns.
 - Keep the compose flow source → destinations → generate.
-- Keep review focused on one channel, with visible route, limits, and deliberate actions.
+- Keep review focused on one channel, with visible route, status, limits, versions, and deliberate actions.
+- Persistent state must not rely only on temporary toasts.
+- Dialogs must support keyboard cancellation and visible focus; statuses must have screen-reader text.
 - Avoid neon, glass overload, heavy gradients, and generic admin-dashboard patterns.
 
 ## Engineering rules

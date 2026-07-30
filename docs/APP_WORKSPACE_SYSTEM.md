@@ -25,6 +25,7 @@ Both files are scoped under `.app-shell`. Do not add product selectors to `globa
 - Tablet and mobile layouts collapse to one readable column.
 - Model routing becomes non-sticky before it can reduce the main workspace.
 - Action controls remain in normal document flow and never cover editable content.
+- No shared Studio rule may cap all stage surfaces at 64rem; stage widths belong to `studio-product.css`.
 
 ## Visual direction
 
@@ -57,3 +58,4 @@ Review keeps the destination rail, editor, inspector, actions, warnings, version
 7. Preserve readable drafts and forms before adding visual density.
 8. Keep feature-specific styles narrow and load them after the workflow layer.
 9. Run the style-cascade test before every UI merge.
+10. Keep the visual issue open whenever the exact rendered preview cannot be inspected; a successful build is necessary but not sufficient visual evidence.

@@ -39,11 +39,13 @@ jobs:
       - name: Validate guarded migration scripts
         run: |
           python -m py_compile scripts/apply-edit_safe_version_state.py
+          python -m py_compile scripts/update-version-compatibility-tests.py
           node --check scripts/update-campaign-version-docs.mjs
 
-      - name: Apply Studio and documentation migrations
+      - name: Apply Studio documentation and compatibility migrations
         run: |
           python scripts/apply-edit_safe_version_state.py
+          python scripts/update-version-compatibility-tests.py
           node scripts/update-campaign-version-docs.mjs
 
       - name: Validate source formatting
@@ -71,6 +73,7 @@ jobs:
       - name: Remove temporary integration files
         run: |
           rm scripts/apply-edit_safe_version_state.py
+          rm scripts/update-version-compatibility-tests.py
           rm scripts/update-campaign-version-docs.mjs
           rm .github/workflows/apply-edit-safe-version-state.yml
           rm -rf scripts/__pycache__

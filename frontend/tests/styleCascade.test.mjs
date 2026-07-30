@@ -30,6 +30,10 @@ function stylesheetImports(source) {
     .map((match) => match[1]);
 }
 
+function withoutCssComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 test("the root layout uses one explicit stylesheet cascade", async () => {
   const source = await readFile(layoutUrl, "utf8");
   assert.deepEqual(stylesheetImports(source), APPROVED_STYLE_ORDER);
@@ -49,7 +53,7 @@ test("public and containment layers cannot patch Studio components", async () =>
     readFile(containmentUrl, "utf8"),
   ]);
 
-  for (const source of [publicSurfaces, containment]) {
+  for (const source of [publicSurfaces, containment].map(withoutCssComments)) {
     assert.equal(source.includes(".app-shell"), false);
     assert.equal(source.includes(".studio-actionbar"), false);
     assert.equal(source.includes(".studio-grid"), false);

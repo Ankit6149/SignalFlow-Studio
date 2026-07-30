@@ -26,6 +26,7 @@ const samples = {
   Connection: { connectionId: "connection-1", provider: "linkedin", status: "connected" },
   UsageEvent: { usageEventId: "usage-1", eventType: "generation" },
   AuditEvent: { auditEventId: "audit-1", eventType: "campaign.saved" },
+  TransferReport: { transferReportId: "report-1", archiveId: "archive-1", status: "complete" },
 };
 
 test("every declared domain contract creates and round-trips a versioned record", () => {

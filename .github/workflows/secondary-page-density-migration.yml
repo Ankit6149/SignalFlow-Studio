@@ -1,0 +1,622 @@
+name: One-time secondary-page density migration
+
+on:
+  push:
+    branches:
+      - fix/124-secondary-page-density
+    paths:
+      - '.github/workflows/secondary-page-density-migration.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-secondary-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out density branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/124-secondary-page-density
+
+      - name: Replace oversized secondary-page cards
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          css_path = Path('frontend/app/app-workspace.css')
+          css = css_path.read_text(encoding='utf-8')
+          start_marker = '/* Secondary pages */\n'
+          end_marker = '/* Desktop expansion only when the viewport truly has room. */\n'
+          if css.count(start_marker) != 1 or css.count(end_marker) != 1:
+              raise SystemExit('Secondary page section markers were not unique')
+          before, remainder = css.split(start_marker, 1)
+          _, after = remainder.split(end_marker, 1)
+
+          secondary = r'''/* Secondary pages */
+.app-shell .connection-summary {
+  min-width: 0;
+  margin-bottom: 1.25rem;
+  padding: 1rem 0;
+  border-top: 0.0625rem solid var(--app-line);
+  border-bottom: 0.0625rem solid var(--app-line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  background: transparent;
+}
+
+.app-shell .connection-summary > div {
+  min-width: 0;
+  padding: 0 1rem;
+  border-right: 0.0625rem solid var(--app-line);
+}
+
+.app-shell .connection-summary > div:first-child {
+  padding-left: 0;
+}
+
+.app-shell .connection-summary > div:last-child {
+  border-right: 0;
+}
+
+.app-shell .connection-summary strong,
+.app-shell .connection-summary span {
+  display: block;
+}
+
+.app-shell .connection-summary strong {
+  color: var(--app-ink);
+  font-family: "Playfair Display", serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.app-shell .connection-summary span {
+  margin-top: 0.2rem;
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .connector-readiness {
+  min-width: 0;
+  margin: 0 0 1.25rem;
+  padding: 1.15rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  box-shadow: none;
+}
+
+.app-shell .connector-readiness__heading {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.app-shell .connector-readiness__heading h2 {
+  margin: 0;
+  color: var(--app-ink);
+  font-family: "Playfair Display", serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.app-shell .connector-readiness__heading p {
+  max-width: 42rem;
+  margin: 0.35rem 0 0;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.app-shell .connector-readiness__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.app-shell .connector-readiness__card {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.45rem;
+  background: var(--app-surface-subtle);
+}
+
+.app-shell .connector-readiness__card header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.app-shell .connector-readiness__card h3 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--app-ink);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .readiness-state,
+.app-shell .status-tag {
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding: 0.28rem 0.48rem;
+  border: 0.0625rem solid #e3d7bc;
+  border-radius: 999rem;
+  background: var(--app-warning-soft);
+  color: var(--app-warning);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.app-shell .readiness-state.is-ready,
+.app-shell .status-tag--ready {
+  border-color: #d4e0d6;
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.app-shell .connector-readiness__card ul {
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.32rem;
+  list-style: none;
+}
+
+.app-shell .connector-readiness__card li,
+.app-shell .connector-readiness__card code {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.app-shell .library-grid,
+.app-shell .connections-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
+.app-shell .settings-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.app-shell .library-card,
+.app-shell .connection-card,
+.app-shell .settings-card,
+.app-shell .empty-library,
+.app-shell .truth-panel {
+  min-width: 0;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  box-shadow: none;
+  transition: border-color 0.16s ease;
+}
+
+.app-shell .library-card:hover,
+.app-shell .connection-card:hover,
+.app-shell .settings-card:hover {
+  border-color: var(--app-line-strong);
+  box-shadow: none;
+}
+
+.app-shell .library-card {
+  min-height: 0;
+  padding: 1rem 1.1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, auto);
+  grid-template-areas:
+    "meta actions"
+    "title actions"
+    "channels actions"
+    "preview actions";
+  align-items: start;
+  gap: 0.4rem 1.25rem;
+}
+
+.app-shell .library-card__top {
+  grid-area: meta;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--app-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.app-shell .library-card__top span,
+.app-shell .library-card__top small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .library-card h2 {
+  grid-area: title;
+  min-width: 0;
+  margin: 0.2rem 0 0;
+  overflow: hidden;
+  color: var(--app-ink);
+  font-size: 1.05rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .library-card__channels {
+  grid-area: channels;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.app-shell .library-card__channels span {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-color: var(--app-line);
+  background: var(--app-surface-subtle);
+  font-size: 0.72rem;
+}
+
+.app-shell .library-card p {
+  grid-area: preview;
+  min-width: 0;
+  margin: 0.2rem 0 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.app-shell .library-card footer {
+  grid-area: actions;
+  min-width: 9rem;
+  height: 100%;
+  padding-left: 1rem;
+  border-top: 0;
+  border-left: 0.0625rem solid var(--app-line);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.app-shell .library-card footer button,
+.app-shell .settings-actions button,
+.app-shell .settings-links a {
+  color: var(--app-muted);
+  font-size: 0.78rem;
+}
+
+.app-shell .library-card footer button:focus-visible,
+.app-shell .connector-action:focus-visible,
+.app-shell .settings-actions button:focus-visible,
+.app-shell .settings-form button:focus-visible,
+.app-shell .settings-links a:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.1875rem;
+}
+
+.app-shell .empty-library {
+  min-height: 16rem;
+  padding: 2rem;
+  border-style: dashed;
+}
+
+.app-shell .empty-library > span {
+  color: var(--app-accent);
+}
+
+.app-shell .empty-library h2 {
+  color: var(--app-ink);
+  font-size: 1.4rem;
+}
+
+.app-shell .empty-library p {
+  color: var(--app-muted);
+  font-size: 0.875rem;
+}
+
+.app-shell .connection-card {
+  min-height: 0;
+  padding: 0.9rem 1rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(10rem, auto);
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.app-shell .connection-card__mark {
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
+  border-color: var(--app-line);
+  background: var(--app-surface-subtle);
+}
+
+.app-shell .connection-card__body,
+.app-shell .connection-card__title {
+  min-width: 0;
+}
+
+.app-shell .connection-card__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+}
+
+.app-shell .connection-card h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--app-ink);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .connection-card p {
+  min-width: 0;
+  margin: 0.25rem 0 0;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .connection-card__actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.app-shell .connector-action {
+  min-height: 2.2rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.app-shell .truth-panel {
+  margin-top: 1rem;
+  padding: 1.15rem;
+  grid-template-columns: minmax(14rem, 0.75fr) minmax(0, 1.25fr);
+  gap: 2rem;
+  background: var(--app-surface);
+  color: var(--app-ink);
+}
+
+.app-shell .truth-panel span {
+  color: var(--app-accent);
+  font-size: 0.6875rem;
+}
+
+.app-shell .truth-panel h2 {
+  margin: 0.4rem 0 0;
+  color: var(--app-ink);
+  font-size: 1.35rem;
+}
+
+.app-shell .truth-panel p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.app-shell .settings-card {
+  min-height: 0;
+  padding: 1.1rem;
+}
+
+.app-shell .settings-card--wide {
+  min-height: 0;
+  grid-column: 1 / -1;
+}
+
+.app-shell .settings-card__number {
+  color: var(--app-accent);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.app-shell .settings-card h2 {
+  margin: 0.5rem 0 0.5rem;
+  color: var(--app-ink);
+  font-size: 1.15rem;
+}
+
+.app-shell .settings-card p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .settings-form {
+  min-width: 0;
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.app-shell .settings-form input {
+  min-width: 0;
+}
+
+.app-shell .settings-actions,
+.app-shell .settings-links {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+}
+
+.app-shell .settings-success {
+  margin-top: 0.9rem;
+  padding: 0.7rem;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background: var(--app-success-soft);
+  color: var(--app-success);
+  font-size: 0.78rem;
+}
+
+'''
+          css = before + secondary + end_marker + after
+
+          old_mobile = r'''  .app-shell .connection-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-shell .connection-card .status-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+'''
+          new_mobile = r'''  .app-shell .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .settings-card--wide {
+    grid-column: 1;
+  }
+
+  .app-shell .library-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "meta"
+      "title"
+      "channels"
+      "preview"
+      "actions";
+  }
+
+  .app-shell .library-card footer {
+    min-width: 0;
+    height: auto;
+    padding: 0.75rem 0 0;
+    border-top: 0.0625rem solid var(--app-line);
+    border-left: 0;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .app-shell .connection-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-shell .connection-card__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .app-shell .connection-card .status-tag {
+    grid-column: auto;
+    justify-self: auto;
+  }
+
+  .app-shell .settings-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .settings-form .button {
+    width: 100%;
+  }
+'''
+          if css.count(old_mobile) != 1:
+              raise SystemExit(f'Expected one secondary mobile block, found {css.count(old_mobile)}')
+          css = css.replace(old_mobile, new_mobile, 1)
+
+          css_path.write_text(css, encoding='utf-8')
+
+          test_path = Path('frontend/tests/secondaryPageDensity.test.mjs')
+          test_path.write_text(r'''import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
+
+test("Campaign Library uses compact management rows", async () => {
+  const css = await readFile(workspaceUrl, "utf8");
+  assert.match(css, /\.library-grid,[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /\.library-card \{[\s\S]*min-height:\s*0[\s\S]*grid-template-areas:[\s\S]*"meta actions"[\s\S]*"preview actions"/);
+  assert.match(css, /\.library-card footer \{[\s\S]*grid-area:\s*actions/);
+  assert.doesNotMatch(css, /\.library-card \{[^}]*min-height:\s*17rem/s);
+});
+
+test("Connections remain compact and width safe", async () => {
+  const css = await readFile(workspaceUrl, "utf8");
+  assert.match(css, /\.connections-grid \{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /\.connection-card \{[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) minmax\(10rem, auto\)/);
+  assert.match(css, /\.connection-card p \{[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(css, /@media \(max-width: 52rem\)[\s\S]*\.connection-card__actions \{[\s\S]*grid-column:\s*1 \/ -1/);
+});
+
+test("Settings remove artificial height and retain responsive actions", async () => {
+  const css = await readFile(workspaceUrl, "utf8");
+  assert.match(css, /\.settings-card \{[\s\S]*min-height:\s*0/);
+  assert.match(css, /\.settings-card--wide \{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(css, /@media \(max-width: 52rem\)[\s\S]*\.settings-grid \{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.doesNotMatch(css, /\.settings-card \{[^}]*min-height:\s*15rem/s);
+});
+
+test("secondary page actions expose visible keyboard focus", async () => {
+  const css = await readFile(workspaceUrl, "utf8");
+  assert.match(css, /\.library-card footer button:focus-visible/);
+  assert.match(css, /\.connector-action:focus-visible/);
+  assert.match(css, /\.settings-actions button:focus-visible/);
+  assert.match(css, /\.settings-links a:focus-visible/);
+});
+''', encoding='utf-8')
+          PY
+
+      - name: Remove temporary workflow and commit density changes
+        run: |
+          rm .github/workflows/secondary-page-density-migration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/app/app-workspace.css frontend/tests/secondaryPageDensity.test.mjs .github/workflows/secondary-page-density-migration.yml
+          git commit -m "fix(ui): compact secondary product pages"
+          git push origin HEAD:fix/124-secondary-page-density

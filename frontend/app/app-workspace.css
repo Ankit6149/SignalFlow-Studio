@@ -1464,17 +1464,19 @@
 
 /* Secondary pages */
 .app-shell .connection-summary {
-  margin-bottom: 1.5rem;
-  padding: 1.2rem 0;
+  min-width: 0;
+  margin-bottom: 1.25rem;
+  padding: 1rem 0;
   border-top: 0.0625rem solid var(--app-line);
   border-bottom: 0.0625rem solid var(--app-line);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0;
   background: transparent;
 }
 
 .app-shell .connection-summary > div {
+  min-width: 0;
   padding: 0 1rem;
   border-right: 0.0625rem solid var(--app-line);
 }
@@ -1495,19 +1497,22 @@
 .app-shell .connection-summary strong {
   color: var(--app-ink);
   font-family: "Playfair Display", serif;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 500;
 }
 
 .app-shell .connection-summary span {
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
   color: var(--app-muted);
   font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .connector-readiness {
-  margin: 0 0 1.5rem;
-  padding: 1.5rem;
+  min-width: 0;
+  margin: 0 0 1.25rem;
+  padding: 1.15rem;
   border: 0.0625rem solid var(--app-line);
   border-radius: var(--app-radius);
   background: var(--app-surface);
@@ -1515,58 +1520,66 @@
 }
 
 .app-shell .connector-readiness__heading {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1rem;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .app-shell .connector-readiness__heading h2 {
   margin: 0;
   color: var(--app-ink);
   font-family: "Playfair Display", serif;
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   font-weight: 500;
 }
 
 .app-shell .connector-readiness__heading p {
-  max-width: 38rem;
-  margin: 0.4rem 0 0;
+  max-width: 42rem;
+  margin: 0.35rem 0 0;
   color: var(--app-muted);
   font-size: 0.8125rem;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .app-shell .connector-readiness__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .app-shell .connector-readiness__card {
-  padding: 0.95rem;
+  min-width: 0;
+  padding: 0.8rem;
   border: 0.0625rem solid var(--app-line);
-  border-radius: 0.5rem;
+  border-radius: 0.45rem;
   background: var(--app-surface-subtle);
 }
 
 .app-shell .connector-readiness__card header {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .app-shell .connector-readiness__card h3 {
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: var(--app-ink);
   font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell .readiness-state,
 .app-shell .status-tag {
-  padding: 0.3rem 0.5rem;
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding: 0.28rem 0.48rem;
   border: 0.0625rem solid #e3d7bc;
   border-radius: 999rem;
   background: var(--app-warning-soft);
@@ -1575,6 +1588,7 @@
   font-weight: 750;
   letter-spacing: 0;
   text-transform: none;
+  white-space: nowrap;
 }
 
 .app-shell .readiness-state.is-ready,
@@ -1585,27 +1599,35 @@
 }
 
 .app-shell .connector-readiness__card ul {
-  margin: 0.8rem 0 0;
+  margin: 0.7rem 0 0;
   padding: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.32rem;
   list-style: none;
 }
 
 .app-shell .connector-readiness__card li,
 .app-shell .connector-readiness__card code {
   color: var(--app-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .app-shell .library-grid,
-.app-shell .connections-grid,
+.app-shell .connections-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
 .app-shell .settings-grid {
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: 0.75rem;
 }
 
 .app-shell .library-card,
@@ -1613,6 +1635,7 @@
 .app-shell .settings-card,
 .app-shell .empty-library,
 .app-shell .truth-panel {
+  min-width: 0;
   border: 0.0625rem solid var(--app-line);
   border-radius: var(--app-radius);
   background: var(--app-surface);
@@ -1628,48 +1651,113 @@
 }
 
 .app-shell .library-card {
-  min-height: 17rem;
-  padding: 1.35rem;
+  min-height: 0;
+  padding: 1rem 1.1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, auto);
+  grid-template-areas:
+    "meta actions"
+    "title actions"
+    "channels actions"
+    "preview actions";
+  align-items: start;
+  gap: 0.4rem 1.25rem;
 }
 
 .app-shell .library-card__top {
+  grid-area: meta;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   color: var(--app-faint);
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.app-shell .library-card__top span,
+.app-shell .library-card__top small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell .library-card h2 {
-  margin: 1.75rem 0 0.9rem;
+  grid-area: title;
+  min-width: 0;
+  margin: 0.2rem 0 0;
+  overflow: hidden;
   color: var(--app-ink);
-  font-size: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell .library-card__channels {
+  grid-area: channels;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
 }
 
 .app-shell .library-card__channels span {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 1.7rem;
+  height: 1.7rem;
   border-color: var(--app-line);
   background: var(--app-surface-subtle);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
 .app-shell .library-card p {
+  grid-area: preview;
+  min-width: 0;
+  margin: 0.2rem 0 0;
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--app-muted);
-  font-size: 0.8125rem;
-  line-height: 1.65;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .app-shell .library-card footer {
-  border-color: var(--app-line);
+  grid-area: actions;
+  min-width: 9rem;
+  height: 100%;
+  padding-left: 1rem;
+  border-top: 0;
+  border-left: 0.0625rem solid var(--app-line);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .app-shell .library-card footer button,
-.app-shell .settings-actions button {
+.app-shell .settings-actions button,
+.app-shell .settings-links a {
   color: var(--app-muted);
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
+}
+
+.app-shell .library-card footer button:focus-visible,
+.app-shell .connector-action:focus-visible,
+.app-shell .settings-actions button:focus-visible,
+.app-shell .settings-form button:focus-visible,
+.app-shell .settings-links a:focus-visible {
+  outline: 0.125rem solid var(--app-accent);
+  outline-offset: 0.1875rem;
 }
 
 .app-shell .empty-library {
-  min-height: 21rem;
+  min-height: 16rem;
+  padding: 2rem;
   border-style: dashed;
 }
 
@@ -1679,44 +1767,81 @@
 
 .app-shell .empty-library h2 {
   color: var(--app-ink);
-  font-size: 1.65rem;
+  font-size: 1.4rem;
 }
 
 .app-shell .empty-library p {
   color: var(--app-muted);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
 }
 
 .app-shell .connection-card {
-  min-height: 8.5rem;
-  padding: 1.15rem;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.9rem;
+  min-height: 0;
+  padding: 0.9rem 1rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(10rem, auto);
+  align-items: center;
+  gap: 0.8rem;
 }
 
 .app-shell .connection-card__mark {
-  width: 2.65rem;
-  height: 2.65rem;
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
   border-color: var(--app-line);
   background: var(--app-surface-subtle);
 }
 
+.app-shell .connection-card__body,
+.app-shell .connection-card__title {
+  min-width: 0;
+}
+
+.app-shell .connection-card__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+}
+
 .app-shell .connection-card h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
   color: var(--app-ink);
-  font-size: 1.2rem;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell .connection-card p {
+  min-width: 0;
+  margin: 0.25rem 0 0;
   color: var(--app-muted);
-  font-size: 0.8125rem;
-  line-height: 1.55;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .connection-card__actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.app-shell .connector-action {
+  min-height: 2.2rem;
+  padding: 0.45rem 0.65rem;
 }
 
 .app-shell .truth-panel {
   margin-top: 1rem;
-  padding: 1.5rem;
-  grid-template-columns: 0.8fr 1.2fr;
-  gap: 3rem;
+  padding: 1.15rem;
+  grid-template-columns: minmax(14rem, 0.75fr) minmax(0, 1.25fr);
+  gap: 2rem;
   background: var(--app-surface);
   color: var(--app-ink);
 }
@@ -1727,50 +1852,82 @@
 }
 
 .app-shell .truth-panel h2 {
+  margin: 0.4rem 0 0;
   color: var(--app-ink);
-  font-size: 1.65rem;
+  font-size: 1.35rem;
 }
 
 .app-shell .truth-panel p {
-  color: var(--app-muted);
-  font-size: 0.9375rem;
-  line-height: 1.7;
-}
-
-.app-shell .settings-card {
-  min-height: 15rem;
-  padding: 1.35rem;
-}
-
-.app-shell .settings-card--wide {
-  min-height: 9rem;
-}
-
-.app-shell .settings-card__number {
-  color: var(--app-accent);
-}
-
-.app-shell .settings-card h2 {
-  margin: 1.75rem 0 0.7rem;
-  color: var(--app-ink);
-  font-size: 1.5rem;
-}
-
-.app-shell .settings-card p {
+  margin: 0;
   color: var(--app-muted);
   font-size: 0.875rem;
   line-height: 1.65;
 }
 
+.app-shell .settings-card {
+  min-height: 0;
+  padding: 1.1rem;
+}
+
+.app-shell .settings-card--wide {
+  min-height: 0;
+  grid-column: 1 / -1;
+}
+
+.app-shell .settings-card__number {
+  color: var(--app-accent);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.app-shell .settings-card h2 {
+  margin: 0.5rem 0 0.5rem;
+  color: var(--app-ink);
+  font-size: 1.15rem;
+}
+
+.app-shell .settings-card p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
 .app-shell .settings-form {
-  margin-top: 1.2rem;
-  gap: 0.6rem;
+  min-width: 0;
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.app-shell .settings-form input {
+  min-width: 0;
+}
+
+.app-shell .settings-actions,
+.app-shell .settings-links {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
 }
 
 .app-shell .settings-success {
+  margin-top: 0.9rem;
+  padding: 0.7rem;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   background: var(--app-success-soft);
   color: var(--app-success);
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
 }
 
 /* Desktop expansion only when the viewport truly has room. */
@@ -2021,13 +2178,56 @@
     gap: 1.25rem;
   }
 
+  .app-shell .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .settings-card--wide {
+    grid-column: 1;
+  }
+
+  .app-shell .library-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "meta"
+      "title"
+      "channels"
+      "preview"
+      "actions";
+  }
+
+  .app-shell .library-card footer {
+    min-width: 0;
+    height: auto;
+    padding: 0.75rem 0 0;
+    border-top: 0.0625rem solid var(--app-line);
+    border-left: 0;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
   .app-shell .connection-card {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .app-shell .connection-card .status-tag {
+  .app-shell .connection-card__actions {
     grid-column: 1 / -1;
-    justify-self: start;
+    justify-content: flex-start;
+  }
+
+  .app-shell .connection-card .status-tag {
+    grid-column: auto;
+    justify-self: auto;
+  }
+
+  .app-shell .settings-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .settings-form .button {
+    width: 100%;
   }
 }
 

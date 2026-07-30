@@ -8,6 +8,18 @@ def replace_once(source: str, before: str, after: str, label: str) -> str:
     return source.replace(before, after, 1)
 
 
+page_path = Path("frontend/app/page.js")
+page = page_path.read_text()
+page = replace_once(
+    page,
+    '''                    </header>                      </span>
+                    </header>''',
+    '''                      </span>
+                    </header>''',
+    "review header closing boundary",
+)
+page_path.write_text(page)
+
 state_path = Path("frontend/tests/campaignState.test.mjs")
 state = state_path.read_text()
 state = replace_once(

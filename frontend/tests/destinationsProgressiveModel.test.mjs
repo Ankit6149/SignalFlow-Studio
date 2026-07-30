@@ -16,12 +16,16 @@ test("advanced provider fields use native progressive disclosure", async () => {
   const page = await readFile(pageUrl, "utf8");
   const audience = page.indexOf('<div className="model-route-core">');
   const details = page.indexOf('<details className="model-route-advanced">');
-  const apiKey = page.indexOf('<span>Temporary API key</span>');
-  const modelOverride = page.indexOf('<span>Model override</span>');
-  const connectionTest = page.indexOf('onClick={testProviderConnection}');
+  const detailsClose = page.indexOf("</details>", details);
+  const apiKey = page.indexOf("<span>Temporary API key</span>");
+  const modelOverride = page.indexOf("<span>Model override</span>");
+  const connectionTest = page.indexOf("onClick={testProviderConnection}");
+
   assert.ok(audience > -1 && details > audience);
-  assert.ok(apiKey > details && modelOverride > details);
-  assert.ok(connectionTest > details);
+  assert.ok(detailsClose > details);
+  assert.ok(apiKey > details && apiKey < detailsClose);
+  assert.ok(modelOverride > details && modelOverride < detailsClose);
+  assert.ok(connectionTest > detailsClose);
   assert.match(page, /<summary>[\s\S]*Advanced model settings[\s\S]*<\/summary>/);
 });
 

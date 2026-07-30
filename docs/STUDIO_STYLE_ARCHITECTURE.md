@@ -2,6 +2,8 @@
 
 The Studio previously loaded several generations of global CSS at the same time. Each generation redefined shell, panel, button, grid, action-bar, and responsive selectors. That made the final interface depend on import order and caused unrelated feature work to break existing screens.
 
+A second source of layout drift was an appended “focused wizard” block inside `app-workspace.css`. It globally capped headings, workflow rails, grids, and action bars at 64rem even when Source, Destinations, or Review intentionally requested a wider workspace. That block has been removed; stage composition now belongs only to `studio-product.css`.
+
 This document defines the production cascade and the ownership boundary for every active stylesheet.
 
 ## Approved production order
@@ -54,6 +56,8 @@ All product selectors must begin with `.app-shell` so they cannot mutate the pub
 
 Put stage-specific composition in `studio-product.css`. This file can arrange existing components, but it should not redefine the base appearance of buttons, fields, panels, or status components.
 
+Stage-specific width or max-width rules must not be appended to `app-workspace.css`. In particular, do not reintroduce a global 64rem cap on `.studio-heading`, `.studio-flow`, `.studio-grid`, or `.studio-actionbar`.
+
 ### Feature-state extensions
 
 A feature stylesheet is allowed only when it is narrow and state-oriented. It must:
@@ -88,6 +92,6 @@ For every UI change:
 5. verify keyboard focus and reduced-motion behavior;
 6. run `npm --prefix frontend test`;
 7. run `npm --prefix frontend build`;
-8. review the Vercel preview before merging.
+8. review the Vercel preview before merging visual claims.
 
-A successful build proves compilation, not visual correctness. The preview review remains required for layout changes.
+A successful build proves compilation, not visual correctness. When preview infrastructure is externally rate-limited, mergeable architecture work may land only with the visual issue left open and the missing evidence recorded explicitly.

@@ -157,6 +157,8 @@ function createDraft({
     createdAt: updatedAt,
   });
 
+  if (edited) pushUniqueRevision(history, generatedRevision);
+
   return createDomainRecord("ChannelDraft", {
     draftId: `draft-${fnv1a64(`${campaignId}:${channel}`)}`,
     campaignId,

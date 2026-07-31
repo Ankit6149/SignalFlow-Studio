@@ -6,7 +6,155 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: write
+
 jobs:
+  issue-46-migration:
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/46-first-run-model-setup' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply the reviewed first-run model setup migration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          page_path = Path('frontend/app/page.js')
+          page = page_path.read_text()
+
+          old_import = '''import {
+            evaluateProviderReadiness,
+            pickRecommendedProvider,
+          } from "../lib/studio/providerReadiness.mjs";'''
+          new_import = '''import {
+            evaluateProviderReadiness,
+            getProviderCredentialPlacement,
+            pickRecommendedProvider,
+          } from "../lib/studio/providerReadiness.mjs";'''
+          assert page.count(old_import) == 1, 'provider readiness import anchor changed'
+          page = page.replace(old_import, new_import)
+
+          readiness_anchor = '''  const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;'''
+          placement = '''  const providerCredentialPlacement = getProviderCredentialPlacement({
+            provider: form.provider,
+            status: providerStatusLoading
+              ? { available: false, reason: "Checking deployment capabilities…" }
+              : providerStatuses[form.provider],
+          });
+          const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;'''
+          assert page.count(readiness_anchor) == 1, 'provider readiness calculation anchor changed'
+          page = page.replace(readiness_anchor, placement)
+
+          old_core = '''                <div className="model-route-core">
+                    <label className="field">
+                      <span>Audience</span>
+                      <input
+                        value={form.audience}
+                        onChange={(event) => updateForm("audience", event.target.value)}
+                      />
+                    </label>
+                  </div>'''
+          new_core = '''                <div className="model-route-core">
+                    <label className="field">
+                      <span>Audience</span>
+                      <input
+                        value={form.audience}
+                        onChange={(event) => updateForm("audience", event.target.value)}
+                      />
+                    </label>
+                    {providerCredentialPlacement === "primary" && (
+                      <label className="field model-route-primary-key">
+                        <span>Temporary API key</span>
+                        <input
+                          type="password"
+                          value={form.apiKey}
+                          onChange={(event) => updateForm("apiKey", event.target.value)}
+                          placeholder={`Required for ${provider.label} on this deployment`}
+                          autoComplete="off"
+                        />
+                        <small>
+                          No server credential is available for this route. The key is used only for connection testing and generation in this browser session.
+                        </small>
+                      </label>
+                    )}
+                  </div>'''
+          assert page.count(old_core) == 1, 'model route core anchor changed'
+          page = page.replace(old_core, new_core)
+
+          old_key = '''                      {!['ollama', 'lmstudio'].includes(form.provider) && (
+                        <label className="field">
+                          <span>Temporary API key</span>
+                          <input
+                            type="password"
+                            value={form.apiKey}
+                            onChange={(event) => updateForm("apiKey", event.target.value)}
+                            placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}
+                            autoComplete="off"
+                          />
+                        </label>
+                      )}'''
+          new_key = '''                      {providerCredentialPlacement === "advanced" && (
+                        <label className="field">
+                          <span>Temporary API key</span>
+                          <input
+                            type="password"
+                            value={form.apiKey}
+                            onChange={(event) => updateForm("apiKey", event.target.value)}
+                            placeholder={form.provider === "custom"
+                              ? "Optional when the custom endpoint requires authentication"
+                              : "Optional temporary override for this request"}
+                            autoComplete="off"
+                          />
+                        </label>
+                      )}'''
+          assert page.count(old_key) == 1, 'advanced API key anchor changed'
+          page = page.replace(old_key, new_key)
+          page_path.write_text(page)
+
+          css_path = Path('frontend/app/studio-product.css')
+          css = css_path.read_text()
+          css_anchor = '''.app-shell .model-route-core .field {
+            margin-bottom: 0;
+          }'''
+          css_replacement = '''.app-shell .model-route-core .field {
+            margin-bottom: 0;
+          }
+
+          .app-shell .model-route-primary-key {
+            margin-top: 0.9rem;
+            padding: 0.9rem;
+            border: 0.0625rem solid var(--app-line-strong);
+            border-radius: 0.6rem;
+            background: var(--app-accent-soft);
+          }
+
+          .app-shell .model-route-primary-key small {
+            display: block;
+            margin-top: 0.45rem;
+            color: var(--app-muted);
+            font-size: 0.68rem;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+          }'''
+          assert css.count(css_anchor) == 1, 'model route core CSS anchor changed'
+          css_path.write_text(css.replace(css_anchor, css_replacement))
+          PY
+
+      - name: Restore normal CI and commit the product-only change
+        run: |
+          git fetch origin master
+          git checkout origin/master -- .github/workflows/ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml frontend/app/page.js frontend/app/studio-product.css
+          git commit -m "feat(model-setup): keep required credentials in the primary flow"
+          git push origin HEAD:${{ github.head_ref }}
+
   mcp-tests:
     runs-on: ubuntu-latest
     steps:

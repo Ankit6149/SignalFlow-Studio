@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import styles from "./PortableTransferPanel.module.css";
 import { createBrowserTransferApplication } from "../lib/application/browserTransferApplication.mjs";
 import {
   DEFAULT_MAX_ARCHIVE_BYTES,
@@ -106,7 +107,6 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
     createInitialTransferState,
   );
   const [selectedCampaignIds, setSelectedCampaignIds] = useState([]);
-  const [includeTransferMetadata, setIncludeTransferMetadata] = useState(true);
   const [preparedArchive, setPreparedArchive] = useState(null);
   const [reports, setReports] = useState([]);
   const [notice, setNotice] = useState(null);
@@ -160,10 +160,6 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
     try {
       const archive = await transferApplication.exportSelection({
         campaignIds: selectedCampaignIds,
-        assetIds: includeTransferMetadata ? [] : ["__signalflow-no-asset-selection__"],
-        sourceArtifactIds: includeTransferMetadata ? [] : ["__signalflow-no-artifact-selection__"],
-        approvalIds: includeTransferMetadata ? [] : ["__signalflow-no-approval-selection__"],
-        exportIds: includeTransferMetadata ? [] : ["__signalflow-no-export-selection__"],
         sourceDeployment: {
           profile: "browser-local",
           product: "SignalFlow Studio",
@@ -173,7 +169,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
       setPreparedArchive(archive);
       setNotice({
         type: "success",
-        text: "Archive prepared. Review the manifest and exclusions before downloading it.",
+        text: "Archive prepared. Review the campaign, metadata, asset, byte, and exclusion counts before downloading it.",
       });
     } catch (error) {
       setNotice({ type: "error", text: error.message || "SignalFlow could not prepare the archive." });
@@ -329,7 +325,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
   const preparedManifest = preparedArchive?.manifest;
 
   return (
-    <section className="portable-transfer" aria-labelledby="portable-transfer-title">
+    <section className={`${styles.root} portable-transfer`} aria-labelledby="portable-transfer-title">
       <header className="portable-transfer__heading">
         <div>
           <p className="portable-transfer__eyebrow">Portable ownership</p>
@@ -356,7 +352,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
             </div>
             <strong>{selectedCampaignIds.length}/{campaigns.length}</strong>
           </div>
-          <p>Select the campaigns that should move. SignalFlow prepares the archive first so you can inspect counts and exclusions before downloading.</p>
+          <p>Select the campaigns that should move. Browser-local transfer metadata and assets are included and itemized in the manifest before download.</p>
 
           <div className="portable-transfer-selection-actions">
             <button type="button" onClick={selectAllCampaigns} disabled={!campaigns.length}>Select all</button>
@@ -380,21 +376,6 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
               </label>
             ))}
           </div>
-
-          <label className="portable-transfer-metadata-choice">
-            <input
-              type="checkbox"
-              checked={includeTransferMetadata}
-              onChange={(event) => {
-                setIncludeTransferMetadata(event.target.checked);
-                setPreparedArchive(null);
-              }}
-            />
-            <span>
-              <strong>Include browser-local transfer metadata and asset records</strong>
-              <small>The prepared manifest shows exactly how many records and bytes are included.</small>
-            </span>
-          </label>
 
           <div className="portable-transfer-card__actions">
             <button

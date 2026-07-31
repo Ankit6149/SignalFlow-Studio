@@ -11,6 +11,7 @@ import {
 } from "../lib/studio/clientReliability.mjs";
 import {
   evaluateProviderReadiness,
+  getProviderCredentialPlacement,
   pickRecommendedProvider,
 } from "../lib/studio/providerReadiness.mjs";
 import {
@@ -679,7 +680,13 @@ export default function Home() {
       ? { available: false, reason: "Checking deployment capabilities…" }
       : providerStatuses[form.provider],
   });
-  const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
+  const providerCredentialPlacement = getProviderCredentialPlacement({
+  provider: form.provider,
+  status: providerStatusLoading
+    ? { available: false, reason: "Checking deployment capabilities…" }
+    : providerStatuses[form.provider],
+});
+const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   const composeReady = sourceAndChannelsReady && providerReadiness.ready;
   const connectedOfficialCount = Array.from(OFFICIAL_CONNECTORS).filter(
     (id) => connections[id]?.connected && !connections[id]?.expired,
@@ -1807,14 +1814,29 @@ export default function Home() {
                 </div>
 
                 <div className="model-route-core">
-                  <label className="field">
-                    <span>Audience</span>
-                    <input
-                      value={form.audience}
-                      onChange={(event) => updateForm("audience", event.target.value)}
-                    />
-                  </label>
-                </div>
+        <label className="field">
+          <span>Audience</span>
+          <input
+            value={form.audience}
+            onChange={(event) => updateForm("audience", event.target.value)}
+          />
+        </label>
+        {providerCredentialPlacement === "primary" && (
+          <label className="field model-route-primary-key">
+            <span>Temporary API key</span>
+            <input
+              type="password"
+              value={form.apiKey}
+              onChange={(event) => updateForm("apiKey", event.target.value)}
+              placeholder={`Required for ${provider.label} on this deployment`}
+              autoComplete="off"
+            />
+            <small>
+              No server credential is available for this route. The key is used only for connection testing and generation in this browser session.
+            </small>
+          </label>
+        )}
+      </div>
 
                 <details className="model-route-advanced">
                   <summary>
@@ -1844,18 +1866,20 @@ export default function Home() {
                     </div>
 
                     <div className="model-route-fields">
-                      {!['ollama', 'lmstudio'].includes(form.provider) && (
-                        <label className="field">
-                          <span>Temporary API key</span>
-                          <input
-                            type="password"
-                            value={form.apiKey}
-                            onChange={(event) => updateForm("apiKey", event.target.value)}
-                            placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}
-                            autoComplete="off"
-                          />
-                        </label>
-                      )}
+                      {providerCredentialPlacement === "advanced" && (
+              <label className="field">
+                <span>Temporary API key</span>
+                <input
+                  type="password"
+                  value={form.apiKey}
+                  onChange={(event) => updateForm("apiKey", event.target.value)}
+                  placeholder={form.provider === "custom"
+                    ? "Optional when the custom endpoint requires authentication"
+                    : "Optional temporary override for this request"}
+                  autoComplete="off"
+                />
+              </label>
+            )}
                       {['ollama', 'lmstudio', 'custom'].includes(form.provider) && (
                         <label className="field">
                           <span>Base URL</span>

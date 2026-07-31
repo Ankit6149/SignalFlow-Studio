@@ -20,6 +20,20 @@ export function isForbiddenGenerationMode(provider) {
   return FORBIDDEN_GENERATION_MODES.has(String(provider || "").trim().toLowerCase());
 }
 
+export function getProviderCredentialPlacement({ provider, status = null } = {}) {
+  const id = String(provider || "").trim().toLowerCase();
+
+  if (!isModelProvider(id) || status?.available === false || LOCAL_PROVIDERS.has(id)) {
+    return "hidden";
+  }
+
+  if (id === "custom" || status?.configured) {
+    return "advanced";
+  }
+
+  return "primary";
+}
+
 export function evaluateProviderReadiness({ provider, apiKey = "", baseUrl = "", status = null } = {}) {
   const id = String(provider || "").trim().toLowerCase();
   const hasApiKey = Boolean(String(apiKey || "").trim());

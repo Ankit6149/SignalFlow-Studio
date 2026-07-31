@@ -38,6 +38,33 @@ jobs:
 
       - name: Validate and apply product integration
         run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/apply-portable-transfer-product.py")
+          content = path.read_text(encoding="utf-8")
+          old = '''def replace_in_section(content: str, section_marker: str, old: str, new: str, *, label: str) -> str:
+              start = content.find(section_marker)
+              if start < 0:
+                  raise RuntimeError(f"{label}: missing section marker")
+              prefix = content[:start]
+              section = content[start:]
+              section = replace_once(section, old, new, label=label)
+              return prefix + section
+          '''
+          new = '''def replace_in_section(content: str, section_marker: str, old: str, new: str, *, label: str) -> str:
+              start = content.find(section_marker)
+              if start < 0:
+                  raise RuntimeError(f"{label}: missing section marker")
+              anchor = content.find(old, start)
+              if anchor < 0:
+                  raise RuntimeError(f"{label}: missing anchor")
+              return content[:anchor] + new + content[anchor + len(old):]
+          '''
+          if old not in content:
+              raise SystemExit("portable transfer codemod helper anchor changed")
+          path.write_text(content.replace(old, new, 1), encoding="utf-8")
+          PY
           python -m py_compile scripts/apply-portable-transfer-product.py
           python scripts/apply-portable-transfer-product.py
           git diff --check

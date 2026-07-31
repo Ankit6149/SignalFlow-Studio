@@ -95,6 +95,7 @@ const schema = {
         "Use a real configured or bring-your-own model provider",
         "Create campaigns directly through the SignalFlow MCP server",
         "Use Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, or custom compatible endpoints",
+        "Prepare and validate portable SignalFlow campaign archives with explicit import conflict and rollback controls",
         "Save campaign packages in the current browser",
         "Export approved campaigns as Markdown and JSON",
         "Publish through configured LinkedIn, X, and Reddit official connectors after approval",

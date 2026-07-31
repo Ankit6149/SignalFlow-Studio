@@ -1,7 +1,12 @@
 export const PORT_CONTRACTS = Object.freeze({
   campaignRepository: ["list", "get", "upsert", "remove"],
   assetRepository: ["list", "get", "upsert", "remove"],
+  sourceArtifactRepository: ["list", "get", "upsert", "remove"],
+  approvalRepository: ["list", "get", "upsert", "remove"],
+  exportRepository: ["list", "get", "upsert", "remove"],
   blobStorage: ["put", "get", "remove"],
+  transferReportRepository: ["list", "get", "upsert", "remove"],
+  archiveSigner: ["sign", "verify", "describe"],
   jobQueue: ["enqueue", "get", "cancel"],
   providerAdapter: ["test", "generate"],
   connectorAdapter: ["status", "publish"],

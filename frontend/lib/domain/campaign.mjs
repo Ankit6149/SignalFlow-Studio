@@ -345,6 +345,7 @@ export function createCampaignAggregate(input = {}) {
     generationResult,
     archives: cleanArchives(input.archives, input.existingArchives),
     editorState,
+    transferProvenance: input.transferProvenance ? portableClone(input.transferProvenance) : null,
     brief: cleanBrief(input.brief || {}),
     publishOptions: portableClone(input.publishOptions || {}),
     sourceFiles: portableClone(input.sourceFiles || []),
@@ -479,6 +480,7 @@ export function migrateLegacyCampaign(input) {
     providerUsed: input?.providerUsed,
     warnings: input?.warnings,
     archives: input?.archives || [],
+    transferProvenance: input?.transferProvenance || null,
     editorState: input?.editorState || {
       revision: legacyRevision,
       savedRevision: legacyRevision,
@@ -520,6 +522,7 @@ export function campaignToEditorState(input) {
       ? { ...campaign.generationRun, sourceSnapshot: campaign.sourceSnapshot }
       : null,
     archives: portableClone(campaign.archives || []),
+    transferProvenance: campaign.transferProvenance ? portableClone(campaign.transferProvenance) : null,
     revision: campaign.editorState?.revision || 1,
     savedRevision: campaign.editorState?.savedRevision ?? campaign.editorState?.revision ?? 1,
     exportedRevision: campaign.editorState?.exportedRevision ?? null,

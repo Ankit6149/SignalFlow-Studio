@@ -17,6 +17,7 @@ export const DOMAIN_KINDS = Object.freeze({
   CONNECTION: "Connection",
   USAGE_EVENT: "UsageEvent",
   AUDIT_EVENT: "AuditEvent",
+  TRANSFER_REPORT: "TransferReport",
 });
 
 export const DOMAIN_CONTRACTS = Object.freeze({
@@ -36,6 +37,7 @@ export const DOMAIN_CONTRACTS = Object.freeze({
   Connection: { idField: "connectionId", owner: "workspace", required: ["connectionId", "provider", "status"] },
   UsageEvent: { idField: "usageEventId", owner: "workspace", required: ["usageEventId", "eventType"] },
   AuditEvent: { idField: "auditEventId", owner: "workspace", required: ["auditEventId", "eventType"] },
+  TransferReport: { idField: "transferReportId", owner: "workspace", required: ["transferReportId", "archiveId", "status"] },
 });
 
 const FORBIDDEN_FIELD = /(api[_-]?key|access[_-]?token|refresh[_-]?token|oauth[_-]?token|client[_-]?secret|password|authorization|cookie|database|dbclient|request|response)/i;

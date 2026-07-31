@@ -1,0 +1,578 @@
+.root {
+  display: block;
+}
+
+:global(.portable-transfer) {
+  margin: 0 0 2rem;
+  padding: clamp(1.1rem, 2vw, 1.75rem);
+  border: 1px solid rgba(20, 26, 31, 0.12);
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 1.25rem 3rem rgba(20, 26, 31, 0.07);
+  overflow: hidden;
+}
+
+:global(.portable-transfer__heading),
+:global(.portable-transfer-card__heading),
+:global(.portable-transfer-reports__heading),
+:global(.portable-transfer-report),
+:global(.portable-transfer-integrity) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+:global(.portable-transfer__heading) {
+  margin-bottom: 1.25rem;
+}
+
+:global(.portable-transfer__heading h2),
+:global(.portable-transfer-card h3),
+:global(.portable-transfer-reports h3) {
+  margin: 0;
+  color: #15191d;
+  line-height: 1.08;
+}
+
+:global(.portable-transfer__heading h2) {
+  max-width: 18ch;
+  font-size: clamp(1.55rem, 3vw, 2.4rem);
+}
+
+:global(.portable-transfer__heading p:not(.portable-transfer__eyebrow)),
+:global(.portable-transfer-card > p) {
+  max-width: 66ch;
+  margin: 0.6rem 0 0;
+  color: rgba(21, 25, 29, 0.69);
+  line-height: 1.65;
+}
+
+:global(.portable-transfer__eyebrow),
+:global(.portable-transfer-card__heading span) {
+  margin: 0 0 0.4rem;
+  color: rgba(21, 25, 29, 0.56);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+:global(.portable-transfer__schema) {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(20, 26, 31, 0.12);
+  border-radius: 999px;
+  background: rgba(245, 245, 242, 0.82);
+  color: rgba(21, 25, 29, 0.72);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+:global(.portable-transfer__notice) {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(20, 26, 31, 0.12);
+  border-radius: 0.85rem;
+  background: rgba(245, 245, 242, 0.9);
+  color: #2c3338;
+  line-height: 1.5;
+}
+
+:global(.portable-transfer__notice.is-success) {
+  border-color: rgba(29, 102, 72, 0.24);
+  background: rgba(229, 245, 236, 0.78);
+}
+
+:global(.portable-transfer__notice.is-warning) {
+  border-color: rgba(151, 101, 19, 0.25);
+  background: rgba(251, 244, 220, 0.82);
+}
+
+:global(.portable-transfer__notice.is-error),
+:global(.portable-transfer-error) {
+  border-color: rgba(151, 45, 45, 0.24);
+  background: rgba(252, 232, 232, 0.82);
+  color: #7b2424;
+}
+
+:global(.portable-transfer__grid) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+:global(.portable-transfer-card) {
+  min-width: 0;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid rgba(20, 26, 31, 0.1);
+  border-radius: 1.1rem;
+  background: rgba(250, 250, 248, 0.9);
+}
+
+:global(.portable-transfer-card__heading strong) {
+  flex: 0 0 auto;
+  color: rgba(21, 25, 29, 0.66);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+:global(.portable-transfer-selection-actions),
+:global(.portable-transfer-card__actions),
+:global(.portable-transfer-report__actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+:global(.portable-transfer-selection-actions) {
+  margin: 1rem 0 0.7rem;
+}
+
+:global(.portable-transfer-selection-actions button),
+:global(.portable-transfer-reports__heading > button),
+:global(.portable-transfer-report__actions > button),
+:global(.portable-transfer-rollback-confirmation button) {
+  min-height: 2.1rem;
+  padding: 0.38rem 0.68rem;
+  border: 1px solid rgba(20, 26, 31, 0.14);
+  border-radius: 0.65rem;
+  background: #fff;
+  color: #20262b;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+:global(.portable-transfer-selection-actions button:disabled),
+:global(.portable-transfer-card__actions button:disabled),
+:global(.portable-transfer-dropzone:disabled) {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+:global(.portable-transfer-campaigns) {
+  display: grid;
+  max-height: 18rem;
+  gap: 0.5rem;
+  padding-right: 0.2rem;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+:global(.portable-transfer-campaigns label) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.7rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(20, 26, 31, 0.09);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+}
+
+:global(.portable-transfer-campaigns input),
+:global(.portable-transfer-metadata-choice input) {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.12rem 0 0;
+}
+
+:global(.portable-transfer-campaigns span),
+:global(.portable-transfer-metadata-choice span) {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+:global(.portable-transfer-campaigns strong),
+:global(.portable-transfer-campaigns small),
+:global(.portable-transfer-report strong),
+:global(.portable-transfer-report small) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:global(.portable-transfer-campaigns strong),
+:global(.portable-transfer-report strong) {
+  color: #1c2227;
+  font-size: 0.9rem;
+}
+
+:global(.portable-transfer-campaigns small),
+:global(.portable-transfer-report small),
+:global(.portable-transfer-controls small) {
+  color: rgba(21, 25, 29, 0.58);
+  line-height: 1.45;
+}
+
+:global(.portable-transfer-metadata-choice) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+  padding: 0.78rem;
+  border-radius: 0.85rem;
+  background: rgba(238, 239, 236, 0.78);
+}
+
+:global(.portable-transfer-metadata-choice strong) {
+  font-size: 0.84rem;
+}
+
+:global(.portable-transfer-metadata-choice small) {
+  color: rgba(21, 25, 29, 0.61);
+  line-height: 1.45;
+}
+
+:global(.portable-transfer-card__actions) {
+  margin-top: 1rem;
+}
+
+:global(.portable-transfer-card__actions .button) {
+  min-height: 2.65rem;
+}
+
+:global(.portable-transfer-manifest),
+:global(.portable-transfer-preview),
+:global(.portable-transfer-current-report) {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(20, 26, 31, 0.09);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+:global(.portable-transfer-metrics) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+:global(.portable-transfer-metrics > div) {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+  padding: 0.65rem;
+  border-radius: 0.7rem;
+  background: rgba(238, 239, 236, 0.72);
+}
+
+:global(.portable-transfer-metrics strong) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #171c20;
+  font-size: 0.9rem;
+}
+
+:global(.portable-transfer-metrics span) {
+  color: rgba(21, 25, 29, 0.57);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+:global(.portable-transfer-integrity) {
+  align-items: center;
+  margin-top: 0.7rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid rgba(20, 26, 31, 0.08);
+  border-bottom: 1px solid rgba(20, 26, 31, 0.08);
+}
+
+:global(.portable-transfer-integrity span),
+:global(.portable-transfer-status) {
+  padding: 0.3rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(229, 245, 236, 0.9);
+  color: #245f47;
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+:global(.portable-transfer-integrity code),
+:global(.portable-transfer-preview code),
+:global(.portable-transfer-manifest code) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #363d42;
+  font-size: 0.76rem;
+}
+
+:global(.portable-transfer-manifest details),
+:global(.portable-transfer-preview details) {
+  margin-top: 0.75rem;
+}
+
+:global(.portable-transfer-manifest summary),
+:global(.portable-transfer-preview summary) {
+  color: #2d3439;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+:global(.portable-transfer-manifest ul),
+:global(.portable-transfer-preview ul),
+:global(.portable-transfer-issues ul) {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.65rem 0 0;
+  padding-left: 1.05rem;
+}
+
+:global(.portable-transfer-manifest li),
+:global(.portable-transfer-preview li) {
+  color: rgba(21, 25, 29, 0.67);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+:global(.portable-transfer-manifest li span),
+:global(.portable-transfer-preview li span) {
+  display: block;
+  margin-top: 0.12rem;
+}
+
+:global(.portable-transfer-file-input) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+:global(.portable-transfer-dropzone) {
+  display: grid;
+  width: 100%;
+  min-height: 7rem;
+  place-items: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed rgba(20, 26, 31, 0.28);
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #22292e;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+:global(.portable-transfer-dropzone strong) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+:global(.portable-transfer-dropzone span) {
+  color: rgba(21, 25, 29, 0.58);
+  font-size: 0.78rem;
+}
+
+:global(.portable-transfer-controls) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+
+:global(.portable-transfer-controls label) {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+:global(.portable-transfer-controls label > span) {
+  color: rgba(21, 25, 29, 0.68);
+  font-size: 0.75rem;
+  font-weight: 720;
+}
+
+:global(.portable-transfer-controls select) {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(20, 26, 31, 0.15);
+  border-radius: 0.72rem;
+  background: #fff;
+  color: #20262b;
+  font: inherit;
+}
+
+:global(.portable-transfer-issues) {
+  margin-top: 0.7rem;
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  line-height: 1.45;
+}
+
+:global(.portable-transfer-issues.is-error) {
+  border: 1px solid rgba(151, 45, 45, 0.2);
+  background: rgba(252, 232, 232, 0.75);
+  color: #752525;
+}
+
+:global(.portable-transfer-issues.is-warning) {
+  border: 1px solid rgba(151, 101, 19, 0.2);
+  background: rgba(251, 244, 220, 0.78);
+  color: #6f4b12;
+}
+
+:global(.portable-transfer-conflicts li) {
+  display: grid;
+  gap: 0.1rem;
+}
+
+:global(.portable-transfer-status.is-blocked),
+:global(.portable-transfer-status.is-failed) {
+  background: rgba(252, 232, 232, 0.9);
+  color: #7b2424;
+}
+
+:global(.portable-transfer-status.is-warnings_found),
+:global(.portable-transfer-status.is-partially_imported),
+:global(.portable-transfer-status.is-cancelled) {
+  background: rgba(251, 244, 220, 0.92);
+  color: #6e4a12;
+}
+
+:global(.portable-transfer-status.is-importing),
+:global(.portable-transfer-status.is-validating),
+:global(.portable-transfer-status.is-preparing) {
+  background: rgba(227, 235, 248, 0.92);
+  color: #2f547f;
+}
+
+:global(.portable-transfer-error) {
+  margin: 0.8rem 0 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(151, 45, 45, 0.22);
+  border-radius: 0.75rem;
+}
+
+:global(.portable-transfer-current-report) {
+  display: grid;
+  gap: 0.2rem;
+}
+
+:global(.portable-transfer-current-report span),
+:global(.portable-transfer-current-report small) {
+  color: rgba(21, 25, 29, 0.64);
+}
+
+:global(.portable-transfer-reports) {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(20, 26, 31, 0.1);
+}
+
+:global(.portable-transfer-report-list) {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+:global(.portable-transfer-report) {
+  align-items: center;
+  padding: 0.78rem;
+  border: 1px solid rgba(20, 26, 31, 0.09);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+:global(.portable-transfer-report > div:first-child) {
+  display: grid;
+  min-width: 0;
+  gap: 0.22rem;
+}
+
+:global(.portable-transfer-report .portable-transfer-status) {
+  width: fit-content;
+}
+
+:global(.portable-transfer-rollback-confirmation) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+:global(.portable-transfer-rollback-confirmation span) {
+  color: #6f2929;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+:global(.portable-transfer-empty) {
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px dashed rgba(20, 26, 31, 0.16);
+  border-radius: 0.8rem;
+  color: rgba(21, 25, 29, 0.6);
+  line-height: 1.5;
+}
+
+:global(.portable-transfer button:focus-visible),
+:global(.portable-transfer input:focus-visible),
+:global(.portable-transfer select:focus-visible),
+:global(.portable-transfer summary:focus-visible) {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+@media (max-width: 64rem) {
+  :global(.portable-transfer__grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
+  :global(.portable-transfer) {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  :global(.portable-transfer__heading),
+  :global(.portable-transfer-report) {
+    display: grid;
+  }
+
+  :global(.portable-transfer__schema) {
+    width: fit-content;
+  }
+
+  :global(.portable-transfer-controls),
+  :global(.portable-transfer-metrics) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  :global(.portable-transfer-report__actions) {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 30rem) {
+  :global(.portable-transfer-controls),
+  :global(.portable-transfer-metrics) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :global(.portable-transfer-card__actions .button) {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.portable-transfer *) {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

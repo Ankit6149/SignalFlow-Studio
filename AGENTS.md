@@ -13,11 +13,12 @@ The active product requires a real model route. Template, offline, prompt-only, 
 3. `docs/DOMAIN_ARCHITECTURE.md`
 4. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md`
 5. `docs/CAMPAIGN_SCHEMA_MIGRATION.md`
-6. `docs/APP_WORKSPACE_SYSTEM.md`
-7. `docs/STUDIO_UX_SYSTEM.md`
-8. `docs/CONNECTOR_READINESS.md`
-9. `docs/PRODUCT_GRADE_OPEN_SOURCE.md`
-10. `SECURITY.md`
+6. `docs/PORTABLE_TRANSFER.md`
+7. `docs/APP_WORKSPACE_SYSTEM.md`
+8. `docs/STUDIO_UX_SYSTEM.md`
+9. `docs/CONNECTOR_READINESS.md`
+10. `docs/PRODUCT_GRADE_OPEN_SOURCE.md`
+11. `SECURITY.md`
 
 ## Source of truth
 
@@ -29,6 +30,8 @@ The active product requires a real model route. Template, offline, prompt-only, 
 - Regeneration policies: `frontend/lib/studio/regenerationPolicy.mjs`
 - Application use cases: `frontend/lib/application/`
 - Infrastructure adapters: `frontend/lib/infrastructure/`
+- Portable archive/import application: `frontend/lib/transfer/` and `frontend/lib/application/browserTransferApplication.mjs`
+- Transfer UI: `frontend/components/PortableTransferPanel.js`
 - Authoritative export projection: `frontend/lib/export/campaignExport.mjs`
 - Primary product UI: `frontend/app/page.js`
 - Generation API: `frontend/app/api/launch_kit/route.js`
@@ -59,6 +62,10 @@ UI / routes / MCP / extension receiver
 - A campaign title is never identity. Create/update/copy/read/delete operations use a stable `campaignId` allocated by the ID service.
 - Persisted and protocol-crossing records require stable IDs and schema versions.
 - Compatibility readers migrate into canonical records; they do not create another business-logic path.
+- Portable transfer, import conflict resolution, provenance, integrity, resume, and rollback belong to the transfer application service—not React components.
+- Never persist or render excluded secret values, signed URLs, private endpoints, private addresses, or local filesystem paths; the exclusion manifest stores only safe field paths and reasons.
+- Imported generation, approval, and export events remain historical and must not be relabeled as newly created work.
+- Hosted transfer remains unavailable until tenant authorization, destination selection, storage, jobs, quotas, and credential-backed round trips pass.
 - Cloud/database/object-store/queue work must implement existing ports and pass the same adapter contract suites.
 
 ## Campaign editing rules
@@ -109,6 +116,9 @@ Do not report completion when a required gate fails. Do not claim a social conne
 - Direct official connector code paths: LinkedIn, X, Reddit.
 - Other destinations: review/copy/export/open-platform only.
 - Saved campaigns: versioned browser-local Campaign records in the current product.
+- Browser Library portable archive preparation, validation, Skip/Copy/Replace import, reports, resume, and rollback are implemented.
+- Store-backed transfer adapters are contract-tested; production hosted transfer infrastructure is not implemented.
+- Portable transfer is explicit and user initiated; silent cross-deployment sync is not implemented.
 - Stable IDs, duplicate-title coexistence, save changes, save as copy, edit-safe regeneration, approvals, and local version archives are implemented.
 - Cloud database, account workspaces, collaboration, sync, object storage, durable jobs, and quotas: not implemented.
 - OAuth sessions: encrypted HTTP-only cookies.

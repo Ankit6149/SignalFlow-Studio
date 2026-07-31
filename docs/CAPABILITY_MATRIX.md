@@ -51,6 +51,10 @@ Clients must still validate the full versioned schema; this excerpt documents hi
 | --- | --- | --- | --- | --- |
 | Versioned browser-local Campaign save | Available | Available | Available | Available |
 | Legacy browser-library migration | Available | Available | Available | Available |
+| Portable `.signalflow.json` prepare/download | Available | Available | Available | Available |
+| Validated browser import with Skip/Copy/Replace and rollback reports | Available | Available | Available | Available |
+| Production hosted workspace transfer destination | Not implemented | Not implemented | Not implemented | Not implemented |
+| Silent cross-deployment synchronization | Not implemented | Not implemented | Not implemented | Not implemented |
 | Authoritative Markdown / JSON export | Available | Available | Available | Available |
 | ZIP compatibility API | Owner-only route; not a primary product surface | Owner-only route; not a primary product surface | Owner-operated route; not a primary product surface | Owner-operated route; not a primary product surface |
 | Hosted account/workspace system | Not implemented | Not implemented | Not applicable | Not implemented |
@@ -76,6 +80,20 @@ Clients must still validate the full versioned schema; this excerpt documents hi
 | Billing quotas | Not implemented | Not implemented | Not implemented | Not implemented |
 
 The ZIP compatibility route is not advertised as a complete end-user capability. It now consumes the canonical Campaign export projection so it cannot diverge from authoritative drafts while the product surface, packaging UX, and release verification remain pending.
+
+## Portable transfer capability
+
+The capability document declares portable transfer separately from cloud persistence:
+
+- `transfer.portableArchive` reports schema version `1` and the browser import byte limit;
+- `transfer.browserImportExport` is available because the Library can prepare, download, validate, import, resume, and roll back archives;
+- `transfer.hostedImport` remains unavailable unless a compatible hosted workspace adapter is actually configured for the current session;
+- `transfer.signatures` distinguishes always-available SHA-256 integrity from optional deployment signing;
+- `transfer.silentSync` is unavailable by design because transfer is explicit and user initiated.
+
+Browser capability does not imply a cloud database, object storage, account workspace, background job, tenant authorization, or cross-device sync. A future hosted adapter must preserve the same archive, provenance, conflict, report, and rollback contract and pass tenant-isolation, quota, backup/restore, and credential-backed acceptance gates before `hostedImport.available` can become true.
+
+See [PORTABLE_TRANSFER.md](PORTABLE_TRANSFER.md).
 
 ## Campaign data rules
 

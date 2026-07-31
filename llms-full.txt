@@ -126,6 +126,18 @@ Identical campaign state produces deterministic Markdown and JSON output.
 
 An existing ZIP implementation is not part of the current primary UI contract. When ZIP becomes a supported surface, it must consume the same canonical export projection instead of reading generated package posts directly.
 
+## Portable transfer and recovery
+
+The Library can prepare and import a versioned `.signalflow.json` archive.
+
+Archive preparation is two-step: users select campaigns, prepare the archive, inspect campaign/asset/source/approval/export/blob-byte counts and exclusions, and then download. Provider keys, OAuth/session data, signed/private references, private endpoints, and local filesystem paths are excluded. The archive carries mandatory SHA-256 integrity and may carry an optional deployment signature.
+
+Import validates schema, size, traversal-safe blob paths, payload lengths, integrity, optional signatures, missing assets, and existing-record conflicts before changing storage. Users deliberately choose Skip, Copy, or Replace. Import reports preserve per-record outcomes and an ordered rollback journal. Cancellation occurs between records; compatible partial/cancelled reports can resume with the same archive digest. Rollback is explicit and auditable.
+
+Imported campaign drafts, generated baselines, generation runs, approvals, archives, source snapshots, artifacts, assets, and exports retain historical timestamps and transfer provenance. They are not described as newly generated activity.
+
+Browser-local import/export is implemented. Memory and injected store-backed adapters pass the same contract tests, but this does not constitute a production hosted transfer service. Hosted destination workspaces, tenant authorization, cloud database/object storage, durable transfer jobs, quotas, and silent synchronization are not implemented.
+
 ## Deployment capability model
 
 `GET /api/capabilities` reports the current hosted, local, or self-hosted deployment profile and session permissions.

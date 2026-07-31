@@ -55,7 +55,7 @@ export default function WorkspaceAccessibility() {
       if (!heading) return;
       const kind = getWorkspaceKind(main);
       const headingId = getWorkspaceHeadingId({ kind, heading: heading.textContent });
-      if (!heading.id) heading.id = headingId;
+      if (heading.id !== headingId) heading.id = headingId;
       main.tabIndex = -1;
       setAttributeIfChanged(main, "aria-labelledby", heading.id);
 

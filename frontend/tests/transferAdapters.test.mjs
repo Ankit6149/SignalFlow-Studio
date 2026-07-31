@@ -75,7 +75,8 @@ test("browser portable metadata repositories share one contract", async () => {
 });
 
 test("browser blob storage preserves bytes text and JSON independently", async () => {
-  const storage = createBrowserBlobStorage({ getStorage: () => fakeStorage() });
+  const browserStorage = fakeStorage();
+  const storage = createBrowserBlobStorage({ getStorage: () => browserStorage });
   await storage.put("bytes", new Uint8Array([0, 10, 255]));
   await storage.put("text", "portable text");
   await storage.put("json", { portable: true });

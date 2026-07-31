@@ -45,6 +45,7 @@ The schema registry is `frontend/lib/domain/contracts.mjs`. Schema version `1` d
 | Publication | campaign | `publicationId` | Destination publish attempt and result |
 | Connection | workspace | `connectionId` | Connector identity/status without tokens |
 | UsageEvent | workspace | `usageEventId` | Quota/billing-ready usage fact |
+| TransferReport | workspace/destination | `transferReportId` | Import validation, per-record outcomes, resume, and rollback journal |
 | AuditEvent | workspace | `auditEventId` | Security and product activity fact |
 
 ## Portable serialization
@@ -128,7 +129,12 @@ Current ports:
 
 - campaign repository;
 - asset repository;
+- source-artifact repository;
+- approval repository;
+- export repository;
+- transfer-report repository;
 - blob storage;
+- optional archive signer;
 - job queue;
 - provider adapter;
 - connector adapter;
@@ -141,10 +147,32 @@ Current ports:
 - browser-local campaign repository;
 - in-memory campaign repository;
 - injected async-store campaign repository for hosted/cloud implementations;
+- browser, memory, and store-backed asset/source-artifact/approval/export/transfer-report repositories;
+- browser blob storage for byte, text, and JSON payloads;
 - memory and store-backed blob storage;
 - memory and store-backed job queues.
 
 The same contract suites run against local/memory and store-backed adapters. A database, object store, or durable queue implementation is not considered complete until it passes those suites plus its own integration, isolation, retry, backup, and restore tests.
+
+## Portable archive and transfer application
+
+`frontend/lib/transfer/portableArchive.mjs` owns archive schema, sanitization, SHA-256 integrity, optional signing, traversal/size/blob validation, and encoded blob payloads. `frontend/lib/transfer/transferApplication.mjs` owns selection, preview, conflict mapping, provenance, import order, reports, resume, cancellation, and rollback.
+
+The browser composition root is `frontend/lib/application/browserTransferApplication.mjs`. The Library renders `frontend/components/PortableTransferPanel.js`, which calls the application service and does not calculate digests, migrate records, inspect storage keys, resolve conflicts, or perform repository writes itself.
+
+Portable transfer rules:
+
+- archives are explicit `.signalflow.json` records with schema version `1`;
+- secrets, OAuth/session data, signed/private references, private endpoints, and local filesystem paths are excluded with safe field-path reasons;
+- SHA-256 integrity is mandatory and verified before writes; signatures are optional unless a destination requires them;
+- Skip re-import is idempotent, Copy remaps stable IDs/references, and Replace journals previous destination records;
+- campaigns import before assets/artifacts/approvals/exports so dependent IDs can be remapped;
+- imported events preserve historical timestamps and carry `transferProvenance.historical = true`;
+- normal browser import is atomic; non-atomic adapters persist partial outcomes and can resume using the same archive digest;
+- rollback replays the ordered journal in reverse and records any incomplete recovery;
+- browser import/export availability does not imply production hosted persistence or synchronization.
+
+See [PORTABLE_TRANSFER.md](PORTABLE_TRANSFER.md).
 
 ## Authoritative export projection
 

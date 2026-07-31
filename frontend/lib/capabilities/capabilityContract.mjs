@@ -1,5 +1,7 @@
 export const CAPABILITY_SCHEMA_VERSION = 1;
 export const CAPABILITY_PRODUCT = "signalflow-studio";
+export const PORTABLE_TRANSFER_SCHEMA_VERSION = 1;
+export const PORTABLE_TRANSFER_BROWSER_MAX_BYTES = 50 * 1024 * 1024;
 export const EXTENSION_PROTOCOL_VERSION = 1;
 
 export const DEPLOYMENT_PROFILES = Object.freeze({
@@ -74,6 +76,7 @@ export function createCapabilitySnapshot({
   connectorCapabilities = {},
   cloud = {},
   extension = {},
+  transfer = {},
   quotas = {},
   now = new Date().toISOString(),
 } = {}) {
@@ -194,6 +197,36 @@ export function createCapabilitySnapshot({
             : "Multi-user collaboration is not enabled in this deployment.",
         ),
       },
+      transfer: {
+        portableArchive: capability(
+          true,
+          "Versioned SignalFlow portable archives can be prepared and validated in this browser.",
+          {
+            schemaVersion: PORTABLE_TRANSFER_SCHEMA_VERSION,
+            maxBrowserBytes: PORTABLE_TRANSFER_BROWSER_MAX_BYTES,
+          },
+        ),
+        browserImportExport: capability(
+          true,
+          "This browser can prepare, download, validate, import, resume, and roll back portable archives.",
+        ),
+        hostedImport: capability(
+          Boolean(transfer.hostedImport),
+          transfer.hostedImport
+            ? "A compatible hosted workspace transfer adapter is available to this session."
+            : "Hosted workspace import is not enabled; the current transfer destination is this browser library.",
+        ),
+        signatures: capability(
+          Boolean(transfer.signatures),
+          transfer.signatures
+            ? "Archive signing and verification are configured for this deployment."
+            : "SHA-256 integrity is available; deployment archive signing is not configured.",
+        ),
+        silentSync: capability(
+          false,
+          "Portable transfer is explicit and user initiated; silent cross-deployment synchronization is not enabled.",
+        ),
+      },
       models: {
         managed: capability(
           Object.values(providerMap).some((provider) => provider.configured && provider.available),
@@ -296,6 +329,7 @@ export function parseCapabilitySnapshot(value) {
   const sources = value.capabilities?.sources || {};
   const extension = value.capabilities?.extension || {};
   const exports = value.capabilities?.exports || {};
+  const transfer = value.capabilities?.transfer || {};
 
   return {
     schemaVersion: CAPABILITY_SCHEMA_VERSION,
@@ -340,6 +374,13 @@ export function parseCapabilitySnapshot(value) {
         backgroundJobs: normalizeCapability(persistence.backgroundJobs, fallbackReason),
         autosave: normalizeCapability(persistence.autosave, fallbackReason),
         collaboration: normalizeCapability(persistence.collaboration, fallbackReason),
+      },
+      transfer: {
+        portableArchive: normalizeCapability(transfer.portableArchive, fallbackReason),
+        browserImportExport: normalizeCapability(transfer.browserImportExport, fallbackReason),
+        hostedImport: normalizeCapability(transfer.hostedImport, fallbackReason),
+        signatures: normalizeCapability(transfer.signatures, fallbackReason),
+        silentSync: normalizeCapability(transfer.silentSync, fallbackReason),
       },
       models: {
         managed: normalizeCapability(models.managed, fallbackReason),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import PortableTransferPanel from "../components/PortableTransferPanel";
 import PlatformIcon from "../components/PlatformIcon";
 import {
   createSourceSnapshot,
@@ -2299,6 +2300,13 @@ export default function Home() {
               New campaign <ArrowIcon />
             </button>
           </header>
+
+          <PortableTransferPanel
+            campaigns={library}
+            onLibraryChanged={async () => {
+              setLibrary(await campaignApplication.listCampaigns());
+            }}
+          />
 
           {library.length === 0 ? (
             <div className="empty-library">

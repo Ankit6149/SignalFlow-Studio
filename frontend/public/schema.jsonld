@@ -59,6 +59,7 @@
         "Extract context from public links and GitHub repositories",
         "Read supported text, Markdown, CSV, JSON, and code files in the browser",
         "Use real model routes through Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, or compatible custom endpoints",
+        "Prepare and validate portable SignalFlow campaign archives with explicit import conflict and rollback controls",
         "Save versioned campaign records in the current browser",
         "Export authoritative current drafts as deterministic Markdown and JSON",
         "Publish through configured LinkedIn, X, and Reddit official connectors after approval",

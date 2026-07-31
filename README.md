@@ -73,6 +73,24 @@ See [docs/CAMPAIGN_EDITING_AND_VERSIONING.md](docs/CAMPAIGN_EDITING_AND_VERSIONI
 
 Markdown and JSON exports are projected from the same canonical Campaign snapshot. They include campaign/source/generation IDs, provider/model, snapshot timestamp, editor revision, warnings, approval/edited/quality states, and authoritative current drafts. Identical campaign state produces deterministic output.
 
+## Portable transfer and recovery
+
+The Library includes an explicit portable ownership workflow:
+
+- select saved campaigns and prepare a versioned `.signalflow.json` archive;
+- review campaign, asset, source-artifact, approval, export, blob-byte, and exclusion counts before download;
+- verify SHA-256 integrity and optional deployment signatures before import;
+- preview schema, size, traversal, blob, missing-asset, warning, and conflict states before changing storage;
+- choose Skip, Copy, or Replace deliberately;
+- cancel between records, resume compatible partial/cancelled reports, and roll back journaled changes;
+- preserve generation timestamps, authoritative drafts, generated baselines, approvals, version archives, source snapshots, and transfer provenance as historical data.
+
+Provider keys, OAuth/session credentials, signed/private references, private endpoints, and local filesystem paths are excluded with a safe manifest report. Transfer is user initiated; SignalFlow does not silently upload or synchronize browser data.
+
+Browser-local import/export is implemented. The same application contract is tested through injected store-backed adapters, but a production hosted destination, cloud database, object storage, tenant authorization, and durable transfer jobs are **not** claimed yet.
+
+See [docs/PORTABLE_TRANSFER.md](docs/PORTABLE_TRANSFER.md).
+
 ## Deployment capability contract
 
 `GET /api/capabilities` is the server-owned source of truth for hosted, local, and self-hosted profiles. It describes current-session permissions and availability for models, persistence, repositories, exports, connectors, MCP, extension capture, quotas, and owner tools.
@@ -209,6 +227,8 @@ Output Directory: .next
 - `frontend/lib/studio/campaignState.mjs` — edit-safe reducer and editor version state
 - `frontend/lib/studio/campaignStatus.mjs` — campaign/channel/action selectors
 - `frontend/lib/studio/regenerationPolicy.mjs` — explicit regeneration policies
+- `frontend/lib/transfer/` — portable archive, validation, conflict, resume, provenance, and rollback rules
+- `frontend/components/PortableTransferPanel.js` — Library transfer preparation, preview, import, and recovery UI
 - `frontend/lib/export/campaignExport.mjs` — authoritative deterministic export projector
 - `frontend/lib/context/` — repository, URL, and file context extraction
 - `frontend/lib/ai/` — provider adapters, policy, and staged generation
@@ -226,6 +246,7 @@ Output Directory: .next
 - Never replace manual edits silently
 - Stable campaign identity independent of title
 - Real model routes only; no fake fallback output
+- Explicit portable ownership; no silent cross-deployment sync
 - Browser-local and self-hostable today, cloud-ready through adapters
 - Truthful capability, connector, extension, and success states
 - No credential harvesting or platform bypasses

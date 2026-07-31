@@ -69,12 +69,14 @@ jobs:
 
       - name: Validate and apply canonical source migrations
         run: |
+          python -m py_compile scripts/apply-domain-lifecycle-field-compatibility.py
           python -m py_compile scripts/apply-canonical-source-contract.py
           python -m py_compile scripts/apply-canonical-source-page.py
           python -m py_compile scripts/apply-canonical-source-reference-mapping.py
           python -m py_compile scripts/apply-canonical-source-compatibility.py
           python -m py_compile scripts/apply-canonical-source-hardening.py
           python -m py_compile scripts/apply-canonical-source-product.py
+          python scripts/apply-domain-lifecycle-field-compatibility.py
           python scripts/apply-canonical-source-contract.py
           python scripts/apply-canonical-source-page.py
           python scripts/apply-canonical-source-reference-mapping.py
@@ -139,6 +141,7 @@ jobs:
 
       - name: Remove temporary integration files
         run: |
+          rm scripts/apply-domain-lifecycle-field-compatibility.py
           rm scripts/apply-canonical-source-contract.py
           rm scripts/apply-canonical-source-page.py
           rm scripts/apply-canonical-source-reference-mapping.py
@@ -146,6 +149,7 @@ jobs:
           rm scripts/apply-canonical-source-hardening.py
           rm scripts/apply-canonical-source-product.py
           rm .github/workflows/apply-canonical-source-contract.yml
+          rm -f canonical-source-failure-summary.txt
           rm -rf scripts/__pycache__
 
       - name: Commit verified integration

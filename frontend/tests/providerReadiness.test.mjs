@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createCampaignAggregate } from "../lib/domain/campaign.mjs";
 import {
   evaluateProviderReadiness,
   getProviderCredentialPlacement,
@@ -85,6 +86,25 @@ test("capability-unavailable providers fail closed and expose no credential inpu
   assert.equal(result.source, "unavailable");
   assert.match(result.reason, /owner-only/i);
   assert.equal(getProviderCredentialPlacement({ provider: "ollama", status }), "hidden");
+});
+
+test("temporary credentials are excluded from persisted campaign briefs", () => {
+  const campaign = createCampaignAggregate({
+    title: "Credential safety",
+    channels: ["linkedin"],
+    posts: { linkedin: "Safe draft" },
+    generatedPosts: { linkedin: "Safe draft" },
+    brief: {
+      projectName: "Credential safety",
+      provider: "gemini",
+      apiKey: "must-not-persist",
+      audience: "Builders",
+    },
+    updatedAt: "2026-08-01T00:00:00.000Z",
+  });
+
+  assert.equal(Object.hasOwn(campaign.brief, "apiKey"), false);
+  assert.doesNotMatch(JSON.stringify(campaign), /must-not-persist/);
 });
 
 test("hosted server keys remain owner-only", () => {

@@ -87,9 +87,44 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npm test
+          set +e
+          npm test 2>&1 | tee /tmp/canonical-source-tests.log
+          test_status=${PIPESTATUS[0]}
+          set -e
+          if [ "$test_status" -ne 0 ]; then
+            exit "$test_status"
+          fi
           npm audit --omit=dev --audit-level=high
           npm run build
+
+      - name: Persist exact frontend failure summary
+        if: failure()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          log_path = Path("/tmp/canonical-source-tests.log")
+          output = []
+          if log_path.exists():
+              lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+              failed = [index for index, line in enumerate(lines) if line.startswith("not ok ")]
+              output.append(f"failed_subtests={len(failed)}")
+              for index in failed:
+                  start = max(0, index - 3)
+                  end = min(len(lines), index + 45)
+                  output.append("\n" + "=" * 80)
+                  output.extend(lines[start:end])
+              output.append("\n" + "=" * 80)
+              output.extend([line for line in lines if line.startswith("# tests ") or line.startswith("# pass ") or line.startswith("# fail ")])
+          else:
+              output.append("No frontend test log was produced; inspect the workflow migration step.")
+          Path("canonical-source-failure-summary.txt").write_text("\n".join(output) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add canonical-source-failure-summary.txt
+          git commit -m "ci: record canonical source test failures"
+          git push origin HEAD:assets/canonical-source-artifact-contract
 
       - name: Verify MCP server
         working-directory: mcp

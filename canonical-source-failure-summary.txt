@@ -6,7 +6,7 @@ failed_subtests=17
 # Subtest: attached file type changes invalidate the generation fingerprint
 not ok 35 - attached file type changes invalidate the generation fingerprint
   ---
-  duration_ms: 1.707853
+  duration_ms: 1.66866
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:63:3'
   failureType: 'testCodeFailure'
@@ -31,7 +31,7 @@ not ok 35 - attached file type changes invalidate the generation fingerprint
 # Subtest: attached file size changes invalidate the generation fingerprint
 not ok 36 - attached file size changes invalidate the generation fingerprint
   ---
-  duration_ms: 4.302474
+  duration_ms: 0.992181
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:63:3'
   failureType: 'testCodeFailure'
@@ -56,7 +56,7 @@ not ok 36 - attached file size changes invalidate the generation fingerprint
 # Subtest: attached file size changes invalidate the generation fingerprint
 not ok 36 - attached file size changes invalidate the generation fingerprint
   ---
-  duration_ms: 4.302474
+  duration_ms: 0.992181
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:63:3'
   failureType: 'testCodeFailure'
@@ -81,7 +81,7 @@ not ok 36 - attached file size changes invalidate the generation fingerprint
 # Subtest: attached file description changes invalidate the generation fingerprint
 not ok 37 - attached file description changes invalidate the generation fingerprint
   ---
-  duration_ms: 1.181469
+  duration_ms: 0.959461
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:63:3'
   failureType: 'testCodeFailure'
@@ -106,7 +106,7 @@ not ok 37 - attached file description changes invalidate the generation fingerpr
 # Subtest: attached file description changes invalidate the generation fingerprint
 not ok 37 - attached file description changes invalidate the generation fingerprint
   ---
-  duration_ms: 1.181469
+  duration_ms: 0.959461
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:63:3'
   failureType: 'testCodeFailure'
@@ -131,13 +131,13 @@ not ok 37 - attached file description changes invalidate the generation fingerpr
 # Subtest: temporary API key changes do not invalidate generated content
 ok 38 - temporary API key changes do not invalidate generated content
   ---
-  duration_ms: 4.055122
+  duration_ms: 1.23959
   type: 'test'
   ...
 # Subtest: browser-only extraction metadata does not invalidate generated content
 not ok 39 - browser-only extraction metadata does not invalidate generated content
   ---
-  duration_ms: 1.701001
+  duration_ms: 1.530884
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:78:1'
   failureType: 'testCodeFailure'
@@ -156,7 +156,7 @@ not ok 39 - browser-only extraction metadata does not invalidate generated conte
 # Subtest: browser-only extraction metadata does not invalidate generated content
 not ok 39 - browser-only extraction metadata does not invalidate generated content
   ---
-  duration_ms: 1.701001
+  duration_ms: 1.530884
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/campaignFreshness.test.mjs:78:1'
   failureType: 'testCodeFailure'
@@ -185,19 +185,19 @@ not ok 39 - browser-only extraction metadata does not invalidate generated conte
 # Subtest: an empty campaign name matches the request payload's Untitled campaign default
 ok 40 - an empty campaign name matches the request payload's Untitled campaign default
   ---
-  duration_ms: 1.045194
+  duration_ms: 0.907855
   type: 'test'
   ...
 # Subtest: normalization keeps equivalent whitespace, line endings, destination order, and trailing slashes stable
 ok 41 - normalization keeps equivalent whitespace, line endings, destination order, and trailing slashes stable
   ---
-  duration_ms: 2.928195
+  duration_ms: 0.85839
   type: 'test'
   ...
 # Subtest: freshness blocks untracked and changed generations but accepts the matching snapshot
 ok 42 - freshness blocks untracked and changed generations but accepts the matching snapshot
   ---
-  duration_ms: 1.641559
+  duration_ms: 1.500379
   type: 'test'
 
 ================================================================================
@@ -206,7 +206,7 @@ ok 42 - freshness blocks untracked and changed generations but accepts the match
 # Subtest: local to store-backed hosted to fresh local round-trip preserves content history provenance and blobs
 not ok 108 - local to store-backed hosted to fresh local round-trip preserves content history provenance and blobs
   ---
-  duration_ms: 21.36828
+  duration_ms: 15.816972
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:172:1'
   failureType: 'testCodeFailure'
@@ -228,7 +228,7 @@ not ok 108 - local to store-backed hosted to fresh local round-trip preserves co
 # Subtest: re-import is idempotent with skip and creates independent IDs with copy
 not ok 109 - re-import is idempotent with skip and creates independent IDs with copy
   ---
-  duration_ms: 11.61204
+  duration_ms: 8.788194
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:217:1'
   failureType: 'testCodeFailure'
@@ -256,7 +256,7 @@ not ok 110 - replace conflict restores the archive version without relabeling hi
 # Subtest: re-import is idempotent with skip and creates independent IDs with copy
 not ok 109 - re-import is idempotent with skip and creates independent IDs with copy
   ---
-  duration_ms: 11.61204
+  duration_ms: 8.788194
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:217:1'
   failureType: 'testCodeFailure'
@@ -278,7 +278,7 @@ not ok 109 - re-import is idempotent with skip and creates independent IDs with 
 # Subtest: replace conflict restores the archive version without relabeling historical timestamps
 not ok 110 - replace conflict restores the archive version without relabeling historical timestamps
   ---
-  duration_ms: 8.621018
+  duration_ms: 5.50207
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:245:1'
   failureType: 'testCodeFailure'
@@ -306,7 +306,7 @@ not ok 111 - non-atomic partial imports can resume without duplicating completed
 # Subtest: replace conflict restores the archive version without relabeling historical timestamps
 not ok 110 - replace conflict restores the archive version without relabeling historical timestamps
   ---
-  duration_ms: 8.621018
+  duration_ms: 5.50207
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:245:1'
   failureType: 'testCodeFailure'
@@ -328,7 +328,7 @@ not ok 110 - replace conflict restores the archive version without relabeling hi
 # Subtest: non-atomic partial imports can resume without duplicating completed records
 not ok 111 - non-atomic partial imports can resume without duplicating completed records
   ---
-  duration_ms: 10.93271
+  duration_ms: 5.721237
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:271:1'
   failureType: 'testCodeFailure'
@@ -356,7 +356,7 @@ not ok 112 - atomic import failure rolls back every prior record and manual roll
 # Subtest: non-atomic partial imports can resume without duplicating completed records
 not ok 111 - non-atomic partial imports can resume without duplicating completed records
   ---
-  duration_ms: 10.93271
+  duration_ms: 5.721237
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:271:1'
   failureType: 'testCodeFailure'
@@ -378,7 +378,7 @@ not ok 111 - non-atomic partial imports can resume without duplicating completed
 # Subtest: atomic import failure rolls back every prior record and manual rollback reverses a completed import
 not ok 112 - atomic import failure rolls back every prior record and manual rollback reverses a completed import
   ---
-  duration_ms: 8.207014
+  duration_ms: 5.547798
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:309:1'
   failureType: 'testCodeFailure'
@@ -406,7 +406,7 @@ ok 113 - legacy campaign records export through the canonical contract
 # Subtest: atomic import failure rolls back every prior record and manual rollback reverses a completed import
 not ok 112 - atomic import failure rolls back every prior record and manual rollback reverses a completed import
   ---
-  duration_ms: 8.207014
+  duration_ms: 5.547798
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:309:1'
   failureType: 'testCodeFailure'
@@ -428,25 +428,25 @@ not ok 112 - atomic import failure rolls back every prior record and manual roll
 # Subtest: legacy campaign records export through the canonical contract
 ok 113 - legacy campaign records export through the canonical contract
   ---
-  duration_ms: 48.476132
+  duration_ms: 38.416956
   type: 'test'
   ...
 # Subtest: Library renders the browser transfer application as a real product surface
 ok 114 - Library renders the browser transfer application as a real product surface
   ---
-  duration_ms: 4.413253
+  duration_ms: 2.892366
   type: 'test'
   ...
 # Subtest: portable transfer UI exposes preparation validation conflicts cancellation resume and rollback
 ok 115 - portable transfer UI exposes preparation validation conflicts cancellation resume and rollback
   ---
-  duration_ms: 0.71656
+  duration_ms: 0.557512
   type: 'test'
   ...
 # Subtest: portable transfer layout contains responsive zoom-safe and reduced-motion rules
 ok 116 - portable transfer layout contains responsive zoom-safe and reduced-motion rules
   ---
-  duration_ms: 0.360654
+  duration_ms: 0.222532
   type: 'test'
   ...
 
@@ -456,7 +456,7 @@ ok 116 - portable transfer layout contains responsive zoom-safe and reduced-moti
 # Subtest: campaign selection includes only related metadata and blobs by default
 not ok 121 - campaign selection includes only related metadata and blobs by default
   ---
-  duration_ms: 21.597642
+  duration_ms: 11.080394
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferSelection.test.mjs:133:1'
   failureType: 'testCodeFailure'
@@ -478,7 +478,7 @@ not ok 121 - campaign selection includes only related metadata and blobs by defa
 # Subtest: explicit metadata IDs may add records outside the selected campaign deliberately
 not ok 122 - explicit metadata IDs may add records outside the selected campaign deliberately
   ---
-  duration_ms: 6.307573
+  duration_ms: 10.898803
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferSelection.test.mjs:150:1'
   failureType: 'testCodeFailure'
@@ -506,7 +506,7 @@ not ok 123 - empty campaign selection still exports the complete library for exp
 # Subtest: explicit metadata IDs may add records outside the selected campaign deliberately
 not ok 122 - explicit metadata IDs may add records outside the selected campaign deliberately
   ---
-  duration_ms: 6.307573
+  duration_ms: 10.898803
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferSelection.test.mjs:150:1'
   failureType: 'testCodeFailure'
@@ -528,7 +528,7 @@ not ok 122 - explicit metadata IDs may add records outside the selected campaign
 # Subtest: empty campaign selection still exports the complete library for explicit whole-library transfer
 not ok 123 - empty campaign selection still exports the complete library for explicit whole-library transfer
   ---
-  duration_ms: 9.408908
+  duration_ms: 7.704627
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferSelection.test.mjs:167:1'
   failureType: 'testCodeFailure'
@@ -556,7 +556,7 @@ ok 124 - template and prompt-only modes are rejected
 # Subtest: empty campaign selection still exports the complete library for explicit whole-library transfer
 not ok 123 - empty campaign selection still exports the complete library for explicit whole-library transfer
   ---
-  duration_ms: 9.408908
+  duration_ms: 7.704627
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferSelection.test.mjs:167:1'
   failureType: 'testCodeFailure'
@@ -578,25 +578,25 @@ not ok 123 - empty campaign selection still exports the complete library for exp
 # Subtest: template and prompt-only modes are rejected
 ok 124 - template and prompt-only modes are rejected
   ---
-  duration_ms: 1.912114
+  duration_ms: 1.831133
   type: 'test'
   ...
 # Subtest: configured server providers are ready without exposing a key
 ok 125 - configured server providers are ready without exposing a key
   ---
-  duration_ms: 0.359753
+  duration_ms: 0.31502
   type: 'test'
   ...
 # Subtest: capability-unavailable providers fail closed even with client configuration
 ok 126 - capability-unavailable providers fail closed even with client configuration
   ---
-  duration_ms: 0.693637
+  duration_ms: 0.397923
   type: 'test'
   ...
 # Subtest: hosted server keys remain owner-only
 ok 127 - hosted server keys remain owner-only
   ---
-  duration_ms: 0.258023
+  duration_ms: 0.324494
   type: 'test'
   ...
 
@@ -606,7 +606,7 @@ ok 127 - hosted server keys remain owner-only
 # Subtest: portable export excludes records whose privacy policy forbids export
 not ok 174 - portable export excludes records whose privacy policy forbids export
   ---
-  duration_ms: 36.60649
+  duration_ms: 51.516238
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/sourceArtifactProductIntegration.test.mjs:101:1'
   failureType: 'testCodeFailure'
@@ -628,25 +628,25 @@ not ok 174 - portable export excludes records whose privacy policy forbids expor
 # Subtest: capability contract declares canonical records and fails closed on unfinished source capabilities
 ok 175 - capability contract declares canonical records and fails closed on unfinished source capabilities
   ---
-  duration_ms: 2.254695
+  duration_ms: 2.019033
   type: 'test'
   ...
 # Subtest: Studio source list exposes canonical usability and evidence state without claiming full diagnostics
 ok 176 - Studio source list exposes canonical usability and evidence state without claiming full diagnostics
   ---
-  duration_ms: 0.919839
+  duration_ms: 0.945361
   type: 'test'
   ...
 # Subtest: source architecture documentation and public AI context are consistent
 ok 177 - source architecture documentation and public AI context are consistent
   ---
-  duration_ms: 0.799615
+  duration_ms: 0.721747
   type: 'test'
   ...
 # Subtest: Source uses explicit desktop and mobile reading areas
 ok 178 - Source uses explicit desktop and mobile reading areas
   ---
-  duration_ms: 9.221681
+  duration_ms: 6.327081
   type: 'test'
   ...
 
@@ -656,7 +656,7 @@ ok 178 - Source uses explicit desktop and mobile reading areas
 # Subtest: the root layout uses one explicit stylesheet cascade
 not ok 188 - the root layout uses one explicit stylesheet cascade
   ---
-  duration_ms: 9.468954
+  duration_ms: 7.156769
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/styleCascade.test.mjs:37:1'
   failureType: 'testCodeFailure'
@@ -706,7 +706,7 @@ not ok 188 - the root layout uses one explicit stylesheet cascade
 # Subtest: memory portable metadata repositories share one contract
 not ok 191 - memory portable metadata repositories share one contract
   ---
-  duration_ms: 8.320045
+  duration_ms: 10.264556
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:50:1'
   failureType: 'testCodeFailure'
@@ -727,7 +727,7 @@ not ok 191 - memory portable metadata repositories share one contract
 # Subtest: store-backed portable metadata repositories share one contract
 not ok 192 - store-backed portable metadata repositories share one contract
   ---
-  duration_ms: 4.539276
+  duration_ms: 4.270783
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:58:1'
   failureType: 'testCodeFailure'
@@ -748,7 +748,7 @@ not ok 192 - store-backed portable metadata repositories share one contract
 # Subtest: browser portable metadata repositories share one contract
 not ok 193 - browser portable metadata repositories share one contract
   ---
-  duration_ms: 4.426987
+  duration_ms: 3.787471
 
 ================================================================================
     async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
@@ -756,7 +756,7 @@ not ok 193 - browser portable metadata repositories share one contract
 # Subtest: store-backed portable metadata repositories share one contract
 not ok 192 - store-backed portable metadata repositories share one contract
   ---
-  duration_ms: 4.539276
+  duration_ms: 4.270783
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:58:1'
   failureType: 'testCodeFailure'
@@ -777,7 +777,7 @@ not ok 192 - store-backed portable metadata repositories share one contract
 # Subtest: browser portable metadata repositories share one contract
 not ok 193 - browser portable metadata repositories share one contract
   ---
-  duration_ms: 4.426987
+  duration_ms: 3.787471
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:67:1'
   failureType: 'testCodeFailure'
@@ -798,7 +798,7 @@ not ok 193 - browser portable metadata repositories share one contract
 # Subtest: browser blob storage preserves bytes text and JSON independently
 ok 194 - browser blob storage preserves bytes text and JSON independently
   ---
-  duration_ms: 1.345897
+  duration_ms: 1.033602
 
 ================================================================================
     async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -806,7 +806,7 @@ ok 194 - browser blob storage preserves bytes text and JSON independently
 # Subtest: browser portable metadata repositories share one contract
 not ok 193 - browser portable metadata repositories share one contract
   ---
-  duration_ms: 4.426987
+  duration_ms: 3.787471
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/transferAdapters.test.mjs:67:1'
   failureType: 'testCodeFailure'
@@ -827,25 +827,25 @@ not ok 193 - browser portable metadata repositories share one contract
 # Subtest: browser blob storage preserves bytes text and JSON independently
 ok 194 - browser blob storage preserves bytes text and JSON independently
   ---
-  duration_ms: 1.345897
+  duration_ms: 1.033602
   type: 'test'
   ...
 # Subtest: transfer state covers preparation validation warnings import completion and reset
 ok 195 - transfer state covers preparation validation warnings import completion and reset
   ---
-  duration_ms: 2.323924
+  duration_ms: 2.589324
   type: 'test'
   ...
 # Subtest: blocked and destination-selection states cannot import
 ok 196 - blocked and destination-selection states cannot import
   ---
-  duration_ms: 0.355695
+  duration_ms: 0.366477
   type: 'test'
   ...
 # Subtest: partial and cancelled reports can resume while rolled-back reports cannot
 ok 197 - partial and cancelled reports can resume while rolled-back reports cannot
   ---
-  duration_ms: 0.337481
+  duration_ms: 0.374079
   type: 'test'
   ...
 # Subtest: failure state exposes an actionable error

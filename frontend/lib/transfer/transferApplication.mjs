@@ -43,11 +43,11 @@ export const TRANSFER_STATUSES = Object.freeze({
 });
 
 const RECORD_CONFIG = Object.freeze({
-  campaign: { repository: "campaignRepository", idField: "campaignId", kind: "Campaign" },
-  asset: { repository: "assetRepository", idField: "assetId", kind: "Asset" },
-  sourceArtifact: { repository: "sourceArtifactRepository", idField: "sourceArtifactId", kind: "SourceArtifact" },
-  approval: { repository: "approvalRepository", idField: "approvalId", kind: "Approval" },
-  export: { repository: "exportRepository", idField: "exportId", kind: "Export" },
+  campaign: { repository: "campaignRepository", idField: "campaignId", kind: "Campaign", provenanceField: "sourceCampaignId" },
+  asset: { repository: "assetRepository", idField: "assetId", kind: "Asset", provenanceField: "sourceAssetId" },
+  sourceArtifact: { repository: "sourceArtifactRepository", idField: "sourceArtifactId", kind: "SourceArtifact", provenanceField: "sourceArtifactId" },
+  approval: { repository: "approvalRepository", idField: "approvalId", kind: "Approval", provenanceField: "sourceApprovalId" },
+  export: { repository: "exportRepository", idField: "exportId", kind: "Export", provenanceField: "sourceExportId" },
 });
 
 function text(value) {
@@ -103,7 +103,9 @@ function provenanceMatch(record, archive, sourceId, field) {
 }
 
 function sourceFieldFor(kind) {
-  return `source${kind[0].toUpperCase()}${kind.slice(1)}Id`;
+  const field = RECORD_CONFIG[kind]?.provenanceField;
+  if (!field) throw new TypeError(`Unknown transfer provenance kind: ${kind}.`);
+  return field;
 }
 
 function conflictTarget(existing, archive, source, kind, idField) {

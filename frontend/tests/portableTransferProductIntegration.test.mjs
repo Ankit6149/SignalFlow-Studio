@@ -30,6 +30,7 @@ test("portable transfer UI exposes preparation validation conflicts cancellation
   const component = readFrontend("components/PortableTransferPanel.js");
   assert.match(component, /Prepare archive/);
   assert.match(component, /Download \.signalflow\.json/);
+  assert.match(component, /campaignIds: selectedCampaignIds/);
   assert.match(component, /previewImport/);
   assert.match(component, /Import reviewed archive/);
   assert.match(component, /TRANSFER_CONFLICT_POLICIES\.SKIP/);

@@ -76,6 +76,7 @@ jobs:
           python -m py_compile scripts/apply-canonical-source-compatibility.py
           python -m py_compile scripts/apply-canonical-source-hardening.py
           python -m py_compile scripts/apply-canonical-source-product.py
+          python -m py_compile scripts/apply-canonical-source-legacy-compatibility.py
           python scripts/apply-domain-lifecycle-field-compatibility.py
           python scripts/apply-canonical-source-contract.py
           python scripts/apply-canonical-source-page.py
@@ -83,6 +84,7 @@ jobs:
           python scripts/apply-canonical-source-compatibility.py
           python scripts/apply-canonical-source-hardening.py
           python scripts/apply-canonical-source-product.py
+          python scripts/apply-canonical-source-legacy-compatibility.py
           git diff --check
 
       - name: Verify frontend contracts security migration and build
@@ -148,6 +150,7 @@ jobs:
           rm scripts/apply-canonical-source-compatibility.py
           rm scripts/apply-canonical-source-hardening.py
           rm scripts/apply-canonical-source-product.py
+          rm scripts/apply-canonical-source-legacy-compatibility.py
           rm .github/workflows/apply-canonical-source-contract.yml
           rm -f canonical-source-failure-summary.txt
           rm -rf scripts/__pycache__

@@ -39,7 +39,7 @@ jobs:
           assert page.count(old_import) == 1, 'provider readiness import anchor changed'
           page = page.replace(old_import, new_import)
 
-          readiness_anchor = '''  const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;'''
+          readiness_anchor = '  const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;'
           placement = '''  const providerCredentialPlacement = getProviderCredentialPlacement({
             provider: form.provider,
             status: providerStatusLoading
@@ -50,54 +50,45 @@ jobs:
           assert page.count(readiness_anchor) == 1, 'provider readiness calculation anchor changed'
           page = page.replace(readiness_anchor, placement)
 
-          old_core = '''                <div className="model-route-core">
-                    <label className="field">
-                      <span>Audience</span>
-                      <input
-                        value={form.audience}
-                        onChange={(event) => updateForm("audience", event.target.value)}
-                      />
-                    </label>
-                  </div>'''
+          core_start_marker = '                <div className="model-route-core">'
+          core_end_marker = '\n\n                <details className="model-route-advanced">'
+          core_start = page.index(core_start_marker)
+          core_end = page.index(core_end_marker, core_start)
+          old_core = page[core_start:core_end]
+          assert '<span>Audience</span>' in old_core, 'Audience field missing from model route core'
+          assert 'Temporary API key' not in old_core, 'primary key already present unexpectedly'
           new_core = '''                <div className="model-route-core">
-                    <label className="field">
-                      <span>Audience</span>
+                  <label className="field">
+                    <span>Audience</span>
+                    <input
+                      value={form.audience}
+                      onChange={(event) => updateForm("audience", event.target.value)}
+                    />
+                  </label>
+                  {providerCredentialPlacement === "primary" && (
+                    <label className="field model-route-primary-key">
+                      <span>Temporary API key</span>
                       <input
-                        value={form.audience}
-                        onChange={(event) => updateForm("audience", event.target.value)}
+                        type="password"
+                        value={form.apiKey}
+                        onChange={(event) => updateForm("apiKey", event.target.value)}
+                        placeholder={`Required for ${provider.label} on this deployment`}
+                        autoComplete="off"
                       />
+                      <small>
+                        No server credential is available for this route. The key is used only for connection testing and generation in this browser session.
+                      </small>
                     </label>
-                    {providerCredentialPlacement === "primary" && (
-                      <label className="field model-route-primary-key">
-                        <span>Temporary API key</span>
-                        <input
-                          type="password"
-                          value={form.apiKey}
-                          onChange={(event) => updateForm("apiKey", event.target.value)}
-                          placeholder={`Required for ${provider.label} on this deployment`}
-                          autoComplete="off"
-                        />
-                        <small>
-                          No server credential is available for this route. The key is used only for connection testing and generation in this browser session.
-                        </small>
-                      </label>
-                    )}
-                  </div>'''
-          assert page.count(old_core) == 1, 'model route core anchor changed'
-          page = page.replace(old_core, new_core)
+                  )}
+                </div>'''
+          page = page[:core_start] + new_core + page[core_end:]
 
-          old_key = '''                      {!['ollama', 'lmstudio'].includes(form.provider) && (
-                        <label className="field">
-                          <span>Temporary API key</span>
-                          <input
-                            type="password"
-                            value={form.apiKey}
-                            onChange={(event) => updateForm("apiKey", event.target.value)}
-                            placeholder={providerStatuses[form.provider]?.configured ? "Server route configured — optional override" : "Required when the server route is not configured"}
-                            autoComplete="off"
-                          />
-                        </label>
-                      )}'''
+          key_start_marker = "                      {!['ollama', 'lmstudio'].includes(form.provider) && ("
+          key_start = page.index(key_start_marker)
+          key_end_marker = '\n                      )}'
+          key_end = page.index(key_end_marker, key_start) + len(key_end_marker)
+          old_key = page[key_start:key_end]
+          assert '<span>Temporary API key</span>' in old_key, 'advanced key field anchor changed'
           new_key = '''                      {providerCredentialPlacement === "advanced" && (
                         <label className="field">
                           <span>Temporary API key</span>
@@ -112,8 +103,7 @@ jobs:
                           />
                         </label>
                       )}'''
-          assert page.count(old_key) == 1, 'advanced API key anchor changed'
-          page = page.replace(old_key, new_key)
+          page = page[:key_start] + new_key + page[key_end:]
           page_path.write_text(page)
 
           css_path = Path('frontend/app/studio-product.css')

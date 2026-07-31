@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import WorkspaceAccessibility from "./WorkspaceAccessibility";
 
 const ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const SYNC_MARKER_KEY = "signalflow_owner_cookie_synced";
 
 /**
- * Migrates owner bearer sessions created by older SignalFlow builds into the
- * new HTTP-only cookie used by OAuth redirects. It never reads social tokens.
+ * Mounts browser-only application runtime behavior. The legacy owner-session
+ * migration remains isolated here, while workspace accessibility is mounted
+ * once without taking ownership of campaign or navigation state.
  */
 export default function SessionBridge() {
   useEffect(() => {
@@ -46,5 +48,5 @@ export default function SessionBridge() {
     };
   }, []);
 
-  return null;
+  return <WorkspaceAccessibility />;
 }

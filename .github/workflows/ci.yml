@@ -94,7 +94,7 @@ jobs:
           exit 1
       - name: Capture and assert rendered Landing and Studio layouts
         working-directory: frontend
-        run: node ../scripts/visual-audit.mjs
+        run: node scripts/visual-audit.mjs
       - name: Upload rendered audit evidence
         if: always()
         uses: actions/upload-artifact@v4

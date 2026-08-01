@@ -43,7 +43,6 @@ import {
 import { parseCapabilitySnapshot } from "../lib/capabilities/capabilityContract.mjs";
 import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
 
-const LEGACY_ACCESS_TOKEN_KEY = "signalflow_owner_token";
 const LIBRARY_KEY = "signalflow_recovery_library";
 const OFFICIAL_CONNECTORS = new Set(["linkedin", "x", "reddit"]);
 
@@ -753,8 +752,6 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
-    window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     void campaignApplication.listCampaigns()
       .then(setLibrary)
       .catch(() => setMessage({
@@ -1572,9 +1569,7 @@ ${extractedText}`);
       const data = await readJsonResponse(response, "SignalFlow returned an unreadable session response.");
       if (!response.ok) throw new Error(data.error || "The owner key was not accepted.");
       setAccessToken(data.authenticated ? "cookie-session" : "");
-      window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
-      window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
-      setOwnerKey("");
+          setOwnerKey("");
       setMessage({
         type: "success",
         text: data.locked === false ? "Access lock is disabled for this deployment." : "Owner session unlocked.",
@@ -1588,8 +1583,6 @@ ${extractedText}`);
 
   async function lockOwnerSession() {
     await fetch("/api/session", { method: "DELETE" }).catch(() => null);
-    window.localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
-    window.sessionStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     setAccessToken("");
     setConnections({});
     setMessage({ type: "success", text: "Owner session closed." });

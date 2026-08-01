@@ -6,7 +6,7 @@ import "../app/app-workspace.css";
 import "../app/studio-product.css";
 import "../app/campaign-freshness.css";
 import "../app/campaign-versioning.css";
-import SessionBridge from "../components/SessionBridge";
+import WorkspaceAccessibility from "../components/WorkspaceAccessibility";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";
 const repositoryUrl = "https://github.com/Ankit6149/SignalFlow-Studio";
@@ -218,7 +218,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <SessionBridge />
+        <WorkspaceAccessibility />
         {children}
       </body>
     </html>

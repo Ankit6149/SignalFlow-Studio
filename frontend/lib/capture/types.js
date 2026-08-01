@@ -12,12 +12,5 @@ export const CAPTURE_PROVIDERS = {
     description: "Capture your screen or window directly using navigator.mediaDevices.",
     requiresBrowserMedia: true,
     requiresServerSide: false
-  },
-  playwright: {
-    id: "playwright",
-    label: "Remote Playwright Screenshot (Experimental)",
-    description: "Automated headless browser screenshot of the live app URL.",
-    requiresBrowserMedia: false,
-    requiresServerSide: true
   }
 };

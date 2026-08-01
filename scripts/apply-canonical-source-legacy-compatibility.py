@@ -160,10 +160,19 @@ def consolidate_styles() -> None:
     write(test_path, test_content)
 
 
+def apply_final_transfer_corrections() -> None:
+    correction_path = ROOT / "scripts/apply-canonical-source-transfer-fixes.py"
+    if not correction_path.exists():
+        raise RuntimeError("final canonical transfer correction script is missing")
+    namespace = {"__name__": "__main__", "__file__": str(correction_path)}
+    exec(compile(correction_path.read_text(encoding="utf-8"), str(correction_path), "exec"), namespace)
+
+
 def main() -> None:
     patch_source_migration()
     patch_freshness_compatibility()
     consolidate_styles()
+    apply_final_transfer_corrections()
 
 
 if __name__ == "__main__":

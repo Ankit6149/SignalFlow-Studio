@@ -29,6 +29,10 @@ jobs:
                   '("  line-height: 1.75;", "  line-height: 1.68;", "landing paragraph line height", 2),',
               '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer link size"),':
                   '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer text size", 2),',
+              'assert.match(page, /stage === \\"source\\" \\? \\"is-step-hidden\\"/);':
+                  'assert.match(page, /stage !== \\"source\\" \\? \\"is-step-hidden\\"/);',
+              'assert.match(page, /stage === \\"destinations\\" \\? \\"is-step-hidden\\"/);':
+                  'assert.match(page, /stage !== \\"destinations\\" \\? \\"is-step-hidden\\"/);',
           }
           for old, new in repairs.items():
               if source.count(old) != 1:

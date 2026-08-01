@@ -6,7 +6,98 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
+  branch-prune:
+    if: github.event_name == 'pull_request' && github.head_ref == 'maintenance/prune-merged-branches' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Delete only branches proven obsolete
+        shell: bash
+        run: |
+          set -uo pipefail
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --jq '.[].head.ref' | sort -u > /tmp/open-heads.txt
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=closed&per_page=100" \
+            --jq '.[] | select(.merged_at != null) | [.head.ref, .head.sha] | @tsv' \
+            > /tmp/merged-heads.tsv
+
+          master_tree="$(git rev-parse 'origin/master^{tree}')"
+          deleted=0
+          preserved=0
+          failed=0
+
+          while IFS= read -r branch; do
+            [ -n "$branch" ] || continue
+
+            case "$branch" in
+              HEAD|master|main|maintenance/prune-merged-branches)
+                echo "PRESERVED $branch protected-or-maintenance"
+                preserved=$((preserved + 1))
+                continue
+                ;;
+              dependabot/*)
+                echo "PRESERVED $branch dependency-automation"
+                preserved=$((preserved + 1))
+                continue
+                ;;
+            esac
+
+            if grep -Fqx "$branch" /tmp/open-heads.txt; then
+              echo "PRESERVED $branch open-pull-request"
+              preserved=$((preserved + 1))
+              continue
+            fi
+
+            tip="$(git rev-parse "origin/$branch")"
+            branch_tree="$(git rev-parse "origin/$branch^{tree}")"
+            reason=""
+
+            if awk -F '\t' -v branch="$branch" -v tip="$tip" \
+              '$1 == branch && $2 == tip { found = 1 } END { exit(found ? 0 : 1) }' \
+              /tmp/merged-heads.tsv; then
+              reason="merged-pr-head"
+            elif git merge-base --is-ancestor "origin/$branch" origin/master; then
+              reason="contained-in-master"
+            elif [ "$branch_tree" = "$master_tree" ]; then
+              reason="identical-to-master"
+            fi
+
+            if [ -z "$reason" ]; then
+              echo "PRESERVED $branch unique-unmerged-work"
+              preserved=$((preserved + 1))
+              continue
+            fi
+
+            if git push origin --delete "$branch"; then
+              echo "DELETED $branch $reason"
+              deleted=$((deleted + 1))
+            else
+              echo "FAILED $branch $reason"
+              failed=$((failed + 1))
+            fi
+          done < <(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin | sort -u)
+
+          echo "SUMMARY deleted=$deleted preserved=$preserved failed=$failed"
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+
+          git push origin --delete "$GITHUB_HEAD_REF"
+
   mcp-tests:
     runs-on: ubuntu-latest
     steps:

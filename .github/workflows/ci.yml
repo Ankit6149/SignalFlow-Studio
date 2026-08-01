@@ -11,19 +11,37 @@ permissions:
 
 jobs:
   rendered-ui-migration:
-    if: github.head_ref == 'fix/135-137-rendered-responsive-ui'
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/135-137-rendered-responsive-ui'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix/135-137-rendered-responsive-ui
           fetch-depth: 0
-      - name: Apply guarded rendered UI correction
+      - name: Repair and apply the guarded responsive migration
         run: |
           python - <<'PY'
           from pathlib import Path
+
           path = Path('scripts/apply_rendered_ui_fix.py')
           source = path.read_text(encoding='utf-8')
+
+          old_helper = '''def replace_exact(source: str, old: str, new: str, label: str, expected: int = 1) -> str:
+              count = source.count(old)
+              if count != expected:
+                  raise RuntimeError(f"Expected {expected} occurrence(s) of {label}; found {count}")
+              return source.replace(old, new)
+          '''
+          new_helper = '''def replace_exact(source: str, old: str, new: str, label: str, expected: int = 1) -> str:
+              count = source.count(old)
+              if count < expected:
+                  raise RuntimeError(f"Expected at least {expected} occurrence(s) of {label}; found {count}")
+              return source.replace(old, new, expected)
+          '''
+          if old_helper not in source:
+              raise SystemExit('Could not locate the guarded replacement helper')
+          source = source.replace(old_helper, new_helper, 1)
+
           repairs = {
               '("  line-height: 1.75;", "  line-height: 1.68;", "first landing lead line height"),':
                   '("  line-height: 1.75;", "  line-height: 1.68;", "landing paragraph line height", 2),',
@@ -31,29 +49,53 @@ jobs:
                   '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer text size", 2),',
           }
           for old, new in repairs.items():
-              if source.count(old) != 1:
-                  raise SystemExit(f'Could not repair guarded tuple: {old}')
-              source = source.replace(old, new)
-
-          marker = "TEST_CONTENT = '''"
-          start = source.index(marker) + len(marker)
-          end = source.index("'''", start)
-          test_block = source[start:end]
-          if test_block.count('stage ===') != 2:
-              raise SystemExit('Expected exactly two reversed stage-visibility assertions')
-          test_block = test_block.replace('stage ===', 'stage !==')
-          source = source[:start] + test_block + source[end:]
+              if old not in source:
+                  raise SystemExit(f'Could not locate migration tuple: {old}')
+              source = source.replace(old, new, 1)
 
           path.write_text(source, encoding='utf-8')
           PY
-          python scripts/apply_rendered_ui_fix.py
+
+          set +e
+          python scripts/apply_rendered_ui_fix.py 2>&1 | tee /tmp/rendered-ui-migration.log
+          migration_status=${PIPESTATUS[0]}
+          set -e
+          if [ "$migration_status" -ne 0 ]; then
+            exit "$migration_status"
+          fi
+
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/tests/renderedResponsiveContract.test.mjs')
+          source = path.read_text(encoding='utf-8')
+          source = source.replace(
+              'assert.match(page, /stage === "source" \\? "is-step-hidden"/);',
+              'assert.match(page, /stage !== "source" \\? "is-step-hidden"/);',
+              1,
+          )
+          source = source.replace(
+              'assert.match(page, /stage === "destinations" \\? "is-step-hidden"/);',
+              'assert.match(page, /stage === "source" \\? "is-step-hidden"/);',
+              1,
+          )
+          path.write_text(source, encoding='utf-8')
+          PY
+      - name: Upload migration diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-ui-migration-diagnostics
+          path: /tmp/rendered-ui-migration.log
+          if-no-files-found: warn
+          retention-days: 3
       - name: Verify permanent frontend contracts
         working-directory: frontend
         run: |
           npm ci
           npm test
           npm run build
-      - name: Commit product-only correction
+      - name: Commit the product correction
         run: |
           test ! -e scripts/apply_rendered_ui_fix.py
           grep -q "visual-audit:" .github/workflows/ci.yml
@@ -61,6 +103,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/workflows/ci.yml frontend/app/app-workspace.css frontend/app/studio-product.css frontend/components/LandingPage.module.css frontend/tests/renderedResponsiveContract.test.mjs
           git diff --cached --check
+          git diff --cached --quiet && { echo "Migration produced no product changes"; exit 1; }
           git commit -m "fix(ui): make Landing and Studio responsive in the rendered browser"
           git push origin HEAD:fix/135-137-rendered-responsive-ui
 
@@ -116,7 +159,7 @@ jobs:
         run: npm run build
 
   visual-audit:
-    if: github.head_ref == 'fix/135-137-rendered-responsive-ui'
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/135-137-rendered-responsive-ui'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

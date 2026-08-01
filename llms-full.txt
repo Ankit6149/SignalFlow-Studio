@@ -126,6 +126,14 @@ Identical campaign state produces deterministic Markdown and JSON output.
 
 An existing ZIP implementation is not part of the current primary UI contract. When ZIP becomes a supported surface, it must consume the same canonical export projection instead of reading generated package posts directly.
 
+## Canonical source and asset graph
+
+SignalFlow uses versioned Asset, SourceArtifact, and AssetProcessing records for browser uploads, source fingerprints, API/MCP validation, persistence, and portable transfer. Records include stable ownership/version identity, safe references, usability/evidence and processing state, privacy, provenance, original/derived relationships, retention, and deletion state.
+
+Browser uploads create canonical records after reading the browser File; runtime File objects and local paths are not persisted. Campaign fingerprints use SourceArtifact version references rather than editable display metadata. API and MCP validate one workspace-scoped graph and project legacy `media_items` only at the generation compatibility edge.
+
+Remote URL records cannot become usable evidence until a hardened network fetch verifies them. The full source-health workspace, remote evidence revalidation, OCR/transcription/visual processing adapters, Asset Library, and retention/deletion enforcement remain unfinished separate capabilities.
+
 ## Portable transfer and recovery
 
 The Library can prepare and import a versioned `.signalflow.json` archive.

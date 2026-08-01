@@ -197,7 +197,7 @@ test("capability contract declares canonical records and fails closed on unfinis
 
 test("Studio source list exposes canonical usability and evidence state without claiming full diagnostics", () => {
   const page = readFrontend("app/page.js");
-  const css = readFrontend("app/source-contract.css");
+  const css = readFrontend("app/campaign-versioning.css");
   assert.match(page, /SOURCE_STATE_PRESENTATION/);
   assert.match(page, /Usable evidence/);
   assert.match(page, /Reference only/);

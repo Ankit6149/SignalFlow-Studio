@@ -46,6 +46,7 @@ const RECORD_CONFIG = Object.freeze({
   campaign: { repository: "campaignRepository", idField: "campaignId", kind: "Campaign", provenanceField: "sourceCampaignId" },
   asset: { repository: "assetRepository", idField: "assetId", kind: "Asset", provenanceField: "sourceAssetId" },
   sourceArtifact: { repository: "sourceArtifactRepository", idField: "sourceArtifactId", kind: "SourceArtifact", provenanceField: "sourceArtifactId" },
+  assetProcessing: { repository: "assetProcessingRepository", idField: "processingId", kind: "AssetProcessing", provenanceField: "sourceProcessingId" },
   approval: { repository: "approvalRepository", idField: "approvalId", kind: "Approval", provenanceField: "sourceApprovalId" },
   export: { repository: "exportRepository", idField: "exportId", kind: "Export", provenanceField: "sourceExportId" },
 });
@@ -87,6 +88,25 @@ async function selectRecords(repository, ids = []) {
   if (!ids.length) return repository.list();
   const records = await Promise.all(ids.map((id) => repository.get(id)));
   return records.filter(Boolean);
+}
+
+function createEphemeralRecordRepository(idField) {
+  const records = new Map();
+  return {
+    async list() {
+      return Array.from(records.values()).map((record) => portableClone(record));
+    },
+    async get(id) {
+      return records.has(id) ? portableClone(records.get(id)) : null;
+    },
+    async upsert(record) {
+      records.set(record[idField], portableClone(record));
+      return portableClone(record);
+    },
+    async remove(id) {
+      return records.delete(id);
+    },
+  };
 }
 
 function recordKey(kind, id) {
@@ -188,21 +208,30 @@ function importedRecordId({ source, target, policy, idField, idService, kind }) 
   return target[idField];
 }
 
-function updateReferences(value, idMaps) {
-  if (Array.isArray(value)) return value.map((item) => updateReferences(item, idMaps));
+function mappedReference(key, value, idMaps) {
+  if (typeof value !== "string") return value;
+  if (key === "campaignId" && idMaps.campaign.has(value)) return idMaps.campaign.get(value);
+  if (["assetId", "assetIds", "parentAssetIds", "derivedAssetIds", "inputAssetIds", "outputAssetIds"].includes(key)
+    && idMaps.asset.has(value)) return idMaps.asset.get(value);
+  if (["sourceArtifactId", "sourceArtifactIds", "parentSourceArtifactIds", "derivedSourceArtifactIds", "outputSourceArtifactIds"].includes(key)
+    && idMaps.sourceArtifact.has(value)) return idMaps.sourceArtifact.get(value);
+  if (key === "draftId" && idMaps.draft.has(value)) return idMaps.draft.get(value);
+  if (key === "blobId" && idMaps.blob.has(value)) return idMaps.blob.get(value);
+  return value;
+}
+
+function updateReferences(value, idMaps, parentKey = "") {
+  if (Array.isArray(value)) {
+    return value.map((item) => typeof item === "string"
+      ? mappedReference(parentKey, item, idMaps)
+      : updateReferences(item, idMaps, parentKey));
+  }
   if (!value || typeof value !== "object") return value;
   const result = {};
   for (const [key, item] of Object.entries(value)) {
-    if (typeof item === "string") {
-      if (key === "campaignId" && idMaps.campaign.has(item)) result[key] = idMaps.campaign.get(item);
-      else if (key === "assetId" && idMaps.asset.has(item)) result[key] = idMaps.asset.get(item);
-      else if (key === "sourceArtifactId" && idMaps.sourceArtifact.has(item)) result[key] = idMaps.sourceArtifact.get(item);
-      else if (key === "draftId" && idMaps.draft.has(item)) result[key] = idMaps.draft.get(item);
-      else if (key === "blobId" && idMaps.blob.has(item)) result[key] = idMaps.blob.get(item);
-      else result[key] = item;
-    } else {
-      result[key] = updateReferences(item, idMaps);
-    }
+    result[key] = typeof item === "string"
+      ? mappedReference(key, item, idMaps)
+      : updateReferences(item, idMaps, key);
   }
   return result;
 }
@@ -257,6 +286,7 @@ export function createTransferApplication({
   campaignRepository,
   assetRepository,
   sourceArtifactRepository,
+  assetProcessingRepository,
   approvalRepository,
   exportRepository,
   blobStorage,
@@ -269,6 +299,10 @@ export function createTransferApplication({
     campaignRepository: assertPort("campaignRepository", campaignRepository),
     assetRepository: assertPort("assetRepository", assetRepository),
     sourceArtifactRepository: assertPort("sourceArtifactRepository", sourceArtifactRepository),
+    assetProcessingRepository: assertPort(
+      "assetProcessingRepository",
+      assetProcessingRepository || createEphemeralRecordRepository("processingId"),
+    ),
     approvalRepository: assertPort("approvalRepository", approvalRepository),
     exportRepository: assertPort("exportRepository", exportRepository),
   };
@@ -282,6 +316,7 @@ export function createTransferApplication({
     campaignIds = [],
     assetIds = [],
     sourceArtifactIds = [],
+    processingIds = [],
     approvalIds = [],
     exportIds = [],
     sourceDeployment = {},
@@ -291,9 +326,46 @@ export function createTransferApplication({
     const selectedCampaignIdSet = new Set(campaigns.map((campaign) => campaign.campaignId));
 
     const selectedSourceArtifacts = await selectRecords(repositories.sourceArtifactRepository, sourceArtifactIds);
-    const sourceArtifacts = campaignIds.length && !sourceArtifactIds.length
+    const scopedSourceArtifacts = campaignIds.length && !sourceArtifactIds.length
       ? selectedSourceArtifacts.filter((artifact) => selectedCampaignIdSet.has(artifact.campaignId))
       : selectedSourceArtifacts;
+    const sourceArtifactsById = new Map(scopedSourceArtifacts.map((artifact) => [artifact.sourceArtifactId, artifact]));
+    if (campaignIds.length) {
+      for (const campaign of campaigns) {
+        for (const file of campaign.sourceFiles || []) {
+          const artifact = file?.sourceArtifact;
+          if (artifact?.sourceArtifactId && !sourceArtifactsById.has(artifact.sourceArtifactId)) {
+            sourceArtifactsById.set(artifact.sourceArtifactId, {
+              ...artifact,
+              campaignId: campaign.campaignId,
+              workspaceId: artifact.workspaceId || campaign.workspaceId || "browser-local",
+            });
+          }
+        }
+      }
+    }
+    let sourceArtifacts = Array.from(sourceArtifactsById.values());
+    const preflightExclusions = [];
+    const privateSourceIds = new Set(
+      sourceArtifacts
+        .filter((artifact) => artifact.privacy?.exportAllowed === false)
+        .map((artifact) => artifact.sourceArtifactId),
+    );
+    for (const sourceArtifactId of privateSourceIds) {
+      preflightExclusions.push({
+        path: `payload.sourceArtifacts.${sourceArtifactId}`,
+        reason: "source artifact export disabled by privacy policy",
+      });
+    }
+    sourceArtifacts = sourceArtifacts.filter((artifact) => !privateSourceIds.has(artifact.sourceArtifactId));
+
+    const selectedProcessingRecords = await selectRecords(repositories.assetProcessingRepository, processingIds);
+    const selectedSourceArtifactIdSet = new Set(sourceArtifacts.map((artifact) => artifact.sourceArtifactId));
+    let processingRecords = campaignIds.length && !processingIds.length
+      ? selectedProcessingRecords.filter((record) =>
+        selectedCampaignIdSet.has(record.campaignId)
+          || selectedSourceArtifactIdSet.has(record.sourceArtifactId))
+      : selectedProcessingRecords;
 
     const selectedApprovals = await selectRecords(repositories.approvalRepository, approvalIds);
     const explicitApprovals = campaignIds.length && !approvalIds.length
@@ -306,20 +378,79 @@ export function createTransferApplication({
       : selectedExports;
 
     const relatedAssetIds = new Set(
-      sourceArtifacts.map((artifact) => artifact.assetId).filter(Boolean),
+      sourceArtifacts.flatMap((artifact) => [artifact.assetId, ...(artifact.assetIds || [])]).filter(Boolean),
     );
+    for (const record of processingRecords) {
+      for (const assetId of [...(record.inputAssetIds || []), ...(record.outputAssetIds || [])]) {
+        if (assetId) relatedAssetIds.add(assetId);
+      }
+    }
     for (const campaign of campaigns) {
       for (const file of campaign.sourceFiles || []) {
         if (file?.assetId) relatedAssetIds.add(file.assetId);
+        if (file?.asset?.assetId) relatedAssetIds.add(file.asset.assetId);
+        for (const assetId of file?.sourceArtifact?.assetIds || []) relatedAssetIds.add(assetId);
       }
       for (const media of campaign.sourceSnapshot?.normalizedSource?.media || []) {
         if (media?.assetId) relatedAssetIds.add(media.assetId);
       }
     }
     const selectedAssets = await selectRecords(repositories.assetRepository, assetIds);
-    const assets = campaignIds.length && !assetIds.length
+    const scopedAssets = campaignIds.length && !assetIds.length
       ? selectedAssets.filter((asset) => relatedAssetIds.has(asset.assetId))
       : selectedAssets;
+    const assetsById = new Map(scopedAssets.map((asset) => [asset.assetId, asset]));
+    if (campaignIds.length) {
+      for (const campaign of campaigns) {
+        for (const file of campaign.sourceFiles || []) {
+          const asset = file?.asset;
+          if (asset?.assetId && relatedAssetIds.has(asset.assetId) && !assetsById.has(asset.assetId)) {
+            assetsById.set(asset.assetId, {
+              ...asset,
+              campaignId: campaign.campaignId,
+              workspaceId: asset.workspaceId || campaign.workspaceId || "browser-local",
+            });
+          }
+        }
+      }
+    }
+    let assets = Array.from(assetsById.values());
+    const privateAssetIds = new Set(
+      assets
+        .filter((asset) => asset.privacy?.exportAllowed === false)
+        .map((asset) => asset.assetId),
+    );
+    for (const assetId of privateAssetIds) {
+      preflightExclusions.push({
+        path: `payload.assets.${assetId}`,
+        reason: "asset export disabled by privacy policy",
+      });
+    }
+    assets = assets.filter((asset) => !privateAssetIds.has(asset.assetId));
+    sourceArtifacts = sourceArtifacts.filter((artifact) => {
+      const blocked = (artifact.assetIds || []).some((assetId) => privateAssetIds.has(assetId));
+      if (blocked) {
+        preflightExclusions.push({
+          path: `payload.sourceArtifacts.${artifact.sourceArtifactId}`,
+          reason: "source artifact references a non-exportable asset",
+        });
+      }
+      return !blocked;
+    });
+    const exportableSourceIds = new Set(sourceArtifacts.map((artifact) => artifact.sourceArtifactId));
+    const exportableAssetIds = new Set(assets.map((asset) => asset.assetId));
+    processingRecords = processingRecords.filter((record) => {
+      const blocked = !exportableSourceIds.has(record.sourceArtifactId)
+        || [...(record.inputAssetIds || []), ...(record.outputAssetIds || [])]
+          .some((assetId) => !exportableAssetIds.has(assetId));
+      if (blocked) {
+        preflightExclusions.push({
+          path: `payload.processingRecords.${record.processingId}`,
+          reason: "processing record references excluded source or asset data",
+        });
+      }
+      return !blocked;
+    });
 
     const derivedApprovals = approvedDraftRecords(campaigns, applicationClock);
     const approvals = [...explicitApprovals];
@@ -350,9 +481,11 @@ export function createTransferApplication({
       campaigns,
       assets,
       sourceArtifacts,
+      processingRecords,
       approvals,
       exports,
       blobEntries,
+      preflightExclusions,
       signer,
     });
   }
@@ -392,6 +525,7 @@ export function createTransferApplication({
       campaign: await repositories.campaignRepository.list(),
       asset: await repositories.assetRepository.list(),
       sourceArtifact: await repositories.sourceArtifactRepository.list(),
+      assetProcessing: await repositories.assetProcessingRepository.list(),
       approval: await repositories.approvalRepository.list(),
       export: await repositories.exportRepository.list(),
     };
@@ -399,6 +533,7 @@ export function createTransferApplication({
       campaign: archive.payload?.campaigns || [],
       asset: archive.payload?.assets || [],
       sourceArtifact: archive.payload?.sourceArtifacts || [],
+      assetProcessing: archive.payload?.processingRecords || [],
       approval: archive.payload?.approvals || [],
       export: archive.payload?.exports || [],
     };
@@ -500,6 +635,7 @@ export function createTransferApplication({
       campaign: new Map(),
       asset: new Map(),
       sourceArtifact: new Map(),
+      assetProcessing: new Map(),
       approval: new Map(),
       export: new Map(),
       draft: new Map(),
@@ -509,6 +645,7 @@ export function createTransferApplication({
       campaign: archive.payload?.campaigns || [],
       asset: archive.payload?.assets || [],
       sourceArtifact: archive.payload?.sourceArtifacts || [],
+      assetProcessing: archive.payload?.processingRecords || [],
       approval: archive.payload?.approvals || [],
       export: archive.payload?.exports || [],
     };
@@ -516,6 +653,7 @@ export function createTransferApplication({
       campaign: await repositories.campaignRepository.list(),
       asset: await repositories.assetRepository.list(),
       sourceArtifact: await repositories.sourceArtifactRepository.list(),
+      assetProcessing: await repositories.assetProcessingRepository.list(),
       approval: await repositories.approvalRepository.list(),
       export: await repositories.exportRepository.list(),
     };
@@ -645,6 +783,7 @@ export function createTransferApplication({
       for (const source of sourceCollections.campaign) await processRecord("campaign", source);
       for (const source of sourceCollections.asset) await processAsset(source);
       for (const source of sourceCollections.sourceArtifact) await processRecord("sourceArtifact", source);
+      for (const source of sourceCollections.assetProcessing) await processRecord("assetProcessing", source);
       for (const source of sourceCollections.approval) await processRecord("approval", source);
       for (const source of sourceCollections.export) await processRecord("export", source);
 

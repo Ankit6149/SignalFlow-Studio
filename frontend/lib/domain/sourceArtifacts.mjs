@@ -174,7 +174,7 @@ function enumValue(value, allowed, fallback, field) {
   return normalized;
 }
 
-function uniqueTextList(value, { lowercase = False } = {}) {
+function uniqueTextList(value, { lowercase = false } = {}) {
   const values = Array.isArray(value) ? value : [];
   return Array.from(new Set(values
     .map((item) => text(item))
@@ -201,6 +201,19 @@ function fnv1a64(value) {
 
 function stableId(prefix, value) {
   return `${prefix}-${fnv1a64(stableStringify(value))}`;
+}
+
+function assertSupportedSourceSchema(input) {
+  if (input?.schemaVersion === undefined || input?.schemaVersion === null) return;
+  if (!Number.isInteger(input.schemaVersion)) {
+    throw new SourceContractError("invalid_source_schema", "Source schema version must be an integer.");
+  }
+  if (input.schemaVersion > SOURCE_CONTRACT_SCHEMA_VERSION) {
+    throw new SourceContractError(
+      "future_source_schema",
+      `Source schema ${input.schemaVersion} is newer than supported schema ${SOURCE_CONTRACT_SCHEMA_VERSION}. Upgrade SignalFlow before importing it.`,
+    );
+  }
 }
 
 function requiredId(value, field) {
@@ -509,6 +522,7 @@ export function normalizeAsset(input = {}, {
   campaignId = null,
   now = new Date().toISOString(),
 } = {}) {
+  assertSupportedSourceSchema(input);
   const exclusions = [];
   const sanitized = sanitizeObject(input, "asset", exclusions) || {};
   const ownerWorkspaceId = requiredId(sanitized.workspaceId || workspaceId, "workspaceId");
@@ -566,6 +580,9 @@ export function normalizeAsset(input = {}, {
     durationMs: integer(sanitized.durationMs) || null,
     contentHash: hash,
     storageRef,
+    blobId: storageRef?.blobId || null,
+    contentType: mimeType,
+    availability: text(sanitized.availability, storageRef ? "available" : "metadata_only"),
     userMetadata: sanitizedUserMetadata(sanitized.userMetadata || {
       description: sanitized.description,
       tags: sanitized.tags,
@@ -581,6 +598,8 @@ export function normalizeAsset(input = {}, {
     retention: normalizeRetention(sanitized.retention),
     deletion: normalizeDeletion(sanitized.deletion),
     normalizationExclusions: exclusions,
+    transferProvenance: sanitized.transferProvenance ? portableClone(sanitized.transferProvenance) : null,
+    importedHistoricalRecord: Boolean(sanitized.importedHistoricalRecord),
     createdAt,
     updatedAt,
   });
@@ -609,6 +628,7 @@ function normalizeExtraction(value = {}, legacy = {}) {
   return portableClone({
     state,
     textHash: contentHash(input.textHash),
+    textFingerprint: text(input.textFingerprint) || null,
     charCount,
     truncated: Boolean(input.truncated),
     processor: input.processor ? {
@@ -626,6 +646,7 @@ export function normalizeSourceArtifact(input = {}, {
   campaignId = null,
   now = new Date().toISOString(),
 } = {}) {
+  assertSupportedSourceSchema(input);
   const exclusions = [];
   const sanitized = sanitizeObject(input, "sourceArtifact", exclusions) || {};
   const ownerWorkspaceId = requiredId(sanitized.workspaceId || workspaceId, "workspaceId");
@@ -683,6 +704,7 @@ export function normalizeSourceArtifact(input = {}, {
     );
   }
   const contentHashValue = contentHash(sanitized.contentHash || sanitized.hash || extraction.textHash);
+  const assetIds = uniqueTextList(sanitized.assetIds || (sanitized.assetId ? [sanitized.assetId] : []));
   const ownership = {
     workspaceId: ownerWorkspaceId,
     projectId: ownerProjectId,
@@ -721,7 +743,8 @@ export function normalizeSourceArtifact(input = {}, {
     mimeType: text(sanitized.mimeType || sanitized.type, "application/octet-stream").toLowerCase(),
     byteSize: integer(sanitized.byteSize ?? sanitized.size),
     contentHash: contentHashValue,
-    assetIds: uniqueTextList(sanitized.assetIds || (sanitized.assetId ? [sanitized.assetId] : [])),
+    assetIds,
+    assetId: assetIds[0] || null,
     extraction,
     usability: {
       state: usabilityState,
@@ -743,6 +766,8 @@ export function normalizeSourceArtifact(input = {}, {
     retention: normalizeRetention(sanitized.retention),
     deletion: normalizeDeletion(sanitized.deletion),
     normalizationExclusions: exclusions,
+    transferProvenance: sanitized.transferProvenance ? portableClone(sanitized.transferProvenance) : null,
+    importedHistoricalRecord: Boolean(sanitized.importedHistoricalRecord),
     createdAt,
     updatedAt,
   });
@@ -752,6 +777,7 @@ export function normalizeAssetProcessing(input = {}, {
   workspaceId,
   now = new Date().toISOString(),
 } = {}) {
+  assertSupportedSourceSchema(input);
   const exclusions = [];
   const sanitized = sanitizeObject(input, "assetProcessing", exclusions) || {};
   const ownerWorkspaceId = requiredId(sanitized.workspaceId || workspaceId, "workspaceId");
@@ -789,6 +815,8 @@ export function normalizeAssetProcessing(input = {}, {
     startedAt: sanitized.startedAt ? timestamp(sanitized.startedAt) : null,
     completedAt: sanitized.completedAt ? timestamp(sanitized.completedAt) : null,
     normalizationExclusions: exclusions,
+    transferProvenance: sanitized.transferProvenance ? portableClone(sanitized.transferProvenance) : null,
+    importedHistoricalRecord: Boolean(sanitized.importedHistoricalRecord),
     createdAt,
     updatedAt: timestamp(sanitized.updatedAt || sanitized.completedAt || createdAt),
   });
@@ -809,26 +837,43 @@ export function migrateLegacyAsset(input = {}, context = {}) {
 }
 
 export function migrateLegacySourceArtifact(input = {}, context = {}) {
-  if (input?.kind === "SourceArtifact" && input?.schemaVersion === DOMAIN_SCHEMA_VERSION) {
-    return normalizeSourceArtifact(parseDomainRecord(input, "SourceArtifact"), context);
-  }
+  const source = input?.kind === "SourceArtifact" && input?.schemaVersion === DOMAIN_SCHEMA_VERSION
+    ? parseDomainRecord(input, "SourceArtifact")
+    : input;
+  const requestedKind = text(source.sourceKind || source.artifactType).toLowerCase();
+  const legacyKindMap = Object.freeze({
+    document: SOURCE_KINDS.UPLOAD,
+    image: SOURCE_KINDS.UPLOAD,
+    video: SOURCE_KINDS.UPLOAD,
+    audio: SOURCE_KINDS.UPLOAD,
+    file: SOURCE_KINDS.UPLOAD,
+    media: SOURCE_KINDS.UPLOAD,
+    webpage: SOURCE_KINDS.LINK,
+    page: SOURCE_KINDS.LINK,
+    url: SOURCE_KINDS.LINK,
+    repo: SOURCE_KINDS.REPOSITORY,
+    github: SOURCE_KINDS.REPOSITORY,
+  });
+  const legacyKind = SOURCE_KIND_VALUES.has(requestedKind)
+    ? requestedKind
+    : legacyKindMap[requestedKind] || SOURCE_KINDS.UPLOAD;
   return normalizeSourceArtifact({
-    ...input,
-    sourceKind: input.sourceKind || input.artifactType || SOURCE_KINDS.UPLOAD,
-    ingestionMethod: input.ingestionMethod || INGESTION_METHODS.BROWSER_UPLOAD,
-    originalName: input.originalName || input.name,
-    mimeType: input.mimeType || input.type,
-    byteSize: input.byteSize ?? input.size,
-    extraction: input.extraction || {
-      state: input.extracted ? PROCESSING_STATES.COMPLETE : PROCESSING_STATES.NOT_REQUESTED,
-      charCount: text(input.documentText || input.extractedText).length,
+    ...source,
+    sourceKind: legacyKind,
+    ingestionMethod: source.ingestionMethod || INGESTION_METHODS.BROWSER_UPLOAD,
+    originalName: source.originalName || source.name,
+    mimeType: source.mimeType || source.type,
+    byteSize: source.byteSize ?? source.size,
+    extraction: source.extraction || {
+      state: source.extracted ? PROCESSING_STATES.COMPLETE : PROCESSING_STATES.NOT_REQUESTED,
+      charCount: text(source.documentText || source.extractedText).length,
     },
-    usability: input.usability || {
-      state: input.extracted ? SOURCE_USABILITY_STATES.USABLE_EVIDENCE : SOURCE_USABILITY_STATES.REFERENCE_ONLY,
-      evidenceState: input.extracted ? EVIDENCE_STATES.VERIFIED : EVIDENCE_STATES.UNVERIFIED,
-      issueCodes: input.extracted ? [] : ["legacy.reference_only"],
+    usability: source.usability || {
+      state: source.extracted ? SOURCE_USABILITY_STATES.USABLE_EVIDENCE : SOURCE_USABILITY_STATES.REFERENCE_ONLY,
+      evidenceState: source.extracted ? EVIDENCE_STATES.VERIFIED : EVIDENCE_STATES.UNVERIFIED,
+      issueCodes: source.extracted ? [] : ["legacy.reference_only"],
     },
-    userMetadata: input.userMetadata || { description: input.description },
+    userMetadata: source.userMetadata || { description: source.description },
   }, context);
 }
 
@@ -866,7 +911,7 @@ export function createUploadSourceBundle({
     updatedAt: now,
   }, { workspaceId, projectId, campaignId, now });
   const textValue = text(extractedText);
-  const textHash = textValue ? `sha256:${fnv1a64(textValue).padEnd(64, "0")}` : null;
+  const textFingerprint = textValue ? `sftext1-${fnv1a64(textValue)}` : null;
   const sourceArtifact = normalizeSourceArtifact({
     sourceArtifactId,
     workspaceId,
@@ -885,7 +930,8 @@ export function createUploadSourceBundle({
     extraction: {
       state: textValue ? PROCESSING_STATES.COMPLETE
         : extractionFailed ? PROCESSING_STATES.FAILED : PROCESSING_STATES.NOT_REQUESTED,
-      textHash,
+      textHash: file.textHash || null,
+      textFingerprint,
       charCount: textValue.length,
       truncated: Boolean(file.truncated),
       processor: textValue ? { name: "browser-text-reader", version: "1" } : null,
@@ -1014,8 +1060,20 @@ export function validateSourceGraph({
     }
     for (const parentId of asset.parentAssetIds) {
       const parent = assetsById.get(parentId);
-      if (parent && parent.workspaceId !== asset.workspaceId) {
+      if (!parent) {
+        throw new SourceContractError("missing_asset_reference", "Derived asset references a missing parent asset.", { assetId: asset.assetId, parentId });
+      }
+      if (parent.workspaceId !== asset.workspaceId) {
         throw new SourceContractError("cross_workspace_reference", "Derived assets cannot reference another workspace.", { assetId: asset.assetId, parentId });
+      }
+    }
+    for (const derivedId of asset.derivedAssetIds) {
+      const derived = assetsById.get(derivedId);
+      if (!derived) {
+        throw new SourceContractError("missing_asset_reference", "Asset references a missing derived asset.", { assetId: asset.assetId, derivedId });
+      }
+      if (derived.workspaceId !== asset.workspaceId) {
+        throw new SourceContractError("cross_workspace_reference", "Asset derivation links cannot cross workspaces.", { assetId: asset.assetId, derivedId });
       }
     }
   }
@@ -1033,6 +1091,24 @@ export function validateSourceGraph({
         throw new SourceContractError("cross_workspace_reference", "Source artifact and asset must share a workspace.", { sourceArtifactId: artifact.sourceArtifactId, assetId });
       }
     }
+    for (const parentId of artifact.parentSourceArtifactIds) {
+      const parent = artifactsById.get(parentId);
+      if (!parent) {
+        throw new SourceContractError("missing_source_artifact", "Source artifact references a missing parent artifact.", { sourceArtifactId: artifact.sourceArtifactId, parentId });
+      }
+      if (parent.workspaceId !== artifact.workspaceId) {
+        throw new SourceContractError("cross_workspace_reference", "Source provenance cannot cross workspaces.", { sourceArtifactId: artifact.sourceArtifactId, parentId });
+      }
+    }
+    for (const derivedId of artifact.derivedSourceArtifactIds) {
+      const derived = artifactsById.get(derivedId);
+      if (!derived) {
+        throw new SourceContractError("missing_source_artifact", "Source artifact references a missing derived artifact.", { sourceArtifactId: artifact.sourceArtifactId, derivedId });
+      }
+      if (derived.workspaceId !== artifact.workspaceId) {
+        throw new SourceContractError("cross_workspace_reference", "Source derivation links cannot cross workspaces.", { sourceArtifactId: artifact.sourceArtifactId, derivedId });
+      }
+    }
   }
   for (const record of normalizedProcessing) {
     const artifact = artifactsById.get(record.sourceArtifactId);
@@ -1045,6 +1121,15 @@ export function validateSourceGraph({
       if (!asset) throw new SourceContractError("missing_asset_reference", "Processing record references a missing asset.", { processingId: record.processingId, assetId });
       if (asset.workspaceId !== record.workspaceId) {
         throw new SourceContractError("cross_workspace_reference", "Processing record cannot reference another workspace.", { processingId: record.processingId, assetId });
+      }
+    }
+    for (const artifactId of record.outputSourceArtifactIds) {
+      const output = artifactsById.get(artifactId);
+      if (!output) {
+        throw new SourceContractError("missing_source_artifact", "Processing record references a missing output source artifact.", { processingId: record.processingId, artifactId });
+      }
+      if (output.workspaceId !== record.workspaceId) {
+        throw new SourceContractError("cross_workspace_reference", "Processing output cannot cross workspaces.", { processingId: record.processingId, artifactId });
       }
     }
   }

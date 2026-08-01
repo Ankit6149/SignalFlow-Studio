@@ -73,6 +73,20 @@ See [docs/CAMPAIGN_EDITING_AND_VERSIONING.md](docs/CAMPAIGN_EDITING_AND_VERSIONI
 
 Markdown and JSON exports are projected from the same canonical Campaign snapshot. They include campaign/source/generation IDs, provider/model, snapshot timestamp, editor revision, warnings, approval/edited/quality states, and authoritative current drafts. Identical campaign state produces deterministic output.
 
+## Canonical source and asset records
+
+SignalFlow now uses one versioned source graph across browser uploads, generation requests, MCP, campaign freshness, persistence, and portable transfer:
+
+- `Asset` records stored original/derived object metadata, safe storage identity, privacy, provenance, lifecycle, retention, and deletion state;
+- `SourceArtifact` records source identity/version, ingestion method, usability/evidence state, extraction state, provenance, and Asset relationships;
+- `AssetProcessing` records processor identity/version and input/output lineage without claiming a processor completed when it did not.
+
+Browser uploads create canonical records immediately after reading the browser File. Campaign source fingerprints use stable SourceArtifact version references rather than editable filenames/descriptions. API and MCP validate one workspace-scoped graph and return safe issue codes on invalid references.
+
+Remote URLs remain reference-only unless a hardened fetch boundary verifies them; #127 owns SSRF/redirect/timeout/MIME/size enforcement. The complete diagnostics workspace, remote revalidation, processing adapters, and retention/deletion jobs remain separate open issues.
+
+See [docs/SOURCE_ASSET_CONTRACT.md](docs/SOURCE_ASSET_CONTRACT.md).
+
 ## Portable transfer and recovery
 
 The Library includes an explicit portable ownership workflow:
@@ -227,6 +241,7 @@ Output Directory: .next
 - `frontend/lib/studio/campaignState.mjs` — edit-safe reducer and editor version state
 - `frontend/lib/studio/campaignStatus.mjs` — campaign/channel/action selectors
 - `frontend/lib/studio/regenerationPolicy.mjs` — explicit regeneration policies
+- `frontend/lib/domain/sourceArtifacts.mjs` — canonical Asset, SourceArtifact, AssetProcessing, migration, graph validation, and compatibility projections
 - `frontend/lib/transfer/` — portable archive, validation, conflict, resume, provenance, and rollback rules
 - `frontend/components/PortableTransferPanel.js` — Library transfer preparation, preview, import, and recovery UI
 - `frontend/lib/export/campaignExport.mjs` — authoritative deterministic export projector

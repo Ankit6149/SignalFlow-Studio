@@ -1,6 +1,7 @@
 import { createBrowserCampaignRepository } from "../infrastructure/adapters.mjs";
 import {
   createBrowserApprovalRepository,
+  createBrowserAssetProcessingRepository,
   createBrowserAssetRepository,
   createBrowserBlobStorage,
   createBrowserExportRepository,
@@ -20,6 +21,7 @@ export function createBrowserTransferApplication({
     campaignRepository: createBrowserCampaignRepository({ getStorage, key: campaignKey }),
     assetRepository: createBrowserAssetRepository({ getStorage }),
     sourceArtifactRepository: createBrowserSourceArtifactRepository({ getStorage }),
+    assetProcessingRepository: createBrowserAssetProcessingRepository({ getStorage }),
     approvalRepository: createBrowserApprovalRepository({ getStorage }),
     exportRepository: createBrowserExportRepository({ getStorage }),
     blobStorage: createBrowserBlobStorage({ getStorage }),

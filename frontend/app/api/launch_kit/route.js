@@ -4,6 +4,10 @@ import {
   normalizeDocumentText,
   normalizeTextInput,
 } from "../../../lib/package/inputNormalization.mjs";
+import {
+  projectGenerationMediaItem,
+  validateSourceGraph,
+} from "../../../lib/domain/sourceArtifacts.mjs";
 import { ingestGitHubRepo } from "../../../lib/context/github";
 import { ingestLocalRepo } from "../../../lib/context/localRepo";
 import { fetchUrlContent } from "../../../lib/context/linkFetcher";
@@ -109,7 +113,49 @@ export async function POST(request) {
     const warnings = [];
     let repoContext = null;
     const linksContext = [];
-    const mediaItems = Array.isArray(body.media_items) ? [...body.media_items] : [];
+    let canonicalSources = { assets: [], sourceArtifacts: [], processingRecords: [] };
+    const suppliedAssets = Array.isArray(body.assets) ? body.assets : [];
+    const suppliedArtifacts = Array.isArray(body.source_artifacts || body.sourceArtifacts)
+      ? (body.source_artifacts || body.sourceArtifacts)
+      : [];
+    const suppliedProcessing = Array.isArray(body.processing_records || body.processingRecords)
+      ? (body.processing_records || body.processingRecords)
+      : [];
+    if (suppliedAssets.length || suppliedArtifacts.length || suppliedProcessing.length) {
+      try {
+        const declaredWorkspaces = Array.from(new Set([
+          ...suppliedAssets.map((item) => normalizeTextInput(item?.workspaceId)),
+          ...suppliedArtifacts.map((item) => normalizeTextInput(item?.workspaceId)),
+          ...suppliedProcessing.map((item) => normalizeTextInput(item?.workspaceId)),
+        ].filter(Boolean)));
+        if (declaredWorkspaces.length > 1) {
+          throw Object.assign(new Error("Source records from different workspaces cannot be mixed in one generation request."), {
+            code: "cross_workspace_reference",
+          });
+        }
+        canonicalSources = validateSourceGraph({
+          workspaceId: declaredWorkspaces[0] || "request-workspace",
+          assets: suppliedAssets,
+          sourceArtifacts: suppliedArtifacts,
+          processingRecords: suppliedProcessing,
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "Source contract validation failed.",
+          sourceIssue: {
+            code: error.code || "invalid_source_contract",
+            message: error.message,
+          },
+        }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+    const mediaItems = canonicalSources.sourceArtifacts.length
+      ? canonicalSources.sourceArtifacts.map((artifact) => projectGenerationMediaItem(artifact))
+      : Array.isArray(body.media_items) ? [...body.media_items] : [];
     const githubToken = normalizeTextInput(body.github_token) || normalizeTextInput(body.githubToken);
 
     if (repoUrl) {

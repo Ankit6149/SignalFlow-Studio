@@ -16,6 +16,7 @@ const samples = {
   SourceSnapshot: { sourceSnapshotId: "source-1", fingerprint: "sf1" },
   SourceArtifact: { sourceArtifactId: "artifact-1", artifactType: "note" },
   Asset: { assetId: "asset-1", assetType: "image" },
+  AssetProcessing: { processingId: "processing-1", sourceArtifactId: "artifact-1", status: "queued" },
   GenerationJob: { generationJobId: "job-1", status: "queued" },
   GenerationRun: { generationRunId: "run-1", provider: "gemini" },
   ChannelDraft: { draftId: "draft-1", channel: "linkedin", current: { content: "Draft" } },

@@ -51,6 +51,11 @@ Clients must still validate the full versioned schema; this excerpt documents hi
 | --- | --- | --- | --- | --- |
 | Versioned browser-local Campaign save | Available | Available | Available | Available |
 | Legacy browser-library migration | Available | Available | Available | Available |
+| Canonical Asset / SourceArtifact / AssetProcessing contract | Available | Available | Available | Available |
+| Hardened remote URL evidence fetch | Not implemented | Not implemented | Not implemented | Not implemented |
+| Complete source-health diagnostics workspace | Not implemented | Not implemented | Not implemented | Not implemented |
+| Remote evidence revalidation/version adoption | Not implemented | Not implemented | Not implemented | Not implemented |
+| Retention/deletion background enforcement | Not implemented | Not implemented | Not implemented | Not implemented |
 | Portable `.signalflow.json` prepare/download | Available | Available | Available | Available |
 | Validated browser import with Skip/Copy/Replace and rollback reports | Available | Available | Available | Available |
 | Production hosted workspace transfer destination | Not implemented | Not implemented | Not implemented | Not implemented |
@@ -80,6 +85,12 @@ Clients must still validate the full versioned schema; this excerpt documents hi
 | Billing quotas | Not implemented | Not implemented | Not implemented | Not implemented |
 
 The ZIP compatibility route is not advertised as a complete end-user capability. It now consumes the canonical Campaign export projection so it cannot diverge from authoritative drafts while the product surface, packaging UX, and release verification remain pending.
+
+## Canonical source capability
+
+The capability document reports `sources.canonicalContract` with schema version `1`. Browser file uploads and processing lineage records are available as contracts. Public links fail closed as a capability until #127 provides hardened SSRF/redirect/timeout/MIME/size enforcement. Repository planning, the source-health workspace, remote evidence versions, and retention/deletion enforcement remain separately unavailable.
+
+A canonical source record does not prove extraction, OCR, transcription, visual analysis, remote verification, or deletion completed. Those states are explicit per artifact/processing record and must match the actual adapter result.
 
 ## Portable transfer capability
 

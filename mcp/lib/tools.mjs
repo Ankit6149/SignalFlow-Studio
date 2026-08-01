@@ -1,4 +1,8 @@
 import { parseCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
+import {
+  projectGenerationMediaItem,
+  validateSourceGraph,
+} from "../../frontend/lib/domain/sourceArtifacts.mjs";
 import { signalFlowRequest } from "./httpClient.mjs";
 
 const CHANNELS = [
@@ -78,6 +82,21 @@ export const TOOL_DEFINITIONS = [
         documentText: {
           type: "array",
           items: { type: "string" },
+        },
+        assets: {
+          description: "Canonical SignalFlow Asset records. Runtime file objects, credentials, temporary URLs, and local paths are rejected or excluded by the shared contract.",
+          type: "array",
+          items: { type: "object", additionalProperties: true },
+        },
+        sourceArtifacts: {
+          description: "Canonical SignalFlow SourceArtifact records linked to the supplied assets.",
+          type: "array",
+          items: { type: "object", additionalProperties: true },
+        },
+        processingRecords: {
+          description: "Canonical AssetProcessing records for derived outputs and extraction/transformation lineage.",
+          type: "array",
+          items: { type: "object", additionalProperties: true },
         },
       },
       additionalProperties: false,
@@ -172,6 +191,25 @@ export async function executeTool(name, args = {}, options = {}) {
     const notes = requireString(args.notes, "notes");
     const provider = requireProvider(args.provider);
     const channels = requireChannels(args.channels);
+    const rawAssets = Array.isArray(args.assets) ? args.assets : [];
+    const rawArtifacts = Array.isArray(args.sourceArtifacts) ? args.sourceArtifacts : [];
+    const rawProcessing = Array.isArray(args.processingRecords) ? args.processingRecords : [];
+    const declaredWorkspaces = Array.from(new Set([
+      ...rawAssets.map((item) => String(item?.workspaceId || "").trim()),
+      ...rawArtifacts.map((item) => String(item?.workspaceId || "").trim()),
+      ...rawProcessing.map((item) => String(item?.workspaceId || "").trim()),
+    ].filter(Boolean)));
+    if (declaredWorkspaces.length > 1) {
+      throw new Error("Source records from different workspaces cannot be mixed in one MCP generation request.");
+    }
+    const canonicalSources = rawAssets.length || rawArtifacts.length || rawProcessing.length
+      ? validateSourceGraph({
+        workspaceId: declaredWorkspaces[0] || "mcp-workspace",
+        assets: rawAssets,
+        sourceArtifacts: rawArtifacts,
+        processingRecords: rawProcessing,
+      })
+      : { assets: [], sourceArtifacts: [], processingRecords: [] };
 
     const data = await signalFlowRequest("/api/launch_kit", {
       ...options,
@@ -191,7 +229,10 @@ export async function executeTool(name, args = {}, options = {}) {
         providerModelName: String(args.modelName || "").trim(),
         providerBaseUrl: String(args.baseUrl || "").trim(),
         document_text: Array.isArray(args.documentText) ? args.documentText : [],
-        media_items: [],
+        assets: canonicalSources.assets,
+        source_artifacts: canonicalSources.sourceArtifacts,
+        processing_records: canonicalSources.processingRecords,
+        media_items: canonicalSources.sourceArtifacts.map((artifact) => projectGenerationMediaItem(artifact)),
       },
     });
 

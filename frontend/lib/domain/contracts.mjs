@@ -7,6 +7,7 @@ export const DOMAIN_KINDS = Object.freeze({
   SOURCE_SNAPSHOT: "SourceSnapshot",
   SOURCE_ARTIFACT: "SourceArtifact",
   ASSET: "Asset",
+  ASSET_PROCESSING: "AssetProcessing",
   GENERATION_JOB: "GenerationJob",
   GENERATION_RUN: "GenerationRun",
   CHANNEL_DRAFT: "ChannelDraft",
@@ -27,6 +28,7 @@ export const DOMAIN_CONTRACTS = Object.freeze({
   SourceSnapshot: { idField: "sourceSnapshotId", owner: "campaign", required: ["sourceSnapshotId", "fingerprint"] },
   SourceArtifact: { idField: "sourceArtifactId", owner: "campaign", required: ["sourceArtifactId", "artifactType"] },
   Asset: { idField: "assetId", owner: "workspace", required: ["assetId", "assetType"] },
+  AssetProcessing: { idField: "processingId", owner: "workspace", required: ["processingId", "sourceArtifactId", "status"] },
   GenerationJob: { idField: "generationJobId", owner: "campaign", required: ["generationJobId", "status"] },
   GenerationRun: { idField: "generationRunId", owner: "campaign", required: ["generationRunId", "provider"] },
   ChannelDraft: { idField: "draftId", owner: "campaign", required: ["draftId", "channel", "current"] },
@@ -40,7 +42,8 @@ export const DOMAIN_CONTRACTS = Object.freeze({
   TransferReport: { idField: "transferReportId", owner: "workspace", required: ["transferReportId", "archiveId", "status"] },
 });
 
-const FORBIDDEN_FIELD = /(api[_-]?key|access[_-]?token|refresh[_-]?token|oauth[_-]?token|client[_-]?secret|password|authorization|cookie|database|dbclient|request|response)/i;
+const FORBIDDEN_FIELD = /(api[_-]?key|access[_-]?token|refresh[_-]?token|oauth[_-]?token|client[_-]?secret|password|authorization|cookie|database|dbclient)/i;
+const FORBIDDEN_FRAMEWORK_FIELD = /^(request|response|httpRequest|httpResponse|req|res)$/i;
 
 function isPlainObject(value) {
   if (!value || typeof value !== "object") return false;
@@ -74,7 +77,7 @@ function clonePortable(value, path = "domain", ancestors = new WeakSet()) {
 
     const result = {};
     for (const [key, item] of Object.entries(value)) {
-      if (FORBIDDEN_FIELD.test(key)) {
+      if (FORBIDDEN_FIELD.test(key) || FORBIDDEN_FRAMEWORK_FIELD.test(key)) {
         throw new TypeError(`${path}.${key} is forbidden in domain serialization.`);
       }
       const cloned = clonePortable(item, `${path}.${key}`, ancestors);

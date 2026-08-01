@@ -19,7 +19,18 @@ jobs:
           ref: fix/135-137-rendered-responsive-ui
           fetch-depth: 0
       - name: Apply guarded rendered UI correction
-        run: python scripts/apply_rendered_ui_fix.py
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/apply_rendered_ui_fix.py')
+          source = path.read_text(encoding='utf-8')
+          old = '("  line-height: 1.75;", "  line-height: 1.68;", "first landing lead line height"),'
+          new = '("  line-height: 1.75;", "  line-height: 1.68;", "landing paragraph line height", 2),'
+          if source.count(old) != 1:
+              raise SystemExit('Could not repair the guarded line-height count')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+          PY
+          python scripts/apply_rendered_ui_fix.py
       - name: Verify permanent frontend contracts
         working-directory: frontend
         run: |

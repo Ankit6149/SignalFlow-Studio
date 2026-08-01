@@ -237,11 +237,9 @@ export default function ContentPackageCreationFlow({
     }
 
     try {
-      const token = typeof window !== "undefined" ? window.localStorage.getItem("signalflow_owner_token") || "" : "";
-      const authHeaders = token ? { "Authorization": `Bearer ${token}` } : {};
       const resp = await fetch("/api/launch_kit", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       const data = await resp.json();

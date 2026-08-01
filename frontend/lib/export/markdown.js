@@ -169,12 +169,6 @@ export function buildMarkdown({ projectName, package: pkg, prompt = "" }) {
     md += `\n`;
   }
 
-  if (Array.isArray(media.screenshotPlan) && media.screenshotPlan.length) {
-    md += `### Screenshot Plan\n`;
-    media.screenshotPlan.forEach(sp => { md += `- [ ] ${sp}\n`; });
-    md += `\n`;
-  }
-
   if (Array.isArray(media.videoScript) && media.videoScript.length) {
     md += `### Reels/Shorts Script Plan\n`;
     media.videoScript.forEach(vs => { md += `- ${vs}\n`; });

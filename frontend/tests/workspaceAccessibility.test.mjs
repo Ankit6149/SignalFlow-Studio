@@ -9,7 +9,7 @@ import {
 } from "../lib/accessibility/workspaceAccessibility.mjs";
 
 const controllerUrl = new URL("../components/WorkspaceAccessibility.js", import.meta.url);
-const runtimeUrl = new URL("../components/SessionBridge.js", import.meta.url);
+const runtimeUrl = new URL("../app/layout.js", import.meta.url);
 const pageUrl = new URL("../app/page.js", import.meta.url);
 
 test("errors announce assertively while other feedback remains polite and atomic", () => {
@@ -66,8 +66,9 @@ test("the mounted controller owns focus, live feedback, upload description, and 
     readFile(pageUrl, "utf8"),
   ]);
 
-  assert.match(runtime, /import WorkspaceAccessibility from "\.\/WorkspaceAccessibility"/);
-  assert.match(runtime, /return <WorkspaceAccessibility \/>/);
+  assert.match(runtime, /import WorkspaceAccessibility from "\.\.\/components\/WorkspaceAccessibility"/);
+  assert.match(runtime, /<WorkspaceAccessibility \/>/);
+  assert.doesNotMatch(runtime, /SessionBridge/);
   assert.match(controller, /new MutationObserver\(scheduleScan\)/);
   assert.match(controller, /main\.focus\(\{ preventScroll: true \}\)/);
   assert.match(controller, /main\.tabIndex = -1/);

@@ -21,9 +21,12 @@ test("the landing route has one component owner and preserves the existing Brand
   assert.match(page, /<LandingPage onEnter=\{enterStudio\} brand=\{<BrandMark \/>\} \/>/);
   assert.match(page, /function BrandMark\(\{ compact = false, dark = false \}\)/);
   assert.match(page, /className=\{`brand-mark/);
+  assert.match(globals, /\.brand-mark__glyph/);
+  assert.match(globals, /\.brand-mark__copy/);
   assert.match(landing, /export default function LandingPage\(\{ onEnter, brand \}\)/);
   assert.match(landing, /\{brand\}/);
-  assert.doesNotMatch(landing, /function SignalFlowLogo|logoMark|logoCopy/);
+  assert.doesNotMatch(landing, /function SignalFlowLogo|logoMark|logoCopy|brand-mark__glyph/);
+  assert.doesNotMatch(styles, /logoMark|logoCopy|brand-mark/);
 });
 
 test("the landing page exposes the complete public product narrative", () => {

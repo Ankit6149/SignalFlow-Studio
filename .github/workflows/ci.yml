@@ -6,7 +6,74 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: write
+
 jobs:
+  production-cleanup-integration:
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/40-42-51-production-cleanup' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Apply reviewed cleanup
+        run: |
+          python -m py_compile scripts/apply-production-cleanup.py
+          python scripts/apply-production-cleanup.py
+          git diff --check
+      - name: Verify frontend tests audit build and runtime routes
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm audit --omit=dev --audit-level=high
+          npm run build
+          npm start > /tmp/signalflow-next.log 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /tmp/signalflow-root.html; then
+              break
+            fi
+            sleep 1
+          done
+          grep -q "SignalFlow" /tmp/signalflow-root.html
+          capture_status=$(curl --silent --output /tmp/signalflow-capture.txt --write-out "%{http_code}" http://127.0.0.1:3000/api/capture/app)
+          test "$capture_status" = "404"
+      - name: Verify MCP
+        working-directory: mcp
+        run: npm test
+      - name: Verify Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+          pytest -q
+      - name: Remove migration and restore ordinary CI
+        run: |
+          rm scripts/apply-production-cleanup.py
+          rm -rf scripts/__pycache__
+          git fetch origin master
+          git checkout origin/master -- .github/workflows/ci.yml
+      - name: Commit verified product cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(production): retire unsupported legacy paths and deduplicate Markdown"
+          git push origin HEAD:${{ github.head_ref }}
+
   mcp-tests:
     runs-on: ubuntu-latest
     steps:

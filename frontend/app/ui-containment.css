@@ -1,10 +1,9 @@
 /*
- * Global viewport and landing-page containment.
+ * Global viewport containment.
  *
- * This layer loads before the authoritative Studio styles. It owns root
- * overflow, the page scrollbar, and bounded public-site spacing only. Product
- * components and workspace layout must remain in app-workspace.css or
- * studio-product.css so containment never patches the Studio after the fact.
+ * This layer loads before the authoritative product styles and owns only root
+ * overflow and scrollbar behavior. Landing, legal, and workspace components
+ * must own their layout in their scoped or authoritative style layer.
  */
 
 :root {
@@ -54,53 +53,8 @@ body::-webkit-scrollbar-thumb:hover {
   background: rgba(155, 130, 72, 0.92);
 }
 
-/* Public landing page: full-bleed backgrounds with a bounded content column. */
-.landing-shell {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.landing-nav,
-.landing-hero {
-  width: auto;
-  max-width: none;
-  margin-right: var(--sf-page-gutter);
-  margin-left: var(--sf-page-gutter);
-}
-
-.landing-editorial,
-.channel-showcase,
-.landing-faq,
-.landing-cta,
-.site-footer {
-  padding-right: var(--sf-page-gutter);
-  padding-left: var(--sf-page-gutter);
-}
-
-.landing-hero,
-.landing-hero > *,
-.channel-showcase,
-.channel-showcase > *,
-.landing-faq,
-.landing-faq > *,
-.landing-editorial,
-.editorial-grid,
-.site-footer,
-.site-footer > * {
-  min-width: 0;
-}
-
-.landing-hero__copy h1 {
-  max-width: 12ch;
-}
-
 @media (max-width: 52rem) {
   :root {
     --sf-page-gutter: clamp(1rem, 5vw, 2rem);
-  }
-
-  .landing-hero__copy h1 {
-    max-width: 14ch;
   }
 }

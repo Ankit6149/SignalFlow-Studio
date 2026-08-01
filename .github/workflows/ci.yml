@@ -29,15 +29,21 @@ jobs:
                   '("  line-height: 1.75;", "  line-height: 1.68;", "landing paragraph line height", 2),',
               '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer link size"),':
                   '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer text size", 2),',
-              'assert.match(page, /stage === \\"source\\" \\? \\"is-step-hidden\\"/);':
-                  'assert.match(page, /stage !== \\"source\\" \\? \\"is-step-hidden\\"/);',
-              'assert.match(page, /stage === \\"destinations\\" \\? \\"is-step-hidden\\"/);':
-                  'assert.match(page, /stage !== \\"destinations\\" \\? \\"is-step-hidden\\"/);',
           }
           for old, new in repairs.items():
               if source.count(old) != 1:
                   raise SystemExit(f'Could not repair guarded tuple: {old}')
               source = source.replace(old, new)
+
+          marker = "TEST_CONTENT = '''"
+          start = source.index(marker) + len(marker)
+          end = source.index("'''", start)
+          test_block = source[start:end]
+          if test_block.count('stage ===') != 2:
+              raise SystemExit('Expected exactly two reversed stage-visibility assertions')
+          test_block = test_block.replace('stage ===', 'stage !==')
+          source = source[:start] + test_block + source[end:]
+
           path.write_text(source, encoding='utf-8')
           PY
           python scripts/apply_rendered_ui_fix.py

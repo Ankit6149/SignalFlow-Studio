@@ -1,12 +1,12 @@
-failed_subtests=2
+failed_subtests=1
 
 ================================================================================
-  type: 'test'
-  ...
+#   "updatedAt": "2026-07-29T10:00:00.000Z"
+# }
 # Subtest: local to store-backed hosted to fresh local round-trip preserves content history provenance and blobs
 not ok 108 - local to store-backed hosted to fresh local round-trip preserves content history provenance and blobs
   ---
-  duration_ms: 99.76158
+  duration_ms: 80.733537
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:172:1'
   failureType: 'testCodeFailure'
@@ -22,85 +22,35 @@ not ok 108 - local to store-backed hosted to fresh local round-trip preserves co
   expected: 'asset-transfer-1'
   operator: 'strictEqual'
   stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:198:10)
+    TestContext.<anonymous> (file:///home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:199:10)
     async Test.run (node:internal/test_runner/test:1054:7)
     async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
   ...
 # Subtest: re-import is idempotent with skip and creates independent IDs with copy
 ok 109 - re-import is idempotent with skip and creates independent IDs with copy
   ---
-  duration_ms: 87.922479
+  duration_ms: 93.391931
   type: 'test'
   ...
 # Subtest: replace conflict restores the archive version without relabeling historical timestamps
 ok 110 - replace conflict restores the archive version without relabeling historical timestamps
   ---
-  duration_ms: 40.728548
+  duration_ms: 34.489331
   type: 'test'
   ...
 # Subtest: non-atomic partial imports can resume without duplicating completed records
 ok 111 - non-atomic partial imports can resume without duplicating completed records
   ---
-  duration_ms: 15.241343
+  duration_ms: 19.939705
   type: 'test'
   ...
 # Subtest: atomic import failure rolls back every prior record and manual rollback reverses a completed import
 ok 112 - atomic import failure rolls back every prior record and manual rollback reverses a completed import
   ---
-  duration_ms: 30.784465
+  duration_ms: 34.113582
   type: 'test'
-
-================================================================================
-  type: 'test'
-  ...
-# Subtest: portable export excludes records whose privacy policy forbids export
-not ok 174 - portable export excludes records whose privacy policy forbids export
-  ---
-  duration_ms: 45.764136
-  type: 'test'
-  location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/sourceArtifactProductIntegration.test.mjs:101:1'
-  failureType: 'testCodeFailure'
-  error: |-
-    The expression evaluated to a falsy value:
-    
-      assert.ok(archive.manifest.exclusions.some((item) => /processing-private/.test(item.path)))
-    
-  code: 'ERR_ASSERTION'
-  name: 'AssertionError'
-  expected: true
-  actual: false
-  operator: '=='
-  stack: |-
-    TestContext.<anonymous> (file:///home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/sourceArtifactProductIntegration.test.mjs:170:10)
-    async Test.run (node:internal/test_runner/test:1054:7)
-    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
-  ...
-# Subtest: capability contract declares canonical records and fails closed on unfinished source capabilities
-ok 175 - capability contract declares canonical records and fails closed on unfinished source capabilities
-  ---
-  duration_ms: 2.671395
-  type: 'test'
-  ...
-# Subtest: Studio source list exposes canonical usability and evidence state without claiming full diagnostics
-ok 176 - Studio source list exposes canonical usability and evidence state without claiming full diagnostics
-  ---
-  duration_ms: 1.312625
-  type: 'test'
-  ...
-# Subtest: source architecture documentation and public AI context are consistent
-ok 177 - source architecture documentation and public AI context are consistent
-  ---
-  duration_ms: 0.93038
-  type: 'test'
-  ...
-# Subtest: Source uses explicit desktop and mobile reading areas
-ok 178 - Source uses explicit desktop and mobile reading areas
-  ---
-  duration_ms: 10.843477
-  type: 'test'
-  ...
 
 ================================================================================
 # tests 207
-# pass 205
-# fail 2
+# pass 206
+# fail 1

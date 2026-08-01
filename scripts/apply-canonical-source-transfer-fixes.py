@@ -13,7 +13,8 @@ transfer = transfer.replace(privacy_prefilter, "", 1)
 transfer_path.write_text(transfer, encoding="utf-8")
 
 source_path = ROOT / "frontend/lib/domain/sourceArtifacts.mjs"
-source = source_path.read_text(encoding="utf-8")n
+source = source_path.read_text(encoding="utf-8")
+
 asset_ids_anchor = '''  const contentHashValue = contentHash(sanitized.contentHash || sanitized.hash || extraction.textHash);
   const ownership = {
 '''

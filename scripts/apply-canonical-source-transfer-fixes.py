@@ -10,19 +10,32 @@ privacy_prefilter = '''    processingRecords = processingRecords.filter((record)
 if transfer.count(privacy_prefilter) != 1:
     raise RuntimeError(f"processing privacy prefilter anchor count: {transfer.count(privacy_prefilter)}")
 transfer = transfer.replace(privacy_prefilter, "", 1)
-
 transfer_path.write_text(transfer, encoding="utf-8")
 
-# Temporary diagnostic: this file is removed before the verified product commit.
-test_path = ROOT / "frontend/tests/portableTransferApplication.test.mjs"
-test_content = test_path.read_text(encoding="utf-8")
-diagnostic_anchor = '''  const hostedAssets = await createStoreBackedAssetRepository({ store: hosted.store }).list();
-  assert.equal(hostedAssets[0].transferProvenance.sourceAssetId, "asset-transfer-1");
+source_path = ROOT / "frontend/lib/domain/sourceArtifacts.mjs"
+source = source_path.read_text(encoding="utf-8")n
+asset_ids_anchor = '''  const contentHashValue = contentHash(sanitized.contentHash || sanitized.hash || extraction.textHash);
+  const ownership = {
 '''
-diagnostic_replacement = '''  const hostedAssets = await createStoreBackedAssetRepository({ store: hosted.store }).list();
-  console.error("CANONICAL_ASSET_DIAGNOSTIC", JSON.stringify(hostedAssets[0], null, 2));
-  assert.equal(hostedAssets[0].transferProvenance.sourceAssetId, "asset-transfer-1");
+asset_ids_replacement = '''  const contentHashValue = contentHash(sanitized.contentHash || sanitized.hash || extraction.textHash);
+  const assetIds = uniqueTextList(sanitized.assetIds || (sanitized.assetId ? [sanitized.assetId] : []));
+  const ownership = {
 '''
-if test_content.count(diagnostic_anchor) != 1:
-    raise RuntimeError(f"asset diagnostic anchor count: {test_content.count(diagnostic_anchor)}")
-test_path.write_text(test_content.replace(diagnostic_anchor, diagnostic_replacement, 1), encoding="utf-8")
+if source.count(asset_ids_anchor) != 1:
+    raise RuntimeError(f"source asset IDs anchor count: {source.count(asset_ids_anchor)}")
+source = source.replace(asset_ids_anchor, asset_ids_replacement, 1)
+
+source_id_anchor = '''    assetIds: uniqueTextList(sanitized.assetIds || (sanitized.assetId ? [sanitized.assetId] : [])),
+    extraction,
+'''
+source_id_replacement = '''    assetIds,
+    assetId: assetIds[0] || null,
+    extraction,
+'''
+if source.count(source_id_anchor) != 1:
+    raise RuntimeError(f"source scalar asset compatibility anchor count: {source.count(source_id_anchor)}")
+source = source.replace(source_id_anchor, source_id_replacement, 1)
+source_path.write_text(source, encoding="utf-8")
+
+# This migration helper must never survive the verified product commit.
+Path(__file__).unlink()

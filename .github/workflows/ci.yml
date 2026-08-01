@@ -57,3 +57,49 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+  visual-audit:
+    if: github.head_ref == 'fix/135-137-rendered-responsive-ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend and browser audit dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+          npm install --no-save @playwright/test@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Build the production frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Start the production frontend
+        working-directory: frontend
+        run: |
+          npm run start -- -p 3000 > /tmp/signalflow-visual-audit-server.log 2>&1 &
+          echo $! > /tmp/signalflow-visual-audit-server.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/signalflow-visual-audit-server.log
+          exit 1
+      - name: Capture and assert rendered Landing and Studio layouts
+        working-directory: frontend
+        run: node ../scripts/visual-audit.mjs
+      - name: Upload rendered audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signalflow-rendered-responsive-audit
+          path: frontend/visual-audit-output
+          if-no-files-found: error
+          retention-days: 7

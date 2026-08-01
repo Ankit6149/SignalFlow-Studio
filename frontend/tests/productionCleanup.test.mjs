@@ -71,6 +71,7 @@ test("unsupported Playwright capture is absent from the production graph", async
   assert.equal(packageLock.packages?.[""]?.dependencies?.playwright, undefined);
   assert.equal(packageLock.packages?.[""]?.devDependencies?.playwright, undefined);
   assert.doesNotMatch(activeSource, /captureAppScreenshot|\/api\/capture\/app|from\s+["']playwright["']/);
+  assert.doesNotMatch(activeSource, /Remote Playwright Screenshot|Screenshot capture skipped/i);
   assert.match(page, /async function handleFiles\(event\)/);
   assert.match(legacyFlow, /useRecorder/);
   assert.match(legacyFlow, /fetch\("\/api\/launch_kit"/);

@@ -89,6 +89,31 @@ BRAND_MARK = '''function BrandMark({ compact = false, dark = false }) {
 }
 '''
 
+TABLET_LANDING_RULES = '''  .landing-hero { grid-template-columns: 1fr; padding-top: 70px; }
+  .landing-hero__visual { width: min(760px, 100%); margin: 0 auto; }
+'''
+
+MOBILE_LANDING_RULES = '''  .landing-nav, .landing-hero { width: min(100% - 34px, 1460px); }
+  .landing-nav { height: 76px; }
+  .landing-nav__actions > a { display: none; }
+  .landing-hero { padding: 52px 0 66px; gap: 18px; }
+  .landing-hero__copy h1 { font-size: clamp(48px, 14vw, 72px); }
+  .landing-hero__lede { font-size: 15px; }
+  .landing-hero__actions { align-items: flex-start; flex-direction: column; }
+  .landing-proof { gap: 10px; }
+  .landing-proof span { font-size: 10px; }
+  .landing-hero__visual { height: 470px; }
+  .visual-photo { width: 66%; height: 58%; }
+  .floating-card--main { width: 76%; min-height: 260px; padding: 18px; }
+  .floating-card__headline { margin-top: 34px; font-size: 25px; }
+  .floating-card--metric { right: 1%; }
+  .landing-strip { overflow-x: auto; justify-content: flex-start; }
+  .landing-strip span { flex: 0 0 auto; }
+  .landing-editorial { padding: 88px 22px; }
+  .editorial-grid { grid-template-columns: 1fr; }
+  .landing-cta { padding: 76px 22px; align-items: flex-start; flex-direction: column; }
+'''
+
 
 def replace_once(value: str, old: str, new: str, label: str) -> str:
     count = value.count(old)
@@ -157,8 +182,33 @@ def patch_globals() -> None:
         ".app-shell {",
         "legacy global landing styles",
     )
-    if ".landing-shell" in source or ".landing-hero" in source:
-        raise RuntimeError("Legacy landing selectors remain in globals.css")
+    source = replace_once(
+        source,
+        TABLET_LANDING_RULES,
+        "",
+        "tablet landing media rules",
+    )
+    source = replace_once(
+        source,
+        MOBILE_LANDING_RULES,
+        "",
+        "mobile landing media rules",
+    )
+    retired_tokens = (
+        ".landing-shell",
+        ".landing-nav",
+        ".landing-hero",
+        ".landing-proof",
+        ".landing-strip",
+        ".landing-editorial",
+        ".landing-cta",
+        ".visual-photo",
+        ".floating-card",
+        ".editorial-grid",
+    )
+    remaining = [token for token in retired_tokens if token in source]
+    if remaining:
+        raise RuntimeError(f"Legacy landing selectors remain in globals.css: {remaining}")
     GLOBALS.write_text(source, encoding="utf-8")
 
 

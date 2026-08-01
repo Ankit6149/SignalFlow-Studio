@@ -24,11 +24,17 @@ jobs:
           from pathlib import Path
           path = Path('scripts/apply_rendered_ui_fix.py')
           source = path.read_text(encoding='utf-8')
-          old = '("  line-height: 1.75;", "  line-height: 1.68;", "first landing lead line height"),'
-          new = '("  line-height: 1.75;", "  line-height: 1.68;", "landing paragraph line height", 2),'
-          if source.count(old) != 1:
-              raise SystemExit('Could not repair the guarded line-height count')
-          path.write_text(source.replace(old, new), encoding='utf-8')
+          repairs = {
+              '("  line-height: 1.75;", "  line-height: 1.68;", "first landing lead line height"),':
+                  '("  line-height: 1.75;", "  line-height: 1.68;", "landing paragraph line height", 2),',
+              '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer link size"),':
+                  '("  font-size: 0.68rem;", "  font-size: 0.75rem;", "footer text size", 2),',
+          }
+          for old, new in repairs.items():
+              if source.count(old) != 1:
+                  raise SystemExit(f'Could not repair guarded tuple: {old}')
+              source = source.replace(old, new)
+          path.write_text(source, encoding='utf-8')
           PY
           python scripts/apply_rendered_ui_fix.py
       - name: Verify permanent frontend contracts

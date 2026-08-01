@@ -6,7 +6,7 @@ failed_subtests=2
 # Subtest: local to store-backed hosted to fresh local round-trip preserves content history provenance and blobs
 not ok 108 - local to store-backed hosted to fresh local round-trip preserves content history provenance and blobs
   ---
-  duration_ms: 46.055789
+  duration_ms: 97.958799
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/portableTransferApplication.test.mjs:172:1'
   failureType: 'testCodeFailure'
@@ -29,25 +29,25 @@ not ok 108 - local to store-backed hosted to fresh local round-trip preserves co
 # Subtest: re-import is idempotent with skip and creates independent IDs with copy
 ok 109 - re-import is idempotent with skip and creates independent IDs with copy
   ---
-  duration_ms: 50.813124
+  duration_ms: 83.832179
   type: 'test'
   ...
 # Subtest: replace conflict restores the archive version without relabeling historical timestamps
 ok 110 - replace conflict restores the archive version without relabeling historical timestamps
   ---
-  duration_ms: 20.737659
+  duration_ms: 30.982115
   type: 'test'
   ...
 # Subtest: non-atomic partial imports can resume without duplicating completed records
 ok 111 - non-atomic partial imports can resume without duplicating completed records
   ---
-  duration_ms: 21.559216
+  duration_ms: 22.144028
   type: 'test'
   ...
 # Subtest: atomic import failure rolls back every prior record and manual rollback reverses a completed import
 ok 112 - atomic import failure rolls back every prior record and manual rollback reverses a completed import
   ---
-  duration_ms: 27.671978
+  duration_ms: 37.195049
   type: 'test'
 
 ================================================================================
@@ -56,7 +56,7 @@ ok 112 - atomic import failure rolls back every prior record and manual rollback
 # Subtest: portable export excludes records whose privacy policy forbids export
 not ok 174 - portable export excludes records whose privacy policy forbids export
   ---
-  duration_ms: 37.03897
+  duration_ms: 52.271848
   type: 'test'
   location: '/home/runner/work/SignalFlow-Studio/SignalFlow-Studio/frontend/tests/sourceArtifactProductIntegration.test.mjs:101:1'
   failureType: 'testCodeFailure'
@@ -78,25 +78,25 @@ not ok 174 - portable export excludes records whose privacy policy forbids expor
 # Subtest: capability contract declares canonical records and fails closed on unfinished source capabilities
 ok 175 - capability contract declares canonical records and fails closed on unfinished source capabilities
   ---
-  duration_ms: 2.182901
+  duration_ms: 2.998053
   type: 'test'
   ...
 # Subtest: Studio source list exposes canonical usability and evidence state without claiming full diagnostics
 ok 176 - Studio source list exposes canonical usability and evidence state without claiming full diagnostics
   ---
-  duration_ms: 1.02113
+  duration_ms: 1.36744
   type: 'test'
   ...
 # Subtest: source architecture documentation and public AI context are consistent
 ok 177 - source architecture documentation and public AI context are consistent
   ---
-  duration_ms: 0.777311
+  duration_ms: 0.95814
   type: 'test'
   ...
 # Subtest: Source uses explicit desktop and mobile reading areas
 ok 178 - Source uses explicit desktop and mobile reading areas
   ---
-  duration_ms: 4.213203
+  duration_ms: 13.819527
   type: 'test'
   ...
 

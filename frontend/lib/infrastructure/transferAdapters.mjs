@@ -1,9 +1,15 @@
 import { assertPort } from "../domain/ports.mjs";
 import { createDomainRecord, parseDomainRecord, portableClone, stableStringify } from "../domain/contracts.mjs";
+import {
+  migrateLegacyAsset,
+  migrateLegacySourceArtifact,
+  normalizeAssetProcessing,
+} from "../domain/sourceArtifacts.mjs";
 
 const RECORD_SPECS = Object.freeze({
   asset: { portName: "assetRepository", kind: "Asset", idField: "assetId" },
   sourceArtifact: { portName: "sourceArtifactRepository", kind: "SourceArtifact", idField: "sourceArtifactId" },
+  assetProcessing: { portName: "assetProcessingRepository", kind: "AssetProcessing", idField: "processingId" },
   approval: { portName: "approvalRepository", kind: "Approval", idField: "approvalId" },
   export: { portName: "exportRepository", kind: "Export", idField: "exportId" },
   transferReport: { portName: "transferReportRepository", kind: "TransferReport", idField: "transferReportId" },
@@ -24,6 +30,26 @@ function spec(name) {
 }
 
 function normalizeRecord(kind, idField, value) {
+  if (kind === "Asset") {
+    return migrateLegacyAsset(value, {
+      workspaceId: value?.workspaceId || "legacy-local",
+      campaignId: value?.campaignId || null,
+      now: value?.updatedAt || value?.createdAt || new Date(0).toISOString(),
+    });
+  }
+  if (kind === "SourceArtifact") {
+    return migrateLegacySourceArtifact(value, {
+      workspaceId: value?.workspaceId || "legacy-local",
+      campaignId: value?.campaignId || null,
+      now: value?.updatedAt || value?.createdAt || new Date(0).toISOString(),
+    });
+  }
+  if (kind === "AssetProcessing") {
+    return normalizeAssetProcessing(value, {
+      workspaceId: value?.workspaceId || "legacy-local",
+      now: value?.updatedAt || value?.createdAt || new Date(0).toISOString(),
+    });
+  }
   if (value?.kind === kind) return parseDomainRecord(value, kind);
   return createDomainRecord(kind, { ...value, [idField]: value?.[idField] });
 }
@@ -60,12 +86,23 @@ function createStoreBackedRecordRepository({ store, portName, kind, idField, pre
   return assertPort(portName, {
     async list() {
       const keys = await store.list(prefix);
-      const values = await Promise.all(keys.map((key) => store.get(key)));
-      return sortByUpdated(values.filter(Boolean).map((value) => normalizeRecord(kind, idField, value))).map(clone);
+      const entries = await Promise.all(keys.map(async (key) => ({ key, value: await store.get(key) })));
+      const normalized = [];
+      for (const { key, value } of entries) {
+        if (!value) continue;
+        const record = normalizeRecord(kind, idField, value);
+        normalized.push(record);
+        if (stableStringify(value) !== stableStringify(record)) await store.set(key, record);
+      }
+      return sortByUpdated(normalized).map(clone);
     },
     async get(id) {
-      const value = await store.get(keyFor(id));
-      return value ? clone(normalizeRecord(kind, idField, value)) : null;
+      const key = keyFor(id);
+      const value = await store.get(key);
+      if (!value) return null;
+      const record = normalizeRecord(kind, idField, value);
+      if (stableStringify(value) !== stableStringify(record)) await store.set(key, record);
+      return clone(record);
     },
     async upsert(value) {
       const normalized = normalizeRecord(kind, idField, value);
@@ -99,7 +136,10 @@ function createBrowserRecordRepository({ getStorage, key, limit, portName, kind,
     return normalized;
   }
   async function list() {
-    return sortByUpdated(read().map((value) => normalizeRecord(kind, idField, value))).map(clone);
+    const raw = read();
+    const normalized = sortByUpdated(raw.map((value) => normalizeRecord(kind, idField, value)));
+    if (stableStringify(raw) !== stableStringify(normalized)) write(normalized);
+    return normalized.map(clone);
   }
   async function get(id) {
     const items = await list();
@@ -154,6 +194,18 @@ export function createStoreBackedSourceArtifactRepository({ store, prefix = "sou
 
 export function createBrowserSourceArtifactRepository({ getStorage, key = "signalflow_source_artifacts_v1", limit = 500 } = {}) {
   return browserRepository("sourceArtifact", { getStorage, key, limit });
+}
+
+export function createMemoryAssetProcessingRepository(initial = []) {
+  return memoryRepository("assetProcessing", initial);
+}
+
+export function createStoreBackedAssetProcessingRepository({ store, prefix = "asset-processing/" } = {}) {
+  return storeRepository("assetProcessing", { store, prefix });
+}
+
+export function createBrowserAssetProcessingRepository({ getStorage, key = "signalflow_asset_processing_v1", limit = 1000 } = {}) {
+  return browserRepository("assetProcessing", { getStorage, key, limit });
 }
 
 export function createMemoryApprovalRepository(initial = []) {

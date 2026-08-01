@@ -42,6 +42,8 @@ The archive intentionally remains a single JSON contract for the current browser
 
 ## Included records
 
+Portable transfer consumes the canonical source graph from [SOURCE_ASSET_CONTRACT.md](SOURCE_ASSET_CONTRACT.md). Records with export disabled by privacy policy and processing records that depend on excluded data are omitted with safe manifest reasons.
+
 The contract can carry:
 
 - canonical Campaign records;
@@ -49,6 +51,7 @@ The contract can carry:
 - draft revision history and regeneration archives;
 - generation run and source snapshot metadata;
 - persistent edited, approval, saved, and exported revision state;
+- AssetProcessing records with processor/version and input/output lineage;
 - Asset metadata and optional blob payloads;
 - SourceArtifact records;
 - explicit and derived historical Approval records;

@@ -36,6 +36,10 @@ import {
   selectChannelStatus,
   selectPublishAvailability,
 } from "../lib/studio/campaignStatus.mjs";
+import {
+  createUploadSourceBundle,
+  projectGenerationMediaItem,
+} from "../lib/domain/sourceArtifacts.mjs";
 import { parseCapabilitySnapshot } from "../lib/capabilities/capabilityContract.mjs";
 import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
 
@@ -240,6 +244,28 @@ function downloadText(filename, value, type = "text/plain") {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+const SOURCE_STATE_PRESENTATION = Object.freeze({
+  usable_evidence: { label: "Usable evidence", description: "Verified extracted content can contribute to generation." },
+  reference_only: { label: "Reference only", description: "Retained as context but not counted as extracted evidence." },
+  processing: { label: "Processing", description: "This source is not ready for generation yet." },
+  failed: { label: "Failed", description: "Ingestion or extraction failed; review or replace this source." },
+  unsupported: { label: "Unsupported", description: "The current deployment cannot process this source type." },
+});
+
+function sourceFilePresentation(file) {
+  const state = file?.sourceArtifact?.usability?.state
+    || (file?.extracted ? "usable_evidence" : "reference_only");
+  const presentation = SOURCE_STATE_PRESENTATION[state] || SOURCE_STATE_PRESENTATION.reference_only;
+  const evidenceState = file?.sourceArtifact?.usability?.evidenceState || (file?.extracted ? "verified" : "unverified");
+  return {
+    state,
+    label: presentation.label,
+    description: presentation.description,
+    evidenceLabel: evidenceState === "verified" ? "Verified evidence" : evidenceState === "not_applicable" ? "Evidence not applicable" : "Unverified evidence",
+    versionId: file?.sourceArtifact?.sourceArtifactVersionId || "Legacy source",
+  };
 }
 
 function formatDate(value) {
@@ -692,6 +718,12 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     (id) => connections[id]?.connected && !connections[id]?.expired,
   ).length;
   const reviewIndex = Math.max(0, channels.indexOf(activeChannel));
+  const sourceArtifactSummary = files.reduce((summary, file) => {
+    const state = sourceFilePresentation(file).state;
+    summary[state] = (summary[state] || 0) + 1;
+    return summary;
+  }, {});
+
   const campaignStatus = selectCampaignStatus({
     state: campaignState,
     isStale: isCampaignStale,
@@ -981,26 +1013,44 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
       const isText =
         file.type.startsWith("text/") ||
         /\.(md|txt|json|csv|log|js|jsx|ts|tsx|py|go|rs|java|cpp|c|h|html|css)$/i.test(file.name);
-      let extracted = false;
+      let extractedText = "";
+      let extractionFailed = false;
       if (isText && file.size <= 500000) {
         try {
-          const text = await file.text();
-          nextText.push(`FILE: ${file.name}\n${text.slice(0, 12000)}`);
-          extracted = true;
+          extractedText = (await file.text()).slice(0, 12000);
+          nextText.push(`FILE: ${file.name}
+${extractedText}`);
         } catch {
+          extractionFailed = true;
           extractionFailures += 1;
         }
       }
+      const now = new Date().toISOString();
+      const bundle = createUploadSourceBundle({
+        file: {
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          size: file.size,
+          clientReferenceId: createClientId("upload"),
+          truncated: extractedText.length === 12000,
+        },
+        extractedText,
+        extractionFailed,
+        workspaceId: "browser-local",
+        campaignId: currentCampaignId || null,
+        assetId: createClientId("asset"),
+        sourceArtifactId: createClientId("source-artifact"),
+        now,
+      });
       nextFiles.push({
-        name: file.name,
-        type: file.type || "file",
-        size: file.size,
-        extracted,
-        description: extracted
-          ? "Text content extracted in the browser."
-          : isText && file.size <= 500000
-            ? "Browser extraction failed; the file remains an asset reference."
-            : "Asset metadata supplied as a creative reference; visual analysis is not enabled in this route.",
+        name: bundle.sourceArtifact.originalName,
+        type: bundle.sourceArtifact.mimeType,
+        size: bundle.sourceArtifact.byteSize,
+        extracted: bundle.sourceArtifact.extraction.state === "complete",
+        description: bundle.sourceArtifact.userMetadata.description,
+        asset: bundle.asset,
+        sourceArtifact: bundle.sourceArtifact,
+        createdAt: now,
       });
     }
 
@@ -1057,12 +1107,19 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
         providerModelName: form.model.trim(),
         providerBaseUrl: form.baseUrl.trim(),
         document_text: documentText,
-        media_items: files.map(({ name, type, size, description }) => ({
-          name,
-          type,
-          size,
-          description,
-        })),
+        assets: files.map((file) => file.asset).filter(Boolean),
+        source_artifacts: files.map((file) => file.sourceArtifact).filter(Boolean),
+        media_items: files.map((file) => projectGenerationMediaItem(
+          file.sourceArtifact || {
+            ...file,
+            assetId: file.asset?.assetId || file.assetId,
+          },
+          {
+            workspaceId: file.sourceArtifact?.workspaceId || file.asset?.workspaceId || "browser-local",
+            campaignId: file.sourceArtifact?.campaignId || file.asset?.campaignId || currentCampaignId || null,
+            now: file.sourceArtifact?.createdAt || file.asset?.createdAt || file.createdAt || new Date(0).toISOString(),
+          },
+        )),
       }),
     });
 
@@ -1719,25 +1776,46 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
               </div>
 
               {files.length > 0 && (
-                <div className="file-list">
-                  {files.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="file-chip">
-                      <span>{file.name}</span>
-                      <small>
-                        {file.extracted ? "Extracted" : `${Math.max(1, Math.round(file.size / 1024))} KB`}
-                      </small>
-                      <button
-                        aria-label={`Remove ${file.name}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removeFile(index);
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="file-list" aria-label="Canonical campaign sources">
+                    {files.map((file, index) => {
+                      const sourceState = sourceFilePresentation(file);
+                      return (
+                        <div key={file.sourceArtifact?.sourceArtifactId || `${file.name}-${index}`} className="file-chip file-chip--canonical">
+                          <span className="file-chip__identity">
+                            <span>{file.name}</span>
+                            <small title={sourceState.versionId}>
+                              {sourceState.evidenceLabel} · {Math.max(1, Math.round(file.size / 1024))} KB
+                            </small>
+                          </span>
+                          <span
+                            className={`source-state-badge is-${sourceState.state}`}
+                            title={sourceState.description}
+                          >
+                            {sourceState.label}
+                          </span>
+                          <button
+                            aria-label={`Remove ${file.name}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              removeFile(index);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="source-contract-summary" role="status" aria-live="polite">
+                    <strong>Source contract v1</strong>
+                    <span>{sourceArtifactSummary.usable_evidence || 0} usable</span>
+                    <i />
+                    <span>{sourceArtifactSummary.reference_only || 0} reference only</span>
+                    {(sourceArtifactSummary.processing || 0) > 0 && <><i /><span>{sourceArtifactSummary.processing} processing</span></>}
+                    {(sourceArtifactSummary.failed || 0) > 0 && <><i /><span>{sourceArtifactSummary.failed} failed</span></>}
+                  </div>
+                </>
               )}
 
             </section>

@@ -1,5 +1,6 @@
 export const CAPABILITY_SCHEMA_VERSION = 1;
 export const CAPABILITY_PRODUCT = "signalflow-studio";
+export const SOURCE_CONTRACT_SCHEMA_VERSION = 1;
 export const PORTABLE_TRANSFER_SCHEMA_VERSION = 1;
 export const PORTABLE_TRANSFER_BROWSER_MAX_BYTES = 50 * 1024 * 1024;
 export const EXTENSION_PROTOCOL_VERSION = 1;
@@ -76,6 +77,7 @@ export function createCapabilitySnapshot({
   connectorCapabilities = {},
   cloud = {},
   extension = {},
+  sourceCapabilities = {},
   transfer = {},
   quotas = {},
   now = new Date().toISOString(),
@@ -251,16 +253,35 @@ export function createCapabilitySnapshot({
         providers: providerMap,
       },
       sources: {
+        canonicalContract: capability(
+          true,
+          "Versioned Asset, SourceArtifact, and AssetProcessing records are validated across browser, API, MCP, persistence, and portable transfer boundaries.",
+          {
+            schemaVersion: SOURCE_CONTRACT_SCHEMA_VERSION,
+            kinds: ["upload", "link", "repository", "repository_file", "trusted_local_repository", "extension_page", "screenshot", "recording", "note", "imported_archive"],
+          },
+        ),
         brief: capability(true, "Written campaign briefs are supported."),
-        publicLinks: capability(true, "Public link ingestion is supported with server-side safety checks."),
-        browserFiles: capability(true, "Small text and code files can be extracted in the browser."),
-        repositoryUrl: capability(true, "Public GitHub repository ingestion is supported."),
+        publicLinks: capability(
+          Boolean(sourceCapabilities.hardenedRemoteFetch),
+          sourceCapabilities.hardenedRemoteFetch
+            ? "Public links can be fetched through the hardened remote-source boundary."
+            : "Public link fields exist, but hardened SSRF, redirect, timeout, MIME, and size enforcement is not complete; remote URLs cannot be trusted as usable evidence by the canonical contract.",
+        ),
+        browserFiles: capability(true, "Browser uploads create canonical Asset and SourceArtifact records; supported text/code can become verified usable evidence."),
+        repositoryUrl: capability(Boolean(sourceCapabilities.repositoryPlanning), sourceCapabilities.repositoryPlanning
+          ? "Repository URLs are normalized and planned through the canonical source contract."
+          : "Repository URL ingestion exists, but complete normalization and nested application planning are not yet verified."),
         localRepository: capability(
           Boolean(session.canReadLocalFiles && localProfile),
           session.canReadLocalFiles && localProfile
-            ? "Trusted local repository paths are available in this deployment."
-            : "Local filesystem repository paths are unavailable in this session.",
+            ? "Trusted local repository references can use opaque IDs and safe relative paths in this deployment."
+            : "Trusted local repository access is unavailable in this session; absolute paths are never portable source fields.",
         ),
+        processingRecords: capability(true, "Derived processing lineage can be recorded, but OCR, transcription, thumbnail, and analysis adapters remain capability-specific."),
+        sourceHealthWorkspace: capability(false, "The complete source-health diagnostics workspace is not implemented yet."),
+        remoteEvidenceVersions: capability(false, "Immutable remote evidence revalidation is not implemented yet."),
+        retentionEnforcement: capability(false, "Retention and deletion states are recorded, but background enforcement is not implemented yet."),
       },
       extension: {
         available: extensionBridgeReady,
@@ -390,11 +411,16 @@ export function parseCapabilitySnapshot(value) {
         providers: normalizeProviderMap(models.providers),
       },
       sources: {
+        canonicalContract: normalizeCapability(sources.canonicalContract, fallbackReason),
         brief: normalizeCapability(sources.brief, fallbackReason),
         publicLinks: normalizeCapability(sources.publicLinks, fallbackReason),
         browserFiles: normalizeCapability(sources.browserFiles, fallbackReason),
         repositoryUrl: normalizeCapability(sources.repositoryUrl, fallbackReason),
         localRepository: normalizeCapability(sources.localRepository, fallbackReason),
+        processingRecords: normalizeCapability(sources.processingRecords, fallbackReason),
+        sourceHealthWorkspace: normalizeCapability(sources.sourceHealthWorkspace, fallbackReason),
+        remoteEvidenceVersions: normalizeCapability(sources.remoteEvidenceVersions, fallbackReason),
+        retentionEnforcement: normalizeCapability(sources.retentionEnforcement, fallbackReason),
       },
       extension: {
         available: Boolean(extension.available),

@@ -12,6 +12,7 @@ Users add evidence, select destinations, choose a real model provider route, gen
 - Context extraction from public links, public GitHub repositories, and supported browser-readable files.
 - Gemini, OpenAI, Claude, OpenRouter, Groq, custom OpenAI-compatible, Ollama, and LM Studio adapters subject to deployment/session capability.
 - Versioned browser-local campaign saving and legacy migration.
+- Canonical Asset, SourceArtifact, and AssetProcessing records across browser upload, campaign freshness, API, MCP, persistence, and portable transfer.
 - Explicit `.signalflow.json` archive preparation, SHA-256 validation, browser import preview, Skip/Copy/Replace conflicts, transfer reports, resume, and rollback.
 - Deterministic Markdown/JSON export from one authoritative current draft per channel.
 - Official connector code paths for LinkedIn, X, and Reddit with explicit review and destination-API-confirmed success.
@@ -23,6 +24,7 @@ Users add evidence, select destinations, choose a real model provider route, gen
 
 - Campaign generation requires a real model route; retired template, offline, prompt-only, and substitute fallback output are rejected.
 - Server-configured providers and connector administration may require an authenticated owner session.
+- Remote URLs remain unverified/reference-only until the hardened fetch boundary is implemented; complete source diagnostics, remote revalidation, processing adapters, and retention/deletion jobs are not implemented.
 - Portable transfer is explicit and browser-local today; a production hosted destination and silent synchronization are not implemented.
 - Archive creation excludes provider/OAuth/session secrets, signed/private references, private endpoints, and local filesystem paths with a safe exclusion manifest.
 - Saved campaigns are currently browser-local; cloud database, cross-device sync, collaboration, durable jobs, and billing quotas are not implemented.

@@ -1,3 +1,5 @@
+import { sourceArtifactSnapshotReference } from "../domain/sourceArtifacts.mjs";
+
 export const CAMPAIGN_STATE_SCHEMA_VERSION = 1;
 
 const SOURCE_CHANGE_LABELS = {
@@ -65,12 +67,19 @@ function fnv1a64(value) {
 
 export function normalizeGenerationSource({ form = {}, channels = [], files = [], documentText = [] } = {}) {
   const media = sortCanonical(
-    (Array.isArray(files) ? files : []).map((file) => ({
-      name: normalizeText(file?.name),
-      type: normalizeText(file?.type || "file").toLowerCase(),
-      size: Math.max(0, Number(file?.size) || 0),
-      description: normalizeText(file?.description),
-    })),
+    (Array.isArray(files) ? files : []).map((file) => file?.sourceArtifact
+      ? sourceArtifactSnapshotReference(file.sourceArtifact, {
+        workspaceId: file.sourceArtifact.workspaceId || file?.asset?.workspaceId || "browser-local",
+        campaignId: file.sourceArtifact.campaignId || file?.asset?.campaignId || null,
+        now: file.sourceArtifact.createdAt || file?.asset?.createdAt || file?.createdAt || new Date(0).toISOString(),
+      })
+      : {
+        legacySource: true,
+        name: normalizeText(file?.name),
+        type: normalizeText(file?.type || "file").toLowerCase(),
+        size: Math.max(0, Number(file?.size) || 0),
+        description: normalizeText(file?.description),
+      }),
   );
 
   return {

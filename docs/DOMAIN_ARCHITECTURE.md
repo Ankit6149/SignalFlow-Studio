@@ -45,6 +45,7 @@ The schema registry is `frontend/lib/domain/contracts.mjs`. Schema version `1` d
 | Publication | campaign | `publicationId` | Destination publish attempt and result |
 | Connection | workspace | `connectionId` | Connector identity/status without tokens |
 | UsageEvent | workspace | `usageEventId` | Quota/billing-ready usage fact |
+| AssetProcessing | workspace | `processingId` | Processor/version and input/output Asset/SourceArtifact lineage |
 | TransferReport | workspace/destination | `transferReportId` | Import validation, per-record outcomes, resume, and rollback journal |
 | AuditEvent | workspace | `auditEventId` | Security and product activity fact |
 
@@ -153,6 +154,16 @@ Current ports:
 - memory and store-backed job queues.
 
 The same contract suites run against local/memory and store-backed adapters. A database, object store, or durable queue implementation is not considered complete until it passes those suites plus its own integration, isolation, retry, backup, and restore tests.
+
+## Canonical source graph
+
+`frontend/lib/domain/sourceArtifacts.mjs` is the sole canonical definition for Asset, SourceArtifact, and AssetProcessing. It owns source kinds, ingestion methods, lifecycle, usability/evidence, upload/processing, privacy, retention/deletion, safe references, provenance, legacy migration, graph validation, campaign snapshot references, and generation compatibility projection.
+
+The graph validator rejects duplicate IDs, cross-workspace/campaign references, missing Asset/SourceArtifact/processing links, unsafe URL/repository/local references, and provenance cycles. Browser and store-backed repositories migrate and write canonical records back on read. API and MCP validate the same graph before generation.
+
+Campaign source snapshots store stable SourceArtifact version references. Editable metadata and storage location are excluded from the freshness fingerprint. Portable transfer carries AssetProcessing records, excludes non-exportable private records, and remaps scalar and array references under Copy.
+
+See [SOURCE_ASSET_CONTRACT.md](SOURCE_ASSET_CONTRACT.md).
 
 ## Portable archive and transfer application
 

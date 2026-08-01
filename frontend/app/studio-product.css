@@ -262,6 +262,23 @@
   margin-bottom: 0;
 }
 
+.app-shell .model-route-primary-key {
+  margin-top: 0.9rem;
+  padding: 0.9rem;
+  border: 0.0625rem solid var(--app-line-strong);
+  border-radius: 0.6rem;
+  background: var(--app-accent-soft);
+}
+
+.app-shell .model-route-primary-key small {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .app-shell .model-route-advanced {
   margin-bottom: 1rem;
   border-top: 0.0625rem solid var(--app-line);

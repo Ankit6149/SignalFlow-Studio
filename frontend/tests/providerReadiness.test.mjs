@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createCampaignAggregate } from "../lib/domain/campaign.mjs";
 import {
   evaluateProviderReadiness,
+  getProviderCredentialPlacement,
   isForbiddenGenerationMode,
   pickRecommendedProvider,
 } from "../lib/studio/providerReadiness.mjs";
@@ -25,20 +27,84 @@ test("configured server providers are ready without exposing a key", () => {
   });
   assert.equal(result.ready, true);
   assert.equal(result.source, "server");
+  assert.equal(
+    getProviderCredentialPlacement({
+      provider: "openai",
+      status: { available: true, configured: true },
+    }),
+    "advanced",
+  );
 });
 
-test("capability-unavailable providers fail closed even with client configuration", () => {
+test("first-run cloud providers expose a temporary key in the primary setup", () => {
+  for (const provider of ["gemini", "openai", "claude", "openrouter", "groq"]) {
+    assert.equal(
+      getProviderCredentialPlacement({
+        provider,
+        status: { available: true, configured: false },
+      }),
+      "primary",
+    );
+  }
+});
+
+test("custom and local routes keep credential or endpoint overrides advanced", () => {
+  assert.equal(
+    getProviderCredentialPlacement({
+      provider: "custom",
+      status: { available: true, configured: false },
+    }),
+    "advanced",
+  );
+  assert.equal(
+    getProviderCredentialPlacement({
+      provider: "ollama",
+      status: { available: true, configured: false },
+    }),
+    "hidden",
+  );
+  assert.equal(
+    getProviderCredentialPlacement({
+      provider: "lmstudio",
+      status: { available: true, configured: false },
+    }),
+    "hidden",
+  );
+});
+
+test("capability-unavailable providers fail closed and expose no credential input", () => {
+  const status = {
+    available: false,
+    reason: "Local model endpoints are owner-only on this hosted deployment.",
+  };
   const result = evaluateProviderReadiness({
     provider: "ollama",
     baseUrl: "https://models.example.test",
-    status: {
-      available: false,
-      reason: "Local model endpoints are owner-only on this hosted deployment.",
-    },
+    status,
   });
   assert.equal(result.ready, false);
   assert.equal(result.source, "unavailable");
   assert.match(result.reason, /owner-only/i);
+  assert.equal(getProviderCredentialPlacement({ provider: "ollama", status }), "hidden");
+});
+
+test("temporary credentials are excluded from persisted campaign briefs", () => {
+  const campaign = createCampaignAggregate({
+    title: "Credential safety",
+    channels: ["linkedin"],
+    posts: { linkedin: "Safe draft" },
+    generatedPosts: { linkedin: "Safe draft" },
+    brief: {
+      projectName: "Credential safety",
+      provider: "gemini",
+      apiKey: "must-not-persist",
+      audience: "Builders",
+    },
+    updatedAt: "2026-08-01T00:00:00.000Z",
+  });
+
+  assert.equal(Object.hasOwn(campaign.brief, "apiKey"), false);
+  assert.doesNotMatch(JSON.stringify(campaign), /must-not-persist/);
 });
 
 test("hosted server keys remain owner-only", () => {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import PortableTransferPanel from "../components/PortableTransferPanel";
 import PlatformIcon from "../components/PlatformIcon";
+import LandingPage from "../components/LandingPage";
 import {
   createSourceSnapshot,
   resolveStudioStage,
@@ -190,34 +191,6 @@ const PROVIDERS = [
   { id: "lmstudio", label: "LM Studio", hint: "Use a reachable LM Studio endpoint in local or trusted self-hosted deployments." },
 ];
 
-const FAQS = [
-  {
-    question: "What does SignalFlow Studio actually create?",
-    answer:
-      "It turns product notes, public links, repository context, and text files into editable drafts for social, community, video, newsletter, blog, and release-note channels.",
-  },
-  {
-    question: "Does SignalFlow publish without approval?",
-    answer:
-      "No. Every draft stays reviewable. Direct publishing is only offered when an official connector is configured and the platform API confirms success.",
-  },
-  {
-    question: "Which platforms can publish directly?",
-    answer:
-      "LinkedIn, X, and Reddit have official OAuth connector paths in the current release. Other destinations use a clear copy, export, and open-platform workflow.",
-  },
-  {
-    question: "Where are campaigns and account tokens stored?",
-    answer:
-      "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript.",
-  },
-  {
-    question: "Can I bring my own model provider?",
-    answer:
-      "Yes. SignalFlow supports Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints. Campaign generation requires a real model route.",
-  },
-];
-
 function safeJsonParse(value, fallback) {
   try {
     return value ? JSON.parse(value) : fallback;
@@ -347,233 +320,6 @@ function CopyIcon() {
       <rect x="6.5" y="6.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <path d="M4.5 12.5h-.2a1.8 1.8 0 0 1-1.8-1.8V4.3a1.8 1.8 0 0 1 1.8-1.8h6.4a1.8 1.8 0 0 1 1.8 1.8v.2" fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
-  );
-}
-
-function LandingPage({ onEnter }) {
-  return (
-    <main className="landing-shell">
-      <a className="skip-link" href="#main-content">
-        Skip to content
-      </a>
-
-      <header className="landing-nav">
-        <a href="/" aria-label="SignalFlow Studio home">
-          <BrandMark />
-        </a>
-        <nav className="landing-nav__links" aria-label="Landing navigation">
-          <a href="#workflow">Workflow</a>
-          <a href="#channels">Channels</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <div className="landing-nav__actions">
-          <a href="https://github.com/Ankit6149/SignalFlow-Studio" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-          <button className="button button--light button--small" onClick={onEnter}>
-            Open studio <ArrowIcon />
-          </button>
-        </div>
-      </header>
-
-      <section className="landing-hero" id="main-content">
-        <div className="landing-hero__copy">
-          <div className="landing-announcement">
-            <span>New</span>
-            Twelve publishing destinations, one review-first campaign.
-          </div>
-          <p className="eyebrow">
-            <span /> One idea. Every channel. Still your voice.
-          </p>
-          <h1>Turn what you built into content people actually stop for.</h1>
-          <p className="landing-hero__lede">
-            SignalFlow turns product notes, links, repositories, and source files into a complete,
-            editable campaign—without forcing you through a maze of dashboards or pretending a post
-            succeeded when it did not.
-          </p>
-          <div className="landing-hero__actions">
-            <button className="button button--champagne button--premium" onClick={onEnter}>
-              Create your first campaign <ArrowIcon />
-            </button>
-            <span>Local-first · Bring your own model · Review before publish</span>
-          </div>
-          <div className="landing-proof">
-            <div>
-              <strong>12</strong>
-              <span>Output destinations</span>
-            </div>
-            <div>
-              <strong>3</strong>
-              <span>Official connectors</span>
-            </div>
-            <div>
-              <strong>0</strong>
-              <span>Fake publish states</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="landing-hero__visual" aria-label="SignalFlow campaign preview">
-          <div className="visual-glow" />
-          <div className="visual-photo">
-            <img src="/creator-working.png" alt="Creator preparing a campaign at a refined workspace" />
-            <span>Raw material</span>
-          </div>
-          <article className="floating-card floating-card--main">
-            <header>
-              <div className="mini-brand">
-                <span className="mini-brand__dot" /> SignalFlow campaign
-              </div>
-              <span className="status-pill">Ready to review</span>
-            </header>
-            <div className="floating-card__headline">A launch story, shaped for every room it enters.</div>
-            <div className="floating-card__channels">
-              {CORE_CHANNELS.map((platform) => (
-                <span key={platform}>
-                  <PlatformIcon platform={platform} size={16} />
-                </span>
-              ))}
-            </div>
-            <div className="floating-card__bars">
-              <i />
-              <i />
-              <i />
-            </div>
-          </article>
-          <article className="floating-card floating-card--note">
-            <small>VOICE DIRECTION</small>
-            <strong>Confident, human, precise.</strong>
-          </article>
-          <article className="floating-card floating-card--metric">
-            <small>FROM ONE BRIEF</small>
-            <strong>12 editable outputs</strong>
-          </article>
-        </div>
-      </section>
-
-      <section className="landing-strip" aria-label="SignalFlow workflow summary">
-        <span>Describe once</span>
-        <i />
-        <span>Extract the signal</span>
-        <i />
-        <span>Preview natively</span>
-        <i />
-        <span>Publish only after approval</span>
-      </section>
-
-      <section className="landing-editorial" id="workflow">
-        <div className="landing-editorial__intro">
-          <p className="eyebrow eyebrow--dark">
-            <span /> Built around the real job
-          </p>
-          <h2>Not another content dashboard. A clear path from proof to post.</h2>
-          <p>
-            SignalFlow keeps context, generation, review, platform routing, and export in one understandable
-            flow. Every important action remains visible.
-          </p>
-        </div>
-        <div className="editorial-grid">
-          <article>
-            <span className="editorial-index">A</span>
-            <h3>Bring the evidence</h3>
-            <p>
-              Paste a product brief, launch URL, repository context, research links, or text files. The
-              campaign begins with facts instead of generic prompts.
-            </p>
-          </article>
-          <article>
-            <span className="editorial-index">B</span>
-            <h3>Shape each output</h3>
-            <p>
-              Edit channel-specific copy beside a focused preview, see character guidance, and keep every
-              destination attached to the same campaign.
-            </p>
-          </article>
-          <article>
-            <span className="editorial-index">C</span>
-            <h3>Route it honestly</h3>
-            <p>
-              Direct publishing appears only for configured official connectors. Every other destination gets
-              a deliberate copy, export, and open-platform path.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className="channel-showcase" id="channels">
-        <div className="channel-showcase__copy">
-          <p className="eyebrow eyebrow--dark">
-            <span /> One system, the right format
-          </p>
-          <h2>Your campaign should travel without losing its voice.</h2>
-          <p>
-            Generate for professional networks, social feeds, communities, video platforms, newsletters,
-            blogs, and product updates from the same source of truth.
-          </p>
-          <button className="button button--dark" onClick={onEnter}>
-            Build a multi-channel campaign <ArrowIcon />
-          </button>
-        </div>
-        <div className="channel-showcase__grid">
-          {CHANNELS.map((channel) => (
-            <article key={channel.id} className="channel-showcase__card">
-              <span className="channel-showcase__icon">
-                <PlatformIcon platform={channel.id} size={22} branded />
-              </span>
-              <div>
-                <strong>{channel.label}</strong>
-                <small>{OFFICIAL_CONNECTORS.has(channel.id) ? "Official connector available" : "Review and export path"}</small>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="landing-faq" id="faq">
-        <div className="landing-faq__heading">
-          <p className="eyebrow eyebrow--dark">
-            <span /> Clear answers
-          </p>
-          <h2>What teams need to know before trusting the flow.</h2>
-        </div>
-        <div className="landing-faq__list">
-          {FAQS.map((item, index) => (
-            <details key={item.question} open={index === 0}>
-              <summary>{item.question}</summary>
-              <p>{item.answer}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <section className="landing-cta">
-        <div>
-          <p className="eyebrow">
-            <span /> Your work already has a story
-          </p>
-          <h2>Give it a publishing system worthy of it.</h2>
-        </div>
-        <button className="button button--champagne button--premium" onClick={onEnter}>
-          Enter SignalFlow <ArrowIcon />
-        </button>
-      </section>
-
-      <footer className="site-footer">
-        <div>
-          <BrandMark />
-          <p>Review-first campaign creation for builders, founders, and small teams.</p>
-        </div>
-        <nav aria-label="Footer navigation">
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/llms.txt">llms.txt</a>
-          <a href="/llms-full.txt">AI context</a>
-          <a href="https://github.com/Ankit6149/SignalFlow-Studio" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-        </nav>
-      </footer>
-    </main>
   );
 }
 
@@ -1588,7 +1334,7 @@ ${extractedText}`);
     setMessage({ type: "success", text: "Owner session closed." });
   }
 
-  if (!entered) return <LandingPage onEnter={enterStudio} />;
+  if (!entered) return <LandingPage onEnter={enterStudio} brand={<BrandMark />} />;
 
   const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
 

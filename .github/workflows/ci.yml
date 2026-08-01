@@ -6,7 +6,28 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: write
+
 jobs:
+  landing-migration:
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/135-public-landing-revamp'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply guarded landing migration
+        run: python scripts/apply_landing_revamp.py
+      - name: Commit product-only migration result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/app/page.js frontend/app/globals.css frontend/components/LandingPage.js frontend/components/LandingPage.module.css frontend/app/public-surfaces.css frontend/app/ui-containment.css frontend/tests/landingPageRevamp.test.mjs .github/workflows/ci.yml scripts/apply_landing_revamp.py
+          git commit -m "refactor(ui): install the scoped public landing page"
+          git push origin HEAD:${{ github.head_ref }}
+
   mcp-tests:
     runs-on: ubuntu-latest
     steps:

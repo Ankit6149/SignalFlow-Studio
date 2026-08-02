@@ -1,0 +1,460 @@
+/*
+ * SignalFlow Studio responsive contract
+ *
+ * Loaded last and scoped to .app-shell so public landing styles and the
+ * existing SignalFlow logo remain untouched. These rules only resolve
+ * workspace containment, compact navigation, and mobile action ergonomics.
+ */
+
+.app-shell,
+.app-shell main,
+.app-shell section,
+.app-shell article,
+.app-shell aside,
+.app-shell header,
+.app-shell nav,
+.app-shell form,
+.app-shell fieldset,
+.app-shell .studio-page,
+.app-shell .secondary-page,
+.app-shell .studio-grid,
+.app-shell .panel,
+.app-shell .composer-panel,
+.app-shell .output-panel,
+.app-shell .review-workspace,
+.app-shell .source-truth-grid,
+.app-shell .recent-card,
+.app-shell .settings-grid,
+.app-shell .settings-card {
+  min-width: 0;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.app-shell img,
+.app-shell svg,
+.app-shell video,
+.app-shell canvas {
+  max-width: 100%;
+}
+
+.app-shell input,
+.app-shell textarea,
+.app-shell select,
+.app-shell button {
+  max-width: 100%;
+}
+
+.app-shell .app-header {
+  isolation: isolate;
+}
+
+.app-shell .app-nav {
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-line-strong) transparent;
+}
+
+.app-shell .studio-page,
+.app-shell .secondary-page {
+  max-width: calc(100vw - 2rem);
+}
+
+.app-shell .studio-heading,
+.app-shell .secondary-heading,
+.app-shell .studio-main,
+.app-shell .studio-grid,
+.app-shell .composer-panel,
+.app-shell .output-panel,
+.app-shell .review-workspace,
+.app-shell .recent-card,
+.app-shell .truth-panel,
+.app-shell .connection-card,
+.app-shell .settings-card {
+  overflow-wrap: anywhere;
+}
+
+.app-shell .studio-main {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.app-shell .studio-flow {
+  min-width: 0;
+}
+
+.app-shell .studio-flow button,
+.app-shell .studio-flow button > span:last-child,
+.app-shell .studio-flow strong,
+.app-shell .studio-flow small {
+  min-width: 0;
+}
+
+.app-shell .studio-flow strong,
+.app-shell .studio-flow small,
+.app-shell .recent-card h2,
+.app-shell .recent-card p,
+.app-shell .recent-card code,
+.app-shell .file-chip span,
+.app-shell .connection-card h2,
+.app-shell .connection-card p,
+.app-shell .settings-card h2,
+.app-shell .settings-card p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.app-shell .source-truth-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+
+.app-shell .source-truth-grid > * {
+  min-width: 0;
+}
+
+.app-shell .review-tabs,
+.app-shell .destination-tabs,
+.app-shell .channel-tabs,
+.app-shell .control-strip,
+.app-shell .studio-controls {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-shell .review-tabs > *,
+.app-shell .destination-tabs > *,
+.app-shell .channel-tabs > *,
+.app-shell .control-strip > *,
+.app-shell .studio-controls > * {
+  flex: 0 0 auto;
+}
+
+.app-shell .review-actions,
+.app-shell .export-row,
+.app-shell .studio-actionbar,
+.app-shell .panel-kicker--with-actions,
+.app-shell .settings-actions,
+.app-shell .recent-card footer {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.app-shell .review-actions > *,
+.app-shell .export-row > *,
+.app-shell .studio-actionbar > *,
+.app-shell .panel-kicker--with-actions > *,
+.app-shell .settings-actions > *,
+.app-shell .recent-card footer > * {
+  min-width: 0;
+}
+
+.app-shell .recent-card,
+.app-shell .library-card,
+.app-shell .connection-card,
+.app-shell .settings-card,
+.app-shell .truth-panel {
+  max-width: 100%;
+}
+
+.app-shell .recent-card pre,
+.app-shell .recent-card code,
+.app-shell .review-workspace pre,
+.app-shell .review-workspace code,
+.app-shell .output-panel pre,
+.app-shell .output-panel code {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.app-shell .modal,
+.app-shell .modal-card,
+.app-shell .dialog,
+.app-shell [role="dialog"] {
+  max-width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+}
+
+@media (max-width: 72rem) {
+  .app-shell .app-header {
+    grid-template-columns: minmax(9.5rem, 1fr) minmax(0, auto);
+    gap: 0.75rem;
+  }
+
+  .app-shell .app-header__status {
+    display: none;
+  }
+
+  .app-shell .app-nav {
+    justify-self: end;
+    max-width: min(100%, calc(100vw - 13rem));
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .app-shell .studio-page,
+  .app-shell .secondary-page,
+  .app-shell .studio-page[data-stage="review"] {
+    width: min(100% - 2rem, 76rem);
+    max-width: calc(100vw - 2rem);
+  }
+
+  .app-shell .studio-heading,
+  .app-shell .secondary-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .app-shell .library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell .connections-grid,
+  .app-shell .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .settings-card--wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 52rem) {
+  .app-shell {
+    --app-header: auto;
+  }
+
+  .app-shell .app-header {
+    position: sticky;
+    top: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0.75rem 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.625rem;
+  }
+
+  .app-shell .brand-button {
+    justify-self: start;
+  }
+
+  .app-shell .app-nav {
+    width: 100%;
+    max-width: 100%;
+    justify-self: stretch;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .app-shell .app-nav button {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
+  }
+
+  .app-shell .toast {
+    top: 7.5rem;
+  }
+
+  .app-shell .studio-page,
+  .app-shell .secondary-page,
+  .app-shell .studio-page[data-stage="review"] {
+    width: min(100% - 1.5rem, 76rem);
+    max-width: calc(100vw - 1.5rem);
+    padding-top: 2rem;
+    padding-bottom: 5rem;
+  }
+
+  .app-shell .studio-heading,
+  .app-shell .secondary-heading {
+    margin-bottom: 1.75rem;
+  }
+
+  .app-shell .studio-heading h1,
+  .app-shell .secondary-heading h1 {
+    max-width: 100%;
+    font-size: clamp(2rem, 10vw, 2.75rem);
+  }
+
+  .app-shell .studio-flow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    border: 0.0625rem solid var(--app-line);
+    border-radius: var(--app-radius);
+    overflow: hidden;
+    background: var(--app-surface);
+  }
+
+  .app-shell .studio-flow button {
+    min-height: 3.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 0.0625rem solid var(--app-line);
+  }
+
+  .app-shell .studio-flow button:last-child {
+    border-bottom: 0;
+  }
+
+  .app-shell .studio-flow button::after {
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    width: 0.1875rem;
+    height: auto;
+    opacity: 0;
+  }
+
+  .app-shell .studio-flow button.is-active::after {
+    right: auto;
+    opacity: 1;
+  }
+
+  .app-shell .studio-grid,
+  .app-shell .studio-grid--review {
+    border-radius: var(--app-radius) var(--app-radius) 0 0;
+  }
+
+  .app-shell .composer-panel,
+  .app-shell .output-panel,
+  .app-shell .studio-grid--review .output-panel {
+    padding: 1.25rem;
+  }
+
+  .app-shell .source-grid,
+  .app-shell .source-truth-grid,
+  .app-shell .channel-picker,
+  .app-shell .library-grid,
+  .app-shell .connections-grid,
+  .app-shell .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .upload-zone,
+  .app-shell .connection-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-shell .upload-zone .text-button,
+  .app-shell .connection-card .status-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .app-shell .review-actions,
+  .app-shell .export-row,
+  .app-shell .studio-actionbar,
+  .app-shell .settings-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .app-shell .review-actions .button,
+  .app-shell .export-row .button,
+  .app-shell .studio-actionbar .button,
+  .app-shell .settings-form .button,
+  .app-shell .settings-form button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .app-shell .panel-kicker--with-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-shell .panel-kicker--with-actions > div {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .app-shell .truth-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 37rem) {
+  .app-shell .app-header {
+    padding-inline: 0.75rem;
+  }
+
+  .app-shell .brand-mark__copy small {
+    display: none;
+  }
+
+  .app-shell .app-nav button {
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .app-shell .studio-page,
+  .app-shell .secondary-page,
+  .app-shell .studio-page[data-stage="review"] {
+    width: min(100% - 1rem, 76rem);
+    max-width: calc(100vw - 1rem);
+    padding-top: 1.5rem;
+  }
+
+  .app-shell .studio-heading h1,
+  .app-shell .secondary-heading h1 {
+    font-size: clamp(1.875rem, 11vw, 2.4rem);
+  }
+
+  .app-shell .studio-heading p:last-child,
+  .app-shell .secondary-heading p:last-child {
+    font-size: 0.875rem;
+  }
+
+  .app-shell .composer-panel,
+  .app-shell .output-panel,
+  .app-shell .studio-grid--review .output-panel {
+    padding: 1rem;
+  }
+
+  .app-shell .panel-kicker {
+    margin-bottom: 1.25rem;
+  }
+
+  .app-shell .field textarea {
+    min-height: 10rem;
+  }
+
+  .app-shell .modal,
+  .app-shell .modal-card,
+  .app-shell .dialog,
+  .app-shell [role="dialog"] {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

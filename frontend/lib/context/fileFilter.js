@@ -8,6 +8,8 @@ const IGNORED_DIRS = new Set([
   ".git",
   ".github",
   "__pycache__",
+  ".venv",
+  "vendor",
 ]);
 
 const IGNORED_FILES = new Set([
@@ -20,74 +22,172 @@ const IGNORED_FILES = new Set([
 ]);
 
 const IGNORED_EXTENSIONS = new Set([
-  // Images
   "png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "tiff",
-  // Videos & Audio
   "mp4", "mov", "avi", "mkv", "webm", "mp3", "wav", "flac",
-  // Archives
   "zip", "tar", "gz", "rar", "7z",
-  // Binaries / Build outputs
   "exe", "dll", "so", "dylib", "bin", "pdf", "epub",
-  // Font files
-  "woff", "woff2", "ttf", "eot", "otf"
+  "woff", "woff2", "ttf", "eot", "otf",
 ]);
 
-/**
- * Checks if a file path should be included in code context.
- * @param {string} filepath 
- * @returns {boolean}
- */
+const MANIFEST_FILES = new Set([
+  "package.json",
+  "pyproject.toml",
+  "requirements.txt",
+  "cargo.toml",
+  "go.mod",
+  "pom.xml",
+  "build.gradle",
+  "build.gradle.kts",
+]);
+
+const SOURCE_DIRS = new Set([
+  "app",
+  "pages",
+  "src",
+  "server",
+  "api",
+  "components",
+  "routes",
+  "lib",
+]);
+
+function normalizePath(filepath) {
+  return String(filepath || "").replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
 export function shouldIncludeFile(filepath) {
-  if (!filepath) return false;
+  const normalized = normalizePath(filepath);
+  if (!normalized) return false;
 
-  const normalized = filepath.replace(/\\/g, "/");
   const parts = normalized.split("/");
-
-  // Check if any directory in the path is ignored
   for (const part of parts.slice(0, -1)) {
-    if (IGNORED_DIRS.has(part)) {
-      return false;
-    }
+    if (IGNORED_DIRS.has(part.toLowerCase())) return false;
   }
 
-  const filename = parts[parts.length - 1];
+  const filename = parts.at(-1);
+  if (IGNORED_FILES.has(filename.toLowerCase())) return false;
+  if (filename.includes(".min.")) return false;
 
-  // Check if specific filename is ignored
-  if (IGNORED_FILES.has(filename)) {
-    return false;
-  }
-
-  // Check extension
-  const extIndex = filename.lastIndexOf(".");
-  if (extIndex !== -1) {
-    const ext = filename.substring(extIndex + 1).toLowerCase();
-    if (IGNORED_EXTENSIONS.has(ext)) {
-      return false;
-    }
-  }
-
-  // Avoid minified files (usually contain .min.)
-  if (filename.includes(".min.")) {
+  const extensionIndex = filename.lastIndexOf(".");
+  if (extensionIndex !== -1 && IGNORED_EXTENSIONS.has(filename.slice(extensionIndex + 1).toLowerCase())) {
     return false;
   }
 
   return true;
 }
 
-/**
- * Returns a priority score for checking/summarizing file content.
- * READMEs, package.json, configs, and main source paths are higher priority.
- */
+export function classifyRepositoryFile(filepath) {
+  const normalized = normalizePath(filepath).toLowerCase();
+  const parts = normalized.split("/");
+  const filename = parts.at(-1) || "";
+
+  if (MANIFEST_FILES.has(filename)) return "manifest";
+  if (/^(readme|contributing|changelog|roadmap)(\.|$)/.test(filename) || parts.includes("docs")) return "documentation";
+  if (/(^|\/)(__tests__|tests?|specs?|fixtures?)(\/|$)/.test(normalized) || /\.(test|spec)\.[^.]+$/.test(filename)) return "test";
+  if (/^(next|vite|webpack|rollup|astro|svelte|nuxt|tsconfig|jsconfig|eslint|prettier|tailwind|postcss)\./.test(filename) || /(^|\/)(config|configs)(\/|$)/.test(normalized)) return "configuration";
+  if (parts.some((part) => ["api", "routes", "server"].includes(part))) return "entrypoint";
+  if (parts.some((part) => ["app", "pages"].includes(part))) return "entrypoint";
+  if (parts.some((part) => SOURCE_DIRS.has(part))) return "source";
+  return "other";
+}
+
 export function getFilePriorityScore(filepath) {
-  if (!filepath) return 0;
-  const normalized = filepath.toLowerCase().replace(/\\/g, "/");
+  const normalized = normalizePath(filepath).toLowerCase();
+  const filename = normalized.split("/").at(-1) || "";
+  const category = classifyRepositoryFile(normalized);
 
-  if (normalized.endsWith("readme.md")) return 100;
-  if (normalized.endsWith("package.json") || normalized.endsWith("pyproject.toml") || normalized.endsWith("requirements.txt")) return 90;
-  if (normalized.endsWith("changelog.md") || normalized.endsWith("roadmap.md") || normalized.endsWith("contributing.md")) return 80;
-  if (normalized.startsWith("docs/")) return 70;
-  if (normalized.startsWith("app/") || normalized.startsWith("pages/") || normalized.startsWith("src/")) return 60;
-  if (normalized.includes("api/")) return 50;
+  if (filename === "readme.md") return normalized.includes("/") ? 82 : 96;
+  if (MANIFEST_FILES.has(filename)) return 100;
+  if (category === "entrypoint") return 92;
+  if (category === "source") return 84;
+  if (category === "configuration") return 78;
+  if (category === "test") return 70;
+  if (category === "documentation") return 58;
+  return 30;
+}
 
-  return 10;
+const CATEGORY_LIMITS = {
+  manifest: 2,
+  entrypoint: 4,
+  source: 4,
+  configuration: 2,
+  test: 2,
+  documentation: 2,
+  other: 1,
+};
+
+/**
+ * Select a deterministic, bounded and representative repository context plan.
+ * Nested app roots such as frontend/app and web/src are classified by path
+ * segments rather than requiring app/pages/src to be the first segment.
+ */
+export function planRepositoryFiles(files = [], {
+  maxFiles = 12,
+  maxFileBytes = 100 * 1024,
+  maxTotalBytes = 720 * 1024,
+} = {}) {
+  const diagnostics = {
+    selected: [],
+    skipped: [],
+    truncated: [],
+  };
+
+  const candidates = files
+    .map((file) => ({
+      ...file,
+      path: normalizePath(file?.path),
+      size: Number(file?.size) || 0,
+    }))
+    .filter((file) => {
+      if (!shouldIncludeFile(file.path)) {
+        diagnostics.skipped.push({ path: file.path, reason: "unsupported_or_generated" });
+        return false;
+      }
+      if (file.size > maxFileBytes) {
+        diagnostics.skipped.push({ path: file.path, reason: "file_budget", size: file.size });
+        return false;
+      }
+      return true;
+    })
+    .map((file) => ({
+      ...file,
+      category: classifyRepositoryFile(file.path),
+      priority: getFilePriorityScore(file.path),
+    }))
+    .sort((left, right) => right.priority - left.priority || left.path.localeCompare(right.path));
+
+  const categoryCounts = new Map();
+  let totalBytes = 0;
+  for (const file of candidates) {
+    if (diagnostics.selected.length >= maxFiles) {
+      diagnostics.skipped.push({ path: file.path, reason: "file_count_budget" });
+      continue;
+    }
+
+    const used = categoryCounts.get(file.category) || 0;
+    const limit = CATEGORY_LIMITS[file.category] || 1;
+    if (used >= limit) {
+      diagnostics.skipped.push({ path: file.path, reason: "category_budget", category: file.category });
+      continue;
+    }
+    if (totalBytes + file.size > maxTotalBytes) {
+      diagnostics.skipped.push({ path: file.path, reason: "total_budget", size: file.size });
+      continue;
+    }
+
+    diagnostics.selected.push(file);
+    categoryCounts.set(file.category, used + 1);
+    totalBytes += file.size;
+  }
+
+  return {
+    files: diagnostics.selected,
+    diagnostics: {
+      ...diagnostics,
+      maxFiles,
+      maxFileBytes,
+      maxTotalBytes,
+      selectedBytes: totalBytes,
+    },
+  };
 }

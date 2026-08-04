@@ -28,6 +28,14 @@ function label(channel) {
   return labels[channel] || channel;
 }
 
+
+function structuredPostForChannel(posts = {}, channel) {
+  if (!posts || typeof posts !== "object" || Array.isArray(posts)) return null;
+  if (channel === "hackernews") return posts.hackernews || posts.hn || null;
+  if (channel === "release_notes") return posts.releaseNotes || posts.release_notes || null;
+  return posts[channel] || null;
+}
+
 function listSection(title, values) {
   if (!Array.isArray(values) || !values.length) return "";
   return `### ${title}\n\n${values.map((value) => `- ${value}`).join("\n")}\n\n`;
@@ -99,8 +107,13 @@ export function projectCampaignExport(input) {
         edited: Boolean(draft.edited),
         approved: Boolean(draft.approved),
         qualityState: draft.qualityState,
-        generationRunId: draft.generationRunId || null,
-        updatedAt: draft.updatedAt,
+
+generationRunId: draft.generationRunId || null,
+updatedAt: draft.updatedAt,
+structuredDraft: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel),
+structuredDraftOrigin: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel)
+  ? "generation_snapshot"
+  : null,
       }];
     }),
   );

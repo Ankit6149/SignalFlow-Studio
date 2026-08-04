@@ -12,6 +12,7 @@ import {
   projectCampaignJson,
   projectCampaignMarkdown,
 } from "../export/campaignExport.mjs";
+import { buildCampaignZipExport } from "../export/campaignZip.mjs";
 
 export function createCampaignApplication({
   campaignRepository,
@@ -118,6 +119,10 @@ export function createCampaignApplication({
     return projectCampaignJson(aggregateInput(input));
   }
 
+  async function projectZip(input) {
+    return buildCampaignZipExport(aggregateInput(input));
+  }
+
   return {
     listCampaigns,
     getCampaign,
@@ -130,5 +135,6 @@ export function createCampaignApplication({
     createSnapshot,
     projectMarkdown,
     projectJson,
+    projectZip,
   };
 }

@@ -179,7 +179,10 @@ async function generateDestination({
       config,
     });
     firstDraft = normalizeDestinationDraft(firstRaw, channel, generationInputs);
-    firstQuality = assessChannelDraft(channel, firstDraft, { projectName });
+    firstQuality = assessChannelDraft(channel, firstDraft, {
+      projectName,
+      sourceContext: context,
+    });
 
     if (firstQuality.valid) {
       return {
@@ -209,7 +212,10 @@ async function generateDestination({
       config,
     });
     const revisedDraft = normalizeDestinationDraft(revisedRaw, channel, generationInputs);
-    const revisedQuality = assessChannelDraft(channel, revisedDraft, { projectName });
+    const revisedQuality = assessChannelDraft(channel, revisedDraft, {
+      projectName,
+      sourceContext: context,
+    });
     const useRevision = revisedQuality.score >= firstQuality.score;
     const selectedDraft = useRevision ? revisedDraft : firstDraft;
     const selectedQuality = useRevision ? revisedQuality : firstQuality;

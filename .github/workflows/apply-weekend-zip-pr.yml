@@ -27,12 +27,55 @@ jobs:
         run: python scripts/apply_weekend_zip_ui.py
 
       - name: Verify the complete frontend contract
+        id: frontend-contract
         working-directory: frontend
+        shell: bash
         run: |
-          npm ci
-          npm test
-          npm audit --omit=dev --audit-level=high
-          npm run build
+          set +e
+
+          npm ci 2>&1 | tee /tmp/zip-npm-ci.log
+          ci_status=${PIPESTATUS[0]}
+          if [ "$ci_status" -ne 0 ]; then
+            echo "failed_stage=npm-ci" >> "$GITHUB_OUTPUT"
+            exit "$ci_status"
+          fi
+
+          npm test 2>&1 | tee /tmp/zip-npm-test.log
+          test_status=${PIPESTATUS[0]}
+          if [ "$test_status" -ne 0 ]; then
+            echo "failed_stage=npm-test" >> "$GITHUB_OUTPUT"
+            exit "$test_status"
+          fi
+
+          npm audit --omit=dev --audit-level=high 2>&1 | tee /tmp/zip-npm-audit.log
+          audit_status=${PIPESTATUS[0]}
+          if [ "$audit_status" -ne 0 ]; then
+            echo "failed_stage=npm-audit" >> "$GITHUB_OUTPUT"
+            exit "$audit_status"
+          fi
+
+          npm run build 2>&1 | tee /tmp/zip-next-build.log
+          build_status=${PIPESTATUS[0]}
+          if [ "$build_status" -ne 0 ]; then
+            echo "failed_stage=next-build" >> "$GITHUB_OUTPUT"
+            exit "$build_status"
+          fi
+
+          set -e
+          echo "failed_stage=none" >> "$GITHUB_OUTPUT"
+
+      - name: Upload ZIP integration diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekend-zip-integration-diagnostics
+          path: |
+            /tmp/zip-npm-ci.log
+            /tmp/zip-npm-test.log
+            /tmp/zip-npm-audit.log
+            /tmp/zip-next-build.log
+          if-no-files-found: warn
+          retention-days: 3
 
       - name: Commit only permanent product files
         run: |

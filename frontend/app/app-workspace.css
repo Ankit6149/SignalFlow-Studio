@@ -1373,7 +1373,7 @@
   border: 0.0625rem solid var(--app-line);
   border-radius: 0.5rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   align-items: center;
   gap: 0.65rem;
   background: var(--app-surface-subtle);

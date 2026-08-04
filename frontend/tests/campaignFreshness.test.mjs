@@ -211,7 +211,11 @@ test("Studio renders a persistent stale warning and blocks outbound actions", as
   assert.match(page, /role="alert"/);
   assert.match(page, /data-freshness=\{campaignFreshness\.status\}/);
   assert.match(page, /disabled=\{Boolean\(campaignStatus\.copyBlockedReason\) \|\| !currentPost\}/);
-  assert.match(page, /disabled=\{Boolean\(campaignStatus\.exportBlockedReason\)\}/);
+  const blockedExportControls = page.match(
+  /disabled=\{busy \|\| Boolean\(campaignStatus\.exportBlockedReason\)\}/g,
+) || [];
+assert.equal(blockedExportControls.length, 3, "Markdown, JSON, and ZIP must share stale/busy blocking");
+assert.match(page, /onClick=\{\(\) => void exportZip\(\)\}/);
   assert.match(page, /publishAvailability\.ready/);
   assert.match(page, /generationRun,/);
   assert.match(layout, /campaign-freshness\.css/);

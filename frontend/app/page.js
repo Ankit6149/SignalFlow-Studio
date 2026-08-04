@@ -218,6 +218,19 @@ function downloadText(filename, value, type = "text/plain") {
   URL.revokeObjectURL(url);
 }
 
+
+function downloadBinary(filename, value, type = "application/octet-stream") {
+  const blob = new Blob([value], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 const SOURCE_STATE_PRESENTATION = Object.freeze({
   usable_evidence: { label: "Usable evidence", description: "Verified extracted content can contribute to generation." },
   reference_only: { label: "Reference only", description: "Retained as context but not counted as extracted evidence." },
@@ -1188,6 +1201,36 @@ ${extractedText}`);
     }
   }
 
+
+async function exportZip() {
+  if (campaignStatus.exportBlockedReason) {
+    setMessage({ type: "warning", text: campaignStatus.exportBlockedReason });
+    return;
+  }
+  setBusy(true);
+  setMessage(null);
+  try {
+    const projection = await campaignApplication.projectZip(currentCampaignInput());
+    downloadBinary(projection.filename, projection.content, projection.mimeType);
+    const exportedAt = new Date().toISOString();
+    dispatchCampaign({ type: "MARK_EXPORTED", payload: { exportedAt } });
+    const failedChannels = projection.summary?.failedChannels || [];
+    setMessage({
+      type: failedChannels.length ? "warning" : "success",
+      text: failedChannels.length
+        ? `ZIP exported with ${projection.summary.channelCount} destinations. ${failedChannels.map((channel) => channelMeta(channel).label).join(", ")} are included with explicit failure status instead of substitute content.`
+        : `ZIP exported with ${projection.summary.channelCount} destinations and ${projection.summary.fileCount} files.`,
+    });
+  } catch (error) {
+    setMessage({
+      type: "error",
+      text: `SignalFlow could not build the ZIP archive. Your current drafts are unchanged. ${error.message || "Try Markdown or JSON export instead."}`,
+    });
+  } finally {
+    setBusy(false);
+  }
+}
+
   async function publishCurrentPost() {
     if (!publishAvailability.ready) {
       setMessage({ type: "warning", text: publishAvailability.reason });
@@ -2043,8 +2086,9 @@ ${extractedText}`);
                       <strong>Take the full campaign with you</strong>
                       <span>Export every selected draft and the generation metadata.</span>
                     </div>
-                    <button onClick={exportMarkdown} disabled={Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>Markdown</button>
-                    <button onClick={exportJson} disabled={Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>JSON</button>
+                    <button onClick={exportMarkdown} disabled={busy || Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>Markdown</button>
+<button onClick={exportJson} disabled={busy || Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>JSON</button>
+<button onClick={() => void exportZip()} disabled={busy || Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>{busy ? "Preparing…" : "ZIP"}</button>
                   </div>
                 </div>
               )}

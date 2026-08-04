@@ -71,14 +71,17 @@ function stripDuplicateGenerationFields(result = {}) {
     json,
     chatbot_prompt: chatbotPrompt,
     package: pkg,
+    structuredPosts: existingStructuredPosts,
     ...rest
   } = result;
   void posts;
   void markdown;
   void json;
   void chatbotPrompt;
+  const structuredPosts = pkg?.posts || existingStructuredPosts || {};
   return portableClone({
     ...rest,
+    structuredPosts,
     package: stripActiveDraftsFromPackage(pkg),
   });
 }
@@ -443,7 +446,11 @@ export function migrateLegacyCampaign(input) {
         providerUsed: parsed.providerUsed,
         modelUsed: parsed.modelUsed,
         warnings: parsed.warnings,
-        generation_status: Object.fromEntries(Object.entries(parsed.drafts || {}).map(([channel, draft]) => [channel, { status: draft.qualityState || "generated" }])),
+
+generation_status: {
+  ...(parsed.generationResult?.generation_status || {}),
+  ...Object.fromEntries(Object.entries(parsed.drafts || {}).map(([channel, draft]) => [channel, { status: draft.qualityState || "generated" }])),
+},
       },
       generationRun: parsed.generationRun
         ? { ...parsed.generationRun, sourceSnapshot: parsed.sourceSnapshot }
@@ -505,9 +512,13 @@ export function campaignToEditorState(input) {
     modelUsed: campaign.modelUsed,
     warnings: campaign.warnings,
     posts: generatedPosts,
-    generation_status: Object.fromEntries(Object.entries(channelStates).map(([channel, state]) => [channel, { status: state.status }])),
+
+generation_status: {
+  ...(campaign.generationResult?.generation_status || {}),
+  ...Object.fromEntries(Object.entries(channelStates).map(([channel, state]) => [channel, { status: state.status }])),
+},
     package: campaign.generationResult?.package
-      ? { ...campaign.generationResult.package, posts: {} }
+      ? { ...campaign.generationResult.package, posts: portableClone(campaign.generationResult?.structuredPosts || {}) }
       : null,
   });
   return {

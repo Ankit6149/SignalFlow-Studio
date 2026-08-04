@@ -167,7 +167,7 @@ function rootReadme(campaign, snapshots) {
 }
 
 function byteLength(value) {
-  return Buffer.byteLength(value, "utf8");
+  return new TextEncoder().encode(value).byteLength;
 }
 
 export async function buildCampaignZipExport(input) {
@@ -231,7 +231,7 @@ export async function buildCampaignZipExport(input) {
   return {
     filename: `${json.filename.replace(/\.json$/, "")}.zip`,
     content: await zip.generateAsync({
-      type: "nodebuffer",
+      type: "uint8array",
       compression: "DEFLATE",
       compressionOptions: { level: 6 },
       platform: "UNIX",

@@ -26,6 +26,24 @@ jobs:
       - name: Apply guarded product migration
         run: python scripts/apply_weekend_zip_ui.py
 
+      - name: Update permanent stale-export regression contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("frontend/tests/campaignFreshness.test.mjs")
+          source = path.read_text(encoding="utf-8")
+          old = '  assert.match(page, /disabled=\\{Boolean\\(campaignStatus\\.exportBlockedReason\\)\\}/);'
+          new = '''  const blockedExportControls = page.match(
+            /disabled=\\{busy \\|\\| Boolean\\(campaignStatus\\.exportBlockedReason\\)\\}/g,
+          ) || [];
+          assert.equal(blockedExportControls.length, 3, "Markdown, JSON, and ZIP must share stale/busy blocking");
+          assert.match(page, /onClick=\\{\\(\\) => void exportZip\\(\\)\\}/);'''
+          if source.count(old) != 1:
+              raise SystemExit("Could not locate the legacy export-blocking assertion")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Verify the complete frontend contract
         id: frontend-contract
         working-directory: frontend

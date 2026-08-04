@@ -52,8 +52,8 @@ export async function GET(request) {
       postMaxLength: 2200,
     };
 
-    result.hn = {
-      id: "hn",
+    result.hackernews = {
+      id: "hackernews",
       label: "Hacker News",
       icon: "Y",
       color: "#FF6600",

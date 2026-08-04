@@ -1,0 +1,48 @@
+name: Apply weekend ZIP integration on PR
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.head_ref == 'fix/weekend-complete-zip-export'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/weekend-complete-zip-export
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Apply guarded product migration
+        run: python scripts/apply_weekend_zip_ui.py
+
+      - name: Verify the complete frontend contract
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm audit --omit=dev --audit-level=high
+          npm run build
+
+      - name: Commit only permanent product files
+        run: |
+          test ! -e scripts/apply_weekend_zip_ui.py
+          test ! -e .github/workflows/apply-weekend-zip-ui.yml
+          test ! -e .github/workflows/apply-weekend-zip-pr.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && { echo "No permanent product changes were produced"; exit 1; }
+          git commit -m "feat(export): complete ZIP export across save, reopen, and Review"
+          git push origin HEAD:fix/weekend-complete-zip-export

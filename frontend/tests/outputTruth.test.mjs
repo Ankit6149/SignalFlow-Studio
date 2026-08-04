@@ -52,7 +52,7 @@ function youtubeDescription({ timestamp = false } = {}) {
     "Campaign strategy",
     "Destination review",
     "Export and manual handoff",
-    ...Array.from({ length: 85 }, (_, index) =>
+    ...Array.from({ length: 22 }, (_, index) =>
       `SignalFlow Studio keeps product evidence, editorial decisions, limitations, and review state connected so viewers can understand the workflow without unsupported claims in section ${index + 1}.`,
     ),
   ].join("\n\n");
@@ -96,6 +96,36 @@ test("YouTube prompt requests timestamps only with verified timeline evidence", 
   assert.match(prompt, /accurate timestamped chapters/i);
 });
 
+test("unknown duration accepts a useful untimed YouTube segment plan", () => {
+  const result = assessChannelDraft("youtube", {
+    title: "SignalFlow Studio product walkthrough",
+    description: youtubeDescription(),
+    tags: ["signalflow", "campaign workflow"],
+  }, {
+    projectName: "SignalFlow Studio",
+    sourceContext: context(),
+  });
+
+  assert.equal(result.valid, true, result.issues.join("\n"));
+  assert.equal(result.metrics.requiresTimedChapters, false);
+});
+
+test("verified duration accepts timestamped YouTube chapters", () => {
+  const result = assessChannelDraft("youtube", {
+    title: "SignalFlow Studio product walkthrough",
+    description: youtubeDescription({ timestamp: true }),
+    tags: ["signalflow", "campaign workflow"],
+  }, {
+    projectName: "SignalFlow Studio",
+    sourceContext: context([
+      { type: "screen recording", durationSeconds: 145, durationVerified: true },
+    ]),
+  });
+
+  assert.equal(result.valid, true, result.issues.join("\n"));
+  assert.equal(result.metrics.requiresTimedChapters, true);
+});
+
 test("YouTube quality gate rejects invented timestamps without evidence", () => {
   const result = assessChannelDraft("youtube", {
     title: "SignalFlow Studio product walkthrough",
@@ -124,6 +154,12 @@ test("YouTube quality gate requires timestamps when verified timeline evidence e
 
   assert.ok(result.issues.some((issue) => /despite verified timeline evidence/i.test(issue)));
   assert.equal(result.metrics.requiresTimedChapters, true);
+});
+
+test("generation orchestration passes source evidence into both quality attempts", async () => {
+  const source = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
+  const evidenceBindings = source.match(/sourceContext:\s*context/g) || [];
+  assert.equal(evidenceBindings.length, 2);
 });
 
 test("Hacker News status uses the canonical active identifier", async () => {

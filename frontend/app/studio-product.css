@@ -1,5 +1,17 @@
 /* Final product layout for the three-step Studio workflow. Loaded last. */
 
+/*
+ * Stage isolation is structural, not decorative. Inactive panels must leave
+ * the layout, pointer flow, keyboard order, and accessibility tree entirely.
+ */
+.app-shell .studio-grid > .is-step-hidden {
+  display: none;
+}
+
+.app-shell .studio-grid--review .model-route-panel {
+  display: none;
+}
+
 .app-shell .studio-page[data-stage="source"],
 .app-shell .studio-page[data-stage="destinations"] {
   width: min(88rem, calc(100% - clamp(2rem, 7vw, 7rem)));

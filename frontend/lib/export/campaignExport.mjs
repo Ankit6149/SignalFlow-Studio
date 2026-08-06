@@ -1,5 +1,6 @@
 import { createDomainRecord, stableStringify } from "../domain/contracts.mjs";
-import { currentPostsFromCampaign, migrateLegacyCampaign } from "../domain/campaign.mjs";
+import { currentPostsFromCampaign } from "../domain/campaign.mjs";
+import { migrateCanonicalCampaign } from "../domain/campaignCompatibility.mjs";
 
 export const CAMPAIGN_EXPORT_SCHEMA_VERSION = 1;
 
@@ -27,7 +28,6 @@ function label(channel) {
   };
   return labels[channel] || channel;
 }
-
 
 function structuredPostForChannel(posts = {}, channel) {
   if (!posts || typeof posts !== "object" || Array.isArray(posts)) return null;
@@ -94,7 +94,7 @@ function exportMetadata(campaign) {
 }
 
 export function projectCampaignExport(input) {
-  const campaign = migrateLegacyCampaign(input);
+  const campaign = migrateCanonicalCampaign(input);
   const currentDrafts = Object.fromEntries(
     campaign.channels.map((channel) => {
       const draft = campaign.drafts[channel];
@@ -107,13 +107,12 @@ export function projectCampaignExport(input) {
         edited: Boolean(draft.edited),
         approved: Boolean(draft.approved),
         qualityState: draft.qualityState,
-
-generationRunId: draft.generationRunId || null,
-updatedAt: draft.updatedAt,
-structuredDraft: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel),
-structuredDraftOrigin: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel)
-  ? "generation_snapshot"
-  : null,
+        generationRunId: draft.generationRunId || null,
+        updatedAt: draft.updatedAt,
+        structuredDraft: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel),
+        structuredDraftOrigin: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel)
+          ? "generation_snapshot"
+          : null,
       }];
     }),
   );
@@ -155,7 +154,7 @@ structuredDraftOrigin: structuredPostForChannel(campaign.generationResult?.struc
 }
 
 export function projectCampaignMarkdown(input) {
-  const campaign = migrateLegacyCampaign(input);
+  const campaign = migrateCanonicalCampaign(input);
   const metadata = exportMetadata(campaign);
   const posts = currentPostsFromCampaign(campaign);
   let content = `# ${campaign.title}\n\n`;

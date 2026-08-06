@@ -6,8 +6,9 @@ import {
 import {
   campaignToEditorState,
   createCampaignAggregate,
-  migrateLegacyCampaign,
 } from "../domain/campaign.mjs";
+import { migrateCanonicalCampaign } from "../domain/campaignCompatibility.mjs";
+import { normalizeLegacyChannelPayload } from "../domain/channelIdentifiers.mjs";
 import {
   projectCampaignJson,
   projectCampaignMarkdown,
@@ -24,13 +25,18 @@ export function createCampaignApplication({
   const applicationIds = assertPort("idService", idService);
 
   function aggregateInput(input, existing = null) {
-    const snapshotAt = input.updatedAt || input.generationRun?.createdAt || existing?.updatedAt || applicationClock.now();
+    const normalizedInput = normalizeLegacyChannelPayload(input) || {};
+    const normalizedExisting = existing ? migrateCanonicalCampaign(existing) : null;
+    const snapshotAt = normalizedInput.updatedAt
+      || normalizedInput.generationRun?.createdAt
+      || normalizedExisting?.updatedAt
+      || applicationClock.now();
     return createCampaignAggregate({
-      ...input,
-      campaignId: input.campaignId || existing?.campaignId,
-      existingDrafts: existing?.drafts || input.existingDrafts,
-      existingArchives: existing?.archives || input.existingArchives,
-      createdAt: existing?.createdAt || input.createdAt || snapshotAt,
+      ...normalizedInput,
+      campaignId: normalizedInput.campaignId || normalizedExisting?.campaignId,
+      existingDrafts: normalizedExisting?.drafts || normalizedInput.existingDrafts,
+      existingArchives: normalizedExisting?.archives || normalizedInput.existingArchives,
+      createdAt: normalizedExisting?.createdAt || normalizedInput.createdAt || snapshotAt,
       updatedAt: snapshotAt,
     });
   }
@@ -47,7 +53,7 @@ export function createCampaignApplication({
     const stored = await repository.list();
     const normalized = [];
     for (const item of stored) {
-      const campaign = migrateLegacyCampaign(item);
+      const campaign = migrateCanonicalCampaign(item);
       normalized.push(campaign);
       if (item?.kind !== "Campaign" || item?.schemaVersion !== campaign.schemaVersion) {
         await repository.upsert(campaign);
@@ -58,7 +64,7 @@ export function createCampaignApplication({
 
   async function getCampaign(campaignId) {
     const stored = await repository.get(campaignId);
-    return stored ? migrateLegacyCampaign(stored) : null;
+    return stored ? migrateCanonicalCampaign(stored) : null;
   }
 
   async function createCampaign(input) {
@@ -100,7 +106,7 @@ export function createCampaignApplication({
   }
 
   function openCampaign(input) {
-    return campaignToEditorState(input);
+    return campaignToEditorState(normalizeLegacyChannelPayload(input));
   }
 
   async function deleteCampaign(campaignId) {

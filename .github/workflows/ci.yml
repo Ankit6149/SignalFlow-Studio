@@ -6,76 +6,8 @@ on:
   pull_request:
     branches: [main, master]
 
-permissions:
-  contents: write
-
 jobs:
-  apply-review-fix:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.patch.outputs.changed }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: fix/review-first-publishing-final
-          fetch-depth: 0
-      - id: patch
-        name: Apply final Review compatibility fix
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("frontend/app/page.js")
-          source = path.read_text()
-          if "const canPublishCurrent = Boolean(" in source and "onClick={copyAndOpenCurrent}" in source:
-              print("Compatibility patch already applied.")
-              raise SystemExit(0)
-
-          marker = "  const publishConfirmation = buildPublishConfirmation({"
-          gate = '''  const canPublishCurrent = Boolean(
-            connectorReadyForPublish &&
-              activeChannelStatus.isApproved &&
-              directPublishAvailability.ready,
-          );
-'''
-          if marker not in source:
-              raise SystemExit("Publish confirmation marker is missing")
-          source = source.replace(marker, gate + marker, 1)
-
-          guard = "if (!directPublishAvailability.ready) {"
-          if source.count(guard) != 2:
-              raise SystemExit(f"Expected two publishing guards, found {source.count(guard)}")
-          source = source.replace(guard, "if (!canPublishCurrent) {", 2)
-
-          disabled = "disabled={busy || !directPublishAvailability.ready}"
-          if source.count(disabled) != 1:
-              raise SystemExit(f"Expected one direct publishing button state, found {source.count(disabled)}")
-          source = source.replace(disabled, "disabled={busy || !canPublishCurrent}", 1)
-
-          action = "onClick={activeMeta.openUrl ? copyAndOpenCurrent : () => copyCurrentPost()}"
-          if source.count(action) != 1:
-              raise SystemExit(f"Expected one primary handoff action, found {source.count(action)}")
-          source = source.replace(action, "onClick={copyAndOpenCurrent}", 1)
-
-          path.write_text(source)
-          PY
-          if git diff --quiet -- frontend/app/page.js; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Commit product fix
-        if: steps.patch.outputs.changed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/app/page.js
-          git commit -m "fix(review): preserve primary handoff and approval gate"
-          git push origin HEAD:fix/review-first-publishing-final
-
   mcp-tests:
-    needs: apply-review-fix
-    if: needs.apply-review-fix.outputs.changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,8 +20,6 @@ jobs:
         run: npm test
 
   python-tests:
-    needs: apply-review-fix
-    if: needs.apply-review-fix.outputs.changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,8 +36,6 @@ jobs:
         run: pytest -q
 
   frontend:
-    needs: apply-review-fix
-    if: needs.apply-review-fix.outputs.changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

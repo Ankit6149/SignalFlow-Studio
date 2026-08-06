@@ -27,6 +27,16 @@ jobs:
           if grep -q "selectDirectPublishAvailability" frontend/app/page.js; then
             echo "Review-first publishing patch is already applied."
           else
+            python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/apply-review-first-publishing.mjs")
+          source = path.read_text()
+          source = source.replace(
+              'text: data.message || `Published revision ${revision} to ${activeMeta.label}.`,',
+              'text: data.message || "Published revision " + revision + " to " + activeMeta.label + ".",',
+          )
+          path.write_text(source)
+          PY
             node scripts/apply-review-first-publishing.mjs
           fi
       - name: Commit patched product files

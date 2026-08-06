@@ -6,9 +6,11 @@ const IMAGE_EXTENSION_BY_TYPE = Object.freeze({
   "image/bmp": "bmp",
   "image/gif": "gif",
   "image/jpeg": "jpg",
+  "image/jpg": "jpg",
   "image/png": "png",
   "image/svg+xml": "svg",
   "image/webp": "webp",
+  "image/x-png": "png",
 });
 
 export function resolveStudioStage(requestedStage, { hasSource = false, hasResult = false } = {}) {
@@ -43,8 +45,12 @@ function clipboardImageExtension(type) {
 
 function clipboardImageName(file, index, now) {
   const providedName = String(file?.name || "").trim();
-  if (providedName && providedName.toLowerCase() !== "image") return providedName;
-  const stamp = new Date(now).toISOString().replace(/[:.]/g, "-");
+  const genericName = /^image(?:\.[a-z0-9]+)?$/i.test(providedName);
+  if (providedName && !genericName) return providedName;
+
+  const requestedDate = new Date(now);
+  const timestamp = Number.isFinite(requestedDate.getTime()) ? requestedDate : new Date();
+  const stamp = timestamp.toISOString().replace(/[:.]/g, "-");
   return `pasted-image-${stamp}-${index + 1}.${clipboardImageExtension(file?.type)}`;
 }
 

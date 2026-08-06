@@ -29,6 +29,14 @@ function rawChannel(value) {
   return String(value ?? "").trim();
 }
 
+function hasOwn(value, key) {
+  return Boolean(value && Object.prototype.hasOwnProperty.call(value, key));
+}
+
+function isRecord(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
 export function canonicalChannelId(value) {
   const raw = rawChannel(value);
   if (!raw) return "";
@@ -52,7 +60,7 @@ export function canonicalChannelList(value) {
 }
 
 export function canonicalChannelMap(value, { mapValue = (item) => item } = {}) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  if (!isRecord(value)) return value;
 
   const entries = Object.entries(value);
   const normalized = {};
@@ -76,6 +84,7 @@ export function canonicalChannelMap(value, { mapValue = (item) => item } = {}) {
 }
 
 function canonicalPackagePostMap(value) {
+  if (!isRecord(value)) return value;
   const canonical = canonicalChannelMap(value);
   return Object.fromEntries(
     Object.entries(canonical).map(([channel, item]) => [packageKeyForChannelId(channel), item]),
@@ -83,70 +92,103 @@ function canonicalPackagePostMap(value) {
 }
 
 function canonicalDraftMap(value) {
+  if (!isRecord(value)) return value;
   return canonicalChannelMap(value, {
-    mapValue: (draft, channel) => draft && typeof draft === "object"
+    mapValue: (draft, channel) => isRecord(draft)
       ? { ...draft, channel }
       : draft,
   });
 }
 
 function canonicalPackage(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  if (!isRecord(value)) return value;
   return {
     ...value,
-    posts: canonicalPackagePostMap(value.posts),
+    ...(hasOwn(value, "posts") ? { posts: canonicalPackagePostMap(value.posts) } : {}),
   };
 }
 
 function canonicalResult(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  if (!isRecord(value)) return value;
   return {
     ...value,
-    posts: canonicalChannelMap(value.posts),
-    structuredPosts: canonicalChannelMap(value.structuredPosts),
-    generation_status: canonicalChannelMap(value.generation_status),
-    package: canonicalPackage(value.package),
+    ...(hasOwn(value, "posts") ? { posts: canonicalChannelMap(value.posts) } : {}),
+    ...(hasOwn(value, "structuredPosts")
+      ? { structuredPosts: canonicalChannelMap(value.structuredPosts) }
+      : {}),
+    ...(hasOwn(value, "generation_status")
+      ? { generation_status: canonicalChannelMap(value.generation_status) }
+      : {}),
+    ...(hasOwn(value, "package") ? { package: canonicalPackage(value.package) } : {}),
   };
 }
 
 function canonicalArchive(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  if (!isRecord(value)) return value;
   return {
     ...value,
-    activeChannel: canonicalChannelId(value.activeChannel),
-    posts: canonicalChannelMap(value.posts),
-    generatedPosts: canonicalChannelMap(value.generatedPosts),
-    channelStates: canonicalChannelMap(value.channelStates),
-    result: canonicalResult(value.result),
+    ...(hasOwn(value, "activeChannel")
+      ? { activeChannel: canonicalChannelId(value.activeChannel) }
+      : {}),
+    ...(hasOwn(value, "posts") ? { posts: canonicalChannelMap(value.posts) } : {}),
+    ...(hasOwn(value, "generatedPosts")
+      ? { generatedPosts: canonicalChannelMap(value.generatedPosts) }
+      : {}),
+    ...(hasOwn(value, "channelStates")
+      ? { channelStates: canonicalChannelMap(value.channelStates) }
+      : {}),
+    ...(hasOwn(value, "result") ? { result: canonicalResult(value.result) } : {}),
   };
 }
 
 export function normalizeLegacyChannelPayload(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  if (!isRecord(value)) return value;
 
   return {
     ...value,
-    channels: canonicalChannelList(value.channels),
-    activeChannel: canonicalChannelId(value.activeChannel),
-    posts: canonicalChannelMap(value.posts),
-    generatedPosts: canonicalChannelMap(value.generatedPosts),
-    channelStates: canonicalChannelMap(value.channelStates),
-    generationStatus: canonicalChannelMap(value.generationStatus),
-    drafts: canonicalDraftMap(value.drafts),
-    existingDrafts: canonicalDraftMap(value.existingDrafts),
-    publishOptions: canonicalChannelMap(value.publishOptions),
-    result: canonicalResult(value.result),
-    generationResult: canonicalResult(value.generationResult),
-    package: canonicalPackage(value.package),
-    archives: Array.isArray(value.archives) ? value.archives.map(canonicalArchive) : value.archives,
-    existingArchives: Array.isArray(value.existingArchives)
-      ? value.existingArchives.map(canonicalArchive)
-      : value.existingArchives,
-    metadata: value.metadata && typeof value.metadata === "object"
+    ...(hasOwn(value, "channels") && Array.isArray(value.channels)
+      ? { channels: canonicalChannelList(value.channels) }
+      : {}),
+    ...(hasOwn(value, "activeChannel")
+      ? { activeChannel: canonicalChannelId(value.activeChannel) }
+      : {}),
+    ...(hasOwn(value, "posts") ? { posts: canonicalChannelMap(value.posts) } : {}),
+    ...(hasOwn(value, "generatedPosts")
+      ? { generatedPosts: canonicalChannelMap(value.generatedPosts) }
+      : {}),
+    ...(hasOwn(value, "channelStates")
+      ? { channelStates: canonicalChannelMap(value.channelStates) }
+      : {}),
+    ...(hasOwn(value, "generationStatus")
+      ? { generationStatus: canonicalChannelMap(value.generationStatus) }
+      : {}),
+    ...(hasOwn(value, "drafts") ? { drafts: canonicalDraftMap(value.drafts) } : {}),
+    ...(hasOwn(value, "existingDrafts")
+      ? { existingDrafts: canonicalDraftMap(value.existingDrafts) }
+      : {}),
+    ...(hasOwn(value, "publishOptions")
+      ? { publishOptions: canonicalChannelMap(value.publishOptions) }
+      : {}),
+    ...(hasOwn(value, "result") ? { result: canonicalResult(value.result) } : {}),
+    ...(hasOwn(value, "generationResult")
+      ? { generationResult: canonicalResult(value.generationResult) }
+      : {}),
+    ...(hasOwn(value, "package") ? { package: canonicalPackage(value.package) } : {}),
+    ...(hasOwn(value, "archives") && Array.isArray(value.archives)
+      ? { archives: value.archives.map(canonicalArchive) }
+      : {}),
+    ...(hasOwn(value, "existingArchives") && Array.isArray(value.existingArchives)
+      ? { existingArchives: value.existingArchives.map(canonicalArchive) }
+      : {}),
+    ...(hasOwn(value, "metadata") && isRecord(value.metadata)
       ? {
-          ...value.metadata,
-          selectedChannels: canonicalChannelList(value.metadata.selectedChannels),
+          metadata: {
+            ...value.metadata,
+            ...(hasOwn(value.metadata, "selectedChannels") && Array.isArray(value.metadata.selectedChannels)
+              ? { selectedChannels: canonicalChannelList(value.metadata.selectedChannels) }
+              : {}),
+          },
         }
-      : value.metadata,
+      : {}),
   };
 }

@@ -1,0 +1,112 @@
+name: Apply review publishing CI fix
+
+on:
+  push:
+    branches:
+      - fix/review-first-publishing
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/review-first-publishing
+          fetch-depth: 0
+      - name: Apply compatibility-safe review action patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("frontend/app/page.js")
+          source = path.read_text()
+          if "const canPublishCurrent = Boolean(" in source and "onClick={copyAndOpenCurrent}" in source:
+              print("Compatibility patch already applied.")
+              raise SystemExit(0)
+
+          availability = '''  const directPublishAvailability = selectDirectPublishAvailability({
+            channelStatus: activeChannelStatus,
+            isStale: isCampaignStale,
+            hasContent: Boolean(currentPost),
+            isOverLimit,
+            connection: currentConnection,
+            permissionValid: Boolean(accessToken),
+          });
+          const publishConfirmation = buildPublishConfirmation({'''
+          availability_replacement = '''  const directPublishAvailability = selectDirectPublishAvailability({
+            channelStatus: activeChannelStatus,
+            isStale: isCampaignStale,
+            hasContent: Boolean(currentPost),
+            isOverLimit,
+            connection: currentConnection,
+            permissionValid: Boolean(accessToken),
+          });
+          const canPublishCurrent = Boolean(
+            connectorReadyForPublish &&
+              activeChannelStatus.isApproved &&
+              directPublishAvailability.ready,
+          );
+          const publishConfirmation = buildPublishConfirmation({'''
+          if availability not in source:
+              raise SystemExit("Could not find direct publish availability block")
+          source = source.replace(availability, availability_replacement, 1)
+
+          source = source.replace("if (!directPublishAvailability.ready) {", "if (!canPublishCurrent) {", 2)
+          source = source.replace(
+              "disabled={busy || !directPublishAvailability.ready}",
+              "disabled={busy || !canPublishCurrent}",
+              1,
+          )
+
+          action = '''                    <button
+                            className="button button--dark"
+                            onClick={activeMeta.openUrl ? copyAndOpenCurrent : () => copyCurrentPost()}
+                            disabled={Boolean(campaignStatus.copyBlockedReason) || !currentPost}
+                            title={campaignStatus.copyBlockedReason || undefined}
+                          >
+                            {activeMeta.openUrl ? <>Copy & open {activeMeta.label}</> : "Copy for manual handoff"}
+                            <ArrowIcon />
+                          </button>'''
+          action_replacement = '''                    {activeMeta.openUrl ? (
+                            <button
+                              className="button button--dark"
+                              onClick={copyAndOpenCurrent}
+                              disabled={Boolean(campaignStatus.copyBlockedReason) || !currentPost}
+                              title={campaignStatus.copyBlockedReason || undefined}
+                            >
+                              Copy & open {activeMeta.label}
+                              <ArrowIcon />
+                            </button>
+                          ) : (
+                            <button
+                              className="button button--dark"
+                              onClick={() => copyCurrentPost()}
+                              disabled={Boolean(campaignStatus.copyBlockedReason) || !currentPost}
+                              title={campaignStatus.copyBlockedReason || undefined}
+                            >
+                              Copy for manual handoff
+                              <ArrowIcon />
+                            </button>
+                          )}'''
+          if action not in source:
+              raise SystemExit("Could not find primary handoff action")
+          source = source.replace(action, action_replacement, 1)
+          path.write_text(source)
+          PY
+      - name: Commit product fix
+        run: |
+          if git diff --quiet -- frontend/app/page.js; then
+            echo "No product commit required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/app/page.js
+          git commit -m "fix(review): preserve primary handoff and approval gate"
+          git push origin HEAD:fix/review-first-publishing

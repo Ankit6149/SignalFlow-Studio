@@ -245,3 +245,144 @@ a { color: inherit; text-decoration: none; }
   .truth-panel { grid-template-columns: 1fr; }
   .settings-form { grid-template-columns: 1fr; }
 }
+
+
+/* Review-first direct publishing */
+.review-primary-actions { align-items: center; }
+.review-primary-actions .button--dark { margin-left: 0; }
+.review-primary-actions .save-action-group { margin-left: auto; }
+.direct-publishing-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  background: rgba(255, 253, 248, .5);
+}
+.direct-publishing-panel__copy > span,
+.publish-confirmation-dialog__eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(23, 23, 20, .46);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.direct-publishing-panel__copy > strong { font-size: 13px; }
+.direct-publishing-panel__copy > p {
+  max-width: 680px;
+  margin: 6px 0 0;
+  color: rgba(23, 23, 20, .54);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.direct-publishing-panel dl,
+.publish-confirmation-dialog dl {
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.direct-publishing-panel dl div,
+.publish-confirmation-dialog dl div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--paper-deep);
+}
+.direct-publishing-panel dt,
+.publish-confirmation-dialog dt {
+  color: rgba(23, 23, 20, .46);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.direct-publishing-panel dd,
+.publish-confirmation-dialog dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  font-weight: 700;
+}
+.direct-publishing-panel__action {
+  width: min(290px, 100%);
+  display: grid;
+  justify-items: stretch;
+  gap: 8px;
+}
+.direct-publishing-panel__action small {
+  color: var(--warning);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.direct-publishing-panel .publishing-route-link {
+  width: 100%;
+  margin: 0;
+  justify-content: center;
+}
+.publish-confirmation-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 17, 15, .64);
+  backdrop-filter: blur(8px);
+}
+.publish-confirmation-dialog {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid var(--line-dark);
+  border-radius: 22px;
+  outline: 0;
+  background: var(--white);
+  box-shadow: 0 30px 90px rgba(17, 17, 15, .28);
+}
+.publish-confirmation-dialog:focus-visible { box-shadow: 0 0 0 4px rgba(216, 189, 124, .35), 0 30px 90px rgba(17, 17, 15, .28); }
+.publish-confirmation-dialog h2 {
+  margin: 0;
+  font-family: "Playfair Display", serif;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -.035em;
+}
+.publish-confirmation-dialog > p {
+  margin: 12px 0 0;
+  color: rgba(23, 23, 20, .58);
+  line-height: 1.65;
+}
+.publish-confirmation-dialog__warning {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 90, 34, .24);
+  border-radius: 12px;
+  background: rgba(216, 189, 124, .1);
+  color: var(--warning);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.publish-confirmation-dialog__actions {
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+@media (max-width: 760px) {
+  .review-primary-actions .save-action-group { width: 100%; margin-left: 0; }
+  .direct-publishing-panel { grid-template-columns: 1fr; }
+  .direct-publishing-panel__action { width: 100%; }
+  .direct-publishing-panel dl,
+  .publish-confirmation-dialog dl { grid-template-columns: 1fr; }
+  .publish-confirmation-backdrop { padding: 12px; align-items: end; }
+  .publish-confirmation-dialog { max-height: calc(100vh - 24px); padding: 22px; border-radius: 20px 20px 12px 12px; }
+  .publish-confirmation-dialog__actions { display: grid; }
+  .publish-confirmation-dialog__actions .button { width: 100%; }
+}

@@ -35,8 +35,12 @@ import {
 import {
   selectCampaignStatus,
   selectChannelStatus,
-  selectPublishAvailability,
 } from "../lib/studio/campaignStatus.mjs";
+import {
+  buildPublishConfirmation,
+  isConfirmedPublishResponse,
+  selectDirectPublishAvailability,
+} from "../lib/studio/publishingPolicy.mjs";
 import {
   createUploadSourceBundle,
   projectGenerationMediaItem,
@@ -391,7 +395,10 @@ export default function Home() {
   const [publishOptions, setPublishOptions] = useState({
     reddit: { subreddit: "", title: "" },
   });
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const publishTriggerRef = useRef(null);
+  const publishDialogRef = useRef(null);
   const campaignApplication = useMemo(() => createBrowserCampaignApplication({
     getStorage: () => window.localStorage,
     key: LIBRARY_KEY,
@@ -428,7 +435,7 @@ export default function Home() {
   const sourceChangeLabels = isCampaignStale
     ? getGenerationSourceChanges(generationRun?.sourceSnapshot, currentSourceSnapshot)
     : [];
-  const canPublishCurrent = Boolean(
+  const connectorReadyForPublish = Boolean(
     campaignFreshness.canUseCurrentGeneration &&
       currentConnection?.connected &&
       !currentConnection?.expired &&
@@ -500,13 +507,20 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     channelStates,
     activeChannel,
   });
-  const publishAvailability = selectPublishAvailability({
+  const directPublishAvailability = selectDirectPublishAvailability({
     channelStatus: activeChannelStatus,
     isStale: isCampaignStale,
     hasContent: Boolean(currentPost),
     isOverLimit,
-    connectorReady: canPublishCurrent,
-    manualRoute: Boolean(activeMeta.openUrl || !OFFICIAL_CONNECTORS.has(activeChannel)),
+    connection: currentConnection,
+    permissionValid: Boolean(accessToken),
+  });
+  const publishConfirmation = buildPublishConfirmation({
+    platformId: activeChannel,
+    platformLabel: activeMeta.label,
+    connection: currentConnection,
+    revision,
+    channelStatus: activeChannelStatus,
   });
 
   useEffect(() => {
@@ -567,6 +581,19 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [regenerationDialogOpen]);
+
+  useEffect(() => {
+    if (!publishDialogOpen) return undefined;
+    window.requestAnimationFrame(() => publishDialogRef.current?.focus());
+    function closeOnEscape(event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setPublishDialogOpen(false);
+      window.requestAnimationFrame(() => publishTriggerRef.current?.focus());
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [publishDialogOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1231,23 +1258,22 @@ async function exportZip() {
   }
 }
 
-  async function publishCurrentPost() {
-    if (!publishAvailability.ready) {
-      setMessage({ type: "warning", text: publishAvailability.reason });
-      return;
-    }
-    if (!canPublishCurrent) {
-      await copyAndOpenCurrent();
-      return;
-    }
+  function closePublishDialog() {
+    setPublishDialogOpen(false);
+    window.requestAnimationFrame(() => publishTriggerRef.current?.focus());
+  }
 
-    if (isOverLimit) {
-      setMessage({
-        type: "error",
-        text: activeChannel === "x" && xThreadMode
-          ? "Every X thread post must stay within 280 characters and a thread may contain at most 25 posts."
-          : `This ${activeMeta.label} draft is over the ${activeMeta.limit.toLocaleString()} character guide.`,
-      });
+  function reviewPublication() {
+    if (!directPublishAvailability.ready) {
+      setMessage({ type: "warning", text: directPublishAvailability.reason });
+      return;
+    }
+    setPublishDialogOpen(true);
+  }
+
+  async function publishCurrentPost() {
+    if (!directPublishAvailability.ready) {
+      setMessage({ type: "warning", text: directPublishAvailability.reason });
       return;
     }
 
@@ -1268,8 +1294,6 @@ async function exportZip() {
       options = { subreddit, title };
     }
 
-    if (!window.confirm(`Publish this approved draft to ${activeMeta.label}?`)) return;
-
     setBusy(true);
     setMessage(null);
     try {
@@ -1280,14 +1304,23 @@ async function exportZip() {
           platform: activeChannel,
           content: currentPost,
           projectName: form.projectName,
+          campaignId: currentCampaignId || null,
+          draftRevision: revision,
           options,
         }),
       });
       const data = await readJsonResponse(response, "SignalFlow returned an unreadable publishing response.");
-      if (!data.ok) throw new Error(data.error || "The platform did not confirm publication.");
+      if (!isConfirmedPublishResponse({
+        responseOk: response.ok,
+        data,
+        expectedPlatform: activeChannel,
+      })) {
+        throw new Error(data.error || "The destination API did not confirm publication with a stable post reference.");
+      }
+      closePublishDialog();
       setMessage({
         type: "success",
-        text: data.message || `Published to ${activeMeta.label}.`,
+        text: data.message || "Published revision " + revision + " to " + activeMeta.label + ".",
       });
       await refreshConnections();
     } catch (error) {
@@ -1925,7 +1958,7 @@ async function exportZip() {
                         <dd>
                           {isCampaignStale
                             ? "Blocked until regeneration from the current source"
-                            : canPublishCurrent
+                            : connectorReadyForPublish
                               ? "Connected official API"
                               : OFFICIAL_CONNECTORS.has(activeChannel)
                                 ? "Official connector available; manual handoff remains available"
@@ -2021,7 +2054,7 @@ async function exportZip() {
                     )}
                   </aside>
 
-                  <div className="review-actions">
+                  <div className="review-actions review-primary-actions" aria-label="Review and handoff actions">
                     <button
                       className="button button--outline"
                       onClick={() => copyCurrentPost()}
@@ -2029,6 +2062,15 @@ async function exportZip() {
                       title={campaignStatus.copyBlockedReason || undefined}
                     >
                       <CopyIcon /> Copy draft
+                    </button>
+                    <button
+                      className="button button--dark"
+                      onClick={activeMeta.openUrl ? copyAndOpenCurrent : () => copyCurrentPost()}
+                      disabled={Boolean(campaignStatus.copyBlockedReason) || !currentPost}
+                      title={campaignStatus.copyBlockedReason || undefined}
+                    >
+                      {activeMeta.openUrl ? <>Copy & open {activeMeta.label}</> : "Copy for manual handoff"}
+                      <ArrowIcon />
                     </button>
                     <div className="save-action-group">
                       <button className="button button--outline" onClick={saveCampaign} disabled={busy}>
@@ -2038,36 +2080,47 @@ async function exportZip() {
                         Save as copy
                       </button>
                     </div>
-                    <button
-                      className="button button--dark"
-                      onClick={publishCurrentPost}
-                      disabled={busy || !publishAvailability.ready}
-                      title={publishAvailability.reason || undefined}
-                    >
-                      {!publishAvailability.ready
-                        ? channelStates[activeChannel]?.approved
-                          ? "Action unavailable"
-                          : "Approve to continue"
-                        : canPublishCurrent
-                          ? "Publish approved draft"
-                          : activeMeta.openUrl
-                            ? `Copy & open ${activeMeta.label}`
-                            : "Copy approved draft"}
-                      <ArrowIcon />
-                    </button>
-                    {!publishAvailability.ready && (
-                      <p className="review-action-reason" role="status">{publishAvailability.reason}</p>
-                    )}
                   </div>
 
-                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (
-                    <button
-                      className="publishing-route-link"
-                      onClick={() => navigateSection("connections")}
-                    >
-                      Configure the official {activeMeta.label} connector
-                      <ArrowIcon />
-                    </button>
+                  {OFFICIAL_CONNECTORS.has(activeChannel) && (
+                    <section className="direct-publishing-panel" aria-labelledby="direct-publishing-title">
+                      <div className="direct-publishing-panel__copy">
+                        <span>Optional live action</span>
+                        <strong id="direct-publishing-title">Direct publishing</strong>
+                        <p>
+                          Review, save, copy, and export remain the primary workflow. Use this only after the
+                          exact approved revision and connected destination account are confirmed.
+                        </p>
+                        <dl>
+                          <div><dt>Connected account</dt><dd>{publishConfirmation.accountLabel}</dd></div>
+                          <div><dt>Draft revision</dt><dd>{publishConfirmation.draftRevision}</dd></div>
+                        </dl>
+                      </div>
+                      <div className="direct-publishing-panel__action">
+                        <button
+                          ref={publishTriggerRef}
+                          type="button"
+                          className="button button--outline button--small"
+                          onClick={reviewPublication}
+                          disabled={busy || !directPublishAvailability.ready}
+                          title={directPublishAvailability.reason || undefined}
+                        >
+                          Review live publication <ArrowIcon />
+                        </button>
+                        {!directPublishAvailability.ready && (
+                          <small role="status">{directPublishAvailability.reason}</small>
+                        )}
+                        {!connectorReadyForPublish && (
+                          <button
+                            type="button"
+                            className="publishing-route-link"
+                            onClick={() => navigateSection("connections")}
+                          >
+                            Configure {activeMeta.label} connector
+                          </button>
+                        )}
+                      </div>
+                    </section>
                   )}
 
                   {result?.warnings?.length > 0 && (
@@ -2141,6 +2194,45 @@ async function exportZip() {
             </div>
           </div>
         </main>
+      )}
+
+      {publishDialogOpen && (
+        <div
+          className="publish-confirmation-backdrop"
+          onMouseDown={closePublishDialog}
+        >
+          <section
+            ref={publishDialogRef}
+            className="publish-confirmation-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="publish-confirmation-title"
+            aria-describedby="publish-confirmation-description"
+            tabIndex={-1}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="publish-confirmation-dialog__eyebrow">Live platform action</div>
+            <h2 id="publish-confirmation-title">{publishConfirmation.title}</h2>
+            <p id="publish-confirmation-description">{publishConfirmation.description}</p>
+            <dl>
+              <div><dt>Platform</dt><dd>{publishConfirmation.platformLabel}</dd></div>
+              <div><dt>Connected account</dt><dd>{publishConfirmation.accountLabel}</dd></div>
+              <div><dt>Draft revision</dt><dd>{publishConfirmation.draftRevision}</dd></div>
+              <div><dt>Draft state</dt><dd>{publishConfirmation.draftState}</dd></div>
+            </dl>
+            <div className="publish-confirmation-dialog__warning">
+              SignalFlow will report success only after the destination API returns a matching platform and a stable post reference.
+            </div>
+            <div className="publish-confirmation-dialog__actions">
+              <button type="button" className="button button--outline" onClick={closePublishDialog} disabled={busy}>
+                Cancel
+              </button>
+              <button type="button" className="button button--dark" onClick={publishCurrentPost} disabled={busy}>
+                {busy ? "Publishing…" : "Confirm and publish"}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
       {regenerationDialogOpen && (

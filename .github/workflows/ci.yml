@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/review-first-publishing
+          ref: fix/review-first-publishing-final
           fetch-depth: 0
       - id: patch
         name: Apply final Review compatibility fix
@@ -71,7 +71,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/app/page.js
           git commit -m "fix(review): preserve primary handoff and approval gate"
-          git push origin HEAD:fix/review-first-publishing
+          git push origin HEAD:fix/review-first-publishing-final
 
   mcp-tests:
     needs: apply-review-fix

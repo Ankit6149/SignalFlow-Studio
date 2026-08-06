@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - fix/review-first-publishing
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'chore: apply review-first publishing patch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,12 +23,17 @@ jobs:
         with:
           node-version: 22
       - name: Apply deterministic patch
-        run: node scripts/apply-review-first-publishing.mjs
+        run: |
+          if grep -q "selectDirectPublishAvailability" frontend/app/page.js; then
+            echo "Review-first publishing patch is already applied."
+          else
+            node scripts/apply-review-first-publishing.mjs
+          fi
       - name: Commit patched product files
         run: |
           if git diff --quiet -- frontend/app/page.js frontend/app/globals.css; then
-            echo "Patch produced no changes."
-            exit 1
+            echo "No product patch commit is required."
+            exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

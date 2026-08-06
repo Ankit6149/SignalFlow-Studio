@@ -36,6 +36,11 @@ export function canonicalChannelId(value) {
   return CHANNEL_ALIASES[raw] || CHANNEL_ALIASES[lower] || lower;
 }
 
+export function packageKeyForChannelId(value) {
+  const channel = canonicalChannelId(value);
+  return channel === "release_notes" ? "releaseNotes" : channel;
+}
+
 export function isCanonicalChannelId(value) {
   return CHANNEL_ID_SET.has(rawChannel(value));
 }
@@ -70,6 +75,13 @@ export function canonicalChannelMap(value, { mapValue = (item) => item } = {}) {
   return normalized;
 }
 
+function canonicalPackagePostMap(value) {
+  const canonical = canonicalChannelMap(value);
+  return Object.fromEntries(
+    Object.entries(canonical).map(([channel, item]) => [packageKeyForChannelId(channel), item]),
+  );
+}
+
 function canonicalDraftMap(value) {
   return canonicalChannelMap(value, {
     mapValue: (draft, channel) => draft && typeof draft === "object"
@@ -82,7 +94,7 @@ function canonicalPackage(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   return {
     ...value,
-    posts: canonicalChannelMap(value.posts),
+    posts: canonicalPackagePostMap(value.posts),
   };
 }
 

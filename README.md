@@ -5,19 +5,21 @@ SignalFlow Studio is evolving into a **content operating system for people who w
 The intended experience is:
 
 ```text
-Work normally
+Work normally or tell SignalFlow directly what you want to create
     ↓
-SignalFlow notices useful signals or accepts a manual thought/topic
+SignalFlow notices useful signals or accepts a manual thought/topic/assets
     ↓
 SignalFlow recommends what may be worth talking about and why
     ↓
 You choose an angle or write "Something else"
     ↓
-SignalFlow gathers evidence and creates the required text/screenshots/demo media
+SignalFlow decides whether the story needs no media, existing media, edits, a carousel, a demo, or a video
+    ↓
+SignalFlow gathers evidence and creates/edits/composes the required text and media
     ↓
 SignalFlow adapts the story only to destinations that genuinely fit
     ↓
-You review, edit, reject, or approve
+You review, edit, reject, or approve exact revisions
     ↓
 SignalFlow schedules/publishes the exact approved revisions
     ↓
@@ -29,12 +31,14 @@ You return to your work
 > **Product principle:** SignalFlow should consume the evidence created by work, not require the user to stop working and manufacture content inputs.
 >
 > **Attention principle:** The user's job is judgment. SignalFlow's job is everything between the work and that judgment.
+>
+> **Media principle:** First understand what supplied media means and what the user allows. Then decide what the story needs. Only then choose how to produce it.
 
 ## Product direction versus current implementation
 
 This repository contains a working review-first campaign foundation and a larger target product architecture.
 
-Documentation must keep those two truths separate:
+Documentation must keep those two truths separate.
 
 ### Current implemented foundation
 
@@ -62,16 +66,16 @@ The repository must **not** claim the following are already available until thei
 - persistent ContentSignal/ContentOpportunity intelligence;
 - automatic opportunity recommendations from connected work events;
 - long-lived identity/style/narrative learning;
-- provider-neutral `InferenceTask` routing, privacy-aware selection, and per-task cost/metering;
-- SignalFlow Managed inference plans;
-- enforceable Standard/Confidential/Private Hybrid/Local Only processing modes;
-- curated downloadable local intelligence packs;
-- full ChatGPT/Claude/Codex/Gemini external-agent integrations over the target workflow;
 - a `Today` decision inbox;
-- production mobile application;
-- paired Desktop Edge Agent;
-- desktop application capture/recording;
 - editorial cadence planning;
+- provider-neutral Inference Fabric/Private Hybrid/local intelligence;
+- automatic media-intent/AssetRole/AssetUsePolicy interpretation;
+- automatic media-format recommendation;
+- image editing/generation/compositing through the target media architecture;
+- deterministic carousel production;
+- uploaded-footage Reel/Short editing;
+- multimodal natural-language Direct Create convergence;
+- media rights/face/voice/audio trust enforcement;
 - automatic browser screenshot/demo capture workers;
 - deterministic motion-video rendering;
 - durable background jobs for the full pipeline;
@@ -86,18 +90,20 @@ Future architecture in `docs/` is a build contract, **not a capability claim**.
 
 ## Canonical product model
 
-The old conceptual center—`brief → destinations → generate package`—is now only the **manual Create path**.
+The old conceptual center—`brief → destinations → generate package`—is now only one compatibility/manual path.
 
 The canonical lifecycle is:
 
 ```text
-Signals
+Signals or Direct Create request
   ↓
-Opportunities
+Opportunities / explicit creative intent
   ↓
 Narrative / Campaign Plan
   ↓
-Evidence + Capture + Media Production
+Media Intent + Media Decision
+  ↓
+Evidence + Media Production
   ↓
 Content Pieces
   ↓
@@ -112,7 +118,7 @@ Scheduled / Immediate Publication
 Narrative Memory + Feedback Learning
 ```
 
-### Signals
+## Signals
 
 A `ContentSignal` is something that happened or something the user supplied that *might* be worth communicating.
 
@@ -127,13 +133,30 @@ Examples:
 
 GitHub is one high-value source. SignalFlow is **not a GitHub-only content product**.
 
-### Opportunities
+## Opportunities
 
 The Editorial Brain ranks whether a signal is worth discussing based on freshness, importance, novelty, evidence, narrative fit, audience relevance, repetition risk, visual potential, timing, platform fit, and user boundaries.
 
 It may legitimately conclude **do not post**.
 
-### Campaigns
+## Direct Create
+
+Sometimes the user already knows what they want.
+
+Examples:
+
+- "Make a Reel from these clips."
+- "Turn this document into a carousel."
+- "Post about XYZ; these images are only references."
+- "Combine these screenshots into one launch image."
+- "Use this photo but remove the background."
+- "Write about this topic and decide whether it needs media."
+
+Direct Create is not a separate product. Natural-language intent plus photos/videos/files/links should converge on the same canonical ContentPiece, MediaRequirement, MediaPlan, revision, review and approval architecture used by automatically discovered opportunities.
+
+See `docs/MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md` and issue #184.
+
+## Campaigns
 
 A campaign is a narrative, not a container that must produce twelve simultaneous posts.
 
@@ -142,21 +165,139 @@ One campaign may intentionally sequence:
 - a LinkedIn reason/story;
 - an X demo;
 - a later technical discussion;
+- an Instagram carousel or Reel;
 - a YouTube walkthrough;
 - a retrospective weeks later.
 
 Some destinations should receive nothing when the story does not fit them.
 
-### Approval
+## Media intelligence
+
+SignalFlow must understand that an uploaded image/video can be:
+
+- reference only;
+- style reference;
+- evidence;
+- a final candidate;
+- an edit source;
+- a composite source;
+- raw footage;
+- brand/audio material;
+- private content that must never be published.
+
+Upload does not equal permission to publish.
+
+The target media flow is:
+
+```text
+user instruction + assets + narrative
+    ↓
+MediaIntentResolution
+    ↓
+AssetRoleBinding + AssetUsePolicy
+    ↓
+MediaDecision
+    ↓
+none / reuse / edit / composite / generate / carousel / capture / video edit
+    ↓
+MediaRequirement
+    ↓
+MediaPlan
+    ↓
+immutable derived Asset / MediaComposition revisions
+    ↓
+privacy + rights + quality + authenticity review
+    ↓
+exact approval
+```
+
+Original user media remains immutable. Edits and renders become derived revisions with full lineage.
+
+See:
+
+- `docs/MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md`;
+- `docs/CREATIVE_MEDIA_DOMAIN_CONTRACTS.md`;
+- issues #179–#185.
+
+## Image production
+
+SignalFlow should distinguish:
+
+- image understanding;
+- deterministic crop/resize/layout/composition;
+- background removal/restoration/upscale;
+- generative image editing;
+- new image generation;
+- visual quality critique.
+
+Use deterministic composition when preserving exact screenshots/product UI/typography. Use generative editing/generation only where the requested transformation requires it and policy allows it.
+
+Real evidence should be preferred over synthetic decoration when making factual/product claims.
+
+## Carousels
+
+A carousel is a sequential narrative, not merely `images[]`.
+
+Target slide roles include hook, problem, insight, process, screenshot, diagram, comparison, metric, quote, list, timeline, code, closing and CTA.
+
+AI should plan meaning/sequence/visual bindings; deterministic renderers should own typography, spacing, brand consistency and output dimensions.
+
+Slide-level edits should be surgical rather than regenerating the entire carousel.
+
+See issue #182.
+
+## Uploaded-footage video production
+
+SignalFlow should eventually handle the common creator workflow:
+
+```text
+raw uploaded clips
+→ transcription/scene understanding
+→ strong-moment selection
+→ VideoNarrative
+→ VideoEditPlan
+→ deterministic trim/cut/reframe/caption/audio/overlay render
+→ exact video revision review
+```
+
+The target is useful basic creator automation—Reels/Shorts and common social edits—not a Premiere/DaVinci replacement.
+
+See issue #183.
+
+## Automatic capture and product demos
+
+For real product demonstrations, SignalFlow should prefer safe repeatable capture instead of asking the user to record routine flows manually.
+
+```text
+MediaRequirement
+    ↓
+CaptureRecipe
+    ↓
+bounded browser/edge capture
+    ↓
+canonical screenshot/screencast Asset
+    ↓
+structured composition/edit plan
+    ↓
+platform derivatives
+```
+
+Automatic capture remains bounded, authorized and privacy-aware. Browser CaptureRecipe is documented separately from future desktop-app capture.
+
+See `docs/CAPTURE_AND_MEDIA_PRODUCTION.md`.
+
+## Approval
 
 SignalFlow targets **approval-first automation**.
 
 The owner-first goal is:
 
-1. SignalFlow may observe, suggest, produce, prepare, and schedule;
+1. SignalFlow may observe, suggest, produce, prepare, edit and schedule;
 2. the user approves the exact current text/media revisions;
 3. publication executes only those approved revisions;
 4. edits after approval invalidate/update publication intent according to explicit policy.
+
+Approval never binds "latest" media implicitly.
 
 ## Authenticity and identity
 
@@ -172,114 +313,37 @@ The target identity system separates:
 - **Style memory** — preferences learned from repeated approved edits/rejections;
 - **Narrative memory** — what the audience has already been told.
 
-Approvals, edits, regenerations, rejections, and explicit feedback become explainable `FeedbackEvent` evidence. The system should accumulate confidence before turning repeated behavior into long-term learned preferences.
+Media follows the same boundary principle. Explicit restrictions such as "do not alter my face", "reference only", or "do not publish this screenshot" outrank visual optimization.
 
 Identity and explicit boundaries outrank engagement optimization.
 
-See [docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md](docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md).
+See `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md`.
 
-## AI, inference, cost, and private processing
+## Inference architecture
 
-SignalFlow must not be tied to one AI provider or assume a free API is the production architecture.
+SignalFlow should not be tied to one provider, testing quota, consumer subscription or device.
 
-The target Inference Fabric works like this:
+Application code requests task-oriented capabilities through a provider-neutral Inference Fabric.
 
-```text
-SignalFlow application asks for an InferenceTask
-        ↓
-required capability / output schema
-        ↓
-DataClassification + ProcessingPolicy
-        ↓
-quality + cost + latency + modality
-        ↓
-available provider/local capability
-        ↓
-selected permitted route
-        ↓
-structured result + usage/provenance
-```
-
-Target intelligence modes:
-
-- **SignalFlow Managed** — SignalFlow chooses/pays for approved AI routes;
-- **Bring Your Own Provider** — user supplies official API/provider billing;
-- **Private Hybrid** — raw protected source is processed locally/private first and only minimized evidence may be sent remotely when policy permits;
-- **Local Only** — protected inference remains on trusted device/private infrastructure;
-- **Enterprise Private later** — customer-controlled inference infrastructure.
-
-Important rules:
-
-- cheap/deterministic/local processing should filter noise before strong models;
-- a small local model is useful for classification, summaries, embeddings, privacy checks and preprocessing, but is not assumed to replace frontier reasoning;
-- private repositories should use bounded relevant evidence, not whole-repository uploads by default;
-- `LOCAL_ONLY` must fail closed rather than silently use a cloud provider;
-- text, vision, image generation/editing and later video intelligence may use different specialist providers;
-- free/testing endpoints are replaceable adapters, not the business model;
-- provider/model settings should become low-frequency configuration rather than a campaign-time burden.
-
-See [docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md](docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md) and [docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md](docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md).
-
-## External AI assistants
-
-Users may already work in ChatGPT, Claude, Codex, Gemini or other AI clients.
-
-SignalFlow should support those products as **interfaces/controllers** where an official supported integration exists:
+Target modes:
 
 ```text
-external AI assistant
-        ↓
-MCP / supported app/API
-        ↓
-SignalFlow application services
+SignalFlow Managed
+Bring Your Own Provider
+Private Hybrid
+Local Only
+Enterprise Private later
 ```
 
-That is different from SignalFlow's own inference backend.
+Media tasks such as image understanding/editing/generation or footage understanding must use the same privacy/capability-aware routing rather than bypassing the inference architecture.
 
-Canonical rules:
+External assistants such as ChatGPT/Claude/Codex/Gemini may operate SignalFlow through supported MCP/app/API interfaces; they are not assumed to be free interchangeable backend API credits.
 
-- a consumer AI subscription is not automatically SignalFlow API credit;
-- do not scrape browser sessions/cookies;
-- do not reuse unsupported OAuth/CLI credentials;
-- do not automate another consumer AI web UI as the hidden backend;
-- optional officially supported local Codex/Claude Code-style adapters may later help with repository/evidence tasks through a paired Desktop Agent;
-- unattended SignalFlow background work must still function without another AI app being open.
+See:
 
-See [docs/AI_CLIENT_INTEGRATIONS.md](docs/AI_CLIENT_INTEGRATIONS.md).
-
-## Capture and media production
-
-SignalFlow's target production engine removes routine manual media work.
-
-The desired pipeline is:
-
-```text
-Narrative requires a visual/demo
-    ↓
-MediaRequirement
-    ↓
-existing asset or safe CaptureRecipe
-    ↓
-background browser screenshot/screencast job
-    ↓
-canonical Asset + provenance
-    ↓
-MediaCompositionPlan
-    ↓
-deterministic motion renderer
-    ↓
-16:9 / 9:16 / other required variants
-    ↓
-privacy + quality review
-    ↓
-exact media revision approval
-```
-
-AI should primarily **direct** media—what to show, sequence, crop, caption, and emphasize. Deterministic software should perform repeatable capture, typography, brand motion, transitions, subtitles, resizing, and encoding when possible.
-
-SignalFlow should not become a Premiere or Canva replacement before this automated production loop works.
-
-See [docs/CAPTURE_AND_MEDIA_PRODUCTION.md](docs/CAPTURE_AND_MEDIA_PRODUCTION.md).
+- `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md`;
+- `docs/AI_CLIENT_INTEGRATIONS.md`;
+- `docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md`.
 
 ## Editorial calendar and publication
 
@@ -303,7 +367,20 @@ The publishing system must use durable, idempotent publication requests/jobs tha
 - connector capability;
 - idempotency key.
 
-See [docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md](docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md).
+See `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md`.
+
+## Client ecosystem
+
+The intended product is one canonical application with multiple purpose-specific clients:
+
+- **Web** — full workspace/planning/review/configuration;
+- **Mobile** — judgment, quick capture/share, review/approval, calendar and exceptions;
+- **Browser extension** — deliberate browser context/capture;
+- **MCP/API** — external AI-agent control/query;
+- **Desktop Edge Agent** — private repos/files, local models, Private Hybrid, signed edge jobs and later desktop capture;
+- **Workers** — durable background inference/capture/render/publishing.
+
+These clients must share application/domain rules instead of implementing separate products.
 
 ## Target product navigation
 
@@ -313,111 +390,56 @@ The intended long-term workspace is decision-first:
 - **Signals** — what SignalFlow noticed or the user added;
 - **Plan** — opportunities and campaign narratives;
 - **Calendar** — editorial sequence/publication state;
-- **Create** — manual intentional entry;
-- **Assets** — evidence, captures, derived/rendered media;
+- **Create** — natural-language intentional creation with optional photos/videos/files/links/capture;
+- **Assets** — evidence, originals, references, captures, derived/rendered media;
 - **Library** — campaign/publication history;
-- **Connections** — source + destination + AI provider/assistant connections;
+- **Connections** — source + destination + AI connections;
 - **Voice** — identity, perception, boundaries, learned preferences;
 - **Settings** — provider/account/workspace/privacy/advanced configuration.
 
-The current Source → Destinations → Review flow should eventually become the manual **Create** path rather than the permanent center of the whole product.
-
-See [docs/PRODUCT_INFORMATION_ARCHITECTURE.md](docs/PRODUCT_INFORMATION_ARCHITECTURE.md).
-
-## Web, phone, extension, and desktop edge
-
-SignalFlow should remain one product with clients optimized for different contexts.
-
-```text
-Web
-→ full workspace, planning, long review, library, settings
-
-Mobile
-→ Today, quick thought/voice/photo/share input, review, approval, Calendar, exceptions
-
-Browser Extension
-→ explicit user-initiated browser context/screenshots/recording
-
-MCP/API
-→ external agent control/query
-
-Desktop Edge Agent
-→ private/local repositories and files, local models, Private Hybrid, signed edge jobs, later desktop-app capture
-
-Workers
-→ durable source/inference/capture/render/publishing work
-```
-
-The phone should be a **judgment + quick-capture device**, not a duplicated full Studio. The extension must not become hidden browser surveillance. The future Desktop Agent should be a lightweight tray/menu-bar capability service, not a second full product UI.
-
-See [docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md](docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md).
-
-## Future desktop application capture
-
-Web applications can be captured through URL/browser recipes. Desktop applications require a separate future path.
-
-Target concept:
-
-```text
-DesktopCaptureRecipe
-→ paired/authorized desktop device
-→ allowed application/window
-→ semantic accessibility/UI-automation actions where possible
-→ screenshot/screencast
-→ canonical Asset
-→ normal media composition/review
-```
-
-No hidden continuous desktop recording, broad whole-disk control, or arbitrary application access.
-
-Tracked separately in #177 so it does not block the browser-based Personal Alpha.
+The current Source → Destinations → Review flow should eventually become a compatibility/manual Create path rather than the permanent center of the whole product.
 
 ## Owner-first execution strategy
 
 SignalFlow should prove the hard product loop before broad SaaS expansion.
 
-Recommended vertical sequence:
+A final execution phase plan will be decided separately; the architectural ordering currently implies:
 
-0. thin provider-neutral inference/privacy boundary: #171/#172 essentials only;
-1. manual thought → opportunity → authentic LinkedIn/X review loop;
-2. GitHub work event → automatic signal/opportunity → same review loop;
-3. automatic screenshot production;
-4. automatic short product-demo production;
-5. durable LinkedIn/X scheduling/publishing;
-6. editorial continuity/cadence;
-7. edit/rejection learning;
-8. mobile low-attention companion as the owner loop proves valuable;
-9. Private Hybrid/local intelligence/Desktop Agent where demand requires it;
-10. visual destination and broader hosted SaaS/integration/team expansion.
+1. provider-neutral/privacy-safe inference foundation thin enough for the first Golden Path;
+2. manual thought → opportunity → authentic text review;
+3. media intent/use-policy when attachments are present;
+4. real GitHub signal → opportunity → evidence;
+5. automatic screenshot/product-demo proof;
+6. deterministic carousel/static composition proofs;
+7. uploaded-footage short-video proof;
+8. durable publishing/memory/learning;
+9. hosted/mobile/edge breadth as each vertical path requires it.
 
-Each gate should deliver a complete real user journey rather than a horizontal pile of infrastructure.
-
-The thin #171/#172 prerequisite exists only to keep Golden Path #166 portable and safe; do not delay it on the full local-model/mobile/desktop roadmap.
-
-See [docs/PERSONAL_ALPHA_EXECUTION.md](docs/PERSONAL_ALPHA_EXECUTION.md).
+Do not interpret this section as a finalized execution schedule; implementation phases will be decided after architecture discussion is complete.
 
 ## Canonical documentation
 
 Read these before changing product architecture:
 
-1. [docs/PRODUCT_VISION.md](docs/PRODUCT_VISION.md) — what SignalFlow is and is not;
-2. [docs/PERSONAL_ALPHA_EXECUTION.md](docs/PERSONAL_ALPHA_EXECUTION.md) — vertical execution gates;
-3. [docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md](docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md) — Signals/Opportunities/Campaign/ContentPiece/Memory domain model;
-4. [docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md](docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md) — personal voice, perception, boundaries, feedback learning;
-5. [docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md](docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md) — provider-neutral AI, managed/BYOK/local/private modes, processing policy, cost routing;
-6. [docs/AI_CLIENT_INTEGRATIONS.md](docs/AI_CLIENT_INTEGRATIONS.md) — external AI assistant/subscription boundaries and MCP/client architecture;
-7. [docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md](docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md) — web/mobile/extension/desktop-edge responsibilities;
-8. [docs/CAPTURE_AND_MEDIA_PRODUCTION.md](docs/CAPTURE_AND_MEDIA_PRODUCTION.md) — screenshot/screencast/motion production architecture;
-9. [docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md](docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md) — cadence, calendar, approval and durable publishing;
-10. [docs/PRODUCT_INFORMATION_ARCHITECTURE.md](docs/PRODUCT_INFORMATION_ARCHITECTURE.md) — decision-first application structure;
-11. [docs/DOMAIN_ARCHITECTURE.md](docs/DOMAIN_ARCHITECTURE.md) — current domain/application/adapter boundaries;
-12. [docs/SOURCE_ASSET_CONTRACT.md](docs/SOURCE_ASSET_CONTRACT.md) — source/asset truth;
-13. [docs/CAPABILITY_MATRIX.md](docs/CAPABILITY_MATRIX.md) — what the current product can actually do;
-14. [docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md](docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md) — current-vs-target inference/client truth;
-15. [docs/CAMPAIGN_EDITING_AND_VERSIONING.md](docs/CAMPAIGN_EDITING_AND_VERSIONING.md) — current edit/version invariants;
-16. [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md) — connector verification truth;
-17. [docs/PORTABLE_TRANSFER.md](docs/PORTABLE_TRANSFER.md) — explicit local transfer/recovery contract;
-18. [AGENTS.md](AGENTS.md) — repository execution rules.
+1. `docs/PRODUCT_VISION.md` — what SignalFlow is and is not;
+2. `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md` — Signals/Opportunities/Campaign/ContentPiece/Memory domain;
+3. `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md` — personal voice, perception, boundaries, feedback learning;
+4. `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md` — provider-neutral inference, BYOP/local/private routing;
+5. `docs/AI_CLIENT_INTEGRATIONS.md` — ChatGPT/Claude/Codex/Gemini/agent integration boundaries;
+6. `docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md` — web/mobile/extension/desktop/worker responsibilities;
+7. `docs/MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md` — media intent, decisions, image/carousel/video production;
+8. `docs/CREATIVE_MEDIA_DOMAIN_CONTRACTS.md` — media domain records/invariants/application boundaries;
+9. `docs/CAPTURE_AND_MEDIA_PRODUCTION.md` — safe automatic product capture and deterministic demos;
+10. `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md` — cadence, calendar, approval and durable publishing;
+11. `docs/PRODUCT_INFORMATION_ARCHITECTURE.md` — decision-first application structure;
+12. `docs/PERSONAL_ALPHA_EXECUTION.md` — existing owner-first vertical execution guidance, to be refined during execution planning;
+13. `docs/DOMAIN_ARCHITECTURE.md` — current domain/application/adapter boundaries;
+14. `docs/SOURCE_ASSET_CONTRACT.md` — source/asset truth;
+15. `docs/CAPABILITY_MATRIX.md` — what the current product can actually do;
+16. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md` — current edit/version invariants;
+17. `docs/CONNECTOR_READINESS.md` — connector verification truth;
+18. `docs/PORTABLE_TRANSFER.md` — explicit local transfer/recovery contract;
+19. `AGENTS.md` — repository execution rules.
 
 ## Current destination set
 
@@ -428,9 +450,9 @@ Current campaign generation recognizes:
 - Video: YouTube, TikTok
 - Owned: Newsletter, Blog, Release notes
 
-Generation support does **not** imply direct publishing support.
+Generation support does **not** imply direct publishing or rich-media support.
 
-Current direct connector code paths exist for LinkedIn, X, and Reddit, but a connector is production-ready only after real credential/account/scopes/publish/retry/expiry/rate-limit verification. Other destinations remain review/copy/export/open-platform workflows until their connectors are explicitly implemented and verified.
+Current direct connector code paths exist for LinkedIn, X, and Reddit, but a connector is production-ready only after real credential/account/scopes/publish/retry/expiry/rate-limit verification. Media publication capability must additionally verify image/video/carousel/multi-image/platform-audio behavior as applicable.
 
 ## Current model routes
 
@@ -445,11 +467,9 @@ Current provider adapters include:
 - Ollama;
 - LM Studio.
 
-A route is usable only when `GET /api/capabilities` reports it available for the current deployment/session.
+A route is usable only when current capability state reports it available for the deployment/session.
 
-These current routes are provider foundations. The target #170/#171 Inference Fabric is not yet implemented: current code does not yet prove task-oriented provider-neutral routing, privacy-aware fallback, curated local packs, managed-plan metering, or specialized multimodal routing.
-
-Initial Personal Alpha may reuse one strong provider/model behind separate task contracts and may use a low-cost/free testing route, but testing infrastructure must remain replaceable.
+The target Inference Fabric may reuse one strong provider/model initially but must preserve separate task contracts and privacy/capability routing.
 
 ## Current persistence truth
 
@@ -459,15 +479,16 @@ Today:
 - there is no production cloud campaign database/account workspace/cross-device sync yet;
 - canonical Campaign, Asset, SourceArtifact, AssetProcessing and transfer contracts exist;
 - browser portable archive/import/export exists;
-- production hosted object storage and durable background job infrastructure are not yet implemented.
+- production hosted object storage and durable background job infrastructure are not yet implemented;
+- target media-intent/image/carousel/video-edit records are documented but not yet implemented.
 
-Future cloud persistence must implement the same application/domain ports rather than placing database/object-store logic directly into React components.
+Future cloud persistence must implement application/domain ports rather than placing database/object-store/media-provider logic directly into React components.
 
 ## Current source and asset truth
 
 Implemented foundations include canonical versioned Asset/SourceArtifact/AssetProcessing records and browser-side handling for supported inputs.
 
-Still incomplete/planned:
+Still incomplete/planned include:
 
 - hardened remote URL ingestion across all source paths;
 - full source-health diagnostics;
@@ -475,11 +496,13 @@ Still incomplete/planned:
 - OCR/transcription/visual-analysis processors;
 - durable cloud asset storage;
 - acknowledged full extension screenshot/recording ingestion;
-- automated capture-worker production;
-- enforced DataClassification/ProcessingPolicy;
-- Private Hybrid local/private source preprocessing.
+- media role/use-policy/rights contracts;
+- image edit/generation/composition;
+- carousel rendering;
+- uploaded-footage editing;
+- automated capture-worker production.
 
-See the capability/source/privacy docs and open issues for exact status.
+See the capability/source/media docs and open issues for exact status.
 
 ## Current MCP role
 
@@ -488,12 +511,9 @@ The `mcp/` package remains useful as an **agent-control interface**.
 The long-term architecture distinguishes:
 
 - GitHub App/webhooks or other source connectors → ongoing event/signal ingestion;
-- MCP → AI-agent commands/queries over SignalFlow's canonical application services;
-- inference provider APIs/local runtimes → execution of SignalFlow `InferenceTask`s.
+- MCP → AI-agent commands/queries over SignalFlow's canonical application services.
 
-Do not make MCP the production event-ingestion mechanism merely because a GitHub MCP connection exists during development.
-
-Do not treat an external assistant connected through MCP as permission to use that assistant's consumer subscription for unattended SignalFlow inference.
+MCP must not bypass media-use/privacy/approval rules.
 
 ## Quick start
 
@@ -541,7 +561,7 @@ python -m pip install pytest
 pytest -q
 ```
 
-A feature is not complete because it compiles. Its domain contract, authorization, failure/recovery behavior, truthful capability state, UX, accessibility, migration/rollback, security, and end-to-end user journey must pass the acceptance criteria owned by its issue.
+A feature is not complete because it compiles. Its domain contract, authorization, failure/recovery behavior, truthful capability state, UX, accessibility, migration/rollback, security, provenance and end-to-end user journey must pass the acceptance criteria owned by its issue.
 
 ## Vercel
 
@@ -555,28 +575,31 @@ Build Command: npm run build
 Output Directory: .next
 ```
 
-Long-running ingestion/inference/capture/render/publishing must not be designed around one Vercel request; those flows belong behind durable jobs/workers or an explicitly paired edge capability where policy requires it.
+Long-running ingestion/inference/capture/image-edit/video/render/publishing must not be designed around one Vercel request; those flows belong behind durable jobs/workers or authorized edge execution as appropriate.
 
 ## Core product principles
 
 - User judgment remains the publication authority.
 - SignalFlow reduces attention burden instead of adding configuration burden.
-- Anything can become a manual signal; GitHub is only one source.
+- Anything can become a manual signal or direct creative input; GitHub is only one source.
 - Not every signal deserves content.
+- Not every content piece needs media.
 - Not every campaign belongs on every platform.
+- Not every destination needs the same media.
 - Not every calendar slot must be filled.
-- Identity and explicit boundaries outrank engagement optimization.
+- Upload does not equal permission to publish.
+- Original source media is immutable; edits create derived revisions.
+- Reference/evidence/private media cannot silently become public output.
+- Real evidence is preferred over synthetic decoration for factual/product claims.
+- AI directs semantic choices; deterministic systems perform repeatable transforms/renders where possible.
+- Natural-language edits should mutate structured plans rather than erase editable state.
+- Identity, asset restrictions and explicit boundaries outrank engagement optimization.
 - Source evidence remains traceable.
 - Approved/manual edits are never silently overwritten.
-- Exact approved revisions are bound to publication intent.
-- Inference is task/provider-neutral and privacy-policy aware.
-- Free/testing AI routes are replaceable adapters.
-- Private repositories use minimum necessary evidence and enforceable processing policy.
-- External AI assistants are optional clients, not a hidden free backend.
-- Web/mobile/extension/desktop-edge remain one canonical product.
-- Capture/media production should be repeatable and privacy-aware.
+- Exact approved text/media revisions are bound to publication intent.
+- Capture/media production should be repeatable and privacy/rights-aware.
 - Direct success is claimed only after the destination confirms it.
 - Future capabilities are never documented as current capabilities without evidence.
 - Build complete vertical user journeys before expanding breadth.
 
-Start with [AGENTS.md](AGENTS.md) before making repository changes.
+Start with `AGENTS.md` before making repository changes.

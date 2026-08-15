@@ -1,22 +1,171 @@
-# Official Connector Readiness
+# SignalFlow Studio — Official Destination Connector Readiness
 
-SignalFlow Studio implements official connector paths for LinkedIn, X, and Reddit. Implementation, configuration, authorization, and production verification are separate states.
+> **Status:** production-verification contract. This document does not guarantee current external API scopes/pricing/review requirements; re-check each platform's official documentation during implementation/credential rollout.
 
-## Definition of Done
+SignalFlow's current repository contains official connector code paths for LinkedIn, X, and Reddit. **Code present, configured, authorized, capability-verified, and production-verified are different states.**
 
-A connector is production-complete only after:
+The target product will add other destination adapters only through the same capability/approval/publication contracts.
 
-- Developer application exists and any required platform/API access approval is granted.
-- Production client ID, secret, and platform-specific identification settings are configured server-side.
-- Canonical callback URL is registered exactly.
-- Required scopes/products are approved.
-- A real account completes OAuth.
-- A real approved test post receives platform confirmation.
-- Access-token expiry and refresh behavior are verified.
-- Missing permission, revoked token, invalid content, and rate-limit responses are verified.
-- The UI reports truthful failure and provides a manual fallback.
+## 1. Connector product model
 
-## Canonical Environment
+Do not represent a destination with a single `connected` boolean.
+
+A connection should eventually expose a verified capability snapshot such as:
+
+```text
+connectionId
+provider
+workspaceId
+target identity/account/page/channel/community
+granted scopes/products
+status
+verifiedAt
+expiresAt?
+canPublishText
+canPublishImage
+canPublishVideo
+canPublishCarousel
+canReadOwnPosts
+canReadAnalytics
+providerNativeScheduleCapability?
+safe unavailable/failure reason
+secret reference
+```
+
+Different platforms legitimately expose different capabilities.
+
+## 2. Connection state vocabulary
+
+Use explicit states rather than “done”:
+
+```text
+not_configured
+configured
+authorization_required
+authorized_unverified
+verified
+insufficient_scope
+expired
+revoked
+provider_unavailable
+manual_only
+implementation_unverified
+```
+
+A provider can be configured server-side but unavailable to the current session or target.
+
+## 3. Definition of production-ready direct publishing
+
+A connector/content-type capability is production-complete only after all relevant conditions pass:
+
+- official developer application/project exists;
+- required platform review/API/product access is granted;
+- production client ID/secret/settings are configured server-side;
+- canonical callback URL is registered;
+- required scopes/products are approved;
+- a real intended test account completes OAuth/authorization;
+- SignalFlow identifies the exact account/page/channel/community target;
+- the capability snapshot reflects real granted permissions;
+- a real **approved exact draft/media revision** publishes successfully;
+- the external API confirms publication and returns a stable reference where available;
+- token expiry/refresh/reconnect behavior is verified;
+- revoked/insufficient permission is verified;
+- invalid content/media is verified;
+- rate-limit/transient provider behavior is verified;
+- duplicate request/job delivery cannot create duplicate external posts;
+- unknown provider outcomes are preserved/reconciled rather than guessed;
+- logs/evidence contain no tokens/private campaign content;
+- manual export/copy fallback remains available where appropriate.
+
+Verification may need to be repeated per content type. A connector verified for text does not automatically prove image/video publishing.
+
+## 4. Exact-revision publication contract
+
+Direct publishing must consume an immutable `PublicationRequest` (target architecture under #103/#168) that references:
+
+- campaign/content piece;
+- destination PlatformVariant;
+- exact approved `DraftRevision`;
+- exact required media Asset/MediaComposition revisions;
+- exact target connection identity;
+- approval snapshot;
+- source-freshness/quality state;
+- immediate/scheduled time semantics;
+- idempotency key.
+
+No connector may fetch “whatever text is currently in the editor” at worker execution time if that differs from the approved publication request.
+
+## 5. Durable scheduling
+
+Editorial planning (#160) decides what/when should be communicated.
+
+Publication jobs (#103) execute the approved intent.
+
+Rules:
+
+- do not use browser timers;
+- scheduled jobs survive browser closure/deploy/worker restart;
+- connection/permission/source/approval policy is revalidated before the side effect;
+- cancel/reschedule is explicit;
+- edited content after scheduling does not silently replace the frozen revision;
+- duplicate delivery remains idempotent.
+
+## 6. Publication result states
+
+Normalized states must include at least:
+
+```text
+scheduled
+queued
+publishing
+published
+failed
+rejected
+unknown
+cancelled
+superseded
+```
+
+### `published`
+
+Only after provider confirmation.
+
+### `failed`
+
+Known no-success outcome with actionable safe reason.
+
+### `rejected`
+
+Platform refused the request/content/permission.
+
+### `unknown`
+
+SignalFlow cannot prove whether the platform accepted the request, for example after a network timeout following request transmission.
+
+Do not convert `unknown` to failed and retry blindly; that can create duplicates.
+
+## 7. Manual handoff
+
+Manual handoff remains a first-class path when:
+
+- a destination has no official supported connector;
+- the app lacks approved API access;
+- the account/type does not support the required operation;
+- credentials/scopes are unavailable;
+- the user explicitly prefers manual publication.
+
+Manual workflow may provide:
+
+- exact approved text;
+- exact approved media download/copy;
+- validation/checklist;
+- open destination action.
+
+It must not be recorded as confirmed direct publication unless the user explicitly marks it or later verified evidence exists.
+
+## 8. Current canonical environment variables
+
+Current repository connector code may use environment values such as:
 
 ```text
 NEXTAUTH_URL=https://signal-flow-studio.vercel.app
@@ -25,98 +174,159 @@ SIGNALFLOW_PUBLIC_HOSTED=true
 SOCIAL_ENCRYPTION_KEY=<independent long random value>
 ```
 
-### LinkedIn
+Provider-specific client IDs/secrets remain server-side and must never be committed.
 
-```text
-LINKEDIN_CLIENT_ID=
-LINKEDIN_CLIENT_SECRET=
-LINKEDIN_API_VERSION=202607
-Callback: https://signal-flow-studio.vercel.app/api/social/callback/linkedin
-Scopes: openid profile w_member_social
-Products: Sign In with LinkedIn using OpenID Connect; Share on LinkedIn
-```
+Exact provider environment names should be verified against current code before deployment.
 
-### X
+## 9. Current LinkedIn code path
 
-```text
-X_CLIENT_ID=
-X_CLIENT_SECRET=
-Callback: https://signal-flow-studio.vercel.app/api/social/callback/x
-Scopes: tweet.read tweet.write users.read offline.access
-Authentication: OAuth 2.0 Authorization Code with PKCE
-```
+Current repository configuration uses LinkedIn OAuth/publishing code paths.
 
-The X API currently uses pay-per-use credits. The developer app must be approved, funded for write requests, and protected with a spending limit before a live test.
+Before live rollout verify through current official LinkedIn documentation/dashboard:
 
-### Reddit
+- application/product access;
+- callback URL;
+- member/page authorization model as implemented;
+- required publishing scopes/products;
+- current API version/header requirements;
+- text/image/video/document flow used by the adapter;
+- organization/page versus member target identity;
+- token lifetime/refresh behavior;
+- API rate/permission errors.
 
-```text
-REDDIT_CLIENT_ID=
-REDDIT_CLIENT_SECRET=
-REDDIT_USER_AGENT=web:signalflow-studio:0.2.0 (by /u/<owner_username>)
-Callback: https://signal-flow-studio.vercel.app/api/social/callback/reddit
-Scopes: identity submit read
-Application type: Data API web app
-```
+Do not preserve a hard-coded documentation claim about an API version indefinitely; platform versions change independently of this repository.
 
-Creating an app record is not sufficient. Reddit currently requires explicit Data API approval under its Responsible Builder Policy, OAuth authentication, and an identifiable user agent. Direct publishing must remain unavailable until all three requirements are satisfied.
+## 10. Current X code path
 
-## Live Verification Protocol
+Current repository configuration uses X OAuth/user publishing code paths.
 
-Use a dedicated test account and clearly disposable test content.
+Before live rollout verify through current official X developer documentation/dashboard:
+
+- app approval/access tier;
+- current pricing/credit model;
+- user authorization method/scopes;
+- callback URL;
+- text-post endpoint behavior;
+- media upload workflow for any claimed media capability;
+- token refresh/expiry;
+- rate/usage limits;
+- duplicate/unknown outcome behavior.
+
+Do not assume text verification proves image/video support.
+
+## 11. Current Reddit code path
+
+Current repository configuration contains Reddit OAuth/submission paths.
+
+Before any commercial/public SaaS rollout, re-check current Reddit developer/data-API terms, approval requirements, user-agent expectations, scopes and commercial-use restrictions.
+
+Direct Reddit publishing remains unavailable unless the actual account/application usage is permitted and credential-backed verification passes.
+
+If API/commercial permission is uncertain, keep Reddit as a review/manual-handoff destination rather than bypassing platform policy.
+
+## 12. Future destination adapters
+
+Potential future destinations include other current generation targets such as Instagram, Threads, YouTube and TikTok, plus owned-channel integrations.
+
+Each future adapter must start by defining:
+
+- supported account type(s);
+- exact target identity model;
+- official API access/review requirements;
+- text/image/video/carousel capabilities;
+- upload/finalization state machine;
+- external rate/size/duration/format constraints;
+- token refresh/expiry/revoke;
+- idempotency/reconciliation possibilities;
+- analytics-read capabilities if later added;
+- manual fallback.
+
+Do not create a universal `publish()` UI assumption before these differences are represented.
+
+## 13. Live verification protocol
+
+Use controlled test accounts and clearly disposable, non-sensitive content.
 
 ### Authorization
 
-- Connect from the owner-only Connections page.
-- Confirm the returned profile belongs to the intended account.
-- Verify the callback uses the canonical production origin.
-- Confirm raw tokens never appear in browser JavaScript or logs.
+- connect through owner/authorized Connections flow;
+- confirm exact returned identity;
+- verify callback uses canonical production origin;
+- verify raw tokens never appear in page JavaScript/logs;
+- inspect granted scopes/capabilities;
+- verify reconnect/revoke.
 
-### Publish
+### Text publish
 
-- Generate a short, non-sensitive draft.
-- Review and explicitly approve it.
-- Publish one post.
-- Confirm SignalFlow only reports success after the platform response.
-- Open the returned post URL and verify the content.
-- Delete the test post from the platform when finished.
+- create a short safe draft;
+- approve exact revision;
+- create one publication request with stable idempotency key;
+- execute via durable job where implemented;
+- confirm SignalFlow reports success only after provider confirmation;
+- verify returned external reference/content;
+- remove disposable test content afterward where appropriate.
 
-### Expiry and Refresh
+### Media publish
 
-- Test a session without a refresh token and verify reconnect guidance.
-- Test an expired session with a refresh token and verify renewal.
-- Revoke authorization at the platform and verify the next publish fails safely.
-- Confirm refreshed token data is written back only to the encrypted HTTP-only cookie.
+Repeat separately for every advertised media type:
 
-### Rejection and Rate Limit
+- exact source/rendered asset revision;
+- provider upload/finalization;
+- processing status;
+- aspect-ratio/size/duration constraints;
+- timeout after upload but before final confirmation;
+- duplicate job delivery.
 
-Verify that the UI distinguishes:
+### Expiry/revocation
 
-- `401`: expired or revoked authorization
-- `403`: missing product/scope/permission
-- `404`: endpoint/resource mismatch
-- `409`/`422`: content or platform validation rejection
-- `429`: rate limited, including `Retry-After` when supplied
-- `5xx`: platform temporary failure
+- expired access token;
+- refresh available/unavailable;
+- authorization revoked at provider;
+- scope/product removed;
+- account/page/community access removed.
 
-Every failure should preserve the draft and offer copy/manual publication.
+### Rejection/rate/unknown
 
-## Current Status
+Test normalized handling for:
 
-- Code path: implemented for LinkedIn, X, Reddit
-- Credential configuration: deployment-dependent
-- Approved callbacks/scopes: platform-dashboard dependent
-- Live account authorization: requires owner action
-- Real post verification: requires owner action
-- Expiry/refresh verification: requires live connected sessions
-- Rejection/rate-limit handling: normalized in code; external responses still require live verification
+- authorization failure;
+- insufficient permission;
+- resource/target mismatch;
+- validation/content rejection;
+- rate limiting/retry guidance;
+- provider temporary failure;
+- timeout where outcome may be unknown.
 
-Never replace these distinctions with a single "connected" or "done" claim.
+Every failure preserves the draft/media and approval history.
 
-## Platform Documentation Check — July 24, 2026
+## 14. Current status statement
 
-- LinkedIn's current Marketing API version header is `202607`; the Posts API requires `Linkedin-Version`, `X-Restli-Protocol-Version: 2.0.0`, and `w_member_social` for member publishing.
-- X supports `POST /2/tweets` with user OAuth, uses OAuth 2.0 PKCE scopes including `tweet.write`, and currently charges write operations through pay-per-use credits.
-- Reddit requires OAuth and explicit Data API approval under the Responsible Builder Policy; clients must use an identifiable user agent and `submit` permission for post creation.
+Today the truthful high-level status is:
 
-Re-check official documentation before every production credential rollout because platform access, pricing, scopes, and review requirements change independently of this repository.
+- LinkedIn/X/Reddit connector code paths exist in the repository;
+- deployment configuration is environment-dependent;
+- current-session capability is server/capability dependent;
+- real account authorization requires actual credentials/user action;
+- direct publication must not be called production-verified without current credential-backed evidence;
+- other generation destinations remain manual-hand-off until their own verified adapters exist;
+- durable scheduled publication remains an open implementation area (#103/#168).
+
+## 15. Connections UI requirements
+
+A destination card/detail should eventually show:
+
+- provider name;
+- exact connected target identity;
+- status;
+- granted scopes/products;
+- text/image/video/etc. capabilities;
+- expiry/last verified;
+- test/reconnect/revoke;
+- manual-only/unverified explanation;
+- queued/scheduled publication impact when revoking.
+
+Never hide a critical permission limitation behind a green “Connected” badge.
+
+## 16. Connector completion principle
+
+> **The code path is only the beginning. SignalFlow may claim a destination capability only when a real account, real authorization, exact approved revision, external confirmation, retry/idempotency, expiry/revoke, and error behavior have been proven.**

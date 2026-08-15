@@ -2,91 +2,283 @@
 
 ## Mission
 
-SignalFlow Studio turns product evidence into a coherent, editable multi-channel campaign. It must feel like a calm creative publishing room, not a project-management dashboard and not a fake autoposting demo.
+SignalFlow Studio is becoming a **content operating system that lets people stay focused on their real work while SignalFlow handles the burden between what happened and what is worth communicating**.
 
-The active product requires a real model route. Template, offline, prompt-only, and automatic fallback campaign generation are retired and must not be reintroduced through UI, API, MCP, tests, or documentation.
+The intended product is not a generic post generator, a prompt wrapper, a social scheduler that must be manually filled, or a dashboard full of model controls.
+
+The primary product loop is:
+
+```text
+Work / manual thought / connected source
+        ↓
+ContentSignal
+        ↓
+ContentOpportunity
+        ↓
+user chooses an angle or "Something else"
+        ↓
+NarrativeStrategy / Campaign
+        ↓
+Evidence + Capture + Media Production
+        ↓
+ContentPiece + PlatformVariant
+        ↓
+Review / Approval
+        ↓
+Editorial Calendar / PublicationRequest
+        ↓
+Durable Publication
+        ↓
+NarrativeMemory + eligible Feedback learning
+```
+
+> **The user's job is judgment. SignalFlow's job is everything between the work and that judgment.**
+
+The currently implemented manual campaign flow remains a valid foundation and should evolve into the **Create** path. Do not mistake the current UI architecture for the permanent product architecture.
 
 ## Read this first
 
-1. `README.md`
-2. `docs/CAPABILITY_MATRIX.md`
-3. `docs/DOMAIN_ARCHITECTURE.md`
-4. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md`
-5. `docs/CAMPAIGN_SCHEMA_MIGRATION.md`
-6. `docs/SOURCE_ASSET_CONTRACT.md`
-7. `docs/PORTABLE_TRANSFER.md`
-8. `docs/APP_WORKSPACE_SYSTEM.md`
-9. `docs/STUDIO_UX_SYSTEM.md`
-10. `docs/CONNECTOR_READINESS.md`
-11. `docs/PRODUCT_GRADE_OPEN_SOURCE.md`
-12. `SECURITY.md`
+Before changing product behavior, read in this order:
 
-## Source of truth
+1. `docs/PRODUCT_VISION.md`
+2. `docs/PERSONAL_ALPHA_EXECUTION.md`
+3. `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md`
+4. `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md`
+5. `docs/CAPTURE_AND_MEDIA_PRODUCTION.md`
+6. `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md`
+7. `docs/PRODUCT_INFORMATION_ARCHITECTURE.md`
+8. `docs/CAPABILITY_MATRIX.md`
+9. `docs/DOMAIN_ARCHITECTURE.md`
+10. `docs/SOURCE_ASSET_CONTRACT.md`
+11. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md`
+12. `docs/PORTABLE_TRANSFER.md`
+13. `docs/CONNECTOR_READINESS.md`
+14. `SECURITY.md`
+
+When target architecture and current capability truth differ, **the capability matrix/current code determine what may be claimed as implemented**, while the canonical product docs determine the direction new work must follow.
+
+## Product source of truth
+
+### Target product direction
+
+- `docs/PRODUCT_VISION.md` — canonical product definition and principles.
+- `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md` — target Signals/Opportunities/Campaign/ContentPiece/Memory domain.
+- `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md` — identity, perception, boundaries, feedback learning and narrative memory.
+- `docs/CAPTURE_AND_MEDIA_PRODUCTION.md` — target screenshot/screencast/media production system.
+- `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md` — target cadence/calendar/publication model.
+- `docs/PRODUCT_INFORMATION_ARCHITECTURE.md` — target decision-first application structure.
+- `docs/PERSONAL_ALPHA_EXECUTION.md` — owner-first vertical execution sequence.
+
+### Current implementation truth
 
 - Product capability discovery: `frontend/app/api/capabilities/route.js`
-- Domain records and portable serialization: `frontend/lib/domain/contracts.mjs`
-- Campaign aggregate and migration: `frontend/lib/domain/campaign.mjs`
-- Edit-safe reducer and editor revisions: `frontend/lib/studio/campaignState.mjs`
+- Domain schema/serialization: `frontend/lib/domain/contracts.mjs`
+- Campaign aggregate/migration: `frontend/lib/domain/campaign.mjs`
+- Edit-safe reducer: `frontend/lib/studio/campaignState.mjs`
 - Campaign/channel/action state selectors: `frontend/lib/studio/campaignStatus.mjs`
 - Regeneration policies: `frontend/lib/studio/regenerationPolicy.mjs`
 - Application use cases: `frontend/lib/application/`
 - Infrastructure adapters: `frontend/lib/infrastructure/`
 - Canonical source graph: `frontend/lib/domain/sourceArtifacts.mjs`
-- Portable archive/import application: `frontend/lib/transfer/` and `frontend/lib/application/browserTransferApplication.mjs`
-- Transfer UI: `frontend/components/PortableTransferPanel.js`
-- Authoritative export projection: `frontend/lib/export/campaignExport.mjs`
-- Primary product UI: `frontend/app/page.js`
-- Generation API: `frontend/app/api/launch_kit/route.js`
+- Transfer: `frontend/lib/transfer/`
+- Authoritative export: `frontend/lib/export/campaignExport.mjs`
+- Current primary UI: `frontend/app/page.js`
+- Current generation API: `frontend/app/api/launch_kit/route.js`
 - Provider policy/adapters: `frontend/lib/ai/`
-- Social status/OAuth: `frontend/app/api/social/` and `frontend/lib/social/`
+- Social OAuth/status: `frontend/app/api/social/` and `frontend/lib/social/`
 - Confirmed-only publishing: `frontend/app/api/publish/route.js`
 - Context extraction: `frontend/lib/context/`
 - Browser extension: `extension/`
 - MCP server: `mcp/`
 
-## Architecture rules
+## Current product truth boundaries
 
-Dependency direction:
+Do not claim target architecture as shipped functionality.
+
+Currently implemented foundations include:
+
+- real model-provider generation routes;
+- stable browser-local campaign identity;
+- authoritative current drafts;
+- edit-safe regeneration/history rules;
+- approval invalidation on edits;
+- deterministic Markdown/JSON export;
+- canonical Asset/SourceArtifact/AssetProcessing records;
+- portable browser archive/import/export;
+- capability discovery;
+- current MCP operations;
+- connector code paths for LinkedIn, X and Reddit where configured.
+
+Currently **not** complete production capabilities include:
+
+- persistent ContentSignal/ContentOpportunity intelligence;
+- automatic work-event opportunity recommendations;
+- identity/style/narrative learning;
+- Today/Signals/Plan/Calendar target navigation;
+- cloud account workspace/database/object storage;
+- durable full-pipeline background jobs;
+- automatic browser capture worker;
+- deterministic product-demo rendering;
+- production scheduled publication jobs;
+- broad verified social connector coverage;
+- analytics/performance learning;
+- unreviewed global autoposting.
+
+The README and capability matrix must remain truthful while these are built.
+
+## Canonical architecture direction
+
+Dependency direction remains:
 
 ```text
-UI / routes / MCP / extension receiver
-                ↓
-       application services
-                ↓
-      domain contracts + ports
-                ↑
- browser / memory / cloud adapters
+UI / routes / MCP / extension / webhook / workers
+                    ↓
+           application services
+                    ↓
+          domain contracts + ports
+                    ↑
+ browser / memory / cloud / provider / connector / worker adapters
 ```
 
-- React components and routes must not import infrastructure adapters directly.
-- Domain modules must remain framework-independent and cannot contain browser `File` objects, database clients, provider keys, OAuth secrets, Request/Response objects, or SDK clients.
-- Current edited draft content is authoritative. Each channel also keeps one generated baseline and optional revision history.
-- A campaign title is never identity. Create/update/copy/read/delete operations use a stable `campaignId` allocated by the ID service.
-- Persisted and protocol-crossing records require stable IDs and schema versions.
-- Compatibility readers migrate into canonical records; they do not create another business-logic path.
-- Every upload, API, MCP, repository, extension, import, and future job boundary must create or migrate canonical Asset/SourceArtifact records before generation or persistence.
-- `media_items` is compatibility projection only; never use it as storage, provenance, readiness, or source identity.
-- Remote URLs cannot be labeled usable evidence until the hardened fetch boundary verifies them.
-- Absolute local paths, signed URLs, secrets, runtime File/Blob/request objects, and cross-workspace references are forbidden domain fields.
-- Metadata edits must preserve immutable provenance and source version identity.
-- Portable transfer, import conflict resolution, provenance, integrity, resume, and rollback belong to the transfer application service—not React components.
-- Never persist or render excluded secret values, signed URLs, private endpoints, private addresses, or local filesystem paths; the exclusion manifest stores only safe field paths and reasons.
-- Imported generation, approval, and export events remain historical and must not be relabeled as newly created work.
-- Hosted transfer remains unavailable until tenant authorization, destination selection, storage, jobs, quotas, and credential-backed round trips pass.
-- Cloud/database/object-store/queue work must implement existing ports and pass the same adapter contract suites.
+New target records such as `ContentSignal`, `ContentOpportunity`, `NarrativeStrategy`, `ContentPiece`, `PlatformVariant`, `CadencePolicy`, `EditorialCalendarEntry`, `PublicationRequest`, `FeedbackEvent`, `StyleMemory`, `NarrativeMemory`, `CaptureRecipe`, and `MediaComposition` must follow the same dependency direction.
 
-## Campaign editing rules
+## Product-domain rules
+
+### Signals
+
+- A signal is evidence/context, not generated copy.
+- GitHub is one source, not the whole product.
+- Manual thoughts/topics and `Something else…` must remain first-class.
+- Do not turn every commit/event into an opportunity.
+- Event ingestion must be authorized, idempotent and provenance-preserving.
+
+### Opportunities
+
+- Opportunity scoring must be explainable.
+- The system may recommend **do not post**.
+- Repetition, evidence, narrative fit, timing and user boundaries matter.
+- A proposed angle list must allow a free-form override.
+
+### Campaigns/content pieces
+
+- A campaign is a narrative container and may contain multiple content pieces over time.
+- Do not force all supported destinations into every campaign.
+- Platform absence is a valid recommendation.
+- Narrative strategy must remain separate from destination copy.
+
+### Identity/authenticity
+
+- Do not solve identity with only a tone preset.
+- Explicit boundaries outrank engagement optimization.
+- Learned preferences require evidence and should be inspectable/correctable.
+- Approval/edit/rejection events may inform memory but must not silently create irreversible personality rules.
+- Narrative memory (what was said) is separate from style memory (how the user prefers to communicate).
+
+### Capture/media
+
+- AI should direct media; deterministic capture/composition should be preferred for repeatable product demos.
+- Bounded CaptureRecipes are preferred over random agent clicking.
+- Automated capture must be visible/authorized/target-scoped and privacy-aware.
+- Raw captures and rendered derivatives require canonical Asset provenance.
+- Long capture/render tasks belong behind durable jobs/workers.
+- Do not build a general video editor before the automated demo golden path works.
+
+### Editorial calendar
+
+- Cadence is a target/constraint policy, not a recurring content factory.
+- An empty slot is valid.
+- Campaign pieces should be sequenced intentionally rather than published everywhere simultaneously by default.
+- The calendar is editorial state plus execution state, not only timestamps.
+
+### Publishing
+
+- Publishing remains an external reputational side effect.
+- Publication intent must bind exact draft/media revisions, target identity, approval, source state and idempotency key.
+- `connected=true` is insufficient; connectors expose verified capabilities/scopes/targets.
+- Manual copy/export is not direct publication success.
+- `unknown` external outcomes remain unknown until reconciled.
+- No unapproved revised content may replace an approved scheduled revision silently.
+
+## Existing campaign editing rules that remain mandatory
 
 - Never replace an edited draft silently.
-- Full regeneration with edited drafts requires a deliberate policy: regenerate unedited only, archive and regenerate all, or cancel.
+- Full regeneration with edited drafts requires deliberate policy.
 - Per-channel regeneration mutates only the requested channel.
-- Failed or invalid regeneration must leave current drafts unchanged.
-- Editing clears approval. Approval applies to the current revision.
-- Copy, export, and publishing availability must come from shared selectors and show an actionable blocked reason.
-- Save updates the current campaign ID. Save as copy must allocate a new ID and preserve the original.
-- Restoring an archived version first archives the current version, keeping restore reversible.
+- Failed/invalid regeneration leaves current work intact.
+- Editing clears approval for the affected exact revision.
+- Save updates the current stable ID; Save as copy allocates a new ID.
+- Current edited revision is authoritative.
+- Restore remains reversible where current versioning supports it.
 
-Do not create another late-cascade application override stylesheet. Application selectors belong under `.app-shell`; campaign status/version rules are currently isolated in `campaign-versioning.css` until the styling architecture issue replaces these layers deliberately.
+Future ContentPiece/PlatformVariant revisions must preserve these invariants rather than weakening them.
+
+## Infrastructure rules
+
+- React components and domain modules must not own database/object-store/queue/provider/connector clients.
+- Persisted/protocol-crossing records require stable IDs and schema versions.
+- Secrets are referenced by secret IDs/secure adapters, never embedded in campaign/signal/memory records.
+- Runtime `File`, `Blob`, Request/Response and SDK objects do not cross domain boundaries.
+- Browser, local, cloud and worker implementations must sit behind ports/application services.
+- Long-running capture/render/publication work must not depend on one open browser tab/serverless request.
+- Jobs must be idempotent/retry-safe and expose persistent progress/failure.
+- Binary media belongs in blob/object storage; relational/domain records own metadata/relationships.
+
+## GitHub integration rule
+
+Do not use GitHub MCP as the sole production source-event architecture.
+
+Target separation:
+
+```text
+GitHub App/webhooks
+    → ongoing authorized work-event/signal ingestion
+
+SignalFlow MCP
+    → AI-agent commands and queries over SignalFlow application services
+```
+
+Both may coexist.
+
+## Vertical-slice execution rule
+
+Prefer complete owner journeys over horizontal infrastructure breadth.
+
+Canonical early sequence:
+
+1. manual signal → opportunity → authentic review;
+2. GitHub event → signal/opportunity → same review loop;
+3. automatic screenshot;
+4. automatic short demo;
+5. durable scheduling/publishing;
+6. editorial continuity;
+7. feedback/style learning;
+8. destination expansion;
+9. SaaS breadth.
+
+Do not prioritize a large team/billing/connector matrix ahead of a broken owner golden path unless a security/data foundation is genuinely required by that vertical slice.
+
+## UX rules
+
+- Default product home should eventually be `Today`: decisions/exceptions requiring attention.
+- `Create` remains the manual entry path.
+- Provider/model configuration belongs behind Connections/Settings/Advanced for normal users.
+- Do not require platform selection before SignalFlow can recommend where a story fits.
+- Keep `Something else…` available where options are proposed.
+- Review prioritizes the exact content/media and decision, not infrastructure status.
+- Persistent state cannot rely only on toasts.
+- Mobile must support approval/reject/change/schedule recovery even if deep production editing is desktop-first.
+- WCAG 2.2 AA is the target for supported primary workflows.
+- Avoid cramped dashboards, oversized marketing cards, tiny functional text, nested scroll traps and floating bars that cover content.
+
+## Styling architecture
+
+Current implementation styling rules remain until UI architecture work deliberately replaces them:
+
+- scope application styles under `.app-shell`;
+- improve authoritative style owners rather than adding late global override layers;
+- test responsive/zoom behavior;
+- preserve readable forms/editors;
+- do not interpret current Source/Destinations/Review layout as permanent navigation architecture.
 
 ## Required verification
 
@@ -115,51 +307,25 @@ python -m pip install pytest
 pytest -q
 ```
 
-Do not report completion when a required gate fails. Do not claim a social connector is production-complete without real credentials, authorization, posting, refresh, expiry, rejection, permission, and rate-limit verification.
+Feature-specific work additionally requires the tests/evidence defined by its issue: contract, migration, authorization, visual, accessibility, worker recovery, capture/render, connector credentials, or other relevant gates.
 
-## Product truth boundaries
+## Completion rules
 
-- Real model provider required for campaign generation.
-- Direct official connector code paths: LinkedIn, X, Reddit.
-- Other destinations: review/copy/export/open-platform only.
-- Saved campaigns: versioned browser-local Campaign records in the current product.
-- Canonical Asset, SourceArtifact, and AssetProcessing records are implemented across browser upload, source freshness, API, MCP, repositories, and portable transfer.
-- The complete source-health workspace, hardened remote fetch, immutable remote revalidation, processing adapters, and retention/deletion enforcement are not implemented.
-- Browser Library portable archive preparation, validation, Skip/Copy/Replace import, reports, resume, and rollback are implemented.
-- Store-backed transfer adapters are contract-tested; production hosted transfer infrastructure is not implemented.
-- Portable transfer is explicit and user initiated; silent cross-deployment sync is not implemented.
-- Stable IDs, duplicate-title coexistence, save changes, save as copy, edit-safe regeneration, approvals, and local version archives are implemented.
-- Cloud database, account workspaces, collaboration, sync, object storage, durable jobs, and quotas: not implemented.
-- OAuth sessions: encrypted HTTP-only cookies.
-- Uploaded text/code: browser-extracted within current limits.
-- Images/video: metadata references in the main route, not automatic visual understanding.
-- Extension capability handshake: implemented.
-- Acknowledged extension ingestion, screenshots, and recordings: not implemented.
-- No automatic publish without explicit approval and destination API confirmation.
+Never close an implementation issue merely because code exists or the build is green.
 
-## UX rules
+Close only when:
 
-- Use `rem` for application spacing, typography, and control dimensions.
-- Normal body text should be about `0.875rem`–`0.9375rem`.
-- Supporting text should normally be at least `0.75rem`.
-- Avoid 8–10px functional copy.
-- Keep the application centered with visible viewport gutters.
-- Use white working surfaces on a quiet off-white canvas with restrained neutral borders and small muted-gold accents.
-- Do not use black selected cards, floating command bars, card lifting, shimmer, or pulse effects inside `.app-shell`.
-- Use editorial typography selectively for identity and section emphasis, not every workspace label.
-- Common laptop widths should prioritize readability over keeping two cramped columns.
-- Keep the compose flow source → destinations → generate.
-- Keep review focused on one channel, with visible route, status, limits, versions, and deliberate actions.
-- Persistent state must not rely only on temporary toasts.
-- Dialogs must support keyboard cancellation and visible focus; statuses must have screen-reader text.
-- Avoid neon, glass overload, heavy gradients, and generic admin-dashboard patterns.
+- the vertical user outcome is real;
+- acceptance criteria pass;
+- current and target docs remain consistent;
+- capability flags are truthful;
+- failure/recovery states work;
+- no approved/manual work is lost;
+- relevant security/privacy boundaries are tested;
+- external side effects are credential-backed where claimed;
+- screenshots/rendered/browser evidence is attached for visual/capture work;
+- documentation names anything still incomplete.
 
-## Engineering rules
+## Final product rule
 
-- Never commit credentials.
-- Never expose server secrets through `NEXT_PUBLIC_` variables.
-- Preserve confirmed-only publish success.
-- Fail with useful warnings and truthful manual alternatives.
-- Update README, agent guidance, architecture/capability docs, and public AI-context files whenever product truth changes.
-- Keep changes reviewable and issues open when acceptance criteria are only partially complete.
-- Prefer platform APIs and browser-native capabilities; do not add Playwright for product workflows.
+> **Reduce the amount of content work the user has to think about. Do not automate the production of noise.**

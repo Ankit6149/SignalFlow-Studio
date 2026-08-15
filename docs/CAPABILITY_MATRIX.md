@@ -1,147 +1,285 @@
-# SignalFlow Studio capability matrix
+# SignalFlow Studio — Capability Matrix
 
-SignalFlow Studio is one product with three declared deployment profiles. Clients must read `GET /api/capabilities` instead of inferring features from hostnames, environment assumptions, or visible controls.
+> **Purpose:** this document states what the current deployment/session can actually use. It intentionally distinguishes **target product architecture** from **implemented capability**.
 
-This document describes **whether the current session can use a product capability**. Domain ownership, persistence, migration, and adapter rules are documented separately in [DOMAIN_ARCHITECTURE.md](DOMAIN_ARCHITECTURE.md).
+SignalFlow is one product with hosted/local/self-hosted deployment profiles. Clients must read `GET /api/capabilities` and resource-specific state instead of inferring availability from documentation, hostname, visible UI, installed dependencies, or future roadmap records.
 
-## Contract
+## 1. Contract
 
 - Schema: `frontend/lib/capabilities/capabilityContract.mjs`
-- Current schema version: `1`
+- Current implemented schema version: `1`
 - Endpoint: `GET /api/capabilities`
-- Consumers: Studio web client, browser extension handshake, MCP server, and future workers/clients.
-- Cache policy: `no-store`; capability and permission state can change during a session.
-- Compatibility: clients ignore unknown future fields, but missing known fields fail closed as unavailable. Unsupported schema versions are rejected.
+- Consumers: Studio web client, browser-extension handshake, MCP server, and future workers/clients
+- Cache policy: `no-store`
+- Compatibility: clients ignore unknown future fields but fail closed when known required fields are missing/invalid
 
-The document contains no raw credentials, OAuth tokens, captured page content, prompts, drafts, signed URLs, or private asset data.
+Capability documents must not contain raw credentials, OAuth tokens, captured page content, prompts, drafts, signed private URLs, identity-profile content, or private asset bytes.
 
-### Minimal response shape
+## 2. Core truth rule
 
-```json
-{
-  "schemaVersion": 1,
-  "product": "signalflow-studio",
-  "deployment": { "profile": "hosted", "publicHosted": true },
-  "session": { "authenticated": false, "role": "anonymous" },
-  "permissions": { "canGenerate": true, "canUseOwnerTools": false },
-  "capabilities": {
-    "models": {
-      "providers": {
-        "gemini": {
-          "available": true,
-          "configured": false,
-          "supportsTemporaryKey": true,
-          "reason": "Gemini is available with a temporary personal key."
-        }
-      }
-    },
-    "extension": {
-      "available": false,
-      "reason": "Acknowledged extension ingestion is not ready."
-    }
-  }
-}
+A feature may be:
+
+```text
+documented as target architecture
+        ≠
+domain contract implemented
+        ≠
+infrastructure configured
+        ≠
+available to this session
+        ≠
+credential-backed production verified
 ```
 
-Clients must still validate the full versioned schema; this excerpt documents hierarchy rather than replacing contract validation.
+UI/public claims use the last applicable truthful state, not the most optimistic one.
 
-## Current truthful product matrix
+## 3. Current truthful capability matrix
 
 | Capability | Hosted anonymous | Hosted owner | Local | Self-hosted |
 | --- | --- | --- | --- | --- |
 | Versioned browser-local Campaign save | Available | Available | Available | Available |
 | Legacy browser-library migration | Available | Available | Available | Available |
+| Authoritative edited draft + generated baseline/history | Available | Available | Available | Available |
+| Edit-safe per-channel/full regeneration policy | Available | Available | Available | Available |
+| Versioned approval/current revision rules | Available | Available | Available | Available |
 | Canonical Asset / SourceArtifact / AssetProcessing contract | Available | Available | Available | Available |
-| Hardened remote URL evidence fetch | Not implemented | Not implemented | Not implemented | Not implemented |
-| Complete source-health diagnostics workspace | Not implemented | Not implemented | Not implemented | Not implemented |
-| Remote evidence revalidation/version adoption | Not implemented | Not implemented | Not implemented | Not implemented |
+| Hardened remote URL evidence fetch (#127) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Complete source-health diagnostics (#128) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Remote evidence revalidation/version adoption (#129) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Retention/deletion background enforcement | Not implemented | Not implemented | Not implemented | Not implemented |
-| Portable `.signalflow.json` prepare/download | Available | Available | Available | Available |
-| Validated browser import with Skip/Copy/Replace and rollback reports | Available | Available | Available | Available |
-| Production hosted workspace transfer destination | Not implemented | Not implemented | Not implemented | Not implemented |
-| Silent cross-deployment synchronization | Not implemented | Not implemented | Not implemented | Not implemented |
+| Portable `.signalflow.json` browser prepare/download | Available | Available | Available | Available |
+| Validated browser import Skip/Copy/Replace + rollback reports | Available | Available | Available | Available |
+| Production hosted workspace transfer destination | Not implemented | Not implemented | Not applicable | Not implemented |
+| Silent cross-deployment synchronization | Not implemented | Not implemented | Not applicable | Not implemented |
 | Authoritative Markdown / JSON export | Available | Available | Available | Available |
-| ZIP compatibility API | Owner-only route; not a primary product surface | Owner-only route; not a primary product surface | Owner-operated route; not a primary product surface | Owner-operated route; not a primary product surface |
+| ZIP compatibility API | Owner-only route; not primary product surface | Owner-only route | Owner-operated | Owner-operated |
 | Hosted account/workspace system | Not implemented | Not implemented | Not applicable | Not implemented |
-| Cloud campaign database | Not implemented | Not implemented | Not applicable | Not implemented |
-| Private object storage | Not implemented | Not implemented | Not applicable | Not implemented |
-| Durable background jobs | Not implemented | Not implemented | Not implemented | Not implemented |
+| Production cloud campaign/intelligence database | Not implemented | Not implemented | Not applicable | Not implemented |
+| Private production object storage | Not implemented | Not implemented | Not applicable | Not implemented |
+| Durable background jobs (#73) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Cloud autosave/cross-device sync | Not implemented | Not implemented | Not applicable | Not implemented |
-| Collaboration | Not implemented | Not implemented | Not applicable | Not implemented |
+| Collaboration/team review | Not implemented | Not implemented | Not applicable | Not implemented |
 | Temporary BYOK cloud provider | Available for declared providers | Available | Available | Available |
 | Server-managed provider credentials | Unavailable | Available when configured | Available when configured | Available when configured |
-| Custom gateway | Unavailable | Available | Available | Available |
-| Ollama / LM Studio | Unavailable | Available only with a reachable trusted URL | Available | Available |
-| Public links | Available | Available | Available | Available |
-| Public GitHub repository URL | Available | Available | Available | Available |
-| Local filesystem repository | Unavailable | Unavailable on public hosting | Opt-in through `SIGNALFLOW_ALLOW_LOCAL_REPO=true` | Opt-in through `SIGNALFLOW_ALLOW_LOCAL_REPO=true` |
-| Official connector administration | Unavailable | Available when configured | Available when configured | Available when configured |
+| Custom OpenAI-compatible gateway | Unavailable | Available | Available | Available |
+| Ollama / LM Studio | Unavailable | Available only with reachable trusted URL | Available | Available |
+| Public link context | Available within current implementation boundaries | Available | Available | Available |
+| Public GitHub repository URL context | Available | Available | Available | Available |
+| Trusted local filesystem repository | Unavailable | Unavailable on public hosting | Opt-in through `SIGNALFLOW_ALLOW_LOCAL_REPO=true` | Opt-in through `SIGNALFLOW_ALLOW_LOCAL_REPO=true` |
 | Manual copy/export/open handoff | Available | Available | Available | Available |
-| Durable scheduled publishing | Not implemented | Not implemented | Not implemented | Not implemented |
-| MCP | Unavailable to an anonymous hosted session | Available with explicit access context | Available | Available |
+| Official connector administration | Unavailable | Available when configured | Available when configured | Available when configured |
+| LinkedIn/X/Reddit connector code paths | Code present; session/config dependent | Code present; config dependent | Code present; config dependent | Code present; config dependent |
+| Production-verified connector status | Requires real credential/account verification | Requires real verification | Requires real verification | Requires real verification |
+| Durable scheduled publishing (#103) | Not implemented | Not implemented | Not implemented | Not implemented |
+| MCP current supported workflow | Unavailable to anonymous hosted session | Available with explicit access context | Available | Available |
 | Extension capability handshake | Available | Available | Available | Available |
 | Acknowledged extension ingestion | Not implemented | Not implemented | Not implemented | Not implemented |
-| Screenshot / recording ingestion | Not implemented | Not implemented | Not implemented | Not implemented |
-| Billing quotas | Not implemented | Not implemented | Not implemented | Not implemented |
+| Extension screenshot/recording ingestion | Not implemented | Not implemented | Not implemented | Not implemented |
+| Billing/usage quota enforcement | Not implemented | Not implemented | Not implemented | Not implemented |
 
-The ZIP compatibility route is not advertised as a complete end-user capability. It now consumes the canonical Campaign export projection so it cannot diverge from authoritative drafts while the product surface, packaging UX, and release verification remain pending.
+## 4. Target content-operating-system capabilities — currently planned unless stated otherwise
 
-## Canonical source capability
+These rows exist so clients/docs/agents do not confuse the new architecture with shipped functionality.
 
-The capability document reports `sources.canonicalContract` with schema version `1`. Browser file uploads and processing lineage records are available as contracts. Public links fail closed as a capability until #127 provides hardened SSRF/redirect/timeout/MIME/size enforcement. Repository planning, the source-health workspace, remote evidence versions, and retention/deletion enforcement remain separately unavailable.
+| Target capability | Current status | Owning issues/docs |
+| --- | --- | --- |
+| Canonical `ContentSignal` persistence/manual intake | Planned | #152, `CONTENT_INTELLIGENCE_ARCHITECTURE.md` |
+| GitHub App/webhook → ContentSignal ingestion | Planned | #161, `GITHUB_INTEGRATION_AND_MCP.md` |
+| Explainable `ContentOpportunity` scoring/ranking | Planned | #156 |
+| Opportunity angle options + `Something else` | Planned | #156/#159 |
+| Persistent Identity/Perception/Voice/Boundary profiles | Planned | #153 |
+| Learned explainable StyleMemory | Planned | #154 |
+| Narrative/publication memory + semantic repetition | Planned | #155 |
+| NarrativeStrategy / ContentPiece / PlatformVariant domain | Planned | #157 |
+| Staged generation orchestration | Planned | #158 |
+| Authenticity quality critic | Planned | #158 |
+| Evidence/factual quality critic integrated with staged flow | Planned | #158 |
+| Today decision inbox | Planned | #159 |
+| Signals workspace | Planned | #159 |
+| Plan/opportunity/campaign-planning workspace | Planned | #159 |
+| CadencePolicy / editorial planning | Planned | #160 |
+| Editorial calendar with intentionally empty slots | Planned | #160 |
+| Automatic safe CaptureRecipe/browser worker | Planned | #162 |
+| Automatic campaign screenshot capture/derivatives | Planned | #163 |
+| Automatic deterministic raw screencast | Planned | #164 |
+| Motion composition / multi-aspect video render | Planned | #165 |
+| Exact media revision approval/publication binding | Planned | #151/#165/#168 |
+| Owner Golden Path 1 manual thought → authentic approval | Planned | #166 |
+| Owner Golden Path 2 GitHub event → opportunity + visual evidence | Planned | #167 |
+| Owner Golden Path 3 approved revision → durable publish → memory | Planned | #168 |
+| Performance analytics ingestion/learning | Future; not yet scoped as production capability | product vision/editorial docs |
+| Unreviewed global autoposting | Not a Personal Alpha capability; future explicit scoped trust only | product vision |
 
-A canonical source record does not prove extraction, OCR, transcription, visual analysis, remote verification, or deletion completed. Those states are explicit per artifact/processing record and must match the actual adapter result.
+## 5. Target capability namespace direction
 
-## Portable transfer capability
+When these capabilities are implemented, the server capability contract should evolve through a versioned schema rather than UI assumptions.
 
-The capability document declares portable transfer separately from cloud persistence:
+Illustrative target grouping only:
 
-- `transfer.portableArchive` reports schema version `1` and the browser import byte limit;
-- `transfer.browserImportExport` is available because the Library can prepare, download, validate, import, resume, and roll back archives;
-- `transfer.hostedImport` remains unavailable unless a compatible hosted workspace adapter is actually configured for the current session;
-- `transfer.signatures` distinguishes always-available SHA-256 integrity from optional deployment signing;
-- `transfer.silentSync` is unavailable by design because transfer is explicit and user initiated.
+```text
+capabilities.contentIntelligence
+  signals
+  opportunities
+  narrativePlanning
+  identityMemory
+  narrativeMemory
 
-Browser capability does not imply a cloud database, object storage, account workspace, background job, tenant authorization, or cross-device sync. A future hosted adapter must preserve the same archive, provenance, conflict, report, and rollback contract and pass tenant-isolation, quota, backup/restore, and credential-backed acceptance gates before `hostedImport.available` can become true.
+capabilities.production
+  captureWorker
+  screenshots
+  screencast
+  mediaRenderer
+  supportedAspectRatios
 
-See [PORTABLE_TRANSFER.md](PORTABLE_TRANSFER.md).
+capabilities.editorial
+  cadencePlanning
+  calendar
+  scheduling
 
-## Campaign data rules
+capabilities.sources.github
+  eventIngestion
+  repositoryEvidence
 
-- The current edited draft is authoritative for saving, reopening, copying, publishing, and export.
-- Different original model output may exist only as optional revision history.
-- Temporary provider keys and runtime browser objects are excluded from canonical Campaign records.
-- Browser records carry schema version `1`, stable campaign IDs, source snapshot IDs, and generation run IDs.
-- Markdown and JSON are deterministic projections of a Campaign snapshot.
-- Browser, memory, and injected store-backed implementations conform to the same campaign repository port.
-- Future cloud/database implementations must pass the same adapter contract suite before capability flags can report them available.
+capabilities.destinations.<provider>
+  available
+  verifiedTarget
+  publishText
+  publishImage
+  publishVideo
+  analyticsRead
+```
 
-## Session and permission rules
+Do not add these fields to the public contract until their schema/implementation issue owns them and compatibility tests exist.
 
-- A public hosted deployment without a valid owner session reports role `anonymous`.
-- A valid owner session reports role `owner` and may use configured server credentials and owner-only provider/connector controls.
-- Local and self-hosted deployments without an access lock are treated as owner-operated, but local filesystem access still requires the explicit repository opt-in.
-- An access-locked local/self-hosted deployment reports owner-only model and connector routes unavailable until the session is authenticated.
-- The UI can hide irrelevant capabilities or show them disabled with the contract’s plain-language `reason`. The server remains the authorization boundary.
-- “Configured” and “available” are separate. A provider or connector can be configured in the deployment but unavailable to the current session.
+## 6. Canonical source capability
 
-## Extension behavior
+Current source contracts can represent Asset/SourceArtifact/AssetProcessing records, but a canonical record does not prove:
 
-The extension requests the page’s capability snapshot through a versioned browser handshake. The Send action remains disabled while `capabilities.extension.available` is false. The current contract deliberately reports extension delivery unavailable because the acknowledged ingestion bridge is tracked separately in issue #41.
+- remote fetch safety;
+- extraction success;
+- OCR;
+- transcription;
+- visual analysis;
+- durable upload;
+- deletion/retention enforcement;
+- extension acknowledgement;
+- automatic capture-worker production.
 
-Dispatching a browser message or DOM event is not durable ingestion acknowledgement and must not be presented as successful delivery.
+Those states remain explicit per artifact/processing/capability.
 
-## Adding a capability
+Public links must fail closed as *verified usable evidence* where #127's hardened fetch boundary is required but not implemented.
 
-1. Add the server-owned field to the versioned contract builder.
-2. Add fail-closed parsing for clients.
-3. Define or extend the owning domain record and application service.
-4. Document profile, permission, quota, and unavailable reasons.
-5. Enforce the same rule in the owning API/application service.
-6. Implement infrastructure behind a declared port, not inside UI/domain code.
-7. Add contract fixtures for hosted anonymous, hosted member/owner where supported, local, and self-hosted profiles.
-8. Add adapter, serialization, migration, security, and rollback tests where persistence is involved.
-9. Update web, extension, MCP, worker, README, agent, and public AI-context consumers.
-10. Add migration/deprecation notes before changing or removing an existing field.
+## 7. Content-intelligence truth
 
-A capability is not production-ready merely because it appears in the document. It must be backed by the owning implementation and acceptance evidence.
+The new docs define Signals/Opportunities/Identity/Memory as target product records, but none may be presented in the live UI as persistent working intelligence until their issue is implemented.
+
+Examples:
+
+- a one-off model-generated `strategy` object is **not** a persistent ContentOpportunity system;
+- a `founder-style` tone field is **not** an IdentityProfile;
+- campaign history is useful but is **not** NarrativeMemory until public-story semantics are implemented;
+- a prompt-generated media shot list is **not** automatic capture/media production;
+- a client-side schedule callback is **not** durable editorial/publication scheduling.
+
+## 8. Capture/production truth
+
+### Browser extension
+
+User-initiated extension capture is a separate capability family from automatic campaign capture.
+
+### Automatic capture worker
+
+The product may report this available only when:
+
+- worker/infrastructure is configured;
+- a supported CaptureRecipe can execute;
+- target/environment authorization is valid;
+- output storage is available;
+- durable job/progress behavior is functional.
+
+Installing Playwright/browser dependencies alone is not capability evidence.
+
+### Media renderer
+
+May report available only when a validated MediaCompositionPlan can produce persisted output Assets through the render pipeline.
+
+A prompt containing `videoTimeline` is not a renderer.
+
+## 9. Editorial planning truth
+
+The product distinguishes:
+
+- editorial recommendation/planning;
+- durable publication scheduling;
+- destination provider capability.
+
+A Calendar UI alone is not durable scheduling.
+
+A schedule is real only when server/job persistence survives browser closure/restart and execution semantics are defined.
+
+## 10. Destination connector truth
+
+A connector's state is richer than `connected`.
+
+Current/future connector capability should distinguish:
+
+- configured;
+- authorized;
+- verified target identity;
+- scopes/products;
+- expiry/revocation;
+- text/image/video capabilities;
+- direct publish verified/unverified;
+- manual-only fallback;
+- provider errors/rate limits.
+
+Publishing success is recorded only after destination confirmation.
+
+Read `docs/CONNECTOR_READINESS.md`.
+
+## 11. Portable transfer capability
+
+Current portable transfer remains explicit browser ownership/recovery, not silent cloud sync.
+
+As new identity/signal/memory/calendar/media records ship, portable ownership must be extended deliberately through new archive schema versions/compatibility rules before the product claims those records are included.
+
+No new user-owned state should be silently left out of export forever merely because it was introduced after archive schema v1.
+
+## 12. Campaign data rules
+
+Current rules remain:
+
+- current edited draft is authoritative;
+- generated output is baseline/history;
+- temporary provider keys/runtime browser objects are excluded;
+- campaigns have stable IDs/source snapshots/generation runs;
+- Markdown/JSON are deterministic projections;
+- browser/memory/store-backed adapters share contracts.
+
+Target ContentPiece/PlatformVariant migration must preserve these invariants.
+
+## 13. Session/permission rules
+
+- Public hosted deployment without valid owner/member auth reports the appropriate restricted role.
+- Owner/local/self-hosted capabilities remain permission/configuration-aware.
+- Local filesystem access remains explicit opt-in.
+- UI may hide irrelevant controls, but server/application authorization remains the security boundary.
+- `configured` and `available` are separate.
+- Resource-specific capability may be unavailable even when the provider itself is connected.
+
+## 14. Adding a capability
+
+1. Define the owning domain/application service.
+2. Define current/future deployment profiles and authorization.
+3. Add server-owned versioned capability field/schema.
+4. Add fail-closed client parsing.
+5. Implement infrastructure behind a port.
+6. Add capability fixtures for supported profiles/roles.
+7. Add relevant migration/serialization/security/job/retry tests.
+8. Add real credential-backed evidence for external side effects.
+9. Update web/MCP/extension/worker/public docs.
+10. Only then advertise the capability.
+
+## 15. Capability principle
+
+> **Documentation may describe where SignalFlow is going. Only verified implementation determines what SignalFlow can say it does today.**

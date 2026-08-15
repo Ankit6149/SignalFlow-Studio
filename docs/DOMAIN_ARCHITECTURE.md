@@ -1,232 +1,604 @@
-# SignalFlow Studio domain architecture
+# SignalFlow Studio — Domain Architecture
 
-This document is the implementation boundary for SignalFlow Studio domain data, application services, persistence adapters, exports, and future hosted infrastructure.
+> **Status:** implementation boundary for current domain data plus the canonical migration direction for the content operating system. Current schema/code remains authoritative for shipped records; new target records are introduced through versioned migrations and application services rather than by bypassing existing contracts.
 
-## Dependency direction
+## 1. Dependency direction
 
 ```text
-UI / routes / MCP / extension receiver
-                ↓
-       application services
-                ↓
-      domain contracts + ports
-                ↑
- browser / memory / cloud adapters
+UI / routes / MCP / extension / webhook / workers
+                    ↓
+           application services
+                    ↓
+          domain contracts + ports
+                    ↑
+ browser / memory / cloud / provider / connector / worker adapters
 ```
 
 Rules:
 
-- Domain modules are pure JavaScript and cannot import React, Next.js, browser APIs, database clients, provider SDKs, or infrastructure adapters.
-- UI and route modules call application services. They do not import infrastructure adapters directly.
-- Infrastructure implements ports; it does not own campaign rules.
-- Compatibility readers may translate legacy records into canonical records, but they cannot create a second source of business logic.
-- All persisted or protocol-crossing records carry `schemaVersion` and stable IDs.
+- Domain modules are pure JavaScript and cannot import React, Next.js, browser APIs, database clients, provider SDKs, queue SDKs, Playwright/browser-worker clients, renderer SDKs, or infrastructure adapters.
+- UI/routes/MCP/webhooks/workers call application services. They do not own business rules or write repositories directly.
+- Infrastructure implements ports; it does not own campaign/editorial/identity policy.
+- Compatibility readers may translate legacy records into canonical records, but cannot create a second source of business logic.
+- Persisted or protocol-crossing records carry `schemaVersion` and stable IDs.
+- Secrets are referenced through secure adapters/secret IDs, never embedded in campaign/signal/memory/media records.
+- Runtime `File`, `Blob`, Request/Response, SDK/client handles and browser objects do not cross domain boundaries.
 
-The static boundary tests live in `frontend/tests/architectureBoundaries.test.mjs`.
+Static boundary tests currently live in `frontend/tests/architectureBoundaries.test.mjs` and should expand as new packages/services are introduced.
 
-## Versioned records
+## 2. Product domain lifecycle
 
-The schema registry is `frontend/lib/domain/contracts.mjs`. Schema version `1` defines:
+The target lifecycle is:
+
+```text
+Source/event/manual input
+        ↓
+ContentSignal
+        ↓
+ContentOpportunity
+        ↓
+NarrativeStrategy
+        ↓
+Campaign
+        ↓
+ContentPiece(s)
+        ↓
+PlatformVariant(s)
+        ↓
+DraftRevision + Asset/MediaComposition revisions
+        ↓
+Approval
+        ↓
+EditorialCalendarEntry / PublicationRequest
+        ↓
+Publication
+        ↓
+NarrativeMemory + FeedbackEvent / StyleMemory
+```
+
+The current campaign system occupies the Campaign/Draft/Approval/Export portion of this lifecycle and remains a compatibility foundation while earlier/later stages are added.
+
+## 3. Current schema-version-1 record foundation
+
+The current registry in `frontend/lib/domain/contracts.mjs` includes records such as:
 
 | Record | Owner | Stable identifier | Purpose |
 | --- | --- | --- | --- |
-| Workspace | workspace | `workspaceId` | Deployment/account collaboration boundary |
-| Project | workspace | `projectId` | Brand or product context |
-| Campaign | project | `campaignId` | Authoritative campaign aggregate |
-| SourceSnapshot | campaign | `sourceSnapshotId` | Immutable generation input snapshot |
-| SourceArtifact | campaign | `sourceArtifactId` | Note, link, repository, document, or captured source |
-| Asset | workspace | `assetId` | Reusable media/file metadata |
-| GenerationJob | campaign | `generationJobId` | Queued or running generation work |
-| GenerationRun | campaign | `generationRunId` | Completed provider/model execution metadata |
-| ChannelDraft | campaign | `draftId` | One channel’s authoritative current draft |
-| DraftRevision | draft | `revisionId` | Generated or edited history entry |
-| Approval | campaign | `approvalId` | Version-specific review decision |
-| Export | campaign | `exportId` | Deterministic export snapshot |
-| Publication | campaign | `publicationId` | Destination publish attempt and result |
-| Connection | workspace | `connectionId` | Connector identity/status without tokens |
-| UsageEvent | workspace | `usageEventId` | Quota/billing-ready usage fact |
-| AssetProcessing | workspace | `processingId` | Processor/version and input/output Asset/SourceArtifact lineage |
-| TransferReport | workspace/destination | `transferReportId` | Import validation, per-record outcomes, resume, and rollback journal |
-| AuditEvent | workspace | `auditEventId` | Security and product activity fact |
+| Workspace | workspace | `workspaceId` | deployment/account collaboration boundary |
+| Project | workspace | `projectId` | product/brand context |
+| Campaign | project | `campaignId` | current authoritative campaign aggregate |
+| SourceSnapshot | campaign | `sourceSnapshotId` | immutable generation-input snapshot |
+| SourceArtifact | campaign/workspace | `sourceArtifactId` | note/link/repository/document/captured source |
+| Asset | workspace | `assetId` | reusable media/file metadata |
+| AssetProcessing | workspace | `processingId` | processor/version input/output lineage |
+| GenerationJob | campaign | `generationJobId` | queued/running generation work |
+| GenerationRun | campaign | `generationRunId` | completed provider/model execution metadata |
+| ChannelDraft | campaign | `draftId` | current destination draft |
+| DraftRevision | draft | `revisionId` | generated/edited history entry |
+| Approval | campaign | `approvalId` | version-specific review decision |
+| Export | campaign | `exportId` | deterministic export snapshot |
+| Publication | campaign | `publicationId` | destination attempt/result foundation |
+| Connection | workspace | `connectionId` | connector identity/status without raw tokens |
+| UsageEvent | workspace | `usageEventId` | quota/billing-ready usage fact |
+| TransferReport | workspace/destination | `transferReportId` | import validation/outcomes/resume/rollback journal |
+| AuditEvent | workspace | `auditEventId` | security/product activity fact |
 
-## Portable serialization
+Do not delete these simply because the target lifecycle adds richer concepts.
 
-`serializeDomainRecord` rejects:
+## 4. Target additive domain records
 
-- provider API keys, access tokens, refresh tokens, OAuth tokens, client secrets, passwords, cookies, and authorization values;
-- browser `File` objects and other class instances;
-- framework Request/Response objects;
-- database clients or request-scoped infrastructure objects;
-- functions, symbols, bigint values, circular references, and non-finite numbers.
+New work should converge on the following first-class concepts.
 
-Repeated references to the same portable value are cloned safely; only true ancestor cycles are rejected.
+| Record | Owner | Example stable ID | Responsibility |
+| --- | --- | --- | --- |
+| IdentityProfile | user/workspace | `identityProfileId` | who the user is in public communication |
+| PerceptionProfile | identity | `perceptionProfileId` | how the user wants to be understood |
+| VoiceProfile | identity | `voiceProfileId` | explicit communication preferences/examples |
+| BoundaryProfile | identity/project | `boundaryProfileId` | privacy/content/style restrictions |
+| PlatformVoiceProfile | identity/platform | `platformVoiceProfileId` | destination-specific expression overlay |
+| ContentSignal | workspace/project | `signalId` | something that happened or was manually supplied |
+| ContentOpportunity | workspace/project | `opportunityId` | explainable editorial recommendation |
+| NarrativeStrategy | campaign | `narrativeStrategyId` | chosen story before platform formatting |
+| ContentPiece | campaign | `contentPieceId` | one semantic communication unit |
+| PlatformVariant | content piece | `platformVariantId` | destination-native expression of a piece |
+| FeedbackEvent | user/workspace | `feedbackEventId` | review/selection/rejection learning evidence |
+| StyleMemory | user/workspace | `styleMemoryId` | evidence-backed learned communication hypothesis |
+| NarrativeMemory | workspace/project | `narrativeMemoryId` | what was actually told publicly and how |
+| CadencePolicy | workspace/project/platform | `cadencePolicyId` | editorial frequency/timing constraints |
+| EditorialCalendarEntry | workspace | `calendarEntryId` | editorial intent/execution placement |
+| MediaRequirement | content piece | `mediaRequirementId` | what visual/audio evidence the story needs |
+| CaptureRecipe | project/workspace | `captureRecipeId` | bounded reproducible product walkthrough |
+| MediaCompositionPlan | content piece | `mediaCompositionPlanId` | semantic media timeline/layout plan |
+| MediaComposition | content piece | `mediaCompositionId` | rendered/versioned media relationship |
+| PublicationRequest | platform variant | `publicationRequestId` | immutable exact approved external intent |
+| PerformanceSnapshot | publication | `performanceSnapshotId` | optional later provider analytics snapshot |
 
-Domain objects use IDs and metadata instead of runtime handles. Secrets remain in request-scoped provider/connector adapters.
+The exact physical database may normalize/merge tables where appropriate, but these domain meanings must remain explicit and testable.
 
-## Canonical Campaign aggregate
+## 5. `ContentSignal`
 
-`frontend/lib/domain/campaign.mjs` owns campaign invariants.
+A signal is **evidence/context before editorial judgment**.
 
-A Campaign contains:
+It may represent:
 
-- stable campaign ID and schema version;
-- title, status, selected channels, created/updated timestamps;
-- one `ChannelDraft` per channel;
-- one authoritative `current` revision and one generated baseline inside each draft;
-- optional generated/edited revision history;
-- explicit edited and approval state owned by the current revision;
-- generation-run ownership for every channel baseline;
-- bounded campaign archives for reversible regeneration;
-- editor revision, saved revision, exported revision, timestamps, and saved-source fingerprint;
-- source snapshot and generation run metadata;
-- provider/model, warnings, and quality states;
-- portable brief, publish options, source file metadata, and extracted document text;
-- generation/package context with active `posts`, generated Markdown, generated JSON, and prompts removed.
+- GitHub event;
+- manual thought/topic;
+- browser capture;
+- release/milestone;
+- document/research item;
+- future connected-work event.
 
-The current edited draft is authoritative. Generated copy is a baseline/history record, never a second active draft. Editing clears approval. Regeneration policies and campaign/channel status selectors are pure modules under `frontend/lib/studio/`.
+Rules:
 
-Channel compatibility aliases are normalized at the boundary. `releaseNotes`, `release-notes`, and `release_notes` become `release_notes`; `hn`, `hacker-news`, and `hacker_news` become `hackernews`. The canonical record never preserves competing aliases.
+- not generated copy;
+- may exist without any opportunity/campaign;
+- stable provenance/source relationship;
+- external event delivery compatible with idempotency;
+- optional project ownership for personal/cross-project topics;
+- ignore/snooze/archive are durable user decisions;
+- raw webhook tokens/private payloads do not belong in the record.
 
-Starting a new campaign is an explicit state transition. It clears the prior campaign ID, generation run, result, drafts, source inputs, and publishing options so a later save cannot overwrite the previously opened record accidentally.
+Issue #152 owns the first implementation.
 
-## Legacy migration
+## 6. `ContentOpportunity`
 
-`migrateLegacyCampaign` accepts browser-library records created before schema version `1`.
+An opportunity is SignalFlow's **explainable editorial judgment** that one or more signals may deserve communication.
 
-Migration rules:
+It should represent:
 
-- legacy `posts[channel]` becomes the authoritative current draft;
-- legacy `result.posts[channel]` becomes optional generated history only when different;
-- duplicate `result.package.posts`, `result.markdown`, and `result.json` are removed;
-- temporary API keys are excluded;
-- existing IDs and timestamps are preserved when available;
-- migrated records are written back by the browser repository.
+- `whyNow`;
+- evidence readiness;
+- freshness/aging;
+- novelty/repetition;
+- narrative fit;
+- destination recommendations/exclusions;
+- candidate angles;
+- media-form suggestions;
+- score/breakdown/confidence;
+- valid `skip / do not post` outcome.
 
-This migration is intentionally local and idempotent. Hosted migrations will use the same canonical parser and fixtures.
+Opportunity scoring consumes NarrativeMemory and explicit identity/boundary context. It does not grant publication permission.
 
-## Application services
+Issue #156 owns the first implementation.
 
-`frontend/lib/application/campaignApplication.mjs` provides the use cases:
+## 7. Identity / perception / voice / boundaries
 
-- list and migrate saved campaigns;
-- read one campaign by stable ID;
-- create a campaign with an injected opaque ID;
-- update only an existing campaign ID;
-- save as a new copy without modifying the original;
-- open a campaign into editor state;
-- delete a saved campaign by ID;
-- create an export snapshot;
-- project Markdown and JSON.
+Identity is intentionally not one `tone` field.
 
-`browserCampaignApplication.mjs` is the browser composition root. The page imports this application module, not local-storage infrastructure.
+Recommended composition:
 
-Future route, worker, MCP, or extension-receiver use cases should be added as application services before adding another UI or protocol implementation.
+```text
+Person IdentityProfile
++ PerceptionProfile
++ VoiceProfile
++ BoundaryProfile
++ project/brand guidance
++ PlatformVoiceProfile
++ relevant learned StyleMemory
++ campaign NarrativeStrategy
+```
 
-## Ports and adapters
+Precedence must keep explicit boundaries above learned/engagement preferences.
 
-The runtime port registry is `frontend/lib/domain/ports.mjs`.
+Generation should record the profile/memory versions used so changing a profile later does not rewrite historical provenance.
 
-Current ports:
+See `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md` and #153/#154.
 
-- campaign repository;
-- asset repository;
-- source-artifact repository;
-- approval repository;
-- export repository;
-- transfer-report repository;
-- blob storage;
-- optional archive signer;
-- job queue;
-- provider adapter;
-- connector adapter;
-- notification adapter;
-- clock;
-- ID service.
+## 8. Campaign evolution
 
-`frontend/lib/infrastructure/adapters.mjs` currently includes:
+### Current Campaign aggregate
 
-- browser-local campaign repository;
-- in-memory campaign repository;
-- injected async-store campaign repository for hosted/cloud implementations;
-- browser, memory, and store-backed asset/source-artifact/approval/export/transfer-report repositories;
-- browser blob storage for byte, text, and JSON payloads;
-- memory and store-backed blob storage;
-- memory and store-backed job queues.
+`frontend/lib/domain/campaign.mjs` currently owns invariants including:
 
-The same contract suites run against local/memory and store-backed adapters. A database, object store, or durable queue implementation is not considered complete until it passes those suites plus its own integration, isolation, retry, backup, and restore tests.
+- stable campaign ID/schema;
+- title/status/selected channels/timestamps;
+- one authoritative current revision per channel;
+- generated baseline/history;
+- edited/approval state;
+- generation-run ownership;
+- bounded archives for reversible regeneration;
+- editor/saved/export revisions;
+- source snapshot/generation metadata;
+- provider/model/warnings/quality state;
+- portable source/brief/package context.
 
-## Canonical source graph
+These invariants remain valuable.
 
-`frontend/lib/domain/sourceArtifacts.mjs` is the sole canonical definition for Asset, SourceArtifact, and AssetProcessing. It owns source kinds, ingestion methods, lifecycle, usability/evidence, upload/processing, privacy, retention/deletion, safe references, provenance, legacy migration, graph validation, campaign snapshot references, and generation compatibility projection.
+### Target Campaign aggregate
 
-The graph validator rejects duplicate IDs, cross-workspace/campaign references, missing Asset/SourceArtifact/processing links, unsafe URL/repository/local references, and provenance cycles. Browser and store-backed repositories migrate and write canonical records back on read. API and MCP validate the same graph before generation.
+Campaign should evolve toward:
 
-Campaign source snapshots store stable SourceArtifact version references. Editable metadata and storage location are excluded from the freshness fingerprint. Portable transfer carries AssetProcessing records, excludes non-exportable private records, and remaps scalar and array references under Copy.
+```text
+Campaign
+ ├─ opportunity or manual intent
+ ├─ NarrativeStrategy revision(s)
+ ├─ SourceSnapshot/evidence versions
+ ├─ ContentPiece(s)
+ │   └─ PlatformVariant(s)
+ │       └─ DraftRevision(s)
+ ├─ Assets / MediaComposition revisions
+ ├─ Approvals
+ ├─ Editorial plan references
+ └─ Publication history
+```
 
-See [SOURCE_ASSET_CONTRACT.md](SOURCE_ASSET_CONTRACT.md).
+A campaign may contain several pieces sequenced across time rather than one simultaneous omnichannel response.
 
-## Portable archive and transfer application
+Migration must preserve legacy/current saved campaigns and their authoritative drafts.
 
-`frontend/lib/transfer/portableArchive.mjs` owns archive schema, sanitization, SHA-256 integrity, optional signing, traversal/size/blob validation, and encoded blob payloads. `frontend/lib/transfer/transferApplication.mjs` owns selection, preview, conflict mapping, provenance, import order, reports, resume, cancellation, and rollback.
+Issue #157 owns this additive evolution.
 
-The browser composition root is `frontend/lib/application/browserTransferApplication.mjs`. The Library renders `frontend/components/PortableTransferPanel.js`, which calls the application service and does not calculate digests, migrate records, inspect storage keys, resolve conflicts, or perform repository writes itself.
+## 9. Authoritative draft/version rules
 
-Portable transfer rules:
+Current rules remain mandatory:
 
-- archives are explicit `.signalflow.json` records with schema version `1`;
-- secrets, OAuth/session data, signed/private references, private endpoints, and local filesystem paths are excluded with safe field-path reasons;
-- SHA-256 integrity is mandatory and verified before writes; signatures are optional unless a destination requires them;
-- Skip re-import is idempotent, Copy remaps stable IDs/references, and Replace journals previous destination records;
-- campaigns import before assets/artifacts/approvals/exports so dependent IDs can be remapped;
-- imported events preserve historical timestamps and carry `transferProvenance.historical = true`;
-- normal browser import is atomic; non-atomic adapters persist partial outcomes and can resume using the same archive digest;
-- rollback replays the ordered journal in reverse and records any incomplete recovery;
-- browser import/export availability does not imply production hosted persistence or synchronization.
+- one authoritative current edited revision;
+- generated text is baseline/history, not another active draft;
+- editing clears approval for affected exact revision;
+- failed regeneration preserves current work;
+- per-channel/platform regeneration affects only the target;
+- campaign title is not identity;
+- Save updates current stable ID; Save as copy allocates a new ID;
+- source changes create explicit freshness/staleness rather than silent mutation.
 
-See [PORTABLE_TRANSFER.md](PORTABLE_TRANSFER.md).
+Future PlatformVariant/ContentPiece/media revision logic must extend these guarantees rather than weaken them.
 
-## Authoritative export projection
+## 10. Narrative strategy and content pieces
 
-`frontend/lib/export/campaignExport.mjs` projects from the canonical Campaign aggregate.
+`NarrativeStrategy` stores **why/how to tell the story before platform formatting**.
 
-Markdown:
+`ContentPiece` stores one semantic unit such as:
 
-- includes metadata, source/generation IDs, provider/model, strategy/context, warnings, and quality state;
-- includes each current edited draft exactly once;
-- does not include generated history as another active section.
+- problem/reason story;
+- demo;
+- technical breakdown;
+- release note;
+- carousel;
+- retrospective.
 
-JSON:
+`PlatformVariant` exists only for appropriate/selected destinations.
 
-- uses `CampaignExport` schema version `1`;
-- separates `currentDrafts` from optional `history`;
-- includes generated baselines, edited/approval state, and per-channel generation-run ownership;
-- includes campaign ID, generation run, source snapshot, provider/model, snapshot timestamp, editor revision, save/export timestamps, warnings, and quality states;
-- omits duplicate active drafts from package/generation payloads;
-- is deterministically key-sorted for identical campaign state.
+Explicit destination absence/deferment is representable and should not be converted into empty draft records merely to satisfy a global schema.
 
-The ZIP compatibility route is assembled from the same Markdown/JSON projections and current per-channel drafts. It does not read `result.package.posts` directly. ZIP remains a compatibility API rather than a claimed primary product surface until its packaging UX and release evidence are completed.
+## 11. Narrative memory
 
-## Adding a vertical slice
+`NarrativeMemory` answers:
 
-1. Define or extend a versioned domain record.
-2. Add invariants and portable serialization tests.
-3. Add an application service command/query.
-4. Define the required port.
-5. Implement local and hosted/store-backed adapters behind the port.
-6. Run adapter contract suites.
-7. Migrate one user flow to the application service.
-8. Add compatibility migration and rollback notes.
-9. Update README, agent guidance, capability documentation, and public AI-context files when product truth changes.
+> What has the audience actually been told?
 
-Do not add cloud database calls, object-store clients, provider SDKs, or connector SDKs directly to React components or domain modules.
+It may reference:
 
+- topic;
+- angle;
+- claims/features/limitations;
+- evidence/media shown;
+- destination;
+- confirmed publication timestamp;
+- follow-up possibilities.
 
-## Edit-safe regeneration and editor state
+Confirmed publication is strong public-story evidence. Approved-but-unpublished content may inform internal duplication but must not be treated as definitely seen by the audience.
 
-The editor reducer schema is version `2`, while the additive outer domain schema remains version `1`. The reducer owns generated baselines, current posts, channel statuses, approvals, archives, editor revision, saved/exported revisions, timestamps, and the source fingerprint represented by the saved record.
+Narrative memory is separate from StyleMemory.
 
-Full regeneration with edited drafts requires an explicit policy: regenerate unedited destinations, archive and regenerate all destinations, or cancel. Per-channel regeneration targets only the active destination. Invalid and all-failed responses are rejected before reducer mutation.
+See #155.
 
-Campaign titles are not identity. The ID service allocates campaign IDs; create, update, save-as-copy, read, list, and delete operate by ID.
+## 12. Feedback/style memory
 
-See [CAMPAIGN_EDITING_AND_VERSIONING.md](CAMPAIGN_EDITING_AND_VERSIONING.md) and [CAMPAIGN_SCHEMA_MIGRATION.md](CAMPAIGN_SCHEMA_MIGRATION.md).
+`FeedbackEvent` records user decisions such as approve unchanged, approve after edit, reject, regenerate, too corporate, too personal, wrong angle, platform removed, explicit preference, etc.
+
+`StyleMemory` represents an evidence-backed hypothesis, not an immediate hidden personality mutation.
+
+Rules:
+
+- one edit normally creates evidence, not a permanent rule;
+- supporting/contradicting events adjust confidence;
+- user can inspect/confirm/edit/forget;
+- explicit rules/boundaries outrank learned hypotheses;
+- raw private draft text need not be duplicated in logs/memory when revision references/structured observations are sufficient.
+
+See #154.
+
+## 13. Canonical source graph
+
+`frontend/lib/domain/sourceArtifacts.mjs` remains the canonical definition for `Asset`, `SourceArtifact`, and `AssetProcessing` until/additionally migrated through versioned contracts.
+
+It owns:
+
+- source kinds and ingestion methods;
+- lifecycle/usability/evidence states;
+- upload/processing;
+- privacy/retention/deletion;
+- safe references/provenance;
+- graph validation;
+- campaign snapshot references;
+- generation compatibility projection.
+
+The graph rejects duplicate IDs, cross-workspace/campaign references, missing links, unsafe references and provenance cycles.
+
+Campaign/source/evidence snapshots store stable SourceArtifact version references. Editable labels/storage locations must not become the source-freshness identity.
+
+See `docs/SOURCE_ASSET_CONTRACT.md` and #127–#129.
+
+## 14. Capture/media domain
+
+### `MediaRequirement`
+
+Describes what the content piece needs to show and why.
+
+### `CaptureRecipe`
+
+Versioned, bounded, target-scoped walkthrough specification. It stores safe action/configuration metadata and secret references, not runtime credentials.
+
+### Capture outputs
+
+Screenshots/screencasts become canonical Assets with recipe/job/deployment/checkpoint provenance.
+
+Raw captures are immutable source assets; crops/trims/renders are derived assets/records.
+
+### `MediaCompositionPlan`
+
+Semantic scene/timeline/layout plan generated/edited through validated data.
+
+### `MediaComposition`
+
+Versioned rendered relationship referencing exact source/output Assets and renderer/job version.
+
+Changing media creates a new revision and may invalidate approval/publication readiness.
+
+See `docs/CAPTURE_AND_MEDIA_PRODUCTION.md` and #151–#165.
+
+## 15. Editorial calendar domain
+
+`CadencePolicy` stores editorial constraints/preferences such as target range, minimum gaps, preferred days/windows and empty-slot behavior.
+
+`EditorialCalendarEntry` may represent:
+
+- open/proposed slot;
+- planned piece;
+- production/review due state;
+- approved publication;
+- launch/event marker;
+- manual block.
+
+The calendar is not only a table of publication timestamps.
+
+An intentionally empty slot is valid domain state.
+
+See #160 and `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md`.
+
+## 16. Publication request versus publication
+
+A `PublicationRequest` freezes the exact approved external intent:
+
+- campaign/content piece/platform variant;
+- exact draft revision;
+- exact media revision(s);
+- target connection/identity;
+- approval/source freshness/capability snapshots;
+- immediate/scheduled time and timezone;
+- idempotency key.
+
+A `Publication` records the external result.
+
+States must support `unknown` where the provider may have accepted the side effect but confirmation is unavailable.
+
+Manual handoff is not direct publication confirmation.
+
+Issue #103 remains the publication-job foundation; #168 proves the owner golden path.
+
+## 17. Application services
+
+Current `frontend/lib/application/campaignApplication.mjs` provides campaign list/read/create/update/copy/open/delete/export use cases and should remain the pattern for new services.
+
+Target application modules should own use cases such as:
+
+```text
+SignalApplication
+  createManualSignal
+  list/read/update/ignore/snooze/archive
+
+OpportunityApplication
+  evaluate/rank/explain/select/reject/snooze
+  selectAngle/setCustomAngle
+
+IdentityApplication
+  read/update/version profiles
+  resolveIdentityContextSnapshot
+
+CampaignPlanningApplication
+  createCampaignFromOpportunity
+  reviseNarrativeStrategy
+  create/update ContentPieces/PlatformVariants
+
+ProductionApplication
+  create MediaRequirements
+  request CaptureJob/RenderJob
+  bind/replace media revisions
+
+EditorialApplication
+  manage CadencePolicy
+  plan/replan CalendarEntries
+
+PublicationApplication
+  create immutable PublicationRequest
+  cancel/reschedule/reconcile
+
+MemoryApplication
+  record FeedbackEvent
+  update/retrieve StyleMemory/NarrativeMemory
+```
+
+UI/routes/connectors/workers do not duplicate these rules.
+
+## 18. Ports and adapters
+
+Current runtime port families include campaign/asset/source/approval/export/transfer/blob/job/provider/connector/notification/clock/ID services.
+
+Target additional ports may include:
+
+- signal repository;
+- opportunity repository;
+- identity/profile repository;
+- narrative/style memory repository;
+- content-piece/platform-variant repositories;
+- cadence/calendar repository;
+- capture recipe repository;
+- capture worker/client port;
+- media-composition repository;
+- render worker/client port;
+- publication-request repository;
+- source-event connection/event ingestion adapter;
+- analytics/performance adapter later.
+
+Add ports only for real application boundaries. Do not invent generic abstractions with no current vertical slice.
+
+## 19. Browser/local/cloud adapters
+
+Current browser/memory/injected-store adapters demonstrate the contract pattern.
+
+Future production relational/object-storage/queue adapters are not complete merely because CRUD exists. They require:
+
+- shared contract suites;
+- tenant isolation;
+- idempotency;
+- migration/backfill;
+- concurrency/conflict handling;
+- retention/deletion;
+- backup/restore;
+- operational recovery.
+
+Personal Alpha may use simpler owner adapters first if they preserve the same domain IDs/contracts.
+
+## 20. Durable jobs
+
+Long-running work belongs behind the job port/infrastructure:
+
+- remote ingestion;
+- expensive opportunity analysis;
+- staged generation;
+- asset processing;
+- capture;
+- screencast finalization;
+- media rendering;
+- exports;
+- scheduled publication;
+- performance sync;
+- retention/deletion.
+
+Jobs use stable IDs, idempotency keys, bounded retry, cancellation semantics, safe errors and correlation IDs.
+
+Browser refresh/deploy/worker restart must not erase durable work.
+
+See #73.
+
+## 21. Portable serialization
+
+Existing serialization rules remain:
+
+Reject/exclude:
+
+- provider/API/OAuth secrets, passwords, cookies, authorization values;
+- browser `File`/runtime class instances;
+- framework Request/Response;
+- database/SDK clients;
+- functions/symbols/bigint/non-finite values;
+- circular references.
+
+New identity/memory/signal/media/calendar records must obey the same portable discipline.
+
+Portable transfer schema must evolve deliberately before claiming these new records are included. Do not silently omit important user-owned memory after it becomes production state.
+
+## 22. Portable archive/transfer foundation
+
+Current `frontend/lib/transfer/` owns browser archive schema, sanitization, SHA-256 integrity, optional signing, conflict mapping, import ordering, reports, resume/cancellation and rollback.
+
+Existing `.signalflow.json` behavior remains current capability truth.
+
+As new records ship, portable ownership should eventually include compatible export/import for:
+
+- identity/profile state;
+- signals/opportunities where appropriate;
+- narrative/style memory;
+- campaign/content-piece additions;
+- calendar/publication metadata;
+- capture/media provenance where exportable.
+
+Secrets, private endpoints and non-exportable content remain excluded with explicit reasons.
+
+## 23. Authoritative export projection
+
+Current Markdown/JSON export continues projecting from canonical Campaign state and authoritative drafts.
+
+As ContentPiece/PlatformVariant becomes canonical, export should evolve through versioned projection rather than reading legacy giant generation payloads directly.
+
+Exports must clearly separate:
+
+- current approved/edited content;
+- optional history;
+- source/evidence provenance;
+- media references/metadata;
+- publication status;
+- campaign/narrative metadata.
+
+Do not duplicate active text from provider response blobs.
+
+## 24. Security/authorization
+
+Every tenant-owned command/query eventually receives server-derived authorization context.
+
+Sensitive new surfaces include:
+
+- identity/private boundaries;
+- GitHub/private-work signals;
+- capture recipes/session requirements;
+- raw recordings/screenshots;
+- destination tokens;
+- publication requests;
+- narrative memory.
+
+Requirements:
+
+- workspace scope enforced server-side;
+- secrets referenced by ID;
+- logs/metrics allowlist safe metadata;
+- capture origins/actions scoped;
+- private content excluded from analytics by default;
+- queued sensitive jobs revalidate authorization before external side effects;
+- export/delete traverses new records/bytes according to policy.
+
+## 25. Capability-driven architecture
+
+A record existing in the domain does not mean its infrastructure capability is available.
+
+Examples:
+
+- CaptureRecipe may exist while no capture worker is configured;
+- MediaCompositionPlan may exist while render service is unavailable;
+- a destination Connection may be configured but lack video-publish scope;
+- a signal source may be installed but paused/revoked;
+- EditorialCalendar may plan a piece while publication connector is manual-only.
+
+Clients derive current availability from the server-owned capability contract and resource-specific state.
+
+## 26. Adding a vertical slice
+
+Before implementation:
+
+1. identify the user burden/decision removed;
+2. identify owning domain record(s);
+3. add/extend versioned schema/invariants;
+4. add application command/query;
+5. define only necessary port(s);
+6. implement owner/local + future-compatible adapter boundaries;
+7. add authorization/capability behavior;
+8. add job/idempotency/retry if side effects/long work exist;
+9. migrate one complete user flow;
+10. add compatibility/migration/rollback;
+11. update README/AGENTS/capability/product docs;
+12. attach end-to-end evidence.
+
+Do not add database/object-store/provider/connector/capture/render clients directly to React/domain modules.
+
+## 27. Architecture completion rule
+
+> **A new record is not a feature. A feature is complete only when its domain/application/infrastructure/UI/recovery path produces the intended owner outcome truthfully end to end.**

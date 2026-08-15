@@ -1,6 +1,6 @@
 # SignalFlow Studio — Integration Architecture
 
-> **Status:** integration design and current/future boundaries. For exact session capability, read `docs/CAPABILITY_MATRIX.md`.
+> **Status:** integration design and current/future boundaries. For exact session capability, read `docs/CAPABILITY_MATRIX.md` and `docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md`.
 
 SignalFlow integrates with external systems for **different reasons**. A major architecture rule is to keep those reasons separate instead of treating every integration as a generic connector.
 
@@ -16,14 +16,17 @@ B. Evidence / context integrations
 C. Capture / production integrations
    → create screenshots/recordings/derived media
 
-D. Model / processor integrations
-   → reason, write, classify, analyze, transcribe, etc.
+D. Inference / model / processor integrations
+   → reason, write, classify, analyze, transcribe, generate/edit media, etc.
 
 E. Destination integrations
    → publish approved content or provide manual handoff
 
-F. Agent-control integrations (MCP)
+F. Agent-control integrations (MCP / supported AI-client interfaces)
    → let AI agents operate SignalFlow application services
+
+G. Edge/device integrations
+   → mobile capture/approval and future private desktop/local processing
 ```
 
 One provider may participate in more than one category, but each capability must use the correct domain/application boundary.
@@ -39,6 +42,7 @@ Examples:
 - GitHub events;
 - manual thoughts/topics;
 - browser extension captures;
+- mobile share-sheet/voice/photo/manual input when implemented;
 - future Linear/Jira/Notion/document/workspace integrations;
 - future other Git providers;
 - user-added research/external topics.
@@ -93,6 +97,8 @@ Current/future evidence paths include:
 - uploaded text/code/documents;
 - canonical Assets;
 - extension-captured page context;
+- mobile-supplied links/images/files/video when implemented;
+- desktop/private source evidence when implemented;
 - screenshot/recording-derived analysis;
 - future documents/workspace connectors.
 
@@ -114,6 +120,8 @@ repository evidence service extracts only relevant change context
 immutable SourceArtifact/source snapshot
 ```
 
+For confidential/private sources, evidence retrieval must also obey DataClassification/ProcessingPolicy as #172 lands.
+
 ## 5. Browser extension
 
 The browser extension is primarily a **user-initiated source/capture client**.
@@ -132,6 +140,8 @@ Target capabilities include:
 It must never become hidden continuous browsing-history collection or recording.
 
 The extension and the automatic capture worker both create canonical Assets/SourceArtifacts, but their provenance differs.
+
+Structured service integrations should handle passive work events where possible; the extension fills explicit browser-context gaps.
 
 ## 6. Automatic capture worker
 
@@ -159,7 +169,7 @@ Prefer safe demo fixtures and preview deployments. Trusted authenticated owner c
 
 See `docs/CAPTURE_AND_MEDIA_PRODUCTION.md` and issues #151–#165.
 
-## 7. Model integrations
+## 7. Inference/model integrations
 
 Current provider adapters include:
 
@@ -174,6 +184,42 @@ Current provider adapters include:
 
 Current generation requires a real usable model route. Retired fake/template fallback output must not be reintroduced.
 
+### Target Inference Fabric
+
+The target architecture no longer treats provider/model selection as the application-level AI contract.
+
+Instead:
+
+```text
+Application requests InferenceTask
+        ↓
+InferenceRequirement
+        ↓
+DataClassification + ProcessingPolicy
+        ↓
+ProviderCapability / LocalCapability
+        ↓
+quality + cost + latency + availability
+        ↓
+permitted InferenceRoute
+```
+
+See `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md` and #170/#171.
+
+### Official inference modes
+
+Target modes:
+
+```text
+SignalFlow Managed
+Bring Your Own Provider
+Private Hybrid
+Local Only
+Enterprise Private later
+```
+
+These modes change who pays/where data is processed, not the canonical product-domain task.
+
 ### Future staged roles
 
 The target architecture separates logical tasks such as:
@@ -184,19 +230,93 @@ The target architecture separates logical tasks such as:
 - canonical writing;
 - platform transformation;
 - authenticity/evidence critics;
-- visual direction;
+- visual/image understanding;
+- image generation/editing where required;
+- media requirement direction;
+- audio/video understanding where required;
 - editorial planning.
 
 Personal Alpha may reuse one strong physical model/provider for several roles. The role contracts remain separate so quality/cost can be optimized later.
+
+### Cost-routing principle
+
+Do not run expensive reasoning for every raw source event.
+
+Prefer:
+
+```text
+raw events
+→ deterministic dedupe/filter
+→ cheap/local classification
+→ bounded candidate set
+→ strong reasoning only for plausible opportunities
+```
 
 ### Credential rules
 
 - server-managed credentials remain server-side;
 - request-scoped BYOK keys are never persisted in campaign/signal/memory records;
+- persisted provider credentials use secure secret references;
 - local/custom endpoints are capability/permission-aware;
 - provider/model configuration should become low-frequency Connections/Settings state rather than a mandatory campaign step for normal users.
 
-## 8. Processor integrations
+### Free/testing-provider rule
+
+Free/promotional routes may be used during development/Personal Alpha, but they are replaceable adapters. SignalFlow's architecture/pricing must not assume a free quota remains available.
+
+## 8. Privacy-aware inference integration
+
+A private repository/source connection is not automatically a privacy guarantee.
+
+Target processing classes include:
+
+```text
+PUBLIC
+INTERNAL
+CONFIDENTIAL
+HIGHLY_CONFIDENTIAL
+SECRET
+LOCAL_ONLY
+```
+
+Processing policy may select Standard, Confidential, Private Hybrid, Local Only, or later enterprise-private behavior.
+
+Example Private Hybrid:
+
+```text
+private source
+→ trusted local/private preprocessing
+→ secret/privacy scan
+→ minimal structured evidence
+→ approved remote reasoning if policy permits
+```
+
+Rules:
+
+- do not upload entire private repositories by default;
+- secret material should not become normal model input;
+- `LOCAL_ONLY` must fail closed when only remote routes are available;
+- provider fallback cannot silently lower privacy;
+- logs/analytics must not contain private source/prompt content by default.
+
+See #172 and `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md`.
+
+## 9. Local intelligence integrations
+
+Current local/custom model endpoints remain useful foundations, but the target local experience is a curated capability registry rather than a random model marketplace.
+
+Future #173 may support:
+
+- device capability assessment;
+- curated local model/runtime packs;
+- signed/checksummed downloads;
+- explicit task capability classes;
+- local/private preprocessing;
+- advanced custom endpoint configuration.
+
+A local model should be used for the tasks it can perform reliably; it is not assumed to replace strong reasoning.
+
+## 10. Processor integrations
 
 Processors operate on canonical Assets/SourceArtifacts and return versioned derived results.
 
@@ -215,7 +335,7 @@ A processor must never be claimed as complete when no successful processor resul
 
 Historical campaigns keep references to the processor/version that produced their evidence.
 
-## 9. Media rendering integration
+## 11. Media rendering integration
 
 SignalFlow's target motion renderer consumes a validated semantic `MediaCompositionPlan` and canonical source Assets.
 
@@ -223,7 +343,9 @@ The renderer should support repeatable brand components and aspect-ratio variant
 
 Output bytes become Assets; `MediaComposition` records own plan/render/provenance relationships.
 
-## 10. Destination integrations
+AI-assisted media tasks such as image understanding/edit planning/generation or video/clip understanding should route through the Inference Fabric rather than being hard-coded into the renderer.
+
+## 12. Destination integrations
 
 Purpose:
 
@@ -239,7 +361,7 @@ Code presence is not production proof. Read `docs/CONNECTOR_READINESS.md` for ve
 
 Other supported generation destinations remain manual review/copy/export/open-platform routes until a direct connector is implemented and verified.
 
-## 11. Capability-based destination model
+## 13. Capability-based destination model
 
 Do not model a destination connection as only:
 
@@ -267,7 +389,7 @@ safe unavailable reason
 
 Different platforms legitimately support different capabilities.
 
-## 12. Direct publication versus manual handoff
+## 14. Direct publication versus manual handoff
 
 ### Direct publication
 
@@ -279,7 +401,7 @@ SignalFlow prepares/copies/downloads/opens the destination workflow.
 
 Manual handoff is useful and first-class, but it is **not direct publication success**.
 
-## 13. Editorial scheduling versus destination scheduling
+## 15. Editorial scheduling versus destination scheduling
 
 SignalFlow's editorial planner decides **what/when** should be communicated.
 
@@ -287,9 +409,49 @@ The durable publication system executes exact approved content at the agreed tim
 
 A platform does not need a native scheduler for SignalFlow to schedule a durable job, but the connector must still be valid at execution time.
 
-Browser timers are never the durable scheduling mechanism.
+Browser/mobile timers are never the durable scheduling mechanism.
 
-## 14. MCP integration
+## 16. External AI client integrations
+
+External AI products may become clients/controllers of SignalFlow through official supported interfaces.
+
+Target shape:
+
+```text
+ChatGPT / Claude / Codex / Gemini / another agent
+        ↓
+MCP / supported app/API interface
+        ↓
+SignalFlow application services
+```
+
+They may eventually:
+
+- list/explain opportunities;
+- select/customize an angle;
+- create/read plans;
+- inspect review state;
+- request targeted changes;
+- inspect Calendar/capabilities;
+- perform only explicitly authorized high-risk actions.
+
+This is separate from inference routing.
+
+### Consumer subscription rule
+
+Do not assume a paid ChatGPT/Claude/Gemini/etc. consumer subscription can be used as generic SignalFlow API credit.
+
+Never:
+
+- scrape web sessions/cookies;
+- reuse unsupported OAuth tokens;
+- extract unsupported CLI credentials;
+- automate consumer web UI as the hidden backend;
+- promise unattended background inference from another product's subscription.
+
+See `docs/AI_CLIENT_INTEGRATIONS.md` and #174.
+
+## 17. MCP integration
 
 SignalFlow MCP is an AI-agent interface into canonical application services.
 
@@ -306,7 +468,58 @@ Future MCP tools may expose:
 
 MCP must not implement duplicate business rules or become the background GitHub event transport.
 
-## 15. Webhooks and inbound external events
+## 18. Mobile integration surface
+
+A future mobile application (#175) is a client of the same canonical system.
+
+Target responsibilities:
+
+- Today/notifications;
+- quick manual thoughts/voice notes;
+- camera/photo input;
+- share-sheet links/files/images/video;
+- review/approval/change requests;
+- Calendar/publication exceptions.
+
+The phone does not own provider rules, durable scheduling, heavy media rendering, or a duplicate Campaign domain.
+
+## 19. Desktop Edge Agent integration
+
+A future paired Desktop Agent (#176) handles trusted local/private capabilities:
+
+- local/private repositories;
+- explicitly authorized local files;
+- local model runtimes;
+- Private Hybrid preprocessing;
+- optional officially supported local AI-agent adapters;
+- signed edge jobs;
+- later desktop-app capture (#177).
+
+The desktop agent is a capability service, not a second full Studio.
+
+See `docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md`.
+
+## 20. Desktop application capture — later
+
+Desktop app capture is distinct from browser URL/DOM capture.
+
+Target flow:
+
+```text
+DesktopCaptureRecipe
+→ paired/authorized device
+→ allowed application/window
+→ semantic OS accessibility/UI automation actions where available
+→ screenshot/screencast
+→ canonical Asset
+→ MediaComposition
+```
+
+No hidden continuous desktop recording or arbitrary whole-disk/app automation.
+
+Owner: #177.
+
+## 21. Webhooks and inbound external events
 
 Every inbound event integration must define:
 
@@ -322,24 +535,28 @@ Every inbound event integration must define:
 
 Raw provider payloads and secrets must not become generic domain records.
 
-## 16. Integration security principles
+## 22. Integration security principles
 
 - least privilege;
 - server-side authorization;
 - encrypted/secret-reference credentials;
 - explicit data-transfer behavior;
+- enforceable DataClassification/ProcessingPolicy;
 - no scraping private sessions to bypass official APIs;
 - no rate-limit/authentication bypass;
 - no hidden capture;
+- no broad browser-history surveillance;
+- no arbitrary whole-disk desktop access;
 - no automatic publication of unapproved revisions;
 - no platform success claim without platform confirmation;
-- no private source/campaign content in logs/analytics by default.
+- no private source/campaign/identity content in logs/analytics by default;
+- signed/replay-protected device jobs where edge clients are used.
 
-## 17. Integration completion checklist
+## 23. Integration completion checklist
 
 Before advertising an integration as production-ready, prove as relevant:
 
-- connection/install flow;
+- connection/install/pairing flow;
 - exact identity/scope;
 - normal operation;
 - expiry/revocation;
@@ -347,26 +564,37 @@ Before advertising an integration as production-ready, prove as relevant:
 - rate limiting;
 - retries/idempotency;
 - cancellation if applicable;
-- worker restart/recovery;
-- privacy/redaction;
+- worker/device restart/recovery;
+- privacy/redaction/processing policy;
 - data deletion/retention;
 - capability discovery;
 - real credential-backed side effects for publishing;
 - documentation matches actual behavior.
 
-## 18. Architecture rule for new integrations
+For inference routes also prove:
 
-Before implementing a new provider, identify:
+- task capability;
+- data-policy class;
+- structured output validity;
+- cost/usage accounting;
+- fallback behavior;
+- quality floor.
+
+## 24. Architecture rule for new integrations
+
+Before implementing a new provider/client/integration, identify:
 
 1. integration category;
 2. canonical record it produces/consumes;
 3. application service/port;
-4. authorization/secret model;
-5. job requirements;
-6. idempotency/provenance;
-7. capability fields;
-8. failure/recovery states;
-9. data retention/privacy;
-10. exact owner golden path it improves.
+4. authorization/secret/device model;
+5. data classification/processing policy;
+6. job requirements;
+7. idempotency/provenance;
+8. capability fields;
+9. failure/recovery states;
+10. data retention/privacy;
+11. cost/usage where inference is involved;
+12. exact owner golden path it improves.
 
 If those are unclear, do not add provider-specific code directly to UI components.

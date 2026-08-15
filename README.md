@@ -62,7 +62,15 @@ The repository must **not** claim the following are already available until thei
 - persistent ContentSignal/ContentOpportunity intelligence;
 - automatic opportunity recommendations from connected work events;
 - long-lived identity/style/narrative learning;
+- provider-neutral `InferenceTask` routing, privacy-aware selection, and per-task cost/metering;
+- SignalFlow Managed inference plans;
+- enforceable Standard/Confidential/Private Hybrid/Local Only processing modes;
+- curated downloadable local intelligence packs;
+- full ChatGPT/Claude/Codex/Gemini external-agent integrations over the target workflow;
 - a `Today` decision inbox;
+- production mobile application;
+- paired Desktop Edge Agent;
+- desktop application capture/recording;
 - editorial cadence planning;
 - automatic browser screenshot/demo capture workers;
 - deterministic motion-video rendering;
@@ -170,6 +178,75 @@ Identity and explicit boundaries outrank engagement optimization.
 
 See [docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md](docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md).
 
+## AI, inference, cost, and private processing
+
+SignalFlow must not be tied to one AI provider or assume a free API is the production architecture.
+
+The target Inference Fabric works like this:
+
+```text
+SignalFlow application asks for an InferenceTask
+        ↓
+required capability / output schema
+        ↓
+DataClassification + ProcessingPolicy
+        ↓
+quality + cost + latency + modality
+        ↓
+available provider/local capability
+        ↓
+selected permitted route
+        ↓
+structured result + usage/provenance
+```
+
+Target intelligence modes:
+
+- **SignalFlow Managed** — SignalFlow chooses/pays for approved AI routes;
+- **Bring Your Own Provider** — user supplies official API/provider billing;
+- **Private Hybrid** — raw protected source is processed locally/private first and only minimized evidence may be sent remotely when policy permits;
+- **Local Only** — protected inference remains on trusted device/private infrastructure;
+- **Enterprise Private later** — customer-controlled inference infrastructure.
+
+Important rules:
+
+- cheap/deterministic/local processing should filter noise before strong models;
+- a small local model is useful for classification, summaries, embeddings, privacy checks and preprocessing, but is not assumed to replace frontier reasoning;
+- private repositories should use bounded relevant evidence, not whole-repository uploads by default;
+- `LOCAL_ONLY` must fail closed rather than silently use a cloud provider;
+- text, vision, image generation/editing and later video intelligence may use different specialist providers;
+- free/testing endpoints are replaceable adapters, not the business model;
+- provider/model settings should become low-frequency configuration rather than a campaign-time burden.
+
+See [docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md](docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md) and [docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md](docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md).
+
+## External AI assistants
+
+Users may already work in ChatGPT, Claude, Codex, Gemini or other AI clients.
+
+SignalFlow should support those products as **interfaces/controllers** where an official supported integration exists:
+
+```text
+external AI assistant
+        ↓
+MCP / supported app/API
+        ↓
+SignalFlow application services
+```
+
+That is different from SignalFlow's own inference backend.
+
+Canonical rules:
+
+- a consumer AI subscription is not automatically SignalFlow API credit;
+- do not scrape browser sessions/cookies;
+- do not reuse unsupported OAuth/CLI credentials;
+- do not automate another consumer AI web UI as the hidden backend;
+- optional officially supported local Codex/Claude Code-style adapters may later help with repository/evidence tasks through a paired Desktop Agent;
+- unattended SignalFlow background work must still function without another AI app being open.
+
+See [docs/AI_CLIENT_INTEGRATIONS.md](docs/AI_CLIENT_INTEGRATIONS.md).
+
 ## Capture and media production
 
 SignalFlow's target production engine removes routine manual media work.
@@ -239,13 +316,61 @@ The intended long-term workspace is decision-first:
 - **Create** — manual intentional entry;
 - **Assets** — evidence, captures, derived/rendered media;
 - **Library** — campaign/publication history;
-- **Connections** — source + destination connections;
+- **Connections** — source + destination + AI provider/assistant connections;
 - **Voice** — identity, perception, boundaries, learned preferences;
-- **Settings** — provider/account/workspace/advanced configuration.
+- **Settings** — provider/account/workspace/privacy/advanced configuration.
 
 The current Source → Destinations → Review flow should eventually become the manual **Create** path rather than the permanent center of the whole product.
 
 See [docs/PRODUCT_INFORMATION_ARCHITECTURE.md](docs/PRODUCT_INFORMATION_ARCHITECTURE.md).
+
+## Web, phone, extension, and desktop edge
+
+SignalFlow should remain one product with clients optimized for different contexts.
+
+```text
+Web
+→ full workspace, planning, long review, library, settings
+
+Mobile
+→ Today, quick thought/voice/photo/share input, review, approval, Calendar, exceptions
+
+Browser Extension
+→ explicit user-initiated browser context/screenshots/recording
+
+MCP/API
+→ external agent control/query
+
+Desktop Edge Agent
+→ private/local repositories and files, local models, Private Hybrid, signed edge jobs, later desktop-app capture
+
+Workers
+→ durable source/inference/capture/render/publishing work
+```
+
+The phone should be a **judgment + quick-capture device**, not a duplicated full Studio. The extension must not become hidden browser surveillance. The future Desktop Agent should be a lightweight tray/menu-bar capability service, not a second full product UI.
+
+See [docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md](docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md).
+
+## Future desktop application capture
+
+Web applications can be captured through URL/browser recipes. Desktop applications require a separate future path.
+
+Target concept:
+
+```text
+DesktopCaptureRecipe
+→ paired/authorized desktop device
+→ allowed application/window
+→ semantic accessibility/UI-automation actions where possible
+→ screenshot/screencast
+→ canonical Asset
+→ normal media composition/review
+```
+
+No hidden continuous desktop recording, broad whole-disk control, or arbitrary application access.
+
+Tracked separately in #177 so it does not block the browser-based Personal Alpha.
 
 ## Owner-first execution strategy
 
@@ -253,6 +378,7 @@ SignalFlow should prove the hard product loop before broad SaaS expansion.
 
 Recommended vertical sequence:
 
+0. thin provider-neutral inference/privacy boundary: #171/#172 essentials only;
 1. manual thought → opportunity → authentic LinkedIn/X review loop;
 2. GitHub work event → automatic signal/opportunity → same review loop;
 3. automatic screenshot production;
@@ -260,11 +386,13 @@ Recommended vertical sequence:
 5. durable LinkedIn/X scheduling/publishing;
 6. editorial continuity/cadence;
 7. edit/rejection learning;
-8. visual destination expansion;
-9. broad hosted SaaS foundation;
-10. broader integrations/teams/analytics.
+8. mobile low-attention companion as the owner loop proves valuable;
+9. Private Hybrid/local intelligence/Desktop Agent where demand requires it;
+10. visual destination and broader hosted SaaS/integration/team expansion.
 
 Each gate should deliver a complete real user journey rather than a horizontal pile of infrastructure.
+
+The thin #171/#172 prerequisite exists only to keep Golden Path #166 portable and safe; do not delay it on the full local-model/mobile/desktop roadmap.
 
 See [docs/PERSONAL_ALPHA_EXECUTION.md](docs/PERSONAL_ALPHA_EXECUTION.md).
 
@@ -273,19 +401,23 @@ See [docs/PERSONAL_ALPHA_EXECUTION.md](docs/PERSONAL_ALPHA_EXECUTION.md).
 Read these before changing product architecture:
 
 1. [docs/PRODUCT_VISION.md](docs/PRODUCT_VISION.md) — what SignalFlow is and is not;
-2. [docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md](docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md) — Signals/Opportunities/Campaign/ContentPiece/Memory domain model;
-3. [docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md](docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md) — personal voice, perception, boundaries, feedback learning;
-4. [docs/CAPTURE_AND_MEDIA_PRODUCTION.md](docs/CAPTURE_AND_MEDIA_PRODUCTION.md) — screenshot/screencast/motion production architecture;
-5. [docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md](docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md) — cadence, calendar, approval and durable publishing;
-6. [docs/PRODUCT_INFORMATION_ARCHITECTURE.md](docs/PRODUCT_INFORMATION_ARCHITECTURE.md) — decision-first application structure;
-7. [docs/PERSONAL_ALPHA_EXECUTION.md](docs/PERSONAL_ALPHA_EXECUTION.md) — vertical execution gates;
-8. [docs/DOMAIN_ARCHITECTURE.md](docs/DOMAIN_ARCHITECTURE.md) — current domain/application/adapter boundaries;
-9. [docs/SOURCE_ASSET_CONTRACT.md](docs/SOURCE_ASSET_CONTRACT.md) — source/asset truth;
-10. [docs/CAPABILITY_MATRIX.md](docs/CAPABILITY_MATRIX.md) — what the current product can actually do;
-11. [docs/CAMPAIGN_EDITING_AND_VERSIONING.md](docs/CAMPAIGN_EDITING_AND_VERSIONING.md) — current edit/version invariants;
-12. [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md) — connector verification truth;
-13. [docs/PORTABLE_TRANSFER.md](docs/PORTABLE_TRANSFER.md) — explicit local transfer/recovery contract;
-14. [AGENTS.md](AGENTS.md) — repository execution rules.
+2. [docs/PERSONAL_ALPHA_EXECUTION.md](docs/PERSONAL_ALPHA_EXECUTION.md) — vertical execution gates;
+3. [docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md](docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md) — Signals/Opportunities/Campaign/ContentPiece/Memory domain model;
+4. [docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md](docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md) — personal voice, perception, boundaries, feedback learning;
+5. [docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md](docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md) — provider-neutral AI, managed/BYOK/local/private modes, processing policy, cost routing;
+6. [docs/AI_CLIENT_INTEGRATIONS.md](docs/AI_CLIENT_INTEGRATIONS.md) — external AI assistant/subscription boundaries and MCP/client architecture;
+7. [docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md](docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md) — web/mobile/extension/desktop-edge responsibilities;
+8. [docs/CAPTURE_AND_MEDIA_PRODUCTION.md](docs/CAPTURE_AND_MEDIA_PRODUCTION.md) — screenshot/screencast/motion production architecture;
+9. [docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md](docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md) — cadence, calendar, approval and durable publishing;
+10. [docs/PRODUCT_INFORMATION_ARCHITECTURE.md](docs/PRODUCT_INFORMATION_ARCHITECTURE.md) — decision-first application structure;
+11. [docs/DOMAIN_ARCHITECTURE.md](docs/DOMAIN_ARCHITECTURE.md) — current domain/application/adapter boundaries;
+12. [docs/SOURCE_ASSET_CONTRACT.md](docs/SOURCE_ASSET_CONTRACT.md) — source/asset truth;
+13. [docs/CAPABILITY_MATRIX.md](docs/CAPABILITY_MATRIX.md) — what the current product can actually do;
+14. [docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md](docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md) — current-vs-target inference/client truth;
+15. [docs/CAMPAIGN_EDITING_AND_VERSIONING.md](docs/CAMPAIGN_EDITING_AND_VERSIONING.md) — current edit/version invariants;
+16. [docs/CONNECTOR_READINESS.md](docs/CONNECTOR_READINESS.md) — connector verification truth;
+17. [docs/PORTABLE_TRANSFER.md](docs/PORTABLE_TRANSFER.md) — explicit local transfer/recovery contract;
+18. [AGENTS.md](AGENTS.md) — repository execution rules.
 
 ## Current destination set
 
@@ -315,7 +447,9 @@ Current provider adapters include:
 
 A route is usable only when `GET /api/capabilities` reports it available for the current deployment/session.
 
-The future staged architecture may use different logical AI roles, but initial implementation may reuse one strong provider/model behind separate contracts.
+These current routes are provider foundations. The target #170/#171 Inference Fabric is not yet implemented: current code does not yet prove task-oriented provider-neutral routing, privacy-aware fallback, curated local packs, managed-plan metering, or specialized multimodal routing.
+
+Initial Personal Alpha may reuse one strong provider/model behind separate task contracts and may use a low-cost/free testing route, but testing infrastructure must remain replaceable.
 
 ## Current persistence truth
 
@@ -341,9 +475,11 @@ Still incomplete/planned:
 - OCR/transcription/visual-analysis processors;
 - durable cloud asset storage;
 - acknowledged full extension screenshot/recording ingestion;
-- automated capture-worker production.
+- automated capture-worker production;
+- enforced DataClassification/ProcessingPolicy;
+- Private Hybrid local/private source preprocessing.
 
-See the capability/source docs and open issues for exact status.
+See the capability/source/privacy docs and open issues for exact status.
 
 ## Current MCP role
 
@@ -352,9 +488,12 @@ The `mcp/` package remains useful as an **agent-control interface**.
 The long-term architecture distinguishes:
 
 - GitHub App/webhooks or other source connectors → ongoing event/signal ingestion;
-- MCP → AI-agent commands/queries over SignalFlow's canonical application services.
+- MCP → AI-agent commands/queries over SignalFlow's canonical application services;
+- inference provider APIs/local runtimes → execution of SignalFlow `InferenceTask`s.
 
 Do not make MCP the production event-ingestion mechanism merely because a GitHub MCP connection exists during development.
+
+Do not treat an external assistant connected through MCP as permission to use that assistant's consumer subscription for unattended SignalFlow inference.
 
 ## Quick start
 
@@ -416,7 +555,7 @@ Build Command: npm run build
 Output Directory: .next
 ```
 
-Long-running ingestion/capture/render/publishing must not be designed around one Vercel request; those flows belong behind durable jobs/workers.
+Long-running ingestion/inference/capture/render/publishing must not be designed around one Vercel request; those flows belong behind durable jobs/workers or an explicitly paired edge capability where policy requires it.
 
 ## Core product principles
 
@@ -430,6 +569,11 @@ Long-running ingestion/capture/render/publishing must not be designed around one
 - Source evidence remains traceable.
 - Approved/manual edits are never silently overwritten.
 - Exact approved revisions are bound to publication intent.
+- Inference is task/provider-neutral and privacy-policy aware.
+- Free/testing AI routes are replaceable adapters.
+- Private repositories use minimum necessary evidence and enforceable processing policy.
+- External AI assistants are optional clients, not a hidden free backend.
+- Web/mobile/extension/desktop-edge remain one canonical product.
 - Capture/media production should be repeatable and privacy-aware.
 - Direct success is claimed only after the destination confirms it.
 - Future capabilities are never documented as current capabilities without evidence.

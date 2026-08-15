@@ -1,64 +1,372 @@
-# SignalFlow Studio Integrations
+# SignalFlow Studio — Integration Architecture
 
-SignalFlow Studio is local-first. It generates formatted posting packages that users can review before publishing through official channels.
+> **Status:** integration design and current/future boundaries. For exact session capability, read `docs/CAPABILITY_MATRIX.md`.
 
-Inputs can be a simple description, pasted notes, changelogs, code snippets, screenshot text, launch context, metrics, research, screen recordings, screenshots, links, or a local repository path.
+SignalFlow integrates with external systems for **different reasons**. A major architecture rule is to keep those reasons separate instead of treating every integration as a generic connector.
 
-SignalFlow Studio treats repositories, files, screenshots, screen recordings, changelogs, research excerpts, URLs/PDF notes, and raw descriptions as **input assets**. Selected social accounts or channels determine the output format.
+## 1. Integration categories
 
-## Model Generation
+```text
+A. Signal / work-source integrations
+   → tell SignalFlow what happened
 
-Today:
+B. Evidence / context integrations
+   → provide bounded facts/source material
 
-- Generate local template drafts.
-- Export a prompt that can be pasted into a local SLM, API model, or free chatbot.
-- Run the main hosted product as standalone Next.js API routes.
-- Return `context_engine` metadata with source types and input count.
-- Return `model_adapter` metadata with selected generator route and readiness status.
-- Keep generated JSON and Markdown in `pipeline-output/` for review.
-- Generate visual media plans for screenshots, screen recordings, GIF/video loops, generated cards, and platform variants.
+C. Capture / production integrations
+   → create screenshots/recordings/derived media
 
-Recommended next integration:
+D. Model / processor integrations
+   → reason, write, classify, analyze, transcribe, etc.
 
-1. Add provider adapters inside the Next.js app for OpenAI-compatible APIs, local SLM servers, and clipboard-only chatbot flows.
-2. Let users connect/select a model route once, then use autopilot defaults.
-3. Store API keys only in local environment variables or OS keychain.
-4. Never publish automatically without explicit approval.
-5. Use official APIs, webhooks, exports, or manual copy. Do not depend on private platform APIs or stealth transport.
+E. Destination integrations
+   → publish approved content or provide manual handoff
 
-The hosted app owns the full flow: input, model routing, media planning, platform formatting, review, and handoff.
+F. Agent-control integrations (MCP)
+   → let AI agents operate SignalFlow application services
+```
 
-## Selected Social Accounts
+One provider may participate in more than one category, but each capability must use the correct domain/application boundary.
 
-Today:
+## 2. Signal / work-source integrations
 
-- Generate editable post drafts for LinkedIn, X, Instagram, blog, newsletter, and release notes.
-- Generate a media plan that explains what screenshots, recordings, GIFs, cards, or clips should be used for each package.
-- Keep publishing manual so users can adjust tone and comply with platform rules.
+Purpose:
 
-Recommended next integration:
+> **What happened that may be worth communicating?**
 
-1. Add OAuth-based account connection.
-2. Store tokens only in an OS keychain or encrypted local store.
-3. Support draft creation before publishing.
-4. Add per-platform preview, character validation, and media aspect-ratio validation.
+Examples:
 
-## Blogs and Docs
+- GitHub events;
+- manual thoughts/topics;
+- browser extension captures;
+- future Linear/Jira/Notion/document/workspace integrations;
+- future other Git providers;
+- user-added research/external topics.
 
-Today:
+These integrations normalize into `ContentSignal` and canonical source/evidence records.
 
-- Generate a blog intro, newsletter draft, release note, and reusable Markdown package.
-- Export Markdown that can be pasted into docs, newsletters, or static-site posts.
+They do **not** create social posts directly.
 
-Recommended next integration:
+### GitHub
 
-1. Add templates for MDX, Docusaurus, Astro, and Next.js content folders.
-2. Let users choose an output path inside their repo.
-3. Create a draft file rather than committing automatically.
+Target production architecture:
 
-## Security Rules
+```text
+GitHub App/webhook
+    ↓
+verified/authorized event
+    ↓
+ContentSignal
+    ↓
+ContentOpportunity evaluation
+```
 
-- Do not scrape browser sessions.
-- Do not bypass platform rate limits or authentication.
-- Do not auto-publish without review.
-- Do not upload private source code unless the user explicitly configures a trusted model provider.
+See `docs/GITHUB_INTEGRATION_AND_MCP.md` and issue #161.
+
+## 3. Manual input is an integration path
+
+SignalFlow must remain useful without any external source connection.
+
+A user can always create a signal from:
+
+- a thought;
+- an opinion;
+- a lesson;
+- a research item;
+- a launch/update;
+- personal/professional context;
+- a URL/document/image/recording;
+- `Something else…` free-form intent.
+
+Manual and connected signals use the same opportunity/campaign architecture.
+
+## 4. Evidence/context integrations
+
+Purpose:
+
+> **What evidence can support the selected story?**
+
+Current/future evidence paths include:
+
+- repository context;
+- public URLs;
+- uploaded text/code/documents;
+- canonical Assets;
+- extension-captured page context;
+- screenshot/recording-derived analysis;
+- future documents/workspace connectors.
+
+Evidence must use canonical `Asset` / `SourceArtifact` / version/provenance contracts.
+
+A source integration may notify SignalFlow that something changed, while a separate evidence service gathers the bounded facts necessary for generation.
+
+Example:
+
+```text
+GitHub webhook says PR #42 merged
+        ↓
+ContentSignal
+        ↓
+user selects opportunity
+        ↓
+repository evidence service extracts only relevant change context
+        ↓
+immutable SourceArtifact/source snapshot
+```
+
+## 5. Browser extension
+
+The browser extension is primarily a **user-initiated source/capture client**.
+
+Target capabilities include:
+
+- page title/URL/selected text/note;
+- screenshots;
+- selected region/full page where safe;
+- tab/window/screen recording;
+- review/redaction before upload;
+- project/campaign/inbox destination;
+- offline queue;
+- durable acknowledgement.
+
+It must never become hidden continuous browsing-history collection or recording.
+
+The extension and the automatic capture worker both create canonical Assets/SourceArtifacts, but their provenance differs.
+
+## 6. Automatic capture worker
+
+Purpose:
+
+> **Create repeatable campaign media without requiring the user to manually stage and record the product.**
+
+This is separate from the browser extension.
+
+Target flow:
+
+```text
+Campaign MediaRequirement
+    ↓
+CaptureRecipe
+    ↓
+safe browser worker
+    ↓
+screenshot / screencast Assets
+    ↓
+MediaComposition
+```
+
+Prefer safe demo fixtures and preview deployments. Trusted authenticated owner capture requires explicit scope and privacy controls.
+
+See `docs/CAPTURE_AND_MEDIA_PRODUCTION.md` and issues #151–#165.
+
+## 7. Model integrations
+
+Current provider adapters include:
+
+- Gemini;
+- OpenAI;
+- Claude;
+- OpenRouter;
+- Groq;
+- Custom OpenAI-compatible endpoints;
+- Ollama;
+- LM Studio.
+
+Current generation requires a real usable model route. Retired fake/template fallback output must not be reintroduced.
+
+### Future staged roles
+
+The target architecture separates logical tasks such as:
+
+- signal interpretation;
+- opportunity judgment;
+- narrative strategy;
+- canonical writing;
+- platform transformation;
+- authenticity/evidence critics;
+- visual direction;
+- editorial planning.
+
+Personal Alpha may reuse one strong physical model/provider for several roles. The role contracts remain separate so quality/cost can be optimized later.
+
+### Credential rules
+
+- server-managed credentials remain server-side;
+- request-scoped BYOK keys are never persisted in campaign/signal/memory records;
+- local/custom endpoints are capability/permission-aware;
+- provider/model configuration should become low-frequency Connections/Settings state rather than a mandatory campaign step for normal users.
+
+## 8. Processor integrations
+
+Processors operate on canonical Assets/SourceArtifacts and return versioned derived results.
+
+Potential processors:
+
+- text/document extraction;
+- OCR;
+- transcription;
+- thumbnail/frame extraction;
+- visual analysis;
+- media metadata;
+- optional embeddings;
+- future moderation/privacy helpers.
+
+A processor must never be claimed as complete when no successful processor result exists.
+
+Historical campaigns keep references to the processor/version that produced their evidence.
+
+## 9. Media rendering integration
+
+SignalFlow's target motion renderer consumes a validated semantic `MediaCompositionPlan` and canonical source Assets.
+
+The renderer should support repeatable brand components and aspect-ratio variants rather than generating arbitrary executable code from a model.
+
+Output bytes become Assets; `MediaComposition` records own plan/render/provenance relationships.
+
+## 10. Destination integrations
+
+Purpose:
+
+> **Execute the exact approved publication intent or provide a truthful manual handoff.**
+
+Current direct connector code paths exist for:
+
+- LinkedIn;
+- X;
+- Reddit.
+
+Code presence is not production proof. Read `docs/CONNECTOR_READINESS.md` for verification requirements.
+
+Other supported generation destinations remain manual review/copy/export/open-platform routes until a direct connector is implemented and verified.
+
+## 11. Capability-based destination model
+
+Do not model a destination connection as only:
+
+```text
+connected: true
+```
+
+The target connection capability should expose information such as:
+
+```text
+provider
+verified target identity
+scopes/products
+expiry/status
+canPublishText
+canPublishImage
+canPublishVideo
+canPublishCarousel
+canReadOwnPosts
+canReadAnalytics
+provider-native scheduling capability if any
+SignalFlow durable scheduling availability
+safe unavailable reason
+```
+
+Different platforms legitimately support different capabilities.
+
+## 12. Direct publication versus manual handoff
+
+### Direct publication
+
+Only successful when the destination API confirms the side effect.
+
+### Manual handoff
+
+SignalFlow prepares/copies/downloads/opens the destination workflow.
+
+Manual handoff is useful and first-class, but it is **not direct publication success**.
+
+## 13. Editorial scheduling versus destination scheduling
+
+SignalFlow's editorial planner decides **what/when** should be communicated.
+
+The durable publication system executes exact approved content at the agreed time.
+
+A platform does not need a native scheduler for SignalFlow to schedule a durable job, but the connector must still be valid at execution time.
+
+Browser timers are never the durable scheduling mechanism.
+
+## 14. MCP integration
+
+SignalFlow MCP is an AI-agent interface into canonical application services.
+
+Current implemented MCP capabilities are narrower than the target product.
+
+Future MCP tools may expose:
+
+- list/create signals;
+- inspect/select opportunities;
+- create/read campaigns;
+- inspect production jobs;
+- inspect review/approval/publication state;
+- request explicitly authorized actions.
+
+MCP must not implement duplicate business rules or become the background GitHub event transport.
+
+## 15. Webhooks and inbound external events
+
+Every inbound event integration must define:
+
+- provider signature/authentication;
+- workspace/project mapping;
+- replay/idempotency protection;
+- event version/normalization;
+- allowed metadata/content;
+- rate/burst control;
+- background enrichment boundary;
+- safe logs/correlation IDs;
+- disconnect/revocation behavior.
+
+Raw provider payloads and secrets must not become generic domain records.
+
+## 16. Integration security principles
+
+- least privilege;
+- server-side authorization;
+- encrypted/secret-reference credentials;
+- explicit data-transfer behavior;
+- no scraping private sessions to bypass official APIs;
+- no rate-limit/authentication bypass;
+- no hidden capture;
+- no automatic publication of unapproved revisions;
+- no platform success claim without platform confirmation;
+- no private source/campaign content in logs/analytics by default.
+
+## 17. Integration completion checklist
+
+Before advertising an integration as production-ready, prove as relevant:
+
+- connection/install flow;
+- exact identity/scope;
+- normal operation;
+- expiry/revocation;
+- permission denial;
+- rate limiting;
+- retries/idempotency;
+- cancellation if applicable;
+- worker restart/recovery;
+- privacy/redaction;
+- data deletion/retention;
+- capability discovery;
+- real credential-backed side effects for publishing;
+- documentation matches actual behavior.
+
+## 18. Architecture rule for new integrations
+
+Before implementing a new provider, identify:
+
+1. integration category;
+2. canonical record it produces/consumes;
+3. application service/port;
+4. authorization/secret model;
+5. job requirements;
+6. idempotency/provenance;
+7. capability fields;
+8. failure/recovery states;
+9. data retention/privacy;
+10. exact owner golden path it improves.
+
+If those are unclear, do not add provider-specific code directly to UI components.

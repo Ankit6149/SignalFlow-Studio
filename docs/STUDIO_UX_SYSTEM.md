@@ -1,68 +1,345 @@
-# Studio UX and Visual System
+# SignalFlow Studio — UX and Visual System
 
-## Experience Goal
+> **Status:** product UX direction. Current Source/Destinations/Review screens remain supported during migration, but the permanent Studio architecture is decision-first rather than a compose wizard.
 
-The Studio should feel like a luxurious creative writing room: calm, rich, focused, and confident. It should not feel like a crowded admin dashboard. The landing page can be expressive; the workspace must be denser, clearer, and more operational.
+## Experience goal
 
-## Workflow Architecture
+SignalFlow should feel like a **calm, capable creative operations room**: focused, trustworthy, readable and low-friction.
 
-### Compose
+It should not feel like:
 
-1. **Source** — campaign name, source brief, links, repository, files, optional audience/model controls.
-2. **Destinations** — grouped Social, Community, Video, and Owned channels.
-3. **Generate** — a single visible command with a concise readiness summary.
+- a crowded analytics/admin dashboard;
+- a multi-step AI prompt form;
+- a social scheduler that the user must constantly feed;
+- a developer console dominated by provider configuration;
+- a template gallery that substitutes presets for identity.
+
+The product should continuously reduce the user's attention burden while making important judgment explicit.
+
+## Canonical UX lifecycle
+
+```text
+Today / Signals
+     ↓
+Opportunity recommendation
+     ↓
+angle choice or Something else
+     ↓
+Campaign / narrative plan
+     ↓
+production progress
+     ↓
+Review exact text/media revisions
+     ↓
+Approve / change / reject
+     ↓
+Calendar / durable publication
+```
+
+The existing Source → Destinations → Review flow becomes the manual `Create` journey during migration.
+
+## Primary product surfaces
+
+### Today
+
+The default decision surface.
+
+Prioritize:
+
+- worthwhile opportunities;
+- content/media needing approval;
+- operational exceptions;
+- compact coming-up editorial state.
+
+Do not fill Today with low-value metrics or configuration cards.
+
+### Signals
+
+Shows what happened or what the user added before content exists.
+
+Signals must expose source/provenance and allow ignore/snooze/use decisions.
+
+### Plan
+
+Shows ranked opportunities, angle options, custom `Something else`, campaign narrative, content-piece sequence, destination recommendations/exclusions and media requirements.
+
+### Create
+
+Manual intentional entry for a thought/topic/source when the user already knows they want to communicate something.
 
 ### Review
 
-- A destination rail switches between generated outputs.
-- The editor is the visual centre.
-- A side inspector shows route, character guidance, connector state, and source facts.
-- Save, copy, open, export, and publish actions stay deliberate and consistently placed.
-- The original brief is available by returning to Compose, not permanently occupying half of the review screen.
+The content/media itself is the visual center.
 
-## `rem` Type Scale
+### Calendar
 
-| Role | Size |
-|---|---:|
-| Metadata | `0.75rem` |
-| Supporting copy | `0.8125rem` |
-| Body and controls | `0.875rem`–`0.9375rem` |
-| Section title | `1.125rem`–`1.375rem` |
-| Workspace title | `clamp(2rem, 3.2vw, 3.25rem)` |
+Editorial sequence and publication state; empty slots are legitimate.
 
-Functional copy should not fall below `0.75rem` except decorative marks with an accessible label.
+### Voice
 
-## Density
+Inspectable identity/perception/boundaries/platform preferences and later learned preferences.
 
-- Header target: `4rem`
-- Standard field target: about `2.875rem`
-- Standard button target: `2.75rem`
-- Panel padding: `1.25rem`–`1.5rem`
-- Panel radius: `1.125rem`–`1.375rem`
-- Main textarea default: `9rem`–`10rem`, user-resizable
+## Decision architecture
 
-## Responsive Intent
+Every important screen should make these clear without route-hopping:
 
-- Above `86rem`: balanced two-column compose layout.
-- At or below `86rem`: single-column compose layout for common laptops and high display scaling.
-- Review uses a three-zone workspace on wide screens and collapses to two/one zones progressively.
-- At low viewport height, reduce decorative vertical space before reducing readable text.
+1. **Subject** — what is being decided on?
+2. **Evidence** — what does the user need to know?
+3. **Choices** — what 2–4 actions are available now?
+4. **Consequence** — what will change after the action?
 
-## Visual Language
+Example opportunity card:
 
-- Warm paper canvas
-- Obsidian command surfaces
-- Champagne as the main highlight
-- Coral for directional links and warnings
-- Sage for confirmed states
-- Soft shadows, subtle gradients, and tonal borders
-- Playfair Display for selective identity moments
-- DM Sans/Manrope for operational UI
+```text
+Subject: Capture workflow merged
+Evidence: meaningful UI change, fresh, visual proof available, similar story not recently posted
+Choices: See ideas / Later / Ignore
+Consequence: selecting opens narrative angles; Later snoozes; Ignore removes from recommendations
+```
 
-## Interaction Principles
+## Opportunity UX
 
-- Avoid nested vertical scroll areas when the page can scroll naturally.
-- Do not permanently overlay a large command bar on laptop content.
-- Make the current stage and next action obvious.
-- Keep advanced model/provider settings collapsed by default.
-- Use truthful language: configured, connected, expired, needs live test, manual handoff.
+A recommendation should explain:
+
+- what happened/topic;
+- why now;
+- evidence quality;
+- freshness;
+- repetition/narrative note;
+- recommended content forms/destinations;
+- production effort where relevant.
+
+Do not expose a mysterious score without explanation.
+
+## Angle-selection UX
+
+Offer 3–5 materially different narrative directions, not cosmetic tone variations.
+
+Always include:
+
+> **Something else…**
+
+A user must be able to type their own direction without fighting the recommendation system.
+
+## Platform-selection UX
+
+The system should recommend platforms **after** it understands the story.
+
+Show:
+
+- recommended destinations and why;
+- conditional destinations (`use if demo exists`);
+- explicit exclusions/deferred destinations;
+- user override.
+
+Do not require the user to select all platforms before SignalFlow can reason about the content.
+
+## Review UX
+
+Review must support:
+
+- direct text editing;
+- natural-language change request;
+- regenerate only the affected variant/part;
+- media preview/replacement;
+- source/evidence inspection;
+- quality/authenticity warnings;
+- revision/history comparison;
+- exact approval state;
+- target/schedule context when publication is ready.
+
+Editing must never silently destroy a generated baseline/history or transfer approval to a new revision.
+
+## Production progress UX
+
+Replace generic full-screen waiting states with persistent stage progress when durable jobs exist.
+
+Example:
+
+```text
+Strategy              Complete
+Screenshots           Complete
+Demo recording        Rendering
+LinkedIn              Ready for review
+X                     Ready for review
+Instagram video       Waiting on render
+```
+
+Completed work remains accessible while other work continues/fails.
+
+## Error/recovery UX
+
+Errors should answer:
+
+- what failed;
+- what remains safe;
+- whether retry is safe;
+- what the user can do;
+- whether another decision is required.
+
+Examples:
+
+- `Screenshot recipe no longer matches the preview. Your drafts are safe. Retry after updating the recipe or choose another asset.`
+- `X authorization expired. The approved revision remains scheduled but cannot publish until you reconnect.`
+- `This source changed after approval. Review the new evidence before publishing.`
+
+Avoid raw provider/stack errors.
+
+## Attention hierarchy
+
+Use visual weight in this order:
+
+1. blocking safety/publication exception;
+2. explicit user judgment required;
+3. high-value opportunity;
+4. progress/status;
+5. secondary help/configuration.
+
+The interface should not visually treat twelve destinations, eight providers and every optional setting as equally important.
+
+## Provider/configuration UX
+
+For normal users:
+
+- recommended/default route first;
+- provider setup behind Connections/Settings/Advanced;
+- one clear blocker when no route is usable;
+- capability-aware explanation;
+- no repeated API-key/model fields in every campaign when already configured.
+
+Power users retain BYOK/local/custom routes without making them the normal creative workflow.
+
+## Identity/Voice UX
+
+The Voice surface should separate:
+
+- Identity;
+- Desired perception;
+- Voice preferences;
+- Platform overlays;
+- Boundaries;
+- Learned preferences.
+
+Learned preferences must show confidence/evidence and allow confirm/edit/forget.
+
+Avoid a UI that implies one `founder-style` dropdown fully represents the user.
+
+## Calendar UX
+
+The calendar must distinguish:
+
+- open slot;
+- opportunity suggested;
+- planned piece;
+- production in progress;
+- needs approval;
+- approved;
+- scheduled;
+- publishing;
+- published;
+- failed/unknown;
+- intentionally skipped.
+
+Blank does not equal broken.
+
+Provide an accessible agenda/list representation in addition to any visual grid.
+
+## Visual language
+
+Preferred qualities:
+
+- calm, warm/neutral canvas;
+- strong readable work surfaces;
+- restrained brand accents;
+- hierarchy through spacing, typography and alignment;
+- media-first preview when reviewing media content;
+- dense enough for serious work without becoming cramped;
+- little/no decorative animation in operational states.
+
+Avoid:
+
+- giant empty hero-like regions inside the product;
+- many oversized marketing cards;
+- dark selected cards everywhere;
+- shimmer/pulse/floating panels competing with work;
+- inconsistent hand-drawn/decorative typography for functional controls;
+- tiny critical metadata;
+- excessive nested borders and nested scroll areas.
+
+## Type and density direction
+
+Exact tokens belong to the design-system owner, but current operational principles remain:
+
+- body/control copy must remain comfortably readable;
+- metadata cannot become microscopic;
+- section titles should not consume excessive vertical space;
+- form/control heights remain touch/keyboard friendly;
+- content editors/media previews receive the majority of working space;
+- long drafts, long errors and long project/platform names must not break layout.
+
+## Responsive behavior
+
+### Wide desktop
+
+Use multi-zone planning/review only when every zone retains a useful width.
+
+### Laptop/tablet
+
+Collapse supporting inspectors/model/configuration before squeezing primary content.
+
+### Mobile
+
+Prioritize:
+
+- Today decisions;
+- opportunity/angle selection;
+- approve/reject/change request;
+- media preview;
+- schedule change;
+- recovery actions.
+
+Heavy production/configuration may use dedicated mobile routes/drawers rather than crushed desktop columns.
+
+## Accessibility target
+
+WCAG 2.2 AA for supported primary journeys.
+
+Required direction:
+
+- logical headings/landmarks;
+- full keyboard operation;
+- visible focus;
+- state not conveyed only by color/position/animation;
+- meaningful status announcements without spam;
+- accessible dialogs/drawers/tabs/editors/uploads;
+- non-drag alternatives;
+- reduced motion;
+- high/forced contrast consideration;
+- 200%/400% zoom reflow;
+- screen-reader-readable opportunity reasoning and publication state.
+
+## Current workflow migration
+
+Do not throw away working current behavior.
+
+```text
+Current Source inputs
+    → become Create/manual source path
+
+Current destination selection
+    → becomes recommendations + user override after narrative planning
+
+Current model setup
+    → migrates toward Connections/Settings/Advanced
+
+Current Review
+    → evolves to ContentPiece/PlatformVariant + media-aware review
+```
+
+Current styles/components may remain while these contracts are introduced, but no new product architecture should assume the old three-stage compose flow is permanent.
+
+## UX completion rule
+
+A screen is not finished because it looks polished.
+
+It is finished when the user can understand the decision, see the necessary evidence, act without hidden context, recover from failure, and complete the workflow across supported viewport/accessibility states.

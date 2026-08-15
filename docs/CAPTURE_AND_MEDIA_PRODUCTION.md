@@ -1,6 +1,8 @@
 # SignalFlow Studio — Capture and Media Production Architecture
 
-> **Status:** canonical target design for automatic evidence capture and media production. Current product truth remains governed by the capability matrix; planned capture/recording/rendering features must not be presented as already available.
+> **Status:** canonical target design for automatic evidence capture and deterministic product-demo production. Current product truth remains governed by the capability matrix; planned capture/recording/rendering features must not be presented as already available.
+>
+> **Broader media architecture:** this document now sits underneath `MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md` and `CREATIVE_MEDIA_DOMAIN_CONTRACTS.md`. Those documents own media intent, asset roles/use permissions, image editing/generation/compositing, carousels, uploaded-footage editing, direct creative requests and rights/consent. This document remains authoritative for safe automatic browser/product capture and repeatable render production.
 
 ## 1. Product goal
 
@@ -20,6 +22,8 @@ For common campaigns the user should not need to:
 
 SignalFlow should determine what evidence/media a narrative requires, generate it through safe deterministic workflows where possible, and present final assets for approval together with the text they support.
 
+This automatic-capture pipeline is one production method selected by the broader Media Intelligence system. If the user already supplied suitable media, requested an image edit, asked for a carousel, or uploaded raw footage, the system should choose those production paths instead of forcing a CaptureRecipe.
+
 ## 2. Production principle
 
 > **Use AI to direct media. Use deterministic software to capture, compose, and render it whenever deterministic production is possible.**
@@ -28,7 +32,7 @@ This means:
 
 ### AI is useful for
 
-- deciding whether a story needs a screenshot, comparison, demo, diagram, carousel, or video;
+- deciding whether a story needs no media, an existing asset, screenshot, comparison, demo, diagram, carousel, edited/generated image, or video;
 - selecting what part of a product matters;
 - proposing safe capture steps;
 - choosing important moments from a recording;
@@ -48,67 +52,61 @@ This means:
 - subtitles;
 - transitions;
 - motion composition;
+- deterministic screenshot/image layout;
 - audio mixing where licensed/user-provided;
 - encoding;
 - social aspect-ratio variants.
 
 This produces consistent brand quality and avoids relying on stochastic video generation for simple product demonstrations.
 
-## 3. Media production lifecycle
+## 3. Position inside the broader media lifecycle
 
 ```text
-NarrativeStrategy
+NarrativeStrategy / Direct Create request
       ↓
-MediaRequirement(s)
+MediaIntentResolution + AssetRole/AssetUsePolicy
       ↓
-Available evidence/assets inspected
+MediaDecision
       ↓
-Need new capture?
-  ├─ no → use existing asset versions
-  └─ yes
-       ↓
-   CaptureRecipe
-       ↓
-   CaptureJob
-       ↓
- screenshots / recording / frames
-       ↓
-AssetProcessing
-       ↓
-MediaCompositionPlan
-       ↓
-RenderJob
-       ↓
+MediaRequirement
+      ↓
+MediaPlan chooses production method
+      ↓
+      ├─ existing/uploaded asset
+      ├─ image edit/generation/composition
+      ├─ carousel renderer
+      ├─ uploaded-footage editor
+      ├─ automatic browser CaptureRecipe  ← this document
+      └─ later DesktopCaptureRecipe
+      ↓
 MediaComposition revision
-       ↓
-Aspect-ratio derivatives
-       ↓
-Quality / privacy / narrative checks
-       ↓
-User review + approval
+      ↓
+Quality / privacy / rights checks
+      ↓
+User review + exact approval
 ```
 
-Each stage must preserve provenance so the user can understand where a media asset came from.
+The rest of this document focuses on the automatic capture branch.
 
 ## 4. `MediaRequirement`
 
-Represents what the narrative needs before any capture is attempted.
+The broader contract is defined in `CREATIVE_MEDIA_DOMAIN_CONTRACTS.md`. For automatic capture, the requirement must indicate that capture is appropriate/allowed and describe what visual evidence is needed.
 
-Suggested fields:
+Capture-relevant fields include:
 
 ```text
 mediaRequirementId
 campaignId
 contentPieceId
-kind                    # screenshot, screencast, comparison, carousel, motion_video, thumbnail...
 purpose
-subject
+recommendedKind
+requiredEvidence[]
 mustShow[]
 mustAvoid[]
 preferredAspectRatios[]
 durationTarget?
 textOverlayNeeds[]
-sourcePreference         # existing asset, capture recipe, generated illustration, manual upload
+captureAllowed
 priority
 status
 ```
@@ -116,7 +114,7 @@ status
 Example:
 
 ```text
-kind: screencast
+recommendedKind: PRODUCT_DEMO_VIDEO
 purpose: demonstrate that a user can choose a content angle and approve without configuring every platform
 mustShow:
 - Today opportunity card
@@ -296,7 +294,7 @@ Useful capture types:
 - before/after comparison pair;
 - focused product-state screenshot;
 - multi-step sequence for carousel;
-- high-density source image for later crops.
+- high-density source image for later crops/compositions.
 
 Each screenshot asset should record:
 
@@ -312,6 +310,8 @@ sourceDeploymentRef?
 contentHash
 privacyReviewState
 ```
+
+Captured outputs enter the same immutable Asset/version lineage used by uploaded and generated media. A captured screenshot is not automatically approved for public use merely because capture succeeded.
 
 ## 11. Screen recording / screencast
 
@@ -332,9 +332,11 @@ A recording plan can define:
 
 Raw capture remains a source asset. Trims and compositions are derived assets/revisions.
 
+A raw CaptureRecipe screencast may later feed the same `VideoNarrative` / `VideoEditPlan` pipeline as uploaded creator footage when further editing is appropriate.
+
 ## 12. `MediaCompositionPlan`
 
-Represents how source assets become a polished deliverable.
+Represents how source assets become a polished deliverable. The broader creative-media domain may use specialized `ImageCompositionPlan`, `CarouselCompositionPlan` or `VideoEditPlan`; this record remains useful for semantic product-demo/motion composition.
 
 Suggested fields:
 
@@ -444,6 +446,7 @@ resolution
 codec/container
 qualityReview
 privacyReview
+rightsReview?
 approvedAt?
 approvedBy?
 ```
@@ -452,20 +455,11 @@ A draft edit should not silently change an already approved media composition, a
 
 ## 16. Carousels and static visual cards
 
-The same production system can generate deterministic static compositions.
+Carousels are now fully specified in `MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md` and `CREATIVE_MEDIA_DOMAIN_CONTRACTS.md` as narrative objects with stable slide IDs, semantic roles and slide-level revision behavior.
 
-Potential primitives:
+Automatic product screenshots from this capture pipeline may be used as carousel visual bindings.
 
-- title card;
-- screenshot frame;
-- numbered step;
-- quote/insight;
-- code panel;
-- before/after pair;
-- architecture snippet;
-- CTA/end card.
-
-The AI decides content and sequencing; deterministic layout templates enforce brand consistency and output dimensions.
+The AI decides slide meaning and sequencing; deterministic layout/rendering should enforce typography, spacing, brand consistency and platform output dimensions.
 
 ## 17. Thumbnails
 
@@ -482,6 +476,8 @@ A thumbnail plan may include:
 
 Generated image models may be used when appropriate, but product screenshots and deterministic layouts should be preferred when truthfully demonstrating the product.
 
+Thumbnail source/use rights follow `AssetUsePolicy`.
+
 ## 18. Voice-over and audio
 
 Voice-over support must be optional and explicit.
@@ -496,7 +492,9 @@ Possible modes:
 
 Audio assets need provenance/licensing metadata. The product must not silently add copyrighted music from unknown sources.
 
-## 19. Privacy and redaction
+Identity-sensitive voice cloning/face/lip-sync features are not generic editing capabilities and require stronger explicit policy as defined in the broader creative-media architecture.
+
+## 19. Privacy, rights and redaction
 
 Capture/media is a high-risk surface.
 
@@ -511,9 +509,11 @@ Before upload/render/publication, systems should support checks for:
 - internal URLs;
 - credentials/forms;
 - unintended tabs/windows;
-- faces/names where user policy requires redaction.
+- faces/names where user policy requires redaction;
+- asset-use restrictions;
+- unknown/restricted media rights.
 
-A privacy review may be automated plus manual where risk is high. A detected risk blocks publication until resolved.
+A privacy/rights review may be automated plus manual where risk is high. A detected blocker prevents publication until resolved.
 
 ## 20. Capture from browser extension versus capture worker
 
@@ -540,7 +540,7 @@ Best for reproducible product demonstrations:
 - repeatable screencasts;
 - campaign production automation.
 
-Both create canonical Assets/SourceArtifacts but preserve different provenance.
+Both create canonical Assets/SourceArtifacts but preserve different provenance and then enter the same media-intent/use-policy system.
 
 ## 21. CaptureRecipe and test automation relationship
 
@@ -566,6 +566,7 @@ A produced asset should be reproducible enough to answer:
 - which source assets entered the composition?
 - which composition-plan revision rendered it?
 - which renderer version was used?
+- which asset-use/privacy/rights policy applied?
 
 This protects historical campaign provenance when the product UI changes later.
 
@@ -584,14 +585,23 @@ The planner should estimate or constrain:
 - storage size;
 - retained intermediates.
 
-Cheap deterministic operations should happen before expensive generative operations when possible.
+The broader media planner should prefer in order where quality permits:
+
+1. reuse an existing suitable asset;
+2. deterministic transform;
+3. deterministic composition;
+4. bounded generative edit;
+5. new generation;
+6. expensive generative video only when justified.
 
 ## 24. Personal Alpha media scope
 
 The first useful owner flow should intentionally stay small.
 
-### Required
+### Required early
 
+- explicit attached-media role/use policy where media is present;
+- Media Decision can return `NONE`, existing image or required screenshot;
 - safe browser screenshots;
 - one deterministic product-demo screencast path;
 - crop/resize variants;
@@ -600,6 +610,13 @@ The first useful owner flow should intentionally stay small.
 - 16:9 + 9:16 output;
 - review/approval of exact final media.
 
+### Follow-on creative proofs
+
+- deterministic carousel from structured slide plan;
+- basic deterministic image composition;
+- one bounded provider-backed image edit path;
+- uploaded-footage short/Reel editing from structured VideoEditPlan.
+
 ### Later
 
 - sophisticated timeline editing;
@@ -607,7 +624,8 @@ The first useful owner flow should intentionally stay small.
 - advanced audio/music tooling;
 - complex 3D motion;
 - unrestricted agent navigation;
-- large template marketplaces.
+- large template marketplaces;
+- professional-editor replacement features.
 
 ## 25. Definition of done for a media production slice
 
@@ -615,14 +633,18 @@ A capture/media feature is not done because a file was rendered once.
 
 It requires:
 
+- canonical intent/role/use-policy when relevant;
 - canonical records and provenance;
+- immutable original/derived lineage;
 - durable job state;
 - safe target authorization;
 - deterministic fixtures/recipe tests;
 - retry/cancellation behavior;
 - object-storage integration where hosted;
-- privacy/redaction handling;
+- privacy/redaction/rights handling;
 - responsive/aspect-ratio output checks;
 - exact media revision bound to approval/publication;
 - truthful capability reporting;
 - no secret/private data in logs or evidence.
+
+Read `MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md` before implementing any new non-capture image/carousel/creator-video feature.

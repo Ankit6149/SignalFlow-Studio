@@ -4,6 +4,8 @@
 
 SignalFlow is one product with hosted/local/self-hosted deployment profiles. Clients must read `GET /api/capabilities` and resource-specific state instead of inferring availability from documentation, hostname, visible UI, installed dependencies, or future roadmap records.
 
+For a deeper target/current matrix covering AI routing, mobile, local/private processing and edge clients, also read `docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md`.
+
 ## 1. Contract
 
 - Schema: `frontend/lib/capabilities/capabilityContract.mjs`
@@ -63,9 +65,19 @@ UI/public claims use the last applicable truthful state, not the most optimistic
 | Server-managed provider credentials | Unavailable | Available when configured | Available when configured | Available when configured |
 | Custom OpenAI-compatible gateway | Unavailable | Available | Available | Available |
 | Ollama / LM Studio | Unavailable | Available only with reachable trusted URL | Available | Available |
+| Provider-neutral `InferenceTask` routing (#171) | Not implemented | Not implemented | Not implemented | Not implemented |
+| DataClassification / ProcessingPolicy enforcement (#172) | Not implemented | Not implemented | Not implemented | Not implemented |
+| SignalFlow Managed inference plan | Not implemented | Not implemented | Not implemented | Not implemented |
+| Curated downloadable local intelligence packs (#173) | Not applicable | Not implemented | Not implemented | Not implemented |
+| Private Hybrid raw-local / summary-remote processing (#172/#176) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Local Only fail-closed processing policy | Not implemented | Not implemented | Not implemented | Not implemented |
+| External AI clients over target MCP/application services (#174) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Public link context | Available within current implementation boundaries | Available | Available | Available |
 | Public GitHub repository URL context | Available | Available | Available | Available |
 | Trusted local filesystem repository | Unavailable | Unavailable on public hosting | Opt-in through `SIGNALFLOW_ALLOW_LOCAL_REPO=true` | Opt-in through `SIGNALFLOW_ALLOW_LOCAL_REPO=true` |
+| Paired Desktop Edge Agent (#176) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Mobile companion (#175) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Desktop application capture (#177) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Manual copy/export/open handoff | Available | Available | Available | Available |
 | Official connector administration | Unavailable | Available when configured | Available when configured | Available when configured |
 | LinkedIn/X/Reddit connector code paths | Code present; session/config dependent | Code present; config dependent | Code present; config dependent | Code present; config dependent |
@@ -94,15 +106,25 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Staged generation orchestration | Planned | #158 |
 | Authenticity quality critic | Planned | #158 |
 | Evidence/factual quality critic integrated with staged flow | Planned | #158 |
+| Provider-neutral `InferenceTask` / capability router | Planned | #170/#171, `INFERENCE_AND_PRIVACY_ARCHITECTURE.md` |
+| DataClassification / ProcessingPolicy enforcement | Planned | #172 |
+| SignalFlow Managed / BYOP / Private Hybrid / Local Only modes | Planned target architecture | #170/#172 |
+| Per-task inference usage/cost/provenance | Planned | #171 |
+| Curated downloadable local AI packs | Planned | #173 |
+| External AI clients through canonical MCP/API | Planned | #174, `AI_CLIENT_INTEGRATIONS.md` |
 | Today decision inbox | Planned | #159 |
 | Signals workspace | Planned | #159 |
 | Plan/opportunity/campaign-planning workspace | Planned | #159 |
+| Mobile low-attention companion | Planned | #175, `CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md` |
+| Paired Desktop Edge Agent | Planned | #176 |
+| Private Hybrid desktop preprocessing | Planned | #172/#176 |
 | CadencePolicy / editorial planning | Planned | #160 |
 | Editorial calendar with intentionally empty slots | Planned | #160 |
 | Automatic safe CaptureRecipe/browser worker | Planned | #162 |
 | Automatic campaign screenshot capture/derivatives | Planned | #163 |
 | Automatic deterministic raw screencast | Planned | #164 |
 | Motion composition / multi-aspect video render | Planned | #165 |
+| Desktop application screenshot/screencast automation | Later / planned | #177 |
 | Exact media revision approval/publication binding | Planned | #151/#165/#168 |
 | Owner Golden Path 1 manual thought → authentic approval | Planned | #166 |
 | Owner Golden Path 2 GitHub event → opportunity + visual evidence | Planned | #167 |
@@ -124,12 +146,52 @@ capabilities.contentIntelligence
   identityMemory
   narrativeMemory
 
+capabilities.inference
+  managed
+  bringYourOwnProvider
+  privateHybrid
+  localOnly
+  taskKinds[]
+  vision
+  imageGeneration
+  imageEditing
+  audioUnderstanding
+  videoUnderstanding
+  structuredOutput
+  costUsage
+
+capabilities.processingPolicy
+  supportedClassifications[]
+  privateHybrid
+  localOnly
+
 capabilities.production
   captureWorker
   screenshots
   screencast
   mediaRenderer
   supportedAspectRatios
+
+capabilities.clients.mobile
+  available
+  shareSheet
+  voiceCapture
+  reviewApproval
+  notifications
+
+capabilities.clients.extension
+  available
+  pageCapture
+  screenshot
+  screenRecording
+
+capabilities.clients.desktop
+  available
+  localRepo
+  localFiles
+  localInference
+  privateHybrid
+  desktopCapture
 
 capabilities.editorial
   cadencePlanning
@@ -163,7 +225,9 @@ Current source contracts can represent Asset/SourceArtifact/AssetProcessing reco
 - durable upload;
 - deletion/retention enforcement;
 - extension acknowledgement;
-- automatic capture-worker production.
+- automatic capture-worker production;
+- privacy-policy enforcement;
+- raw-local/private processing.
 
 Those states remain explicit per artifact/processing/capability.
 
@@ -181,7 +245,59 @@ Examples:
 - a prompt-generated media shot list is **not** automatic capture/media production;
 - a client-side schedule callback is **not** durable editorial/publication scheduling.
 
-## 8. Capture/production truth
+## 8. Inference truth
+
+Existing provider adapters and BYOK/local endpoints are useful foundations, but they do **not** prove the target Inference Fabric exists.
+
+Do not claim the following until #170–#173 are implemented and verified:
+
+- provider-neutral task routing;
+- managed multi-provider inference selection;
+- automatic privacy-aware fallback;
+- curated local model downloads;
+- Private Hybrid;
+- Local Only fail-closed routing;
+- per-task inference metering;
+- specialized multimodal provider routing.
+
+A configured provider is not the same as a complete AI mode.
+
+A local endpoint is not the same as a curated Local Intelligence Pack.
+
+A free/testing endpoint is not a production business model.
+
+## 9. Consumer AI / external-agent truth
+
+Current MCP is narrower than the target #174 agent-client architecture.
+
+Do not claim:
+
+- ChatGPT/Claude/Codex/Gemini full SignalFlow integration;
+- consumer subscription-funded background SignalFlow inference;
+- local coding-agent repository analysis;
+- assistant-driven approval/publication;
+
+until the exact supported integration, actor scopes, data-processing route and acceptance evidence exist.
+
+External AI connectivity and inference-provider connectivity are separate capabilities.
+
+## 10. Mobile/edge truth
+
+The mobile application (#175), Desktop Edge Agent (#176), and desktop application capture (#177) are planned target architecture.
+
+Their documentation does not mean SignalFlow currently has:
+
+- mobile push/Today/review/approval;
+- share-sheet/voice/photo capture;
+- paired device identity;
+- local/private repository preprocessing;
+- downloadable curated local model packs;
+- signed edge jobs;
+- desktop application UI automation/recording.
+
+The browser extension remains a separate current/experimental capability family.
+
+## 11. Capture/production truth
 
 ### Browser extension
 
@@ -205,7 +321,11 @@ May report available only when a validated MediaCompositionPlan can produce pers
 
 A prompt containing `videoTimeline` is not a renderer.
 
-## 9. Editorial planning truth
+### Desktop capture
+
+May report available only when a paired/authorized desktop agent can execute an allowed DesktopCaptureRecipe against a supported application/window and produce canonical Assets.
+
+## 12. Editorial planning truth
 
 The product distinguishes:
 
@@ -217,7 +337,7 @@ A Calendar UI alone is not durable scheduling.
 
 A schedule is real only when server/job persistence survives browser closure/restart and execution semantics are defined.
 
-## 10. Destination connector truth
+## 13. Destination connector truth
 
 A connector's state is richer than `connected`.
 
@@ -237,15 +357,15 @@ Publishing success is recorded only after destination confirmation.
 
 Read `docs/CONNECTOR_READINESS.md`.
 
-## 11. Portable transfer capability
+## 14. Portable transfer capability
 
 Current portable transfer remains explicit browser ownership/recovery, not silent cloud sync.
 
-As new identity/signal/memory/calendar/media records ship, portable ownership must be extended deliberately through new archive schema versions/compatibility rules before the product claims those records are included.
+As new identity/signal/memory/calendar/media/inference/client records ship, portable ownership must be extended deliberately through new archive schema versions/compatibility rules before the product claims those records are included.
 
 No new user-owned state should be silently left out of export forever merely because it was introduced after archive schema v1.
 
-## 12. Campaign data rules
+## 15. Campaign data rules
 
 Current rules remain:
 
@@ -258,7 +378,7 @@ Current rules remain:
 
 Target ContentPiece/PlatformVariant migration must preserve these invariants.
 
-## 13. Session/permission rules
+## 16. Session/permission rules
 
 - Public hosted deployment without valid owner/member auth reports the appropriate restricted role.
 - Owner/local/self-hosted capabilities remain permission/configuration-aware.
@@ -266,20 +386,24 @@ Target ContentPiece/PlatformVariant migration must preserve these invariants.
 - UI may hide irrelevant controls, but server/application authorization remains the security boundary.
 - `configured` and `available` are separate.
 - Resource-specific capability may be unavailable even when the provider itself is connected.
+- Paired-device availability/trust is separate from user authentication.
+- AI-assistant connectivity is separate from inference-provider availability.
 
-## 14. Adding a capability
+## 17. Adding a capability
 
 1. Define the owning domain/application service.
 2. Define current/future deployment profiles and authorization.
-3. Add server-owned versioned capability field/schema.
-4. Add fail-closed client parsing.
-5. Implement infrastructure behind a port.
-6. Add capability fixtures for supported profiles/roles.
-7. Add relevant migration/serialization/security/job/retry tests.
-8. Add real credential-backed evidence for external side effects.
-9. Update web/MCP/extension/worker/public docs.
-10. Only then advertise the capability.
+3. Define DataClassification/ProcessingPolicy when data leaves a trust boundary.
+4. Add server-owned versioned capability field/schema.
+5. Add fail-closed client parsing.
+6. Implement infrastructure behind a port.
+7. Add capability fixtures for supported profiles/roles/devices.
+8. Add relevant migration/serialization/security/job/retry tests.
+9. Add real credential-backed evidence for external side effects.
+10. Add inference route/usage/privacy evidence where AI is involved.
+11. Update web/MCP/extension/mobile/desktop/worker/public docs as relevant.
+12. Only then advertise the capability.
 
-## 15. Capability principle
+## 18. Capability principle
 
 > **Documentation may describe where SignalFlow is going. Only verified implementation determines what SignalFlow can say it does today.**

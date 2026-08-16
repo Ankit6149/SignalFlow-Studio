@@ -14,19 +14,19 @@ const repositoryUrl = "https://github.com/Ankit6149/SignalFlow-Studio";
 
 const faq = [
   {
-    question: "What does SignalFlow Studio actually create?",
+    question: "What can I use SignalFlow Studio for today?",
     answer:
-      "It turns product notes, public links, repository context, and text files into editable drafts for social, community, video, newsletter, blog, and release-note channels.",
+      "The current Studio turns manual source context such as notes, supported links, repository context, and supported text files into editable destination drafts through a real model route. Drafts stay reviewable, recoverable in the current browser, and exportable.",
+  },
+  {
+    question: "What is SignalFlow becoming?",
+    answer:
+      "SignalFlow is being built as an approval-first content operating system: a layer that can turn meaningful work and source evidence into worthwhile content opportunities, production plans, reviewable content, durable publication, and narrative memory as those capabilities are implemented.",
   },
   {
     question: "Does SignalFlow publish without approval?",
     answer:
-      "No. Every draft stays reviewable. Direct publishing is only offered when an official connector is configured and the platform API confirms success.",
-  },
-  {
-    question: "Which platforms can publish directly?",
-    answer:
-      "LinkedIn, X, and Reddit have official OAuth connector paths in the current release. Other destinations use a clear copy, export, and open-platform workflow.",
+      "No. Every current draft stays reviewable. Direct publishing is only offered when an official connector is configured and the platform API confirms success.",
   },
   {
     question: "Where are campaigns and account tokens stored?",
@@ -36,7 +36,7 @@ const faq = [
   {
     question: "Can I bring my own model provider?",
     answer:
-      "Yes. SignalFlow supports Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and custom OpenAI-compatible endpoints. Campaign generation requires a real model route.",
+      "Yes. SignalFlow supports configured Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and compatible custom endpoints where the active deployment and session can reach them. Campaign generation requires a real model route.",
   },
 ];
 
@@ -58,7 +58,7 @@ const schema = {
       name: "SignalFlow Studio",
       alternateName: "SignalFlow",
       description:
-        "A review-first campaign workspace that turns product context into editable drafts for social, community, video, newsletter, blog, and release-note destinations.",
+        "An approval-first content operating system in progress, built to reduce the operational work between meaningful work and audience communication while keeping judgment with the user.",
       publisher: { "@id": `${siteUrl}/#organization` },
       inLanguage: "en",
     },
@@ -68,7 +68,7 @@ const schema = {
       name: "SignalFlow Studio",
       alternateName: "SignalFlow",
       applicationCategory: "BusinessApplication",
-      applicationSubCategory: "Campaign creation and product marketing workflow",
+      applicationSubCategory: "Content operations and approval-first publishing workflow",
       operatingSystem: "Web",
       browserRequirements: "Requires a modern browser with JavaScript enabled.",
       url: siteUrl,
@@ -78,28 +78,27 @@ const schema = {
       license: `${repositoryUrl}/blob/master/LICENSE`,
       creator: { "@id": `${siteUrl}/#organization` },
       description:
-        "SignalFlow Studio turns product notes, public links, GitHub repository context, and uploaded text files into editable channel-specific campaign drafts. It supports real model-provider generation, browser-local campaign saving, Markdown and JSON exports, an MCP server for AI agents, and confirmed-only publishing through configured official connectors.",
+        "The current SignalFlow Studio turns manual source context into editable destination drafts through real model-provider routes, with edit-safe browser-local campaign recovery, portable archive and export, MCP access, and confirmed-only publishing through configured official connectors. The broader content operating system direction adds signal detection, editorial opportunity ranking, media production, scheduling, and narrative memory as those capabilities are implemented.",
       keywords: [
-        "campaign creation software",
-        "product launch content generator",
-        "social media draft generator",
-        "developer marketing tool",
-        "repository to campaign",
+        "content operating system",
+        "content operations",
+        "approval-first publishing",
+        "AI content workflow",
+        "developer communication",
         "review before publish",
-        "local-first creator tool",
+        "local-first creator tools",
         "bring your own AI model",
       ],
       featureList: [
-        "Create editable drafts for twelve publishing destinations",
-        "Extract context from public links and GitHub repositories",
-        "Read uploaded text, Markdown, CSV, JSON, and code files in the browser",
-        "Use a real configured or bring-your-own model provider",
-        "Create campaigns directly through the SignalFlow MCP server",
-        "Use Gemini, OpenAI, Claude, Groq, Ollama, LM Studio, or custom compatible endpoints",
+        "Turn manual source context into editable destination drafts",
+        "Extract context from supported public links and GitHub repositories within current capability limits",
+        "Read supported text, Markdown, CSV, JSON, and code files in the browser",
+        "Use real configured hosted, bring-your-own, local, or compatible custom model routes",
+        "Create campaigns directly through supported SignalFlow MCP operations",
+        "Preserve edit-safe campaign revisions and browser-local recovery",
         "Prepare and validate portable SignalFlow campaign archives with explicit import conflict and rollback controls",
-        "Save campaign packages in the current browser",
-        "Export approved campaigns as Markdown and JSON",
-        "Publish through configured LinkedIn, X, and Reddit official connectors after approval",
+        "Export authoritative current drafts as Markdown and JSON",
+        "Publish through configured LinkedIn, X, and Reddit official connector paths after approval and confirmed success",
         "Keep social OAuth sessions encrypted in HTTP-only cookies",
       ],
       offers: {
@@ -128,20 +127,20 @@ export const metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: "SignalFlow Studio",
   title: {
-    default: "SignalFlow Studio — One Brief, Every Channel",
+    default: "SignalFlow Studio — Content Operating System",
     template: "%s | SignalFlow Studio",
   },
   description:
-    "Turn product notes, links, repository context, and text files into editable campaign drafts for twelve destinations—then review, export, or publish through confirmed official connectors.",
+    "An approval-first content operating system in progress. Use the current Studio to turn real source context into reviewable drafts while broader automation is built transparently.",
   keywords: [
-    "campaign creation software",
-    "product launch content generator",
-    "social media draft generator",
-    "developer marketing",
+    "content operating system",
+    "content operations",
+    "approval-first publishing",
     "AI content workflow",
-    "local-first creator tools",
+    "developer communication",
     "review before publish",
-    "GitHub repository content generator",
+    "local-first creator tools",
+    "GitHub content workflow",
   ],
   authors: [{ name: "SignalFlow Studio", url: repositoryUrl }],
   creator: "SignalFlow Studio",
@@ -159,23 +158,23 @@ export const metadata = {
     locale: "en_US",
     url: siteUrl,
     siteName: "SignalFlow Studio",
-    title: "SignalFlow Studio — One Brief, Every Channel",
+    title: "SignalFlow Studio — Content Operating System",
     description:
-      "A review-first campaign workspace for turning product context into editable drafts across twelve destinations.",
+      "Keep doing the work. SignalFlow is being built to handle the content operations around it while keeping judgment and approval with you.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "SignalFlow Studio campaign workspace",
+        alt: "SignalFlow Studio content operating system — built around evidence, judgment, and approval",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SignalFlow Studio — One Brief, Every Channel",
+    title: "SignalFlow Studio — Content Operating System",
     description:
-      "Turn one source brief into editable, reviewable campaign drafts for social, community, video, newsletter, blog, and release-note destinations.",
+      "An approval-first content operating system in progress, with a usable manual Studio today and broader signal, production, publishing, and memory automation as the product direction.",
     images: ["/opengraph-image"],
   },
   robots: {

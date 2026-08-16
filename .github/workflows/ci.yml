@@ -50,38 +50,10 @@ jobs:
         run: npm ci
       - name: Run frontend regression tests
         working-directory: frontend
-        shell: bash
-        run: |
-          set +e
-          failed=0
-          for test_file in tests/*.test.mjs; do
-            output="$(node --test "$test_file" 2>&1)"
-            status=$?
-            if [ "$status" -ne 0 ]; then
-              echo "$output"
-              detail="$(printf '%s\n' "$output" | grep -E 'not ok|AssertionError|ERR_ASSERTION|Expected|actual:|operator:|at ' | head -n 16 | tr '\n' ' ')"
-              detail="${detail//'%'/'%25'}"
-              detail="${detail//$'\r'/'%0D'}"
-              detail="${detail//$'\n'/'%0A'}"
-              echo "::error file=frontend/$test_file::$detail"
-              failed=1
-            fi
-          done
-          exit "$failed"
+        run: npm test
       - name: Audit production dependencies
         working-directory: frontend
-        shell: bash
-        run: |
-          set +e
-          output="$(npm audit --omit=dev --audit-level=high 2>&1)"
-          status=$?
-          echo "$output"
-          if [ "$status" -ne 0 ]; then
-            detail="$(printf '%s\n' "$output" | grep -E 'high|critical|Severity|fix available|node_modules|# npm audit report|^[a-zA-Z0-9@/_-]+ ' | head -n 20 | tr '\n' ' ')"
-            detail="${detail//'%'/'%25'}"
-            echo "::error file=frontend/package-lock.json::$detail"
-          fi
-          exit "$status"
+        run: npm audit --omit=dev --audit-level=high
       - name: Build frontend
         working-directory: frontend
         run: npm run build

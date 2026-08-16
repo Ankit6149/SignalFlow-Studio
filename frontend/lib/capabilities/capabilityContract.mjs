@@ -167,7 +167,7 @@ export function createCapabilitySnapshot({
           : "Cloud workspace management is not enabled in this deployment.",
       ),
       persistence: {
-        browserLocal: capability(true, "Campaigns can be saved in this browser."),
+        browserLocal: capability(true, "Campaigns and manual ContentSignals can be saved in this browser."),
         cloudDatabase: capability(
           cloudDatabase,
           cloudDatabase

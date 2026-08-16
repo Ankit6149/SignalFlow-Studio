@@ -43,6 +43,7 @@ UI/public claims use the last applicable truthful state, not the most optimistic
 | Edit-safe per-channel/full regeneration policy | Available | Available | Available | Available |
 | Versioned approval/current revision rules | Available | Available | Available | Available |
 | Canonical Asset / SourceArtifact / AssetProcessing contract | Available | Available | Available | Available |
+| Browser-local manual `ContentSignal` intake/lifecycle | Available | Available | Available | Available |
 | Hardened remote URL evidence fetch (#127) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Complete source-health diagnostics (#128) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Remote evidence revalidation/version adoption (#129) | Not implemented | Not implemented | Not implemented | Not implemented |
@@ -83,7 +84,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 
 | Target capability | Current status | Owning issues/docs |
 | --- | --- | --- |
-| Canonical `ContentSignal` persistence/manual intake | Planned | #152, `CONTENT_INTELLIGENCE_ARCHITECTURE.md` |
+| Canonical `ContentSignal` persistence/manual intake | Implemented browser-local; hosted persistence/automatic ingestion still planned | #152, `CONTENT_SIGNAL_IMPLEMENTATION.md` |
 | GitHub App/webhook → ContentSignal ingestion | Planned | #161, `GITHUB_INTEGRATION_AND_MCP.md` |
 | Explainable `ContentOpportunity` scoring/ranking | Planned | #156 |
 | Opportunity angle options + `Something else` | Planned | #156/#159 |
@@ -233,10 +234,11 @@ Public links must fail closed as *verified usable evidence* where #127's hardene
 
 ## 8. Content-intelligence truth
 
-The new docs define Signals/Opportunities/Identity/Memory as target product records, but none may be presented in the live UI as persistent working intelligence until their issue is implemented.
+Manual browser-local ContentSignal intake is now implemented and may be presented as such. Automatic signal ingestion, ContentOpportunity intelligence, Identity, StyleMemory, NarrativeMemory, and the unified Today/Plan experience remain target capabilities until their owning issues are complete.
 
 Examples:
 
+- a saved manual ContentSignal is real persisted evidence, but it is **not** automatic detection or a persistent ContentOpportunity system;
 - a one-off model-generated `strategy` object is **not** a persistent ContentOpportunity system;
 - a `founder-style` tone field is **not** an IdentityProfile;
 - campaign history is useful but is **not** NarrativeMemory until public-story semantics are implemented;

@@ -47,6 +47,7 @@ The current product can:
 - accept a campaign/source brief;
 - ingest supported public links and GitHub repository context within current safety/implementation limits;
 - accept supported browser file inputs and canonical source/asset records;
+- capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;
 - use real configured model-provider routes;
 - generate destination-specific campaign drafts;
 - preserve stable campaign IDs and edit-safe draft history;
@@ -63,7 +64,7 @@ The current product can:
 
 The repository must **not** claim the following are already available until their issues and acceptance evidence are complete:
 
-- persistent ContentSignal/ContentOpportunity intelligence;
+- automatic ContentSignal ingestion from connected work events and persistent ContentOpportunity intelligence;
 - automatic opportunity recommendations from connected work events;
 - long-lived identity/style/narrative learning;
 - a `Today` decision inbox;
@@ -476,6 +477,8 @@ The target Inference Fabric may reuse one strong provider/model initially but mu
 Today:
 
 - saved campaigns are browser-local;
+- manual ContentSignal history is also browser-local under the versioned signal repository and survives refresh/reopen;
+- ContentSignal history is not yet part of the portable campaign archive or cloud sync;
 - there is no production cloud campaign database/account workspace/cross-device sync yet;
 - canonical Campaign, Asset, SourceArtifact, AssetProcessing and transfer contracts exist;
 - browser portable archive/import/export exists;

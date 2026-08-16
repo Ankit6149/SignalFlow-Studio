@@ -330,8 +330,8 @@
 .editForm textarea:focus-visible,
 .editForm select:focus-visible,
 .filterLabel select:focus-visible,
-button:focus-visible,
-a:focus-visible {
+.page button:focus-visible,
+.page a:focus-visible {
   outline: 3px solid rgba(183, 140, 53, 0.35);
   outline-offset: 2px;
   border-color: #b78c35;
@@ -387,7 +387,7 @@ a:focus-visible {
 .formFooter button:hover,
 .editActions button:hover,
 .signalActions button:hover { transform: translateY(-1px); }
-button:disabled { cursor: wait; opacity: 0.55; transform: none !important; }
+.page button:disabled { cursor: wait; opacity: 0.55; transform: none !important; }
 
 .nextCard {
   position: sticky;

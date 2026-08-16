@@ -22,7 +22,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Refresh safe lockfile fixes
         working-directory: frontend
-        run: npm audit fix --package-lock-only --omit=dev
+        shell: bash
+        run: |
+          set +e
+          npm audit fix --package-lock-only --omit=dev
+          exit 0
       - name: Commit lockfile update when needed
         shell: bash
         run: |

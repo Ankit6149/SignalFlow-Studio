@@ -78,7 +78,7 @@ const schema = {
       license: `${repositoryUrl}/blob/master/LICENSE`,
       creator: { "@id": `${siteUrl}/#organization` },
       description:
-        "The current SignalFlow Studio turns manual source context into editable destination drafts through real model-provider routes, with edit-safe browser-local campaign recovery, portable archive and export, MCP access, and confirmed-only publishing through configured official connectors. The broader content operating system direction adds signal detection, editorial opportunity ranking, media production, scheduling, and narrative memory as those capabilities are implemented.",
+        "The current SignalFlow Studio turns manual source context into editable destination drafts through a real model provider route, with versioned campaign records, edit-safe browser-local recovery, portable archive and export, MCP access, and confirmed-only publishing through configured official connectors. The broader content operating system direction adds signal detection, editorial opportunity ranking, media production, scheduling, and narrative memory as those capabilities are implemented.",
       keywords: [
         "content operating system",
         "content operations",
@@ -95,7 +95,7 @@ const schema = {
         "Read supported text, Markdown, CSV, JSON, and code files in the browser",
         "Use real configured hosted, bring-your-own, local, or compatible custom model routes",
         "Create campaigns directly through supported SignalFlow MCP operations",
-        "Preserve edit-safe campaign revisions and browser-local recovery",
+        "Preserve versioned campaign records, edit-safe revisions, and browser-local recovery",
         "Prepare and validate portable SignalFlow campaign archives with explicit import conflict and rollback controls",
         "Export authoritative current drafts as Markdown and JSON",
         "Publish through configured LinkedIn, X, and Reddit official connector paths after approval and confirmed success",

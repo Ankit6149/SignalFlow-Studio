@@ -29,16 +29,38 @@ test("the landing route has one component owner and preserves the existing Brand
   assert.doesNotMatch(styles, /logoMark|logoCopy|brand-mark/);
 });
 
-test("the landing page exposes the complete public product narrative", () => {
-  for (const anchor of ["main-content", "workflow", "destinations", "trust", "final-cta-title"]) {
+test("the landing page separates current product truth from the content operating system direction", () => {
+  for (const anchor of ["main-content", "now", "direction", "trust", "final-cta-title"]) {
     assert.ok(landing.includes(anchor), `missing landing anchor: ${anchor}`);
   }
-  assert.match(landing, /Turn one product story into a campaign built for every channel/);
+
+  assert.match(landing, /Your work should not become a second content job/);
+  assert.match(landing, /Open the current Studio/);
+  assert.match(landing, /AVAILABLE TODAY/);
+  assert.match(landing, /CURRENT FOUNDATION/);
+  assert.match(landing, /PRODUCT DIRECTION/);
+  assert.match(landing, /Future workspace/);
+  assert.match(landing, /Not presented as live functionality/);
   assert.match(landing, /Review before anything leaves/);
-  assert.match(landing, /Temporary provider keys are excluded from campaign persistence/);
-  assert.match(landing, /Publish only after confirmation/);
-  assert.equal((landing.match(/type: "/g) || []).length, 12);
+  assert.match(landing, /The user&apos;s job is judgment/);
+
+  assert.doesNotMatch(landing, /Turn one product story into a campaign built for every channel/);
+  assert.doesNotMatch(landing, /Create your posting package/);
   assert.doesNotMatch(landing, /creator-working\.png|offline templates|100% Client-Side Keys/);
+});
+
+test("the landing page keeps current and future claims intentionally distinct", () => {
+  assert.match(landing, /Usable now:/);
+  assert.match(landing, /real configured AI routes/);
+  assert.match(landing, /local campaign recovery/);
+  assert.match(landing, /save the campaign locally/);
+  assert.match(landing, /export/);
+
+  assert.match(landing, /PRODUCT DIRECTION · IN DEVELOPMENT/);
+  assert.match(landing, /Future capability/);
+  assert.match(landing, /Architecture direction; availability depends on implementation/);
+  assert.match(landing, /Private Hybrid/);
+  assert.match(landing, /Local Only/);
 });
 
 test("the landing design is scoped and removes the retired global cascade", () => {
@@ -47,15 +69,17 @@ test("the landing design is scoped and removes the retired global cascade", () =
   assert.doesNotMatch(containment, /\.landing-shell|\.landing-hero|\.channel-showcase|\.landing-faq/);
   assert.doesNotMatch(styles, /\.app-shell|\.studio-page|\.secondary-page/);
   assert.match(styles, /\.hero\s*\{/);
-  assert.doesNotMatch(styles, /\.hero\s*\{[^}]*min-height:\s*(100vh|100dvh)/s);
+  assert.match(styles, /\.directionSection\s*\{/);
+  assert.match(styles, /\.mediaSection\s*\{/);
+  assert.match(styles, /\.trustSection\s*\{/);
 });
 
 test("the landing page protects responsive, zoom-safe, focus, and reduced-motion behavior", () => {
-  assert.match(styles, /@media \(max-width: 72rem\)/);
-  assert.match(styles, /@media \(max-width: 52rem\)/);
-  assert.match(styles, /@media \(max-width: 37rem\)/);
+  assert.match(styles, /@media \(max-width: 1120px\)/);
+  assert.match(styles, /@media \(max-width: 860px\)/);
+  assert.match(styles, /@media \(max-width: 560px\)/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /:focus-visible/);
-  assert.match(styles, /overflow:\s*hidden/);
-  assert.match(styles, /grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(styles, /overflow-x:\s*clip/);
+  assert.match(styles, /grid-template-columns:\s*1fr/);
 });

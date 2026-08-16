@@ -99,11 +99,13 @@ test("portable transfer documentation and public AI context remain truthful", ()
   const llmsFull = readRepository("llms-full.txt");
   const publicLlmsFull = readFrontend("public/llms-full.txt");
 
-  assert.match(readme, /## Portable transfer and recovery/);
-  assert.match(readme, /production hosted destination.*not.*claimed/is);
-  assert.match(agents, /Portable transfer, import conflict resolution, provenance, integrity, resume, and rollback/);
+  assert.match(readme, /browser portable archive\/import\/export exists/i);
+  assert.match(readme, /docs\/PORTABLE_TRANSFER\.md/);
+  assert.match(readme, /no production cloud campaign database\/account workspace\/cross-device sync yet/i);
+  assert.match(agents, /portable browser archive\/import\/export/i);
   assert.match(capabilityMatrix, /Production hosted workspace transfer destination \| Not implemented/);
-  assert.match(architecture, /## Portable archive and transfer application/);
+  assert.match(architecture, /TransferReport/);
+  assert.match(architecture, /import validation\/outcomes\/resume\/rollback journal/i);
   assert.match(transferDoc, /This feature is \*\*not synchronization\*\*/);
   assert.match(transferDoc, /SHA-256/);
   assert.match(transferDoc, /Skip/);
@@ -113,7 +115,7 @@ test("portable transfer documentation and public AI context remain truthful", ()
   assert.equal(llms, publicLlms);
   assert.equal(llmsFull, publicLlmsFull);
   assert.match(llms, /explicit `\.signalflow\.json` archive preparation/i);
-  assert.match(llmsFull, /## Portable transfer and recovery/);
+  assert.match(llmsFull, /## (?:\d+\.\s+)?Portable transfer and recovery/);
   assert.match(llmsFull, /production hosted transfer service.*does not/is);
 });
 

@@ -223,10 +223,11 @@ test("source architecture documentation and public AI context are consistent", (
   const llmsFull = readRepository("llms-full.txt");
   const publicLlmsFull = readFrontend("public/llms-full.txt");
 
-  assert.match(readme, /## Canonical source and asset records/);
-  assert.match(agents, /Every upload, API, MCP, repository, extension, import, and future job boundary/);
-  assert.match(architecture, /## Canonical source graph/);
-  assert.match(matrix, /Hardened remote URL evidence fetch \| Not implemented/);
+  assert.match(readme, /accept supported browser file inputs and canonical source\/asset records/i);
+  assert.match(readme, /docs\/SOURCE_ASSET_CONTRACT\.md/);
+  assert.match(agents, /canonical Asset\/SourceArtifact\/AssetProcessing records/i);
+  assert.match(architecture, /## (?:\d+\.\s+)?Canonical source graph/);
+  assert.match(matrix, /Hardened remote URL evidence fetch \(#127\).*Not implemented/);
   assert.match(sourceDoc, /Remote links and extension pages remain `reference_only`/);
   assert.match(sourceDoc, /AssetProcessing/);
   assert.match(sourceDoc, /Rollback/);
@@ -234,6 +235,6 @@ test("source architecture documentation and public AI context are consistent", (
   assert.equal(llms, publicLlms);
   assert.equal(llmsFull, publicLlmsFull);
   assert.match(llms, /Canonical Asset, SourceArtifact, and AssetProcessing/);
-  assert.match(llmsFull, /## Canonical source and asset graph/);
+  assert.match(llmsFull, /## (?:\d+\.\s+)?Canonical source and asset graph/);
   assert.match(llmsFull, /Remote URL records cannot become usable evidence/);
 });

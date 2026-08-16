@@ -58,13 +58,14 @@ test("structured data is valid JSON and states real-model canonical storage beha
   assert.doesNotMatch(serialized, /deterministic local template/i);
 });
 
-test("README states the real provider, storage, extension, export, and verification boundaries", () => {
+test("README states current provider, persistence, extension, export, and verification boundaries", () => {
   const readme = read("README.md");
-  assert.match(readme, /requires a real model provider/i);
-  assert.match(readme, /GET `?\/api\/capabilities`?/i);
+  assert.match(readme, /at least one real model provider route for real campaign generation/i);
+  assert.match(readme, /expose capability discovery/i);
   assert.match(readme, /browser-local/i);
   assert.match(readme, /authoritative current draft/i);
-  assert.match(readme, /acknowledged extension ingestion is not implemented/i);
+  assert.match(readme, /acknowledged full extension screenshot\/recording ingestion/i);
+  assert.match(readme, /not yet implemented as production capabilities/i);
   assert.match(readme, /npm test/);
   assert.match(readme, /npm audit --omit=dev --audit-level=high/);
   assert.match(readme, /npm run build/);

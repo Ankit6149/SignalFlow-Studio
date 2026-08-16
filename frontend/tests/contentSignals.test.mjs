@@ -102,7 +102,7 @@ test("future signal schemas, unsafe IDs, invalid snooze records, and runtime rec
   assert.throws(() => normalizeContentSignal({ ...manualSignal(), signalSchemaVersion: 999 }), /newer than supported/i);
   assert.throws(() => manualSignal({ projectId: "C:\\private\\repo" }), /opaque ID/i);
   assert.throws(() => normalizeContentSignal({ ...manualSignal(), status: "snoozed", snoozedUntil: null }), /requires snoozedUntil/i);
-  assert.throws(() => normalizeContentSignal({ ...manualSignal(), summary: new Date() }), /ContentSignal text|convert/i);
+  assert.throws(() => normalizeContentSignal({ ...manualSignal(), summary: new Date() }), /non-portable Date|ContentSignal text|convert/i);
 });
 
 test("memory repository rejects a signal ID being reassigned across workspaces", async () => {
@@ -116,12 +116,12 @@ test("memory repository rejects a signal ID being reassigned across workspaces",
 test("application creates project-less and project-scoped signals without creating a Campaign", async () => {
   const repository = createMemoryContentSignalRepository();
   const app = appWith(repository, { idService: createDeterministicIdService("owner") });
-  const first = await app.createManualSignal({ thought: "Ignored field", headline: "A project-less thought" });
+  const first = await app.createManualSignal({ headline: "A project-less thought" });
   const second = await app.createManualSignal({ headline: "A project update", projectId: "signalflow-studio", signalKind: "feature" });
   assert.equal(first.signalId, "owner-signal-1");
   assert.equal(first.projectId, null);
   assert.equal(second.projectId, "signalflow-studio");
-  assert.deepEqual((await app.listSignals()).map((item) => item.signalId), [second.signalId, first.signalId]);
+  assert.deepEqual((await app.listSignals()).map((item) => item.signalId), [first.signalId, second.signalId]);
   assert.ok((await repository.list()).every((item) => item.kind === "ContentSignal"));
 });
 

@@ -93,6 +93,7 @@ When target architecture and current capability truth differ, **the capability m
 - Application use cases: `frontend/lib/application/`
 - Infrastructure adapters: `frontend/lib/infrastructure/`
 - Canonical source graph: `frontend/lib/domain/sourceArtifacts.mjs`
+- Implemented manual ContentSignal domain/application: `frontend/lib/domain/contentSignals.mjs`, `frontend/lib/application/contentSignalApplication.mjs`, and `docs/CONTENT_SIGNAL_IMPLEMENTATION.md`
 - Transfer: `frontend/lib/transfer/`
 - Authoritative export: `frontend/lib/export/campaignExport.mjs`
 - Current primary UI: `frontend/app/page.js`
@@ -117,6 +118,7 @@ Currently implemented foundations include:
 - approval invalidation on edits;
 - deterministic Markdown/JSON export;
 - canonical Asset/SourceArtifact/AssetProcessing records;
+- browser-local manual ContentSignal intake and lifecycle at `/signals`;
 - portable browser archive/import/export;
 - capability discovery;
 - current MCP operations;
@@ -124,7 +126,7 @@ Currently implemented foundations include:
 
 Currently **not** complete production capabilities include:
 
-- persistent ContentSignal/ContentOpportunity intelligence;
+- automatic ContentSignal ingestion and persistent ContentOpportunity intelligence;
 - automatic work-event opportunity recommendations;
 - identity/style/narrative learning;
 - provider-neutral `InferenceTask` routing/metering;

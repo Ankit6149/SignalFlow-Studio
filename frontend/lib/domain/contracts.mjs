@@ -3,6 +3,7 @@ export const DOMAIN_SCHEMA_VERSION = 1;
 export const DOMAIN_KINDS = Object.freeze({
   WORKSPACE: "Workspace",
   PROJECT: "Project",
+  CONTENT_SIGNAL: "ContentSignal",
   CAMPAIGN: "Campaign",
   SOURCE_SNAPSHOT: "SourceSnapshot",
   SOURCE_ARTIFACT: "SourceArtifact",
@@ -24,6 +25,7 @@ export const DOMAIN_KINDS = Object.freeze({
 export const DOMAIN_CONTRACTS = Object.freeze({
   Workspace: { idField: "workspaceId", owner: "workspace", required: ["workspaceId", "name"] },
   Project: { idField: "projectId", owner: "workspace", required: ["projectId", "name"] },
+  ContentSignal: { idField: "signalId", owner: "workspace", required: ["signalId", "workspaceId", "sourceType", "headline", "signalKind", "status", "provenance"] },
   Campaign: { idField: "campaignId", owner: "project", required: ["campaignId", "title", "drafts"] },
   SourceSnapshot: { idField: "sourceSnapshotId", owner: "campaign", required: ["sourceSnapshotId", "fingerprint"] },
   SourceArtifact: { idField: "sourceArtifactId", owner: "campaign", required: ["sourceArtifactId", "artifactType"] },

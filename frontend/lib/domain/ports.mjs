@@ -1,5 +1,6 @@
 export const PORT_CONTRACTS = Object.freeze({
   campaignRepository: ["list", "get", "upsert", "remove"],
+  contentSignalRepository: ["list", "get", "upsert", "remove"],
   assetRepository: ["list", "get", "upsert", "remove"],
   sourceArtifactRepository: ["list", "get", "upsert", "remove"],
   assetProcessingRepository: ["list", "get", "upsert", "remove"],

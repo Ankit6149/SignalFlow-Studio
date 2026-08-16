@@ -54,8 +54,15 @@ jobs:
         run: |
           failed=0
           for test_file in tests/*.test.mjs; do
-            if ! node --test "$test_file"; then
-              echo "::error file=frontend/$test_file::Frontend regression failed in $test_file"
+            output="$(node --test "$test_file" 2>&1)"
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "$output"
+              detail="$(printf '%s\n' "$output" | grep -E 'not ok|AssertionError|ERR_ASSERTION|Expected|actual:|operator:|at ' | head -n 16 | tr '\n' ' ')"
+              detail="${detail//'%'/'%25'}"
+              detail="${detail//$'\r'/'%0D'}"
+              detail="${detail//$'\n'/'%0A'}"
+              echo "::error file=frontend/$test_file::$detail"
               failed=1
             fi
           done

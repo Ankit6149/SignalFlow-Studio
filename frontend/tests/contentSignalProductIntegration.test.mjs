@@ -84,7 +84,8 @@ test("capability documentation keeps automatic signals planned while manual inta
   const matrix = readRepository("docs/CAPABILITY_MATRIX.md");
   const implementation = readRepository("docs/CONTENT_SIGNAL_IMPLEMENTATION.md");
   assert.match(matrix, /Browser-local manual `ContentSignal` intake.*Available/);
-  assert.match(matrix, /Automatic signal detection.*Not implemented/);
+  assert.match(matrix, /GitHub App\/webhook → ContentSignal ingestion \| Planned/);
+  assert.match(matrix, /Automatic signal ingestion.*remain target capabilities/i);
   assert.match(matrix, /Canonical `ContentSignal` persistence\/manual intake \| Implemented/);
   assert.match(implementation, /manual signal is not a post, campaign, or opportunity/i);
   assert.match(implementation, /not yet included in the portable campaign archive/i);

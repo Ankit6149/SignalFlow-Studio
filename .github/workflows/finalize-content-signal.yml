@@ -1,0 +1,117 @@
+name: Finalize ContentSignal slice
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Apply targeted ContentSignal truth updates
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"Expected text not found in {path}: {old[:90]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace(
+              "frontend/components/SignalsWorkspace.module.css",
+              ".filterLabel select:focus-visible,\nbutton:focus-visible,\na:focus-visible {",
+              ".filterLabel select:focus-visible,\n.page button:focus-visible,\n.page a:focus-visible {",
+          )
+          replace(
+              "frontend/components/SignalsWorkspace.module.css",
+              "button:disabled { cursor: wait; opacity: 0.55; transform: none !important; }",
+              ".page button:disabled { cursor: wait; opacity: 0.55; transform: none !important; }",
+          )
+
+          replace(
+              "README.md",
+              "- accept supported browser file inputs and canonical source/asset records;\n- use real configured model-provider routes;",
+              "- accept supported browser file inputs and canonical source/asset records;\n- capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;\n- use real configured model-provider routes;",
+          )
+          replace(
+              "README.md",
+              "- persistent ContentSignal/ContentOpportunity intelligence;",
+              "- automatic ContentSignal ingestion from connected work events and persistent ContentOpportunity intelligence;",
+          )
+          replace(
+              "README.md",
+              "3. `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md` — Signals/Opportunities/Campaign/ContentPiece/Memory domain;",
+              "3. `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md` — Signals/Opportunities/Campaign/ContentPiece/Memory domain;\n4. `docs/CONTENT_SIGNAL_IMPLEMENTATION.md` — implemented browser-local manual ContentSignal contract and current limitations;",
+          )
+          replace(
+              "README.md",
+              "- saved campaigns are browser-local;\n- there is no production cloud campaign database/account workspace/cross-device sync yet;",
+              "- saved campaigns are browser-local;\n- manual ContentSignal history is also browser-local under the versioned signal repository and survives refresh/reopen;\n- ContentSignal history is not yet part of the portable campaign archive or cloud sync;\n- there is no production cloud campaign database/account workspace/cross-device sync yet;",
+          )
+
+          replace(
+              "AGENTS.md",
+              "- Canonical source graph: `frontend/lib/domain/sourceArtifacts.mjs`",
+              "- Canonical source graph: `frontend/lib/domain/sourceArtifacts.mjs`\n- Implemented manual ContentSignal domain/application: `frontend/lib/domain/contentSignals.mjs`, `frontend/lib/application/contentSignalApplication.mjs`, and `docs/CONTENT_SIGNAL_IMPLEMENTATION.md`",
+          )
+          replace(
+              "AGENTS.md",
+              "- canonical Asset/SourceArtifact/AssetProcessing records;\n- portable browser archive/import/export;",
+              "- canonical Asset/SourceArtifact/AssetProcessing records;\n- browser-local manual ContentSignal intake and lifecycle at `/signals`;\n- portable browser archive/import/export;",
+          )
+          replace(
+              "AGENTS.md",
+              "- persistent ContentSignal/ContentOpportunity intelligence;",
+              "- automatic ContentSignal ingestion and persistent ContentOpportunity intelligence;",
+          )
+
+          replace(
+              "docs/CAPABILITY_MATRIX.md",
+              "| Canonical Asset / SourceArtifact / AssetProcessing contract | Available | Available | Available | Available |",
+              "| Canonical Asset / SourceArtifact / AssetProcessing contract | Available | Available | Available | Available |\n| Browser-local manual `ContentSignal` intake/lifecycle | Available | Available | Available | Available |",
+          )
+          replace(
+              "docs/CAPABILITY_MATRIX.md",
+              "| Canonical `ContentSignal` persistence/manual intake | Planned | #152, `CONTENT_INTELLIGENCE_ARCHITECTURE.md` |",
+              "| Canonical `ContentSignal` persistence/manual intake | Implemented browser-local; hosted persistence/automatic ingestion still planned | #152, `CONTENT_SIGNAL_IMPLEMENTATION.md` |",
+          )
+          replace(
+              "docs/CAPABILITY_MATRIX.md",
+              "The new docs define Signals/Opportunities/Identity/Memory as target product records, but none may be presented in the live UI as persistent working intelligence until their issue is implemented.",
+              "Manual browser-local ContentSignal intake is now implemented and may be presented as such. Automatic signal ingestion, ContentOpportunity intelligence, Identity, StyleMemory, NarrativeMemory, and the unified Today/Plan experience remain target capabilities until their owning issues are complete.",
+          )
+          replace(
+              "docs/CAPABILITY_MATRIX.md",
+              "- a one-off model-generated `strategy` object is **not** a persistent ContentOpportunity system;",
+              "- a saved manual ContentSignal is real persisted evidence, but it is **not** automatic detection or a persistent ContentOpportunity system;\n- a one-off model-generated `strategy` object is **not** a persistent ContentOpportunity system;",
+          )
+
+          replace(
+              "frontend/lib/capabilities/capabilityContract.mjs",
+              'browserLocal: capability(true, "Campaigns can be saved in this browser."),',
+              'browserLocal: capability(true, "Campaigns and manual ContentSignals can be saved in this browser."),',
+          )
+          PY
+      - name: Commit targeted updates when needed
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No targeted updates required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md AGENTS.md docs/CAPABILITY_MATRIX.md frontend/lib/capabilities/capabilityContract.mjs frontend/components/SignalsWorkspace.module.css
+          git commit -m "docs(signals): mark manual ContentSignal intake implemented"
+          git push origin HEAD:${{ github.head_ref }}

@@ -227,7 +227,7 @@ test("source architecture documentation and public AI context are consistent", (
   assert.match(readme, /docs\/SOURCE_ASSET_CONTRACT\.md/);
   assert.match(agents, /canonical Asset\/SourceArtifact\/AssetProcessing records/i);
   assert.match(architecture, /## (?:\d+\.\s+)?Canonical source graph/);
-  assert.match(matrix, /Hardened remote URL evidence fetch \| Not implemented/);
+  assert.match(matrix, /Hardened remote URL evidence fetch \(#127\).*Not implemented/);
   assert.match(sourceDoc, /Remote links and extension pages remain `reference_only`/);
   assert.match(sourceDoc, /AssetProcessing/);
   assert.match(sourceDoc, /Rollback/);

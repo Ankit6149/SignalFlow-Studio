@@ -52,6 +52,7 @@ jobs:
         working-directory: frontend
         shell: bash
         run: |
+          set +e
           failed=0
           for test_file in tests/*.test.mjs; do
             output="$(node --test "$test_file" 2>&1)"

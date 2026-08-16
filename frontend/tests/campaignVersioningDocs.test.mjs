@@ -24,12 +24,13 @@ test("README and agent guide preserve edit-safe current campaign invariants", ()
   assert.match(agents, /approval/i);
 });
 
-test("architecture and migration runbooks cover editor-state v2 and duplicate-title safety", () => {
+test("architecture and migration runbooks preserve stable identity and editor-state migration safety", () => {
   const architecture = read("docs/DOMAIN_ARCHITECTURE.md");
   const migration = read("docs/CAMPAIGN_SCHEMA_MIGRATION.md");
   const editing = read("docs/CAMPAIGN_EDITING_AND_VERSIONING.md");
-  assert.match(architecture, /editor reducer schema is version `2`/i);
-  assert.match(architecture, /campaign titles are not identity/i);
+  assert.match(architecture, /stable campaign ID\/schema/i);
+  assert.match(architecture, /campaign title is not identity/i);
+  assert.match(architecture, /Save updates current stable ID; Save as copy allocates a new ID/i);
   assert.match(migration, /editor-state v2/i);
   assert.match(migration, /save as copy allocates a new ID/i);
   assert.match(editing, /never replaces a manually edited draft silently/i);

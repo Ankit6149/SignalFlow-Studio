@@ -12,6 +12,15 @@ import {
 const samples = {
   Workspace: { workspaceId: "workspace-1", name: "Workspace" },
   Project: { projectId: "project-1", name: "Project" },
+  ContentSignal: {
+    signalId: "signal-1",
+    workspaceId: "workspace-1",
+    sourceType: "manual",
+    headline: "A thought worth remembering",
+    signalKind: "thought",
+    status: "new",
+    provenance: { source: "manual", ingestionMethod: "user_input" },
+  },
   Campaign: { campaignId: "campaign-1", title: "Campaign", drafts: { linkedin: {} } },
   SourceSnapshot: { sourceSnapshotId: "source-1", fingerprint: "sf1" },
   SourceArtifact: { sourceArtifactId: "artifact-1", artifactType: "note" },

@@ -1,7 +1,7 @@
 {
   "name": "SignalFlow Studio",
   "short_name": "SignalFlow",
-  "description": "A review-first campaign workspace for turning product context into editable multi-channel drafts.",
+  "description": "An approval-first content operating system in progress, with a usable manual Studio today and broader automation added transparently over time.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

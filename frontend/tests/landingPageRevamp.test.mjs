@@ -14,6 +14,11 @@ const styles = read("components/LandingPage.module.css");
 const globals = read("app/globals.css");
 const publicSurfaces = read("app/public-surfaces.css");
 const containment = read("app/ui-containment.css");
+const layout = read("app/layout.js");
+const openGraphImage = read("app/opengraph-image.js");
+const manifest = read("public/manifest.webmanifest");
+const structuredDataText = read("public/schema.jsonld");
+const structuredData = JSON.parse(structuredDataText);
 
 test("the landing route has one component owner and preserves the existing BrandMark", () => {
   assert.match(page, /import LandingPage from "\.\.\/components\/LandingPage";/);
@@ -61,6 +66,37 @@ test("the landing page keeps current and future claims intentionally distinct", 
   assert.match(landing, /Architecture direction; availability depends on implementation/);
   assert.match(landing, /Private Hybrid/);
   assert.match(landing, /Local Only/);
+});
+
+test("public discovery metadata matches the content operating system positioning", () => {
+  const manifestData = JSON.parse(manifest);
+  const serializedSchema = JSON.stringify(structuredData);
+  const retiredPositioning = /One Brief, Every Channel|ONE BRIEF · EVERY CHANNEL|twelve editable destinations|complete review-ready campaign/i;
+
+  assert.match(layout, /SignalFlow Studio — Content Operating System/);
+  assert.match(layout, /approval-first content operating system in progress/i);
+  assert.match(layout, /broader content operating system direction/i);
+  assert.match(openGraphImage, /CONTENT OS · IN PROGRESS/);
+  assert.match(openGraphImage, /Your work should not become a second content job/);
+  assert.match(manifestData.description, /approval-first content operating system in progress/i);
+  assert.match(serializedSchema, /content operating system in progress/i);
+  assert.match(serializedSchema, /real model provider route/i);
+  assert.match(serializedSchema, /versioned campaign records/i);
+  assert.match(serializedSchema, /as those capabilities are implemented/i);
+
+  for (const surface of [layout, openGraphImage, manifest, structuredDataText]) {
+    assert.doesNotMatch(surface, retiredPositioning);
+  }
+});
+
+test("structured metadata lists shipped foundation separately from future direction", () => {
+  const software = structuredData["@graph"].find((entry) => Array.isArray(entry["@type"]) && entry["@type"].includes("SoftwareApplication"));
+  assert.ok(software, "SoftwareApplication structured data is required");
+  assert.match(software.description, /The current SignalFlow Studio/);
+  assert.match(software.description, /broader content operating system direction/i);
+  assert.ok(software.featureList.every((feature) => !/automatic signal|opportunity ranking|automatic media|narrative memory/i.test(feature)));
+  assert.ok(software.featureList.some((feature) => /manual source context/i.test(feature)));
+  assert.ok(software.featureList.some((feature) => /approval and confirmed success/i.test(feature)));
 });
 
 test("the landing design is scoped and removes the retired global cascade", () => {

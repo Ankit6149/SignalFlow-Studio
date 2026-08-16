@@ -70,7 +70,18 @@ jobs:
           exit "$failed"
       - name: Audit production dependencies
         working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
+        shell: bash
+        run: |
+          set +e
+          output="$(npm audit --omit=dev --audit-level=high 2>&1)"
+          status=$?
+          echo "$output"
+          if [ "$status" -ne 0 ]; then
+            detail="$(printf '%s\n' "$output" | grep -E 'high|critical|Severity|fix available|node_modules|# npm audit report|^[a-zA-Z0-9@/_-]+ ' | head -n 20 | tr '\n' ' ')"
+            detail="${detail//'%'/'%25'}"
+            echo "::error file=frontend/package-lock.json::$detail"
+          fi
+          exit "$status"
       - name: Build frontend
         working-directory: frontend
         run: npm run build

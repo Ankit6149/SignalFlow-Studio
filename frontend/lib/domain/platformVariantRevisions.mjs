@@ -3,9 +3,11 @@ import { normalizePlatformVariant, VARIANT_STATUSES } from "./contentPlanning.mj
 
 export const PLATFORM_VARIANT_REVISION_SCHEMA_VERSION = 1;
 export const PLATFORM_VARIANT_REVISION_STATUS = "review";
+export const PLATFORM_VARIANT_REVISION_ORIGINS = Object.freeze({ GENERATED: "generated", EDITED: "edited" });
 
 const DESTINATIONS = new Set(["linkedin", "x"]);
 const ROUTE_KINDS = new Set(["remote", "local"]);
+const ORIGIN_VALUES = new Set(Object.values(PLATFORM_VARIANT_REVISION_ORIGINS));
 
 function text(value, fallback = "", maxLength = 12000) {
   const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
@@ -14,8 +16,9 @@ function text(value, fallback = "", maxLength = 12000) {
   return resolved;
 }
 
-function id(value, field) {
+function id(value, field, required = true) {
   const normalized = text(value, "", 240);
+  if (!normalized && !required) return null;
   if (!normalized) throw new TypeError(`${field} is required.`);
   if (/[/\\]|^[a-zA-Z]:/.test(normalized)) throw new TypeError(`${field} must be an opaque ID.`);
   return normalized;
@@ -55,8 +58,9 @@ function normalizeFormat(value, destination) {
   return format;
 }
 
-function normalizeGenerationProvenance(value = {}) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("PlatformVariantRevision.generationProvenance is required.");
+function normalizeGenerationProvenance(value = null) {
+  if (!value) return null;
+  if (typeof value !== "object" || Array.isArray(value)) throw new TypeError("PlatformVariantRevision.generationProvenance must be an object.");
   const routeKind = text(value.routeKind, "", 40).toLowerCase();
   if (!ROUTE_KINDS.has(routeKind)) throw new TypeError("PlatformVariantRevision generation route must be remote or local.");
   return portableClone({
@@ -66,6 +70,15 @@ function normalizeGenerationProvenance(value = {}) {
     routeKind,
     promptVersion: text(value.promptVersion, "platform_variant_v1", 80),
     generatedAt: timestamp(value.generatedAt, "PlatformVariantRevision.generationProvenance.generatedAt"),
+  });
+}
+
+function normalizeEditProvenance(value = null) {
+  if (!value) return null;
+  if (typeof value !== "object" || Array.isArray(value)) throw new TypeError("PlatformVariantRevision.editProvenance must be an object.");
+  return portableClone({
+    editedBy: id(value.editedBy, "PlatformVariantRevision.editProvenance.editedBy"),
+    editedAt: timestamp(value.editedAt, "PlatformVariantRevision.editProvenance.editedAt"),
   });
 }
 
@@ -82,6 +95,16 @@ export function normalizePlatformVariantRevision(input = {}) {
   if (destination === "x" && format === "single_post" && content.length > 280) {
     throw new TypeError("X single-post revisions must be 280 characters or fewer.");
   }
+  const origin = text(parsed.origin, PLATFORM_VARIANT_REVISION_ORIGINS.GENERATED, 40).toLowerCase();
+  if (!ORIGIN_VALUES.has(origin)) throw new TypeError(`Unsupported PlatformVariantRevision origin: ${origin}.`);
+  const generationProvenance = normalizeGenerationProvenance(parsed.generationProvenance);
+  const editProvenance = normalizeEditProvenance(parsed.editProvenance);
+  if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.GENERATED && !generationProvenance) {
+    throw new TypeError("Generated PlatformVariantRevision requires generationProvenance.");
+  }
+  if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.EDITED && (!editProvenance || !parsed.parentRevisionId)) {
+    throw new TypeError("Edited PlatformVariantRevision requires parentRevisionId and editProvenance.");
+  }
   const createdAt = timestamp(parsed.createdAt, "PlatformVariantRevision.createdAt");
   return createDomainRecord("PlatformVariantRevision", {
     revisionSchemaVersion: PLATFORM_VARIANT_REVISION_SCHEMA_VERSION,
@@ -94,12 +117,15 @@ export function normalizePlatformVariantRevision(input = {}) {
     revisionNumber: positiveInteger(parsed.revisionNumber, "PlatformVariantRevision.revisionNumber"),
     strategyRevision: positiveInteger(parsed.strategyRevision, "PlatformVariantRevision.strategyRevision"),
     status: PLATFORM_VARIANT_REVISION_STATUS,
+    origin,
+    parentRevisionId: id(parsed.parentRevisionId, "PlatformVariantRevision.parentRevisionId", false),
     format,
     content,
     segments,
     inputFingerprint: text(parsed.inputFingerprint, "", 6000),
     identityContextSnapshotId: id(parsed.identityContextSnapshotId, "PlatformVariantRevision.identityContextSnapshotId"),
-    generationProvenance: normalizeGenerationProvenance(parsed.generationProvenance),
+    generationProvenance,
+    editProvenance,
     createdAt,
   });
 }
@@ -129,12 +155,46 @@ export function createPlatformVariantRevision({
     revisionNumber,
     strategyRevision,
     status: PLATFORM_VARIANT_REVISION_STATUS,
+    origin: PLATFORM_VARIANT_REVISION_ORIGINS.GENERATED,
     format: output?.format,
     content: output?.content,
     segments: output?.segments,
     inputFingerprint,
     identityContextSnapshotId,
     generationProvenance,
+    createdAt,
+  });
+}
+
+export function createEditedPlatformVariantRevision({
+  platformVariantRevisionId,
+  parentRevision,
+  revisionNumber,
+  content,
+  segments,
+  format,
+  editedBy,
+  createdAt,
+} = {}) {
+  const parent = normalizePlatformVariantRevision(parentRevision);
+  return normalizePlatformVariantRevision({
+    platformVariantRevisionId,
+    workspaceId: parent.workspaceId,
+    platformVariantId: parent.platformVariantId,
+    contentPieceId: parent.contentPieceId,
+    narrativeStrategyId: parent.narrativeStrategyId,
+    destination: parent.destination,
+    revisionNumber,
+    strategyRevision: parent.strategyRevision,
+    status: PLATFORM_VARIANT_REVISION_STATUS,
+    origin: PLATFORM_VARIANT_REVISION_ORIGINS.EDITED,
+    parentRevisionId: parent.platformVariantRevisionId,
+    format: format || parent.format,
+    content,
+    segments: segments || [],
+    inputFingerprint: `user-edit:${parent.platformVariantRevisionId}:${revisionNumber}`,
+    identityContextSnapshotId: parent.identityContextSnapshotId,
+    editProvenance: { editedBy, editedAt: createdAt },
     createdAt,
   });
 }

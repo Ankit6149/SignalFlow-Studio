@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentSignalApplication } from "../lib/application/browserContentSignalApplication.mjs";
 import { createBrowserContentOpportunityApplication } from "../lib/application/browserContentOpportunityApplication.mjs";
+import { createBrowserGoldenPathAutopilotApplication } from "../lib/application/browserGoldenPathAutopilotApplication.mjs";
 import { CONTENT_SIGNAL_KINDS } from "../lib/domain/contentSignals.mjs";
 import styles from "./SignalsWorkspace.module.css";
 import WorkspaceShell from "./WorkspaceShell";
@@ -86,12 +87,18 @@ function statusClass(status) {
   return `${styles.status} ${styles[`status_${status}`] || ""}`;
 }
 
+function planRoute(result) {
+  const opportunityId = result?.records?.opportunityId;
+  return opportunityId ? `/plan?opportunity=${encodeURIComponent(opportunityId)}` : "/plan";
+}
+
 export default function SignalsWorkspace() {
   const [form, setForm] = useState(defaultForm);
   const [signals, setSignals] = useState([]);
   const [filter, setFilter] = useState("active");
   const [busy, setBusy] = useState(false);
   const [ideaBusyId, setIdeaBusyId] = useState("");
+  const [prepareBusyId, setPrepareBusyId] = useState("");
   const [message, setMessage] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
@@ -104,6 +111,12 @@ export default function SignalsWorkspace() {
   }), []);
 
   const opportunityApplication = useMemo(() => createBrowserContentOpportunityApplication({
+    getStorage: () => window.localStorage,
+    signalKey: SIGNAL_STORAGE_KEY,
+    workspaceId: LOCAL_WORKSPACE_ID,
+  }), []);
+
+  const autopilotApplication = useMemo(() => createBrowserGoldenPathAutopilotApplication({
     getStorage: () => window.localStorage,
     signalKey: SIGNAL_STORAGE_KEY,
     workspaceId: LOCAL_WORKSPACE_ID,
@@ -161,7 +174,7 @@ export default function SignalsWorkspace() {
       await reload();
       setMessage({
         type: "success",
-        text: "Signal saved in this browser. Nothing was generated or published. Use Find ideas when you want SignalFlow to judge whether it is worth communicating.",
+        text: "Signal saved in this browser. Nothing was generated or published. Use Prepare for review when you want SignalFlow to handle the safe middle work; Find ideas remains available when you want to inspect the plan yourself.",
       });
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "The signal could not be saved." });
@@ -180,6 +193,58 @@ export default function SignalsWorkspace() {
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "The signal could not be updated." });
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function prepareForReview(signalId) {
+    setBusy(true);
+    setPrepareBusyId(signalId);
+    setMessage({
+      type: "info",
+      text: "Preparing this Signal for judgment. SignalFlow will stop in Plan if confidence, evidence, Voice, privacy, or strategy boundaries are not strong enough.",
+    });
+    try {
+      const result = await autopilotApplication.prepareSignal(signalId);
+      await reload();
+
+      if (result.status === "ready_for_judgment") {
+        window.location.assign("/today");
+        return;
+      }
+      if (result.status === "needs_voice") {
+        window.location.assign("/voice");
+        return;
+      }
+      if (result.status === "needs_plan") {
+        window.location.assign(planRoute(result));
+        return;
+      }
+      if (result.status === "partial_failure") {
+        if (Number(result.reviewedCount || 0) > 0 || result.nextRoute === "/today") {
+          window.location.assign("/today");
+          return;
+        }
+        if (result.records?.opportunityId) {
+          window.location.assign(planRoute(result));
+          return;
+        }
+        setMessage({ type: "error", text: result.explanation || "Part of preparation did not complete. The completed canonical state was preserved for recovery." });
+        return;
+      }
+      if (result.status === "not_worth_posting") {
+        setMessage({ type: "success", text: result.explanation || "SignalFlow does not currently recommend turning this Signal into content." });
+        return;
+      }
+      if (result.status === "blocked_privacy") {
+        setMessage({ type: "error", text: result.explanation || "The saved privacy boundary does not permit the required inference route. SignalFlow did not downgrade it." });
+        return;
+      }
+      setMessage({ type: "error", text: result.explanation || "SignalFlow could not prepare this Signal for review." });
+    } catch (error) {
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not prepare this Signal for review." });
+    } finally {
+      setPrepareBusyId("");
       setBusy(false);
     }
   }
@@ -238,21 +303,21 @@ export default function SignalsWorkspace() {
   }
 
   return (
-    <WorkspaceShell activeItem="signals" statusLabel="Manual signals available" statusTone="ready">
+    <WorkspaceShell activeItem="signals" statusLabel="Decision preparation available" statusTone="ready">
       <main className={styles.page} id="workspace-content">
 
       <section className={styles.hero} aria-labelledby="signals-title">
         <div>
-          <p className={styles.eyebrow}>SIGNALS · AVAILABLE NOW</p>
-          <h1 id="signals-title">Capture what may be worth talking about before it becomes a post.</h1>
+          <p className={styles.eyebrow}>SIGNALS · OWNER ALPHA</p>
+          <h1 id="signals-title">Capture the work. Let SignalFlow prepare the decision.</h1>
           <p>
-            A signal is a durable record of a thought, lesson, milestone, release, question, or event. Saving one does not create a campaign and does not call AI. It gives the editorial system something real to judge later.
+            A signal is a durable record of a thought, lesson, milestone, release, question, or event. When you choose Prepare for review, SignalFlow can evaluate, plan, write, and check a high-confidence story before bringing only the final judgment to Today.
           </p>
         </div>
         <div className={styles.principleCard}>
           <span>OWNER-FIRST CONTRACT</span>
           <strong>Your job is judgment.</strong>
-          <p>SignalFlow keeps the context so later opportunity, narrative, media, and publishing steps can be automated without losing why the story exists.</p>
+          <p>High-confidence work can move to Today. Uncertain work stops in Plan. Privacy and explicit Voice boundaries never get silently downgraded.</p>
         </div>
       </section>
 
@@ -260,7 +325,7 @@ export default function SignalsWorkspace() {
         <div><strong>{activeCount}</strong><span>Active signals</span></div>
         <div><strong>{signals.length}</strong><span>Saved in this browser</span></div>
         <div><strong>{projectCount}</strong><span>Project references</span></div>
-        <div><strong>0</strong><span>Automatic detections</span><small>Not implemented</small></div>
+        <div><strong>0</strong><span>Automatic detections</span><small>Connected-source detection is not implemented</small></div>
       </section>
 
       {message && (
@@ -276,7 +341,7 @@ export default function SignalsWorkspace() {
               <span>MANUAL INTAKE</span>
               <h2 id="capture-signal-title">What happened?</h2>
             </div>
-            <small>No AI call</small>
+            <small>No AI call to save</small>
           </div>
 
           <form onSubmit={submitSignal} className={styles.form}>
@@ -329,7 +394,7 @@ export default function SignalsWorkspace() {
             <div className={styles.formFooter}>
               <div>
                 <strong>Stored locally in this browser</strong>
-                <span>Cloud sync and automatic event detection are not claimed here.</span>
+                <span>Saving does not call AI, approve content, or publish anything.</span>
               </div>
               <button type="submit" disabled={busy}>{busy ? "Saving…" : "Save signal"}</button>
             </div>
@@ -337,14 +402,14 @@ export default function SignalsWorkspace() {
         </section>
 
         <aside className={styles.nextCard} aria-labelledby="next-title">
-          <span className={styles.nextTag}>NEXT PRODUCT STEP</span>
-          <h2 id="next-title">Signals are evidence, not content.</h2>
+          <span className={styles.nextTag}>DECISION FLOW</span>
+          <h2 id="next-title">Signals are evidence. Today is judgment.</h2>
           <ol>
-            <li><b>Now</b><span>Capture and persist the signal.</span></li>
-            <li><b>Next</b><span>Evaluate whether it is a worthwhile ContentOpportunity and explain why.</span></li>
-            <li><b>Then</b><span>Choose an angle before narrative, media, and platform variants exist.</span></li>
+            <li><b>Capture</b><span>Save the real thought, event, lesson, or milestone.</span></li>
+            <li><b>Prepare</b><span>SignalFlow evaluates, plans, writes, and checks only when deterministic confidence gates pass.</span></li>
+            <li><b>Judge</b><span>Review-ready LinkedIn/X revisions arrive in Today for Approve, Request change, or Reject.</span></li>
           </ol>
-          <p>This separation is what lets the owner workflow scale later without turning every event into spam.</p>
+          <p>If evidence, Voice, privacy, destination, media, or strategy confidence is insufficient, SignalFlow stops in Plan instead of guessing.</p>
         </aside>
       </div>
 
@@ -375,6 +440,7 @@ export default function SignalsWorkspace() {
           <div className={styles.signalList}>
             {visibleSignals.map((signal) => {
               const isEditing = editingId === signal.signalId;
+              const isActive = !["ignored", "archived", "snoozed"].includes(signal.status);
               return (
                 <article className={styles.signalCard} key={signal.signalId}>
                   <div className={styles.signalMeta}>
@@ -414,10 +480,15 @@ export default function SignalsWorkspace() {
                           {(signal.sourceArtifactIds.length > 0 || signal.assetIds.length > 0) && <span>{signal.sourceArtifactIds.length} sources · {signal.assetIds.length} assets</span>}
                         </div>
                         <div className={styles.signalActions}>
-                          {! ["ignored", "archived", "snoozed"].includes(signal.status) && (
-                            <button type="button" className={styles.ideaButton} onClick={() => findIdeas(signal.signalId)} disabled={busy}>
-                              {ideaBusyId === signal.signalId ? "Finding ideas…" : "Find ideas"}
-                            </button>
+                          {isActive && (
+                            <>
+                              <button type="button" className={styles.ideaButton} onClick={() => prepareForReview(signal.signalId)} disabled={busy}>
+                                {prepareBusyId === signal.signalId ? "Preparing…" : "Prepare for review"}
+                              </button>
+                              <button type="button" className={styles.quietButton} onClick={() => findIdeas(signal.signalId)} disabled={busy} title="Open the opportunity and plan manually">
+                                {ideaBusyId === signal.signalId ? "Finding ideas…" : "Find ideas"}
+                              </button>
+                            </>
                           )}
                           <button type="button" onClick={() => beginEdit(signal)} disabled={busy}>Edit</button>
                           {signal.status === "ignored" || signal.status === "archived" || signal.status === "snoozed" ? (

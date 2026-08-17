@@ -72,7 +72,6 @@ function repetitionCandidate(opportunity) {
     title: opportunity.title,
     summary: opportunity.summary,
     angle: angle?.title || "",
-    angleSummary: angle?.summary || angle?.approach || "",
     coreIdea: opportunity.summary,
     destinations: recommendedDestinations(opportunity),
     occurredAt: opportunity.createdAt,

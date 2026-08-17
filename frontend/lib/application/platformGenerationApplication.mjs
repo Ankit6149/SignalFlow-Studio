@@ -37,8 +37,22 @@ function activeIdentityRefs(bundle = {}) {
   );
 }
 
+function compactFingerprint(value) {
+  const source = stableStringify(value);
+  let left = 0x811c9dc5;
+  let right = 0x9e3779b9;
+  for (let index = 0; index < source.length; index += 1) {
+    const code = source.charCodeAt(index);
+    left ^= code;
+    left = Math.imul(left, 0x01000193) >>> 0;
+    right ^= code + index;
+    right = Math.imul(right, 0x85ebca6b) >>> 0;
+  }
+  return `sf-cache-v1-${left.toString(16).padStart(8, "0")}${right.toString(16).padStart(8, "0")}-${source.length}`;
+}
+
 function generationFingerprint({ strategy, contentPiece, variant, sourceSignal, identityBundle }) {
-  return stableStringify({
+  return compactFingerprint({
     narrativeStrategyId: strategy.narrativeStrategyId,
     strategyRevision: strategy.strategyRevision,
     strategyUpdatedAt: strategy.updatedAt,

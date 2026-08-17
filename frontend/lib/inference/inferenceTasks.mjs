@@ -5,6 +5,7 @@ export const INFERENCE_TASK_TYPES = Object.freeze({
   OPPORTUNITY_EVALUATION: "opportunity_evaluation",
   NARRATIVE_STRATEGY: "narrative_strategy",
   PLATFORM_VARIANT: "platform_variant",
+  PLATFORM_VARIANT_REVISION: "platform_variant_revision",
   AUTHENTICITY_CRITIQUE: "authenticity_critique",
   EVIDENCE_CRITIQUE: "evidence_critique",
 });

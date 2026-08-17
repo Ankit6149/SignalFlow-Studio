@@ -88,7 +88,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | GitHub App/webhook → ContentSignal ingestion | Planned | #161, `GITHUB_INTEGRATION_AND_MCP.md` |
 | Explainable `ContentOpportunity` evaluation/ranking | Implemented for browser-local manual Signals; automatic multi-source intelligence and memory-aware ranking still planned | #156/#166 |
 | Opportunity angle options + `Something else` | Implemented for persisted manual-Signal opportunities in `/plan`; campaign strategy conversion still planned | #156/#159/#166 |
-| Persistent Identity/Perception/Voice/Boundary profiles | Planned | #153 |
+| Persistent Identity/Perception/Voice/Boundary profiles | Implemented browser-local for explicit owner profiles + version history + LinkedIn/X expression + identity-context snapshots; hosted sync and automatic inference still planned | #153/#166 |
 | Learned explainable StyleMemory | Planned | #154 |
 | Narrative/publication memory + semantic repetition | Planned | #155 |
 | NarrativeStrategy / ContentPiece / PlatformVariant domain | Planned | #157 |
@@ -118,7 +118,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Automatic deterministic raw screencast | Planned | #164 |
 | Motion composition / multi-aspect video render | Planned | #165 |
 | Exact media revision approval/publication binding | Planned | #151/#165/#168/#179–#185 |
-| Owner Golden Path 1 manual thought → authentic approval | Planned | #166 |
+| Owner Golden Path 1 manual thought → authentic approval | In progress: manual Signal, Opportunity/angles, Plan, and explicit Voice/Identity context implemented; NarrativeStrategy, LinkedIn/X generation/critique/review/memory still pending | #166 |
 | Owner Golden Path 2 GitHub event → opportunity + visual evidence | Planned | #167 |
 | Owner Golden Path 3 approved revision → durable publish → memory | Planned | #168 |
 | Performance analytics ingestion/learning | Future; not yet scoped as production capability | product vision/editorial docs |

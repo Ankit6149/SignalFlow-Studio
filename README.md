@@ -49,6 +49,7 @@ The current product can:
 - accept supported browser file inputs and canonical source/asset records;
 - capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;
 - evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;
+- create and version browser-local explicit Identity, Desired Perception, Voice, Boundary, LinkedIn/X Platform Expression, and optional Project Guidance records at `/voice`, including immutable `IdentityContextSnapshot` records for exact downstream generation context;
 - use real configured model-provider routes;
 - generate destination-specific campaign drafts;
 - preserve stable campaign IDs and edit-safe draft history;
@@ -67,7 +68,7 @@ The repository must **not** claim the following are already available until thei
 
 - automatic ContentSignal ingestion from connected work events and automatic opportunity evaluation/ranking across connected sources;
 - complete NarrativeMemory/identity-aware opportunity evaluation across historical content;
-- long-lived identity/style/narrative learning;
+- automatic identity inference, explainable StyleMemory learning, and NarrativeMemory learning from historical edits/publications;
 - a `Today` decision inbox;
 - editorial cadence planning;
 - provider-neutral Inference Fabric/Private Hybrid/local intelligence;

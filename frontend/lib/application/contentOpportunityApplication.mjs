@@ -42,6 +42,13 @@ function obviousSkipReason(signal) {
   return null;
 }
 
+function normalizeRepetitionReport(report = {}) {
+  const riskLevel = String(report?.riskLevel || "unknown").trim().toLowerCase();
+  const explanation = String(report?.explanation || "").trim();
+  if (!explanation) throw new TypeError("A NarrativeMemory repetition explanation is required.");
+  return { riskLevel, explanation };
+}
+
 export function createContentOpportunityApplication({
   contentOpportunityRepository,
   contentSignalRepository,
@@ -164,6 +171,20 @@ export function createContentOpportunityApplication({
     return persisted;
   }
 
+  async function applyRepetitionReport(opportunityId, report) {
+    const current = await requireOpportunity(opportunityId);
+    const repetition = normalizeRepetitionReport(report);
+    const next = normalizeContentOpportunity({
+      ...current,
+      repetitionRisk: {
+        level: repetition.riskLevel,
+        reason: repetition.explanation,
+      },
+      updatedAt: applicationClock.now(),
+    });
+    return opportunities.upsert(next);
+  }
+
   async function selectOpportunity(opportunityId) {
     const current = await requireOpportunity(opportunityId);
     const next = transitionContentOpportunity(current, CONTENT_OPPORTUNITY_STATUSES.SHORTLISTED, applicationClock.now());
@@ -201,6 +222,7 @@ export function createContentOpportunityApplication({
 
   return {
     evaluateSignal,
+    applyRepetitionReport,
     listRankedOpportunities,
     readOpportunity,
     findCurrentForSignal,

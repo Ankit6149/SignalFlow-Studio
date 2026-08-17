@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentPlanningApplication } from "../lib/application/browserContentPlanningApplication.mjs";
 import { createBrowserPlatformGenerationApplication } from "../lib/application/browserPlatformGenerationApplication.mjs";
+import PlatformReviewPanel from "./PlatformReviewPanel";
 import styles from "./CampaignPlanPanel.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
@@ -28,6 +29,14 @@ function titleCase(value) {
 
 function destinationLabel(value) {
   return value === "x" ? "X" : "LinkedIn";
+}
+
+function revisionProvenance(revision) {
+  if (!revision) return "";
+  if (revision.origin === "edited") return `Edited by ${revision.editProvenance?.editedBy || "owner"}`;
+  const provider = revision.generationProvenance?.provider || "model route";
+  const model = revision.generationProvenance?.model || "default model";
+  return `${provider} · ${model}`;
 }
 
 export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
@@ -143,9 +152,9 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
           text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" "),
         });
       } else if (result.generated.length) {
-        setMessage({ type: "success", text: "LinkedIn/X drafts generated as immutable review revisions. Nothing is approved or published yet." });
+        setMessage({ type: "success", text: "LinkedIn/X drafts generated as immutable review revisions. Run checks on each exact revision before approval." });
       } else {
-        setMessage({ type: "success", text: "Every non-omitted destination already has a current review revision." });
+        setMessage({ type: "success", text: "Every non-omitted destination already has a current draft revision." });
       }
     } catch (error) {
       setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not generate platform drafts." });
@@ -242,14 +251,14 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
           {contentPiece ? (
             <div className={styles.productionStage}>
               <div className={styles.approvedState}>
-                <div><span>PLAN APPROVED</span><strong>One canonical ContentPiece is ready.</strong><p>Generate only the non-omitted LinkedIn/X variants. Each result is stored as an immutable review revision using that destination&apos;s exact Voice snapshot.</p></div>
+                <div><span>PLAN APPROVED</span><strong>One canonical ContentPiece is ready.</strong><p>Generate only the non-omitted LinkedIn/X variants. Each revision is reviewed and approved independently.</p></div>
                 {pendingGenerationCount > 0 ? (
                   <button type="button" className={styles.generateButton} onClick={generateDrafts} disabled={busy}>{busy ? "Generating…" : `Generate ${pendingGenerationCount} draft${pendingGenerationCount === 1 ? "" : "s"}`}</button>
-                ) : <small className={styles.readyLabel}>Draft stage complete</small>}
+                ) : <small className={styles.readyLabel}>Drafts available for review</small>}
               </div>
 
-              <div className={styles.draftStage} aria-label="Generated platform drafts">
-                <div className={styles.subhead}><span>DRAFTS · GENERATED, NOT APPROVED</span><p>Read-only in this slice. Editing, critics and exact approval are the next review stage.</p></div>
+              <div className={styles.draftStage} aria-label="Platform draft review">
+                <div className={styles.subhead}><span>DRAFT REVIEW · EXACT REVISIONS</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time.</p></div>
                 {generationRows.map(({ variant, currentRevision, history }) => (
                   <article className={styles.draftRow} key={variant.platformVariantId} data-status={variant.status}>
                     <div className={styles.draftMeta}>
@@ -264,10 +273,11 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
                         {currentRevision.format === "thread" ? (
                           <ol>{currentRevision.segments.map((segment, index) => <li key={`${currentRevision.platformVariantRevisionId}-${index}`}><b>{index + 1}</b><p>{segment}</p></li>)}</ol>
                         ) : <p>{currentRevision.content}</p>}
-                        <small>{currentRevision.generationProvenance.provider} · {currentRevision.generationProvenance.model} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
+                        <small>{revisionProvenance(currentRevision)} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
+                        <PlatformReviewPanel variant={variant} revision={currentRevision} onChanged={reload} />
                       </div>
                     ) : (
-                      <p className={styles.draftPlaceholder}>{variant.status === "failed" ? "Generation failed for this destination. The other platform remains intact; retry is available through the generation service." : "No generated revision yet."}</p>
+                      <p className={styles.draftPlaceholder}>{variant.status === "failed" ? "Generation failed for this destination. The other platform remains intact." : "No generated revision yet."}</p>
                     )}
                   </article>
                 ))}

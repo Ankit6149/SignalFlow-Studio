@@ -1,0 +1,243 @@
+name: Patch autopilot provenance contracts
+
+on:
+  push:
+    branches:
+      - feat/golden-path-autopilot
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/golden-path-autopilot
+      - name: Patch opportunity and strategy provenance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          opportunity = Path('frontend/lib/domain/contentOpportunities.mjs')
+          text = opportunity.read_text()
+          old = '''export function normalizeOpportunityEvaluation(input = {}) {
+            const recommendation = enumValue(input.recommendation, RECOMMENDATION_VALUES, OPPORTUNITY_RECOMMENDATIONS.HOLD, "recommendation");
+            const angles = normalizeAngles(input.candidateAngles, { required: recommendation === OPPORTUNITY_RECOMMENDATIONS.POST });
+            return portableClone({'''.replace('            ', '')
+          new = '''export function normalizeOpportunityEvaluation(input = {}) {
+            const recommendation = enumValue(input.recommendation, RECOMMENDATION_VALUES, OPPORTUNITY_RECOMMENDATIONS.HOLD, "recommendation");
+            const angles = normalizeAngles(input.candidateAngles, { required: recommendation === OPPORTUNITY_RECOMMENDATIONS.POST });
+            const requestedAngleId = optionalText(input.recommendedAngleId, 120);
+            const recommendedAngleTitle = text(input.recommendedAngleTitle, "", 160).toLowerCase();
+            const recommendedAngle = requestedAngleId
+              ? angles.find((item) => item.angleId === requestedAngleId) || null
+              : recommendedAngleTitle
+                ? angles.find((item) => item.title.toLowerCase() === recommendedAngleTitle) || null
+                : null;
+            return portableClone({'''.replace('            ', '')
+          if old not in text:
+            raise SystemExit('missing normalizeOpportunityEvaluation header')
+          text = text.replace(old, new, 1)
+          old = '''    candidateAngles: angles,
+    candidateDestinations: normalizeDestinations(input.candidateDestinations),'''
+          new = '''    candidateAngles: angles,
+    recommendedAngleId: recommendation === OPPORTUNITY_RECOMMENDATIONS.POST ? recommendedAngle?.angleId || null : null,
+    candidateDestinations: normalizeDestinations(input.candidateDestinations),'''
+          if old not in text:
+            raise SystemExit('missing candidateAngles output')
+          text = text.replace(old, new, 1)
+          opportunity.write_text(text)
+
+          planning_domain = Path('frontend/lib/domain/contentPlanning.mjs')
+          text = planning_domain.read_text()
+          old = 'const DESTINATION_DECISIONS = new Set(["include", "optional", "exclude"]);'
+          new = '''const DESTINATION_DECISIONS = new Set(["include", "optional", "exclude"]);
+const ANGLE_SELECTION_ORIGINS = new Set(["owner", "autopilot_policy"]);
+const STRATEGY_APPROVAL_ORIGINS = new Set(["owner", "autopilot_policy"]);'''
+          if old not in text:
+            raise SystemExit('missing destination decision constants')
+          text = text.replace(old, new, 1)
+          old = '''  return portableClone({
+    angleId: text(value.angleId, "custom", 120),
+    title: text(value.title, "Something else", 200),
+    summary: text(value.summary, "", 1800),
+    approach: text(value.approach || value.summary, "", 1800),
+  });'''
+          new = '''  return portableClone({
+    angleId: text(value.angleId, "custom", 120),
+    title: text(value.title, "Something else", 200),
+    summary: text(value.summary, "", 1800),
+    approach: text(value.approach || value.summary, "", 1800),
+    selectionOrigin: enumValue(value.selectionOrigin, ANGLE_SELECTION_ORIGINS, "owner", "NarrativeStrategy.selectedAngle.selectionOrigin"),
+    selectionPolicyVersion: optionalText(value.selectionPolicyVersion, 160),
+    selectionReason: optionalText(value.selectionReason, 1200),
+  });'''
+          if old not in text:
+            raise SystemExit('missing normalizeSelectedAngle body')
+          text = text.replace(old, new, 1)
+          old = '''  if (!proposal.coreIdea || !proposal.audienceTakeaway || proposal.narrativeArc.length < 2) {
+    throw new TypeError("NarrativeStrategy requires a core idea, audience takeaway, and at least two narrative-arc beats.");
+  }
+  return createDomainRecord("NarrativeStrategy", {'''
+          new = '''  if (!proposal.coreIdea || !proposal.audienceTakeaway || proposal.narrativeArc.length < 2) {
+    throw new TypeError("NarrativeStrategy requires a core idea, audience takeaway, and at least two narrative-arc beats.");
+  }
+  const strategyStatus = enumValue(parsed.status, STRATEGY_STATUS_VALUES, STRATEGY_STATUSES.DRAFT, "NarrativeStrategy.status");
+  return createDomainRecord("NarrativeStrategy", {'''
+          if old not in text:
+            raise SystemExit('missing strategy validation block')
+          text = text.replace(old, new, 1)
+          old = '    status: enumValue(parsed.status, STRATEGY_STATUS_VALUES, STRATEGY_STATUSES.DRAFT, "NarrativeStrategy.status"),'
+          new = '    status: strategyStatus,'
+          if old not in text:
+            raise SystemExit('missing inline strategy status')
+          text = text.replace(old, new, 1)
+          old = '''    updatedAt: timestamp(parsed.updatedAt, createdAt, "NarrativeStrategy.updatedAt"),
+    approvedAt: timestamp(parsed.approvedAt, null, "NarrativeStrategy.approvedAt"),
+  });'''
+          new = '''    updatedAt: timestamp(parsed.updatedAt, createdAt, "NarrativeStrategy.updatedAt"),
+    approvedAt: timestamp(parsed.approvedAt, null, "NarrativeStrategy.approvedAt"),
+    approvalOrigin: strategyStatus === STRATEGY_STATUSES.APPROVED
+      ? enumValue(parsed.approvalOrigin, STRATEGY_APPROVAL_ORIGINS, "owner", "NarrativeStrategy.approvalOrigin")
+      : null,
+    approvalPolicyVersion: strategyStatus === STRATEGY_STATUSES.APPROVED ? optionalText(parsed.approvalPolicyVersion, 160) : null,
+    approvalReason: strategyStatus === STRATEGY_STATUSES.APPROVED ? optionalText(parsed.approvalReason, 1200) : null,
+  });'''
+          if old not in text:
+            raise SystemExit('missing strategy approval fields')
+          text = text.replace(old, new, 1)
+          old = '''    status: STRATEGY_STATUSES.DRAFT,
+    approvedAt: null,
+    updatedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.updatedAt"),'''
+          new = '''    status: STRATEGY_STATUSES.DRAFT,
+    approvedAt: null,
+    approvalOrigin: null,
+    approvalPolicyVersion: null,
+    approvalReason: null,
+    updatedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.updatedAt"),'''
+          if old not in text:
+            raise SystemExit('missing revise strategy reset')
+          text = text.replace(old, new, 1)
+          old = '''export function approveNarrativeStrategy(strategyInput, now) {
+  const strategy = normalizeNarrativeStrategy(strategyInput);
+  return normalizeNarrativeStrategy({
+    ...strategy,
+    status: STRATEGY_STATUSES.APPROVED,
+    approvedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.approvedAt"),
+    updatedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.updatedAt"),
+  });
+}'''
+          new = '''export function approveNarrativeStrategy(strategyInput, now, decision = {}) {
+  const strategy = normalizeNarrativeStrategy(strategyInput);
+  return normalizeNarrativeStrategy({
+    ...strategy,
+    status: STRATEGY_STATUSES.APPROVED,
+    approvedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.approvedAt"),
+    approvalOrigin: decision.origin || "owner",
+    approvalPolicyVersion: decision.policyVersion || null,
+    approvalReason: decision.reason || null,
+    updatedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.updatedAt"),
+  });
+}'''
+          if old not in text:
+            raise SystemExit('missing approveNarrativeStrategy')
+          text = text.replace(old, new, 1)
+          planning_domain.write_text(text)
+
+          planning_app = Path('frontend/lib/application/contentPlanningApplication.mjs')
+          text = planning_app.read_text()
+          old = '''function selectedAngle(opportunity) {
+  if (!opportunity.selectedAngleId) throw new Error("Choose a narrative direction before building a campaign plan.");
+  if (opportunity.selectedAngleId === "custom") {
+    if (!opportunity.customAngle) throw new Error("The custom narrative direction is missing.");
+    return {
+      angleId: "custom",
+      title: opportunity.customAngle.title || "Something else",
+      summary: opportunity.customAngle.summary,
+      approach: opportunity.customAngle.approach || opportunity.customAngle.summary,
+    };
+  }
+  const angle = opportunity.candidateAngles.find((item) => item.angleId === opportunity.selectedAngleId);
+  if (!angle) throw new Error(`Selected opportunity angle ${opportunity.selectedAngleId} no longer exists.`);
+  return angle;
+}'''
+          new = '''function selectedAngle(opportunity, decision = null) {
+  if (decision?.angleId) {
+    const angle = opportunity.candidateAngles.find((item) => item.angleId === decision.angleId);
+    if (!angle) throw new Error(`Autopilot opportunity angle ${decision.angleId} no longer exists.`);
+    return {
+      ...angle,
+      selectionOrigin: "autopilot_policy",
+      selectionPolicyVersion: decision.policyVersion || null,
+      selectionReason: decision.reason || null,
+    };
+  }
+  if (!opportunity.selectedAngleId) throw new Error("Choose a narrative direction before building a campaign plan.");
+  if (opportunity.selectedAngleId === "custom") {
+    if (!opportunity.customAngle) throw new Error("The custom narrative direction is missing.");
+    return {
+      angleId: "custom",
+      title: opportunity.customAngle.title || "Something else",
+      summary: opportunity.customAngle.summary,
+      approach: opportunity.customAngle.approach || opportunity.customAngle.summary,
+      selectionOrigin: "owner",
+      selectionPolicyVersion: null,
+      selectionReason: null,
+    };
+  }
+  const angle = opportunity.candidateAngles.find((item) => item.angleId === opportunity.selectedAngleId);
+  if (!angle) throw new Error(`Selected opportunity angle ${opportunity.selectedAngleId} no longer exists.`);
+  return {
+    ...angle,
+    selectionOrigin: "owner",
+    selectionPolicyVersion: null,
+    selectionReason: null,
+  };
+}'''
+          if old not in text:
+            raise SystemExit('missing selectedAngle helper')
+          text = text.replace(old, new, 1)
+          old = '''      approach: angle.approach,
+    },
+    identityProfileRefs: identitySnapshot.profileRefs || {},'''
+          new = '''      approach: angle.approach,
+      selectionOrigin: angle.selectionOrigin || "owner",
+      selectionPolicyVersion: angle.selectionPolicyVersion || null,
+    },
+    identityProfileRefs: identitySnapshot.profileRefs || {},'''
+          if old not in text:
+            raise SystemExit('missing strategy fingerprint angle')
+          text = text.replace(old, new, 1)
+          old = '  async function buildStrategy(opportunityId, { refresh = false } = {}) {'
+          new = '  async function buildStrategy(opportunityId, { refresh = false, angleDecision = null } = {}) {'
+          if old not in text:
+            raise SystemExit('missing buildStrategy signature')
+          text = text.replace(old, new, 1)
+          old = '    const angle = selectedAngle(opportunity);'
+          new = '    const angle = selectedAngle(opportunity, angleDecision);'
+          if old not in text:
+            raise SystemExit('missing buildStrategy selected angle')
+          text = text.replace(old, new, 1)
+          old = '''  async function approveStrategy(strategyId) {
+    const strategy = await requireStrategy(strategyId);
+    const now = appClock.now();
+    const approved = await plans.upsert(approveNarrativeStrategy(strategy, now));'''
+          new = '''  async function approveStrategy(strategyId, decision = {}) {
+    const strategy = await requireStrategy(strategyId);
+    const now = appClock.now();
+    const approved = await plans.upsert(approveNarrativeStrategy(strategy, now, decision));'''
+          if old not in text:
+            raise SystemExit('missing approveStrategy')
+          text = text.replace(old, new, 1)
+          planning_app.write_text(text)
+          PY
+      - name: Commit provenance contracts
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib/domain/contentOpportunities.mjs frontend/lib/domain/contentPlanning.mjs frontend/lib/application/contentPlanningApplication.mjs
+          git commit -m "feat: record autopilot editorial decision provenance"
+          git push origin HEAD:feat/golden-path-autopilot

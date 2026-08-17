@@ -1,0 +1,72 @@
+name: Update Voice Capability Truth
+
+on:
+  push:
+    branches: [feat/golden-path-voice-identity]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/golden-path-voice-identity
+      - name: Update current capability truth
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f"pattern missing in {path}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace(
+              'README.md',
+              '- evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;\n- use real configured model-provider routes;',
+              '- evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;\n- create and version browser-local explicit Identity, Desired Perception, Voice, Boundary, LinkedIn/X Platform Expression, and optional Project Guidance records at `/voice`, including immutable `IdentityContextSnapshot` records for exact downstream generation context;\n- use real configured model-provider routes;',
+          )
+          replace(
+              'README.md',
+              '- complete NarrativeMemory/identity-aware opportunity evaluation across historical content;\n- long-lived identity/style/narrative learning;',
+              '- complete NarrativeMemory/identity-aware opportunity evaluation across historical content;\n- automatic identity inference, explainable StyleMemory learning, and NarrativeMemory learning from historical edits/publications;',
+          )
+
+          replace(
+              'docs/CAPABILITY_MATRIX.md',
+              '| Persistent Identity/Perception/Voice/Boundary profiles | Planned | #153 |',
+              '| Persistent Identity/Perception/Voice/Boundary profiles | Implemented browser-local for explicit owner profiles + version history + LinkedIn/X expression + identity-context snapshots; hosted sync and automatic inference still planned | #153/#166 |',
+          )
+          replace(
+              'docs/CAPABILITY_MATRIX.md',
+              '| Owner Golden Path 1 manual thought → authentic approval | Planned | #166 |',
+              '| Owner Golden Path 1 manual thought → authentic approval | In progress: manual Signal, Opportunity/angles, Plan, and explicit Voice/Identity context implemented; NarrativeStrategy, LinkedIn/X generation/critique/review/memory still pending | #166 |',
+          )
+
+          agents = Path('AGENTS.md')
+          text = agents.read_text()
+          marker = '- Implemented manual-Signal opportunity slice: `frontend/lib/domain/contentOpportunities.mjs`, `frontend/lib/application/contentOpportunityApplication.mjs`, `frontend/lib/inference/inferenceTasks.mjs`, and `/plan`; do not confuse this with complete #156/#166 or NarrativeMemory.'
+          addition = marker + '\n- Implemented explicit owner Voice/Identity slice: `frontend/lib/domain/identityProfiles.mjs`, `frontend/lib/application/identityApplication.mjs`, and `/voice`; explicit profile versions/context snapshots are real, but StyleMemory/NarrativeMemory/automatic identity learning are not.'
+          if addition not in text:
+              if marker not in text:
+                  raise SystemExit('AGENTS opportunity marker missing')
+              agents.write_text(text.replace(marker, addition, 1))
+          PY
+      - name: Commit truth updates
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md AGENTS.md docs/CAPABILITY_MATRIX.md
+          git commit -m "docs(identity): record explicit Voice and identity capability"
+          git push origin HEAD:feat/golden-path-voice-identity

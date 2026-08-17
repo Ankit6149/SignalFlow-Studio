@@ -59,6 +59,25 @@ function includedDestinations(strategy) {
   return strategy.destinationPlan.filter((item) => item.decision !== "exclude").map((item) => item.destination);
 }
 
+function recommendedDestinations(opportunity) {
+  return (opportunity.candidateDestinations || [])
+    .filter((item) => item.recommended !== false && ["linkedin", "x"].includes(item.destination))
+    .map((item) => item.destination);
+}
+
+function repetitionCandidate(opportunity) {
+  const angle = (opportunity.candidateAngles || []).find((item) => item.angleId === opportunity.recommendedAngleId) || null;
+  return {
+    projectId: opportunity.projectId || null,
+    title: opportunity.title,
+    summary: opportunity.summary,
+    angle: angle?.title || "",
+    coreIdea: opportunity.summary,
+    destinations: recommendedDestinations(opportunity),
+    occurredAt: opportunity.createdAt,
+  };
+}
+
 function validateStrategyAgainstPolicy(strategy, policy) {
   const allowed = new Set(policy.destinations || []);
   const included = includedDestinations(strategy);
@@ -99,12 +118,21 @@ export function createGoldenPathAutopilotApplication({
   generationApplication,
   reviewApplication,
   identityApplication,
+  narrativeMemoryApplication = null,
 } = {}) {
-  const opportunities = requiredService("opportunityApplication", opportunityApplication, ["evaluateSignal"]);
+  const memoryEnabled = Boolean(narrativeMemoryApplication);
+  const opportunities = requiredService(
+    "opportunityApplication",
+    opportunityApplication,
+    memoryEnabled ? ["evaluateSignal", "applyRepetitionReport"] : ["evaluateSignal"],
+  );
   const planning = requiredService("planningApplication", planningApplication, ["buildStrategy", "approveStrategy"]);
   const generation = requiredService("generationApplication", generationApplication, ["generateReadyVariants"]);
   const reviews = requiredService("reviewApplication", reviewApplication, ["reviewCurrentVariant"]);
   const identity = requiredService("identityApplication", identityApplication, ["getMinimalProfile", "evaluateBoundaries"]);
+  const narrativeMemory = memoryEnabled
+    ? requiredService("narrativeMemoryApplication", narrativeMemoryApplication, ["repetitionReport"])
+    : null;
 
   async function prepareSignal(signalId, { refreshOpportunity = false } = {}) {
     const state = { signalId, opportunity: null, strategy: null, contentPiece: null, variants: [], reviews: [] };
@@ -127,6 +155,20 @@ export function createGoldenPathAutopilotApplication({
       });
     }
 
+    if (narrativeMemory) {
+      try {
+        const repetition = await narrativeMemory.repetitionReport(repetitionCandidate(state.opportunity));
+        state.opportunity = await opportunities.applyRepetitionReport(state.opportunity.opportunityId, repetition);
+      } catch (error) {
+        return outcome(GOLDEN_AUTOPILOT_RESULTS.NEEDS_PLAN, "SignalFlow could not verify narrative repetition safely, so this opportunity needs owner planning before preparation continues.", {
+          records: recordIds(state),
+          nextRoute: `/plan?opportunity=${encodeURIComponent(state.opportunity.opportunityId)}`,
+          gate: "narrative_memory",
+          code: error?.code || "narrative_memory_check_failed",
+        });
+      }
+    }
+
     const opportunityPolicy = evaluateOpportunityForAutopilot(state.opportunity);
     if (opportunityPolicy.outcome !== AUTOPILOT_OUTCOMES.ADVANCE) return mapPolicyResult(opportunityPolicy, state);
 
@@ -139,7 +181,7 @@ export function createGoldenPathAutopilotApplication({
         angleDecision: {
           angleId: opportunityPolicy.angle.angleId,
           policyVersion: AUTOPILOT_POLICY_VERSION,
-          reason: `Opportunity policy selected the evaluator-recommended angle after score, confidence, evidence, narrative, freshness, destination and media gates passed.`,
+          reason: `Opportunity policy selected the evaluator-recommended angle after score, confidence, evidence, narrative, freshness, destination, media, and repetition gates passed.`,
         },
       });
     } catch (error) {

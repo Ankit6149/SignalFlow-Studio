@@ -47,6 +47,7 @@ export function createPlatformReviewApplication({
   contentSignalRepository,
   identityRepository,
   identityApplication,
+  narrativeMemoryApplication = null,
   inferenceAdapter,
   workspaceId = "local-personal",
   userId = "owner",
@@ -65,6 +66,9 @@ export function createPlatformReviewApplication({
   const ownerUserId = required(userId, "userId");
   if (!identityApplication || typeof identityApplication.evaluateBoundaries !== "function") {
     throw new TypeError("Platform review requires the Identity application service.");
+  }
+  if (narrativeMemoryApplication && (typeof narrativeMemoryApplication.recordApprovedVariant !== "function" || typeof narrativeMemoryApplication.removeMemory !== "function")) {
+    throw new TypeError("Narrative memory application must expose recordApprovedVariant() and removeMemory().");
   }
 
   function assertOwned(record) {
@@ -93,10 +97,14 @@ export function createPlatformReviewApplication({
     return revision;
   }
 
-  async function sourceForStrategy(strategy) {
+  async function opportunityForStrategy(strategy) {
     const storedOpportunity = await opportunities.get(strategy.opportunityId);
     if (!storedOpportunity) throw new Error(`ContentOpportunity ${strategy.opportunityId} does not exist.`);
-    const opportunity = assertOwned(normalizeContentOpportunity(storedOpportunity));
+    return assertOwned(normalizeContentOpportunity(storedOpportunity));
+  }
+
+  async function sourceForStrategy(strategy) {
+    const opportunity = await opportunityForStrategy(strategy);
     const signalId = opportunity.signalIds?.[0];
     if (!signalId) throw new Error("The reviewed strategy has no canonical source Signal.");
     const storedSignal = await signals.get(signalId);
@@ -241,7 +249,7 @@ export function createPlatformReviewApplication({
   }
 
   async function approveCurrentVariant(platformVariantId, note = "") {
-    const { variant, revision } = await contextForCurrentVariant(platformVariantId);
+    const { variant, revision, piece, strategy } = await contextForCurrentVariant(platformVariantId);
     const review = await latestReviewForRevision(revision.platformVariantRevisionId);
     if (!review) {
       const error = new Error("Run the evidence and authenticity checks on this exact revision before approving it.");
@@ -254,7 +262,7 @@ export function createPlatformReviewApplication({
       throw error;
     }
     const now = appClock.now();
-    const approval = await reviews.upsert(createPlatformVariantApproval({
+    const approvalRecord = createPlatformVariantApproval({
       platformVariantApprovalId: appIds.create("variant-approval"),
       workspaceId: ownerWorkspaceId,
       platformVariantId: variant.platformVariantId,
@@ -265,7 +273,33 @@ export function createPlatformReviewApplication({
       note,
       decidedBy: ownerUserId,
       decidedAt: now,
-    }));
+    });
+
+    let derivedMemory = null;
+    if (narrativeMemoryApplication) {
+      const opportunity = await opportunityForStrategy(strategy);
+      derivedMemory = await narrativeMemoryApplication.recordApprovedVariant({
+        approval: approvalRecord,
+        variant,
+        revision,
+        strategy,
+        contentPiece: piece,
+        opportunity,
+      });
+    }
+
+    let approval;
+    try {
+      approval = await reviews.upsert(approvalRecord);
+    } catch (error) {
+      if (derivedMemory?.narrativeMemoryId && narrativeMemoryApplication) {
+        try {
+          await narrativeMemoryApplication.removeMemory(derivedMemory.narrativeMemoryId);
+        } catch {}
+      }
+      throw error;
+    }
+
     await plans.upsert(normalizePlatformVariant({ ...variant, status: VARIANT_STATUSES.APPROVED, updatedAt: now }));
     return approval;
   }

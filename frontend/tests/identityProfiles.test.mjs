@@ -96,14 +96,15 @@ test("explicit boundary and project prohibited claim can block text before publi
   const direct = evaluateExplicitBoundaryText("Our revolutionary AI platform enables fully autonomous publishing.", snapshot);
   assert.equal(direct.allowed, false);
   assert.ok(direct.blocked.some((item) => item.code === "prohibited_project_claim"));
+  assert.ok(direct.blocked.some((item) => item.code === "blocked_phrase"));
   assert.ok(direct.warnings.some((item) => item.code === "exaggerated_launch_language"));
 
   const checked = await application.evaluateBoundaries({
     snapshotId: snapshot.identityContextSnapshotId,
-    text: "This is a revolutionary AI platform.",
+    text: "This is a game-changing architecture decision.",
   });
   assert.equal(checked.allowed, true);
-  assert.ok(checked.warnings.length > 0);
+  assert.ok(checked.warnings.some((item) => item.code === "exaggerated_launch_language"));
 });
 
 test("browser identity repository survives reopen with historical versions", async () => {

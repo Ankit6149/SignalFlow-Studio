@@ -36,6 +36,15 @@ const samples = {
     opportunityId: "opportunity-1",
     status: "draft",
     strategyRevision: 1,
+    selectedAngle: {
+      angleId: "angle-1",
+      title: "Architecture trade-off",
+      summary: "Explain the decision rather than announcing a feature.",
+      approach: "Lead with the trade-off and the reasoning behind it.",
+    },
+    identityContextSnapshotId: "identity-context-1",
+    coreIdea: "Privacy constraints changed the architecture.",
+    audienceTakeaway: "Good product architecture follows trust boundaries, not convenience.",
   },
   ContentPiece: {
     contentPieceId: "piece-1",
@@ -43,6 +52,7 @@ const samples = {
     narrativeStrategyId: "strategy-1",
     opportunityId: "opportunity-1",
     status: "planned",
+    canonicalIntent: "Explain the privacy-driven architecture decision.",
   },
   PlatformVariant: {
     platformVariantId: "variant-1",

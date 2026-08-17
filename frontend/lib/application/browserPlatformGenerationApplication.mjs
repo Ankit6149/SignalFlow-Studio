@@ -1,4 +1,6 @@
 import { createPlatformGenerationApplication } from "./platformGenerationApplication.mjs";
+import { createBrowserStyleMemoryApplication } from "./browserStyleMemoryApplication.mjs";
+import { withStyleLearningGeneration } from "./styleLearningDecorators.mjs";
 import { createBrowserContentPlanningRepository } from "../infrastructure/contentPlanningAdapters.mjs";
 import { createBrowserContentOpportunityRepository } from "../infrastructure/contentOpportunityAdapters.mjs";
 import { createBrowserContentSignalRepository } from "../infrastructure/contentSignalAdapters.mjs";
@@ -12,6 +14,7 @@ export function createBrowserPlatformGenerationApplication({
   opportunityKey = "signalflow_content_opportunities_v1",
   signalKey = "signalflow_content_signals_v1",
   identityKey = "signalflow_identity_profiles_v1",
+  styleMemoryKey = "signalflow_style_memory_v1",
   workspaceId = "local-personal",
   userId = "owner",
   clock,
@@ -19,6 +22,7 @@ export function createBrowserPlatformGenerationApplication({
   fetchImpl,
 } = {}) {
   const sharedIds = idService || createSystemIdService("signalflow");
+  const planningRepository = createBrowserContentPlanningRepository({ getStorage, key: planningKey });
   const identityApplication = createBrowserIdentityApplication({
     getStorage,
     key: identityKey,
@@ -27,8 +31,8 @@ export function createBrowserPlatformGenerationApplication({
     clock,
     idService: sharedIds,
   });
-  return createPlatformGenerationApplication({
-    contentPlanningRepository: createBrowserContentPlanningRepository({ getStorage, key: planningKey }),
+  const generationApplication = createPlatformGenerationApplication({
+    contentPlanningRepository: planningRepository,
     contentOpportunityRepository: createBrowserContentOpportunityRepository({ getStorage, key: opportunityKey }),
     contentSignalRepository: createBrowserContentSignalRepository({ getStorage, key: signalKey }),
     identityApplication,
@@ -36,5 +40,18 @@ export function createBrowserPlatformGenerationApplication({
     workspaceId,
     clock,
     idService: sharedIds,
+  });
+  return withStyleLearningGeneration({
+    generationApplication,
+    contentPlanningRepository: planningRepository,
+    styleMemoryApplication: createBrowserStyleMemoryApplication({
+      getStorage,
+      key: styleMemoryKey,
+      workspaceId,
+      userId,
+      clock,
+      idService: sharedIds,
+    }),
+    clock,
   });
 }

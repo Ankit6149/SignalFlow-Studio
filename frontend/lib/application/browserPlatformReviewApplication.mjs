@@ -1,6 +1,8 @@
 import { createPlatformReviewApplication } from "./platformReviewApplication.mjs";
 import { createIdentityApplication } from "./identityApplication.mjs";
 import { createNarrativeMemoryApplication } from "./narrativeMemoryApplication.mjs";
+import { createBrowserStyleMemoryApplication } from "./browserStyleMemoryApplication.mjs";
+import { withStyleLearningReview } from "./styleLearningDecorators.mjs";
 import { createBrowserContentPlanningRepository } from "../infrastructure/contentPlanningAdapters.mjs";
 import { createBrowserContentReviewRepository } from "../infrastructure/contentReviewAdapters.mjs";
 import { createBrowserContentOpportunityRepository } from "../infrastructure/contentOpportunityAdapters.mjs";
@@ -18,6 +20,7 @@ export function createBrowserPlatformReviewApplication({
   signalKey = "signalflow_content_signals_v1",
   identityKey = "signalflow_identity_profiles_v1",
   narrativeMemoryKey = "signalflow_narrative_memory_v1",
+  styleMemoryKey = "signalflow_style_memory_v1",
   workspaceId = "local-personal",
   userId = "owner",
   clock,
@@ -25,6 +28,7 @@ export function createBrowserPlatformReviewApplication({
   fetchImpl,
 } = {}) {
   const sharedIds = idService || createSystemIdService("signalflow");
+  const planningRepository = createBrowserContentPlanningRepository({ getStorage, key: planningKey });
   const identityRepository = createBrowserIdentityRepository({ getStorage, key: identityKey });
   const identityApplication = createIdentityApplication({
     identityRepository,
@@ -39,8 +43,16 @@ export function createBrowserPlatformReviewApplication({
     clock,
     idService: sharedIds,
   });
-  return createPlatformReviewApplication({
-    contentPlanningRepository: createBrowserContentPlanningRepository({ getStorage, key: planningKey }),
+  const styleMemoryApplication = createBrowserStyleMemoryApplication({
+    getStorage,
+    key: styleMemoryKey,
+    workspaceId,
+    userId,
+    clock,
+    idService: sharedIds,
+  });
+  const reviewApplication = createPlatformReviewApplication({
+    contentPlanningRepository: planningRepository,
     contentReviewRepository: createBrowserContentReviewRepository({ getStorage, key: reviewKey }),
     contentOpportunityRepository: createBrowserContentOpportunityRepository({ getStorage, key: opportunityKey }),
     contentSignalRepository: createBrowserContentSignalRepository({ getStorage, key: signalKey }),
@@ -52,5 +64,11 @@ export function createBrowserPlatformReviewApplication({
     userId,
     clock,
     idService: sharedIds,
+  });
+  return withStyleLearningReview({
+    reviewApplication,
+    contentPlanningRepository: planningRepository,
+    styleMemoryApplication,
+    clock,
   });
 }

@@ -1,4 +1,6 @@
 import { createPlatformChangeRequestApplication } from "./platformChangeRequestApplication.mjs";
+import { createBrowserStyleMemoryApplication } from "./browserStyleMemoryApplication.mjs";
+import { withStyleLearningChangeRequests } from "./styleLearningDecorators.mjs";
 import { createBrowserContentPlanningRepository } from "../infrastructure/contentPlanningAdapters.mjs";
 import { createBrowserContentReviewRepository } from "../infrastructure/contentReviewAdapters.mjs";
 import { createBrowserContentOpportunityRepository } from "../infrastructure/contentOpportunityAdapters.mjs";
@@ -14,6 +16,7 @@ export function createBrowserPlatformChangeRequestApplication({
   opportunityKey = "signalflow_content_opportunities_v1",
   signalKey = "signalflow_content_signals_v1",
   identityKey = "signalflow_identity_profiles_v1",
+  styleMemoryKey = "signalflow_style_memory_v1",
   workspaceId = "local-personal",
   userId = "owner",
   clock,
@@ -21,8 +24,9 @@ export function createBrowserPlatformChangeRequestApplication({
   fetchImpl,
 } = {}) {
   const sharedIds = idService || createSystemIdService("signalflow");
-  return createPlatformChangeRequestApplication({
-    contentPlanningRepository: createBrowserContentPlanningRepository({ getStorage, key: planningKey }),
+  const planningRepository = createBrowserContentPlanningRepository({ getStorage, key: planningKey });
+  const changeRequestApplication = createPlatformChangeRequestApplication({
+    contentPlanningRepository: planningRepository,
     contentReviewRepository: createBrowserContentReviewRepository({ getStorage, key: reviewKey }),
     contentOpportunityRepository: createBrowserContentOpportunityRepository({ getStorage, key: opportunityKey }),
     contentSignalRepository: createBrowserContentSignalRepository({ getStorage, key: signalKey }),
@@ -32,5 +36,18 @@ export function createBrowserPlatformChangeRequestApplication({
     userId,
     clock,
     idService: sharedIds,
+  });
+  return withStyleLearningChangeRequests({
+    changeRequestApplication,
+    contentPlanningRepository: planningRepository,
+    styleMemoryApplication: createBrowserStyleMemoryApplication({
+      getStorage,
+      key: styleMemoryKey,
+      workspaceId,
+      userId,
+      clock,
+      idService: sharedIds,
+    }),
+    clock,
   });
 }

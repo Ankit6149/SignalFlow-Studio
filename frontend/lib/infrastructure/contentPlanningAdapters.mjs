@@ -19,7 +19,10 @@ function normalize(input) {
 }
 
 function recordId(record) {
-  return record.narrativeStrategyId || record.contentPieceId || record.platformVariantId;
+  if (record.kind === "NarrativeStrategy") return record.narrativeStrategyId;
+  if (record.kind === "ContentPiece") return record.contentPieceId;
+  if (record.kind === "PlatformVariant") return record.platformVariantId;
+  throw new TypeError(`Unsupported content planning record: ${record.kind || "missing"}.`);
 }
 
 function sortRecords(items) {

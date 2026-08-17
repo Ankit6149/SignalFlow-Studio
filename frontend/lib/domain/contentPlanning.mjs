@@ -32,6 +32,8 @@ const PIECE_STATUS_VALUES = new Set(Object.values(CONTENT_PIECE_STATUSES));
 const VARIANT_STATUS_VALUES = new Set(Object.values(VARIANT_STATUSES));
 const DESTINATIONS = new Set(["linkedin", "x"]);
 const DESTINATION_DECISIONS = new Set(["include", "optional", "exclude"]);
+const ANGLE_SELECTION_ORIGINS = new Set(["owner", "autopilot_policy"]);
+const STRATEGY_APPROVAL_ORIGINS = new Set(["owner", "autopilot_policy"]);
 
 function text(value, fallback = "", maxLength = 12000) {
   const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
@@ -90,6 +92,9 @@ function normalizeSelectedAngle(value = {}) {
     title: text(value.title, "Something else", 200),
     summary: text(value.summary, "", 1800),
     approach: text(value.approach || value.summary, "", 1800),
+    selectionOrigin: enumValue(value.selectionOrigin, ANGLE_SELECTION_ORIGINS, "owner", "NarrativeStrategy.selectedAngle.selectionOrigin"),
+    selectionPolicyVersion: optionalText(value.selectionPolicyVersion, 160),
+    selectionReason: optionalText(value.selectionReason, 1200),
   });
 }
 
@@ -150,6 +155,7 @@ export function normalizeNarrativeStrategy(input = {}) {
   if (!proposal.coreIdea || !proposal.audienceTakeaway || proposal.narrativeArc.length < 2) {
     throw new TypeError("NarrativeStrategy requires a core idea, audience takeaway, and at least two narrative-arc beats.");
   }
+  const strategyStatus = enumValue(parsed.status, STRATEGY_STATUS_VALUES, STRATEGY_STATUSES.DRAFT, "NarrativeStrategy.status");
   return createDomainRecord("NarrativeStrategy", {
     planningSchemaVersion: CONTENT_PLANNING_SCHEMA_VERSION,
     narrativeStrategyId: id(parsed.narrativeStrategyId, "NarrativeStrategy.narrativeStrategyId"),
@@ -158,7 +164,7 @@ export function normalizeNarrativeStrategy(input = {}) {
     projectId: id(parsed.projectId, "NarrativeStrategy.projectId", false),
     inputFingerprint: text(parsed.inputFingerprint, "", 3000),
     strategyRevision: Number.isInteger(parsed.strategyRevision) && parsed.strategyRevision > 0 ? parsed.strategyRevision : 1,
-    status: enumValue(parsed.status, STRATEGY_STATUS_VALUES, STRATEGY_STATUSES.DRAFT, "NarrativeStrategy.status"),
+    status: strategyStatus,
     selectedAngle: normalizeSelectedAngle(parsed.selectedAngle),
     identityContextSnapshotId: id(parsed.identityContextSnapshotId, "NarrativeStrategy.identityContextSnapshotId"),
     ...proposal,
@@ -169,6 +175,11 @@ export function normalizeNarrativeStrategy(input = {}) {
     createdAt,
     updatedAt: timestamp(parsed.updatedAt, createdAt, "NarrativeStrategy.updatedAt"),
     approvedAt: timestamp(parsed.approvedAt, null, "NarrativeStrategy.approvedAt"),
+    approvalOrigin: strategyStatus === STRATEGY_STATUSES.APPROVED
+      ? enumValue(parsed.approvalOrigin, STRATEGY_APPROVAL_ORIGINS, "owner", "NarrativeStrategy.approvalOrigin")
+      : null,
+    approvalPolicyVersion: strategyStatus === STRATEGY_STATUSES.APPROVED ? optionalText(parsed.approvalPolicyVersion, 160) : null,
+    approvalReason: strategyStatus === STRATEGY_STATUSES.APPROVED ? optionalText(parsed.approvalReason, 1200) : null,
   });
 }
 
@@ -210,16 +221,22 @@ export function reviseNarrativeStrategy(strategyInput, patch = {}, now) {
     strategyRevision: strategy.strategyRevision + 1,
     status: STRATEGY_STATUSES.DRAFT,
     approvedAt: null,
+    approvalOrigin: null,
+    approvalPolicyVersion: null,
+    approvalReason: null,
     updatedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.updatedAt"),
   });
 }
 
-export function approveNarrativeStrategy(strategyInput, now) {
+export function approveNarrativeStrategy(strategyInput, now, decision = {}) {
   const strategy = normalizeNarrativeStrategy(strategyInput);
   return normalizeNarrativeStrategy({
     ...strategy,
     status: STRATEGY_STATUSES.APPROVED,
     approvedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.approvedAt"),
+    approvalOrigin: decision.origin || "owner",
+    approvalPolicyVersion: decision.policyVersion || null,
+    approvalReason: decision.reason || null,
     updatedAt: timestamp(now, strategy.updatedAt, "NarrativeStrategy.updatedAt"),
   });
 }

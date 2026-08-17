@@ -202,6 +202,13 @@ function assertOpportunitySchema(input) {
 export function normalizeOpportunityEvaluation(input = {}) {
   const recommendation = enumValue(input.recommendation, RECOMMENDATION_VALUES, OPPORTUNITY_RECOMMENDATIONS.HOLD, "recommendation");
   const angles = normalizeAngles(input.candidateAngles, { required: recommendation === OPPORTUNITY_RECOMMENDATIONS.POST });
+  const requestedAngleId = optionalText(input.recommendedAngleId, 120);
+  const recommendedAngleTitle = text(input.recommendedAngleTitle, "", 160).toLowerCase();
+  const recommendedAngle = requestedAngleId
+    ? angles.find((item) => item.angleId === requestedAngleId) || null
+    : recommendedAngleTitle
+      ? angles.find((item) => item.title.toLowerCase() === recommendedAngleTitle) || null
+      : null;
   return portableClone({
     recommendation,
     title: text(input.title, "Opportunity", 240),
@@ -214,6 +221,7 @@ export function normalizeOpportunityEvaluation(input = {}) {
     narrativeFit: normalizeAssessment(input.narrativeFit, { levelSet: EVIDENCE_LEVELS, field: "narrativeFit" }),
     repetitionRisk: normalizeAssessment(input.repetitionRisk, { levelSet: RISK_LEVELS, field: "repetitionRisk" }),
     candidateAngles: angles,
+    recommendedAngleId: recommendation === OPPORTUNITY_RECOMMENDATIONS.POST ? recommendedAngle?.angleId || null : null,
     candidateDestinations: normalizeDestinations(input.candidateDestinations),
     excludedDestinations: normalizeExcludedDestinations(input.excludedDestinations),
     recommendedMediaTypes: normalizeMediaTypes(input.recommendedMediaTypes),

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import BrandMark from "./BrandMark";
 import styles from "./WorkspaceShell.module.css";
 
 const NAV_GROUPS = [
@@ -52,15 +53,6 @@ function Glyph({ id }) {
   );
 }
 
-function Brand() {
-  return (
-    <span className={styles.brandMark} aria-hidden="true">
-      <span className={styles.brandGlyph}><i /><i /><i /></span>
-      <span className={styles.brandCopy}><strong>SignalFlow</strong><small>STUDIO</small></span>
-    </span>
-  );
-}
-
 export default function WorkspaceShell({
   activeItem,
   children,
@@ -87,9 +79,7 @@ export default function WorkspaceShell({
   function activate(item) {
     if (item.status !== "available") return;
     setOpen(false);
-    if (onNavigate?.[item.id]) {
-      onNavigate[item.id]();
-    }
+    if (onNavigate?.[item.id]) onNavigate[item.id]();
   }
 
   function navItem(item) {
@@ -149,7 +139,7 @@ export default function WorkspaceShell({
       <a className={styles.skipLink} href="#workspace-content">Skip to workspace</a>
 
       <header className={styles.mobileHeader}>
-        <Link href="/" className={styles.mobileBrand} aria-label="SignalFlow home"><Brand /></Link>
+        <Link href="/" className={styles.mobileBrand} aria-label="SignalFlow home"><BrandMark tone="light" /></Link>
         <button
           type="button"
           className={styles.menuButton}
@@ -166,7 +156,7 @@ export default function WorkspaceShell({
 
       <aside className={`${styles.rail} ${open ? styles.railOpen : ""}`} id="signalflow-workspace-nav">
         <div className={styles.railTop}>
-          <Link href="/" className={styles.brandLink} aria-label="SignalFlow home"><Brand /></Link>
+          <Link href="/" className={styles.brandLink} aria-label="SignalFlow home"><BrandMark tone="light" /></Link>
           <div className={styles.contextBlock}>
             <span>{contextLabel}</span>
             <small>local owner context</small>

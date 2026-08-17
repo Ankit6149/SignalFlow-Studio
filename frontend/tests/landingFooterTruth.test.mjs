@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const page = fs.readFileSync(path.join(root, "components/LandingPage.js"), "utf8");
 
-test("footer describes content operations around work", () => {
-  assert.match(page, /Content operations around your work—not another job beside it/);
+test("footer identifies SignalFlow as the Personal Alpha content operating system", () => {
+  assert.match(page, /Content operating system · Personal Alpha/);
+  assert.doesNotMatch(page, /Content operations around your work—not another job beside it/);
 });

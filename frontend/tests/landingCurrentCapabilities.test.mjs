@@ -11,5 +11,8 @@ test("landing names the real current capabilities needed for owner use", () => {
   assert.match(page, /browser-local recovery/i);
   assert.match(page, /destination-specific drafts/i);
   assert.match(page, /real configured AI generation/i);
+  assert.match(page, /persisted opportunities and angles/i);
+  assert.match(page, /explicit Voice/i);
+  assert.match(page, /exact revision approve\/reject/i);
   assert.match(page, /export/i);
 });

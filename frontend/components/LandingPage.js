@@ -3,39 +3,22 @@
 import PlatformIcon from "./PlatformIcon";
 import styles from "./LandingPage.module.css";
 
-const DESTINATIONS = ["linkedin", "x", "instagram", "reddit", "youtube", "tiktok"];
-
-const FLOW = [
-  { label: "Signal", detail: "A thought, change, source or event", state: "live" },
-  { label: "Opportunity", detail: "Is it actually worth saying?", state: "next" },
-  { label: "Story", detail: "Angle, evidence and destination fit", state: "next" },
-  { label: "Produce", detail: "Text, image, carousel, demo or reel", state: "next" },
-  { label: "Judge", detail: "Edit, reject or approve the exact revision", state: "principle" },
-  { label: "Publish", detail: "Execute only what was approved", state: "next" },
-];
-
-const CURRENT = [
-  {
-    kicker: "CAPTURE",
-    title: "Save the thing before you turn it into content.",
-    body: "Manual thoughts and topics now live as durable browser-local ContentSignals. They can be edited, snoozed, ignored, archived and recovered without creating a campaign or calling AI.",
-    action: "Capture a signal",
-    href: "/signals",
-  },
-  {
-    kicker: "CREATE",
-    title: "When you already know what you want to say, make it now.",
-    body: "The current Studio accepts explicit source context, uses real configured model routes, creates destination-specific drafts, preserves edits and approvals, and keeps campaigns recoverable in the browser.",
-    action: "Open Studio",
-    enter: true,
-  },
+const LIVE_PATH = [
+  ["01", "Signal", "Keep the thought or work event before it disappears."],
+  ["02", "Opportunity", "Decide whether it is worth communicating and choose the angle."],
+  ["03", "Voice + Plan", "Resolve the story with your identity, boundaries and evidence needs."],
+  ["04", "LinkedIn / X", "Create destination-native immutable revisions."],
+  ["05", "Review", "Check evidence and authenticity, edit or request another revision."],
+  ["06", "Approve", "Approve one exact revision — never an invisible latest draft."],
 ];
 
 const TRUST = [
-  ["Exact approval", "A newer text or media revision must never silently replace the revision you approved."],
-  ["Private by policy", "Sensitive evidence should follow explicit processing rules instead of silently falling back to a weaker route."],
-  ["Useful silence", "Not every signal deserves a post. Not every calendar slot needs filling. No content is a valid decision."],
+  ["Exact means exact", "Approval points to one immutable revision. A later edit or regeneration has to earn review again."],
+  ["Privacy is a routing rule", "Protected context cannot silently fall through to a weaker remote route just because it is convenient."],
+  ["Silence is allowed", "A signal can be ignored. A destination can be omitted. An empty calendar slot can remain empty."],
 ];
+
+const FUTURE = ["Connected-source detection", "Editorial calendar + durable publishing", "Narrative + StyleMemory", "Media intelligence + production"];
 
 function ArrowIcon() {
   return (
@@ -61,126 +44,82 @@ function CheckIcon() {
   );
 }
 
-function SignalIcon() {
+function SignalMark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 16.5 9 11l3.2 2.8L20 5.5" />
-      <circle cx="4" cy="16.5" r="1.4" />
-      <circle cx="9" cy="11" r="1.4" />
-      <circle cx="12.2" cy="13.8" r="1.4" />
-      <circle cx="20" cy="5.5" r="1.4" />
+      <path d="M4 17 9 11.5l3.4 3L20 6" />
+      <circle cx="4" cy="17" r="1.2" />
+      <circle cx="9" cy="11.5" r="1.2" />
+      <circle cx="12.4" cy="14.5" r="1.2" />
+      <circle cx="20" cy="6" r="1.2" />
     </svg>
   );
 }
 
-function HeroProductScene() {
+function HeroFlowScene() {
   return (
-    <div className={styles.scene} aria-label="SignalFlow product journey preview">
-      <div className={`${styles.orbit} ${styles.orbitOne}`} aria-hidden="true" />
-      <div className={`${styles.orbit} ${styles.orbitTwo}`} aria-hidden="true" />
-      <span className={`${styles.floatingSource} ${styles.sourceOne}`}>thought</span>
-      <span className={`${styles.floatingSource} ${styles.sourceTwo}`}>project note</span>
-      <span className={`${styles.floatingSource} ${styles.sourceThree}`}>topic</span>
+    <div className={styles.heroScene} aria-label="The current SignalFlow owner path">
+      <div className={styles.sceneTopline}>
+        <span><i /> OWNER PATH · LIVE NOW</span>
+        <small>browser-local personal workspace</small>
+      </div>
 
-      <div className={styles.productWindow}>
-        <div className={styles.windowBar}>
-          <div className={styles.windowDots}><i /><i /><i /></div>
-          <span>signalflow / today</span>
-          <div className={styles.windowStatus}><i /> local workspace</div>
-        </div>
-
-        <div className={styles.windowBody}>
-          <aside className={styles.miniRail} aria-hidden="true">
-            <span className={styles.railMark}>S</span>
-            <i className={styles.railActive} />
-            <i /><i /><i />
-            <span className={styles.railBottom} />
-          </aside>
-
-          <div className={styles.sceneContent}>
-            <div className={styles.sceneHeading}>
-              <div>
-                <small>MONDAY · 12:38</small>
-                <strong>What deserves your attention?</strong>
-              </div>
-              <span className={styles.livePill}>LIVE FOUNDATION</span>
-            </div>
-
-            <article className={styles.signalCard}>
-              <div className={styles.signalGlyph}><SignalIcon /></div>
-              <div className={styles.signalText}>
-                <div className={styles.signalMeta}><span>MANUAL SIGNAL</span><small>saved locally</small></div>
-                <h3>The private-repository processing boundary is finally clear.</h3>
-                <p>Keep this thought with the work now. Decide what to do with it later.</p>
-                <div className={styles.signalActions}><span>Snooze</span><span>Archive</span><b>Open signal</b></div>
-              </div>
-            </article>
-
-            <div className={styles.judgmentBridge}>
-              <span className={styles.bridgeLine}><i /><i /><i /></span>
-              <span>Opportunity intelligence · building next</span>
-              <span className={styles.bridgeLine}><i /><i /><i /></span>
-            </div>
-
-            <article className={styles.futureDecision}>
-              <div>
-                <span>NEXT PRODUCT LAYER</span>
-                <strong>Worth talking about?</strong>
-                <p>SignalFlow will gather the evidence, explain why now, and bring the choice back to you.</p>
-              </div>
-              <div className={styles.futureChoices}>
-                <span>Why it matters</span>
-                <span>How it works</span>
-                <span>Something else…</span>
-              </div>
-            </article>
-          </div>
+      <div className={styles.sceneSignal}>
+        <div className={styles.sceneSignalIcon}><SignalMark /></div>
+        <div>
+          <span>MANUAL SIGNAL</span>
+          <strong>The privacy boundary changed how this product should work.</strong>
+          <p>Keep the idea with its context now. Decide whether it deserves a story later.</p>
         </div>
       </div>
 
-      <div className={styles.sceneCaption}>
-        <span><i /> Available now</span>
-        <span><i /> Product direction</span>
+      <div className={styles.scenePath}>
+        <div className={styles.scenePathLine} aria-hidden="true"><i /><i /><i /><i /></div>
+        <div className={styles.sceneDecision}>
+          <span>OPPORTUNITY</span>
+          <strong>Worth saying?</strong>
+          <div><b>Why it matters</b><b>Architecture trade-off</b><b>Something else…</b></div>
+        </div>
+        <div className={styles.sceneDraft}>
+          <div className={styles.sceneDraftHead}>
+            <span>LINKEDIN · REVISION 3</span>
+            <small>Evidence ✓ &nbsp; Authenticity ✓</small>
+          </div>
+          <p>Privacy constraints did not become a settings problem. They changed the architecture.</p>
+          <div className={styles.sceneDraftActions}><span>Edit</span><span>Request change</span><strong>Approve exact revision</strong></div>
+        </div>
+      </div>
+
+      <div className={styles.sceneFooter}>
+        <span>signal → judgment</span>
+        <span>no automatic publishing</span>
       </div>
     </div>
   );
 }
 
-function MediaCanvas() {
+function ProductPath() {
   return (
-    <div className={styles.mediaCanvas} aria-label="Future adaptive media production concept">
-      <div className={styles.mediaTopbar}>
-        <span>ONE STORY</span>
-        <small>media follows meaning</small>
-      </div>
-      <div className={styles.mediaGrid}>
-        <div className={styles.textTile}>
-          <span>TEXT</span>
-          <strong>Sometimes nothing visual improves the story.</strong>
-          <i /><i /><i />
-        </div>
-        <div className={styles.carouselTile}>
-          <span>CAROUSEL</span>
-          <div className={styles.slideStack} aria-hidden="true"><i /><i /><b>01</b></div>
-          <strong>Explain it in sequence.</strong>
-        </div>
-        <div className={styles.demoTile}>
-          <span>DEMO</span>
-          <div className={styles.demoScreen} aria-hidden="true"><i /><i /><i /></div>
-          <strong>Show the real product.</strong>
-        </div>
-        <div className={styles.reelTile}>
-          <span>REEL</span>
-          <div className={styles.reelFrame} aria-hidden="true"><i /><b>0:18</b></div>
-          <strong>Cut footage around the point.</strong>
-        </div>
-      </div>
-      <div className={styles.destinationStrip}>
-        <span>adapt for</span>
-        {DESTINATIONS.map((platform) => (
-          <i key={platform}><PlatformIcon platform={platform} size={17} branded /></i>
-        ))}
-      </div>
+    <div className={styles.productPath}>
+      {LIVE_PATH.map(([number, title, detail], index) => (
+        <article className={styles.pathStep} key={title}>
+          <div className={styles.pathIndex}><span>{number}</span><i aria-hidden="true" /></div>
+          <div>
+            <small>{index === 5 ? "HUMAN GATE" : "LIVE"}</small>
+            <h3>{title}</h3>
+            <p>{detail}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function PlatformPair() {
+  return (
+    <div className={styles.platformPair} aria-label="Current Golden Path destinations">
+      <span><PlatformIcon platform="linkedin" size={18} branded /> LinkedIn</span>
+      <span><PlatformIcon platform="x" size={18} branded /> X</span>
     </div>
   );
 }
@@ -195,7 +134,7 @@ export default function LandingPage({ onEnter, brand }) {
           <a className={styles.logoLink} href="#top" aria-label="SignalFlow Studio home">{brand}</a>
           <nav className={styles.nav} aria-label="Public navigation">
             <a href="#works-now">Works now</a>
-            <a href="#how-it-flows">How it flows</a>
+            <a href="#how-it-flows">How it works</a>
             <a href="#trust">Trust</a>
           </nav>
           <div className={styles.headerActions}>
@@ -207,99 +146,86 @@ export default function LandingPage({ onEnter, brand }) {
 
       <main id="main-content">
         <section className={styles.hero} aria-labelledby="landing-title">
-          <div className={styles.heroGlow} aria-hidden="true" />
           <div className={styles.heroCopy}>
-            <div className={styles.statusBadge}><i /> The first Signal layer is live</div>
+            <div className={styles.statusBadge}><i /> Owner Golden Path is live through exact approval</div>
             <p className={styles.eyebrow}>A content operating system for people with real work to do</p>
             <h1 id="landing-title">Stay in the work.<br /><em>Let the story find you.</em></h1>
-            <p className={styles.heroLead}>
-              SignalFlow keeps the context your work creates, turns the worthwhile parts into communication, and brings the judgment back to you instead of turning content into a second job.
-            </p>
+            <p className={styles.heroLead}>SignalFlow keeps what your work creates, helps decide what is actually worth communicating, shapes it around your Voice, and brings the final judgment back to you.</p>
             <div className={styles.heroActions}>
               <a className={styles.primaryButton} href="/signals">Capture your first signal <ArrowIcon /></a>
-              <button className={styles.secondaryButton} type="button" onClick={onEnter}>Open current Studio</button>
+              <a className={styles.textButton} href="/plan">See the planning path <ArrowIcon /></a>
             </div>
-            <p className={styles.heroTruth}><strong>Real today:</strong> manual ContentSignals, browser-local recovery, real configured AI generation, editable destination drafts and export. Automatic signal detection and opportunity intelligence are still being built.</p>
+            <p className={styles.heroTruth}><strong>Working now:</strong> manual ContentSignals → persisted opportunities and angles → explicit Voice → approved NarrativeStrategy → immutable LinkedIn/X drafts → evidence/authenticity checks → exact revision approve/reject. Automatic connected-source detection, publishing, memory and media production remain product direction.</p>
           </div>
-          <HeroProductScene />
-          <a className={styles.scrollCue} href="#works-now" aria-label="Continue to what works now"><span /> What works now</a>
+          <HeroFlowScene />
+          <a className={styles.scrollCue} href="#works-now" aria-label="Continue to what works now"><span /> The useful part, now</a>
         </section>
 
         <section className={styles.currentSection} id="works-now" aria-labelledby="current-title">
-          <div className={styles.sectionHeader}>
+          <div className={styles.sectionIntro}>
             <span className={styles.sectionNumber}>01</span>
-            <div>
-              <p className={styles.sectionEyebrow}>USEFUL BEFORE AUTOPILOT</p>
-              <h2 id="current-title">Two honest ways to use SignalFlow today.</h2>
+            <p className={styles.sectionEyebrow}>PERSONAL ALPHA · FUNCTIONAL NOW</p>
+            <h2 id="current-title">Start with the work.<br />Not a content template.</h2>
+            <p className={styles.sectionLead}>You can already use the core owner loop without pretending the future automation exists.</p>
+          </div>
+
+          <div className={styles.currentComposition}>
+            <div className={styles.currentStatement}>
+              <span>CAPTURE</span>
+              <strong>Something happened. Or you had a thought.</strong>
+              <p>Save it as a browser-local ContentSignal. No campaign. No AI call. No pressure to publish.</p>
+              <a href="/signals">Open Signals <ArrowIcon /></a>
             </div>
-            <p>One catches the thought before it disappears. The other creates the content when you already know the intent.</p>
+            <div className={styles.currentDivider} aria-hidden="true"><span>then</span></div>
+            <div className={styles.currentStatement}>
+              <span>JUDGE</span>
+              <strong>SignalFlow does the middle work.</strong>
+              <p>Opportunity, angle, Voice, plan, destination draft, critics and immutable revision history lead back to one explicit decision.</p>
+              <a href="/plan">Open Plan <ArrowIcon /></a>
+            </div>
           </div>
 
-          <div className={styles.currentGrid}>
-            {CURRENT.map((item, index) => (
-              <article className={styles.currentCard} key={item.kicker}>
-                <div className={styles.currentCardTop}>
-                  <span>{item.kicker}</span>
-                  <small>0{index + 1}</small>
-                </div>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-                {item.enter ? (
-                  <button type="button" onClick={onEnter}>{item.action} <ArrowIcon /></button>
-                ) : (
-                  <a href={item.href}>{item.action} <ArrowIcon /></a>
-                )}
-              </article>
-            ))}
+          <div className={styles.liveProof}>
+            <div><span>DESTINATIONS IN THE GOLDEN PATH</span><PlatformPair /></div>
+            <div><span>STORAGE TODAY</span><strong>Browser-local recovery</strong></div>
+            <div><span>INFERENCE TODAY</span><strong>Real configured AI generation</strong></div>
+            <div><span>OUTPUT FOUNDATION</span><strong>Editable destination-specific drafts + export</strong></div>
           </div>
 
-          <div className={styles.truthLine}>
-            <span><CheckIcon /> No fake automatic detections</span>
-            <span><CheckIcon /> No generation when capturing a Signal</span>
+          <div className={styles.compatibilityLine}>
             <span><CheckIcon /> Current Studio remains additive</span>
+            <button type="button" onClick={onEnter}>Open current Studio <ArrowIcon /></button>
           </div>
         </section>
 
         <section className={styles.flowSection} id="how-it-flows" aria-labelledby="flow-title">
-          <div className={styles.flowIntro}>
-            <span className={styles.sectionNumberLight}>02</span>
-            <p className={styles.sectionEyebrowLight}>THE PERMANENT PRODUCT SHAPE</p>
-            <h2 id="flow-title">Your job is judgment.<br />The rest becomes a flow.</h2>
-            <p>The system should consume evidence created by work, not make you stop working to manufacture inputs for a posting tool.</p>
+          <div className={styles.flowHeader}>
+            <div>
+              <span className={styles.sectionNumberLight}>02</span>
+              <p className={styles.sectionEyebrowLight}>THE OWNER PATH</p>
+              <h2 id="flow-title">Your job is judgment.<br />The middle becomes infrastructure.</h2>
+            </div>
+            <p>Each stage owns one decision and one durable record. That is what lets this start personal and scale later without replacing the core.</p>
           </div>
-
-          <div className={styles.flowTrack}>
-            {FLOW.map((item, index) => (
-              <article className={styles.flowStep} key={item.label} data-state={item.state}>
-                <div className={styles.flowMarker}><span>{String(index + 1).padStart(2, "0")}</span><i /></div>
-                <div>
-                  <small>{item.state === "live" ? "LIVE" : item.state === "principle" ? "CORE RULE" : "BUILDING"}</small>
-                  <h3>{item.label}</h3>
-                  <p>{item.detail}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className={styles.coreQuote}>
+          <ProductPath />
+          <div className={styles.coreContract}>
             <span>THE CORE CONTRACT</span>
-            <blockquote>“SignalFlow&apos;s job is everything between the work and your judgment.”</blockquote>
+            <p>SignalFlow&apos;s job is everything between the work and your judgment.</p>
           </div>
         </section>
 
-        <section className={styles.mediaSection} aria-labelledby="media-title">
-          <div className={styles.mediaCopy}>
+        <section className={styles.directionSection} aria-labelledby="direction-title">
+          <div className={styles.directionCopy}>
             <span className={styles.sectionNumber}>03</span>
-            <p className={styles.sectionEyebrow}>MEDIA INTELLIGENCE · PRODUCT DIRECTION</p>
-            <h2 id="media-title">The format should follow the story—not the other way around.</h2>
-            <p>A post may need only words. Or a real screenshot. Or a sequence you swipe through. Or edits across footage you uploaded. SignalFlow is designed to decide the media requirement first, then route the work to deterministic tools and specialized AI where appropriate.</p>
-            <div className={styles.mediaPrinciples}>
-              <span><CheckIcon /> uploaded ≠ publishable</span>
-              <span><CheckIcon /> real evidence before generation</span>
-              <span><CheckIcon /> exact media revision approval</span>
-            </div>
+            <p className={styles.sectionEyebrow}>WHAT COMES AFTER THE CORE LOOP</p>
+            <h2 id="direction-title">Automation should extend the path.<br />Not replace your control.</h2>
+            <p>Source connections, media production, durable publishing and memory are being added behind the same records and approval rules. They are direction—not claims about what is already shipped.</p>
           </div>
-          <MediaCanvas />
+          <div className={styles.futureList}>
+            {FUTURE.map((item, index) => (
+              <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item}</strong><small>direction</small></div>
+            ))}
+          </div>
         </section>
 
         <section className={styles.trustSection} id="trust" aria-labelledby="trust-title">
@@ -307,12 +233,12 @@ export default function LandingPage({ onEnter, brand }) {
             <div>
               <span className={styles.sectionNumberLight}>04</span>
               <p className={styles.sectionEyebrowLight}>AUTOMATION WITHOUT SURRENDERING CONTROL</p>
-              <h2 id="trust-title">Trust is not a settings page.<br />It is system behavior.</h2>
+              <h2 id="trust-title">Trust is system behavior.</h2>
             </div>
-            <p>Privacy, approval and restraint are part of the product contract, not disclaimers added after the automation works.</p>
+            <p>Not another preferences panel. These rules shape what SignalFlow may do before a provider, worker or destination ever receives the task.</p>
           </div>
 
-          <div className={styles.trustGrid}>
+          <div className={styles.trustRows}>
             {TRUST.map(([title, body], index) => (
               <article key={title}>
                 <span>0{index + 1}</span>
@@ -322,38 +248,29 @@ export default function LandingPage({ onEnter, brand }) {
             ))}
           </div>
 
-          <div className={styles.trustFooter}>
+          <div className={styles.processingModes}>
             <div><i /> Standard</div>
             <div><i /> BYO provider</div>
             <div><i /> Private Hybrid</div>
             <div><i /> Local Only</div>
-            <small>Target processing modes. Availability is always determined by the active deployment and implemented capability contract.</small>
+            <small>Target processing modes. Availability is determined by the implemented capability and privacy contract.</small>
           </div>
         </section>
 
         <section className={styles.finalSection} aria-labelledby="final-title">
-          <div className={styles.finalOrb} aria-hidden="true" />
           <p className={styles.sectionEyebrow}>START WITH SOMETHING REAL</p>
-          <h2 id="final-title">Something happened.<br /><em>Don&apos;t turn it into a content task yet.</em></h2>
-          <p>Save the signal. Keep working. SignalFlow will grow outward from that foundation into the full judgment-first system.</p>
+          <h2 id="final-title">Keep the thought.<br /><em>Decide later.</em></h2>
+          <p>SignalFlow does not need you to become a content operator before it can be useful.</p>
           <div className={styles.finalActions}>
-            <a className={styles.primaryButton} href="/signals">Capture a signal <ArrowIcon /></a>
-            <button className={styles.finalStudioButton} type="button" onClick={onEnter}>Open Studio</button>
+            <a className={styles.finalPrimary} href="/signals">Capture a signal <ArrowIcon /></a>
+            <button className={styles.finalStudioButton} type="button" onClick={onEnter}>Open current Studio</button>
           </div>
         </section>
       </main>
 
       <footer className={styles.footer}>
-        <div>
-          <strong>SignalFlow Studio</strong>
-          <p>Content operations around your work—not another job beside it.</p>
-        </div>
-        <nav aria-label="Footer navigation">
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/llms.txt">AI context</a>
-          <a href="https://github.com/Ankit6149/SignalFlow-Studio" target="_blank" rel="noreferrer">GitHub</a>
-        </nav>
+        <div>{brand}<p>Content operating system · Personal Alpha</p></div>
+        <nav aria-label="Footer navigation"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#top">Back to top</a></nav>
       </footer>
     </div>
   );

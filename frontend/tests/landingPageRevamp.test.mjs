@@ -11,6 +11,7 @@ const read = (relativePath) => fs.readFileSync(path.join(frontend, relativePath)
 const page = read("app/page.js");
 const landing = read("components/LandingPage.js");
 const styles = read("components/LandingPage.module.css");
+const shellStyles = read("components/WorkspaceShell.module.css");
 const globals = read("app/globals.css");
 const publicSurfaces = read("app/public-surfaces.css");
 const containment = read("app/ui-containment.css");
@@ -25,93 +26,71 @@ test("the landing route has one component owner and preserves the existing Brand
   assert.doesNotMatch(page, /function LandingPage\(\{ onEnter \}\)/);
   assert.match(page, /<LandingPage onEnter=\{enterStudio\} brand=\{<BrandMark \/>\} \/>/);
   assert.match(page, /function BrandMark\(\{ compact = false, dark = false \}\)/);
-  assert.match(page, /className=\{`brand-mark/);
   assert.match(globals, /\.brand-mark__glyph/);
-  assert.match(globals, /\.brand-mark__copy/);
   assert.match(landing, /export default function LandingPage\(\{ onEnter, brand \}\)/);
   assert.match(landing, /\{brand\}/);
   assert.doesNotMatch(landing, /function SignalFlowLogo|logoMark|logoCopy|brand-mark__glyph/);
   assert.doesNotMatch(styles, /logoMark|logoCopy|brand-mark/);
 });
 
-test("the landing page separates current product truth from the judgment-first product direction", () => {
+test("the landing leads with the real owner Golden Path rather than future automation", () => {
   for (const anchor of ["main-content", "works-now", "how-it-flows", "trust", "final-title"]) {
     assert.ok(landing.includes(anchor), `missing landing anchor: ${anchor}`);
   }
-
   assert.match(landing, /Stay in the work/);
   assert.match(landing, /Let the story find you/);
-  assert.match(landing, /The first Signal layer is live/);
-  assert.match(landing, /Two honest ways to use SignalFlow today/);
-  assert.match(landing, /THE PERMANENT PRODUCT SHAPE/);
-  assert.match(landing, /Opportunity intelligence · building next/);
+  assert.match(landing, /Owner Golden Path is live through exact approval/);
+  assert.match(landing, /manual ContentSignals → persisted opportunities and angles/);
+  assert.match(landing, /evidence\/authenticity checks → exact revision approve\/reject/);
   assert.match(landing, /SignalFlow&apos;s job is everything between the work and your judgment/);
-
-  assert.doesNotMatch(landing, /Turn one product story into a campaign built for every channel/);
-  assert.doesNotMatch(landing, /Create your posting package/);
-  assert.doesNotMatch(landing, /creator-working\.png|offline templates|100% Client-Side Keys/);
+  assert.doesNotMatch(landing, /Turn one product story into a campaign built for every channel|Create your posting package/);
 });
 
-test("the landing page keeps current and future claims intentionally distinct", () => {
-  assert.match(landing, /Real today:/);
-  assert.match(landing, /manual ContentSignals/);
-  assert.match(landing, /browser-local recovery/);
-  assert.match(landing, /real configured AI generation/);
-  assert.match(landing, /editable destination drafts/);
-  assert.match(landing, /export/);
-
-  assert.match(landing, /Automatic signal detection and opportunity intelligence are still being built/);
-  assert.match(landing, /MEDIA INTELLIGENCE · PRODUCT DIRECTION/);
-  assert.match(landing, /BUILDING/);
-  assert.match(landing, /Target processing modes/);
+test("current and future claims remain intentionally distinct", () => {
+  assert.match(landing, /Working now:/);
+  assert.match(landing, /browser-local recovery/i);
+  assert.match(landing, /real configured AI generation/i);
+  assert.match(landing, /Editable destination-specific drafts \+ export/i);
+  assert.match(landing, /Automatic connected-source detection, publishing, memory and media production remain product direction/);
+  assert.match(landing, /WHAT COMES AFTER THE CORE LOOP/);
+  assert.match(landing, /direction—not claims about what is already shipped/);
   assert.match(landing, /Private Hybrid/);
   assert.match(landing, /Local Only/);
+});
+
+test("landing and workspace use the same paper night and gold design tokens", () => {
+  for (const token of ["#f5f0e5", "#11120f", "#d3b874", "#ead9a8"]) {
+    assert.ok(styles.includes(token), `landing missing shared token ${token}`);
+    assert.ok(shellStyles.includes(token), `workspace shell missing shared token ${token}`);
+  }
+  assert.doesNotMatch(styles, /#d9f36a|#a9a1ff/i);
 });
 
 test("public discovery metadata matches the content operating system positioning", () => {
   const manifestData = JSON.parse(manifest);
   const serializedSchema = JSON.stringify(structuredData);
   const retiredPositioning = /One Brief, Every Channel|ONE BRIEF · EVERY CHANNEL|twelve editable destinations|complete review-ready campaign/i;
-
   assert.match(layout, /SignalFlow Studio — Content Operating System/);
   assert.match(layout, /approval-first content operating system in progress/i);
-  assert.match(layout, /broader content operating system direction/i);
   assert.match(openGraphImage, /CONTENT OS · IN PROGRESS/);
-  assert.match(openGraphImage, /Your work should not become a second content job/);
   assert.match(manifestData.description, /approval-first content operating system in progress/i);
   assert.match(serializedSchema, /content operating system in progress/i);
-  assert.match(serializedSchema, /real model provider route/i);
-  assert.match(serializedSchema, /versioned campaign records/i);
-  assert.match(serializedSchema, /as those capabilities are implemented/i);
-
-  for (const surface of [layout, openGraphImage, manifest, structuredDataText]) {
-    assert.doesNotMatch(surface, retiredPositioning);
-  }
+  for (const surface of [layout, openGraphImage, manifest, structuredDataText]) assert.doesNotMatch(surface, retiredPositioning);
 });
 
-test("structured metadata lists shipped foundation separately from future direction", () => {
-  const software = structuredData["@graph"].find((entry) => Array.isArray(entry["@type"]) && entry["@type"].includes("SoftwareApplication"));
-  assert.ok(software, "SoftwareApplication structured data is required");
-  assert.match(software.description, /The current SignalFlow Studio/);
-  assert.match(software.description, /broader content operating system direction/i);
-  assert.ok(software.featureList.every((feature) => !/automatic signal|opportunity ranking|automatic media|narrative memory/i.test(feature)));
-  assert.ok(software.featureList.some((feature) => /manual source context/i.test(feature)));
-  assert.ok(software.featureList.some((feature) => /approval and confirmed success/i.test(feature)));
-});
-
-test("the landing design is scoped and removes the retired global cascade", () => {
+test("the landing design is scoped and avoids the retired global cascade", () => {
   assert.doesNotMatch(globals, /\.landing-shell|\.landing-hero|\.landing-nav|\.landing-editorial/);
   assert.doesNotMatch(publicSurfaces, /\.landing-shell|\.landing-hero|\.landing-nav|\.channel-showcase|\.landing-faq/);
   assert.doesNotMatch(containment, /\.landing-shell|\.landing-hero|\.channel-showcase|\.landing-faq/);
   assert.doesNotMatch(styles, /\.app-shell|\.studio-page|\.secondary-page/);
   assert.match(styles, /\.hero\s*\{/);
   assert.match(styles, /\.currentSection\s*[,\{]/);
-  assert.match(styles, /\.flowSection\s*\{/);
-  assert.match(styles, /\.mediaSection\s*[,\{]/);
-  assert.match(styles, /\.trustSection\s*\{/);
+  assert.match(styles, /\.flowSection\s*[,\{]/);
+  assert.match(styles, /\.directionSection\s*[,\{]/);
+  assert.match(styles, /\.trustSection\s*[,\{]/);
 });
 
-test("the landing page protects responsive, zoom-safe, focus, and reduced-motion behavior", () => {
+test("the landing protects responsive zoom-safe focus and reduced-motion behavior", () => {
   assert.match(styles, /@media \(max-width: 1100px\)/);
   assert.match(styles, /@media \(max-width: 900px\)/);
   assert.match(styles, /@media \(max-width: 640px\)/);

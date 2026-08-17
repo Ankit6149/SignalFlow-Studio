@@ -10,5 +10,7 @@ const page = fs.readFileSync(path.join(root, "components/LandingPage.js"), "utf8
 test("processing-mode marketing stays capability scoped", () => {
   assert.match(page, /Private Hybrid/);
   assert.match(page, /Local Only/);
-  assert.match(page, /Availability is always determined by the active deployment/);
+  assert.match(page, /Target processing modes/);
+  assert.match(page, /Availability is determined by the implemented capability and privacy contract/);
+  assert.doesNotMatch(page, /Private Hybrid is available now|Local Only is available now/);
 });

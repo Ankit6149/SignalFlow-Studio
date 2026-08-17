@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentPlanningApplication } from "../lib/application/browserContentPlanningApplication.mjs";
 import { createBrowserPlatformGenerationApplication } from "../lib/application/browserPlatformGenerationApplication.mjs";
-import WorkspaceShell from "./WorkspaceShell";
 import styles from "./CampaignPlanPanel.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";

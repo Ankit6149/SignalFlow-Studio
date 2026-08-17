@@ -1,0 +1,99 @@
+name: Apply Golden Opportunity Wiring
+
+on:
+  push:
+    branches: [feat/golden-path-opportunity-plan]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/golden-path-opportunity-plan
+      - name: Wire Plan and Signals
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          shell = Path('frontend/components/WorkspaceShell.js')
+          text = shell.read_text()
+          text = text.replace(
+              '{ id: "plan", label: "Plan", status: "next" },',
+              '{ id: "plan", label: "Plan", href: "/plan", status: "available" },',
+              1,
+          )
+          shell.write_text(text)
+
+          signals = Path('frontend/components/SignalsWorkspace.js')
+          text = signals.read_text()
+          if 'createBrowserContentOpportunityApplication' not in text:
+              text = text.replace(
+                  'import { createBrowserContentSignalApplication } from "../lib/application/browserContentSignalApplication.mjs";\n',
+                  'import { createBrowserContentSignalApplication } from "../lib/application/browserContentSignalApplication.mjs";\nimport { createBrowserContentOpportunityApplication } from "../lib/application/browserContentOpportunityApplication.mjs";\n',
+                  1,
+              )
+          if 'const [ideaBusyId, setIdeaBusyId]' not in text:
+              text = text.replace(
+                  '  const [busy, setBusy] = useState(false);\n',
+                  '  const [busy, setBusy] = useState(false);\n  const [ideaBusyId, setIdeaBusyId] = useState("");\n',
+                  1,
+              )
+          marker = '''  const application = useMemo(() => createBrowserContentSignalApplication({\n    getStorage: () => window.localStorage,\n    key: SIGNAL_STORAGE_KEY,\n    workspaceId: LOCAL_WORKSPACE_ID,\n    validateCanonicalReferences: true,\n  }), []);\n'''
+          addition = marker + '''\n  const opportunityApplication = useMemo(() => createBrowserContentOpportunityApplication({\n    getStorage: () => window.localStorage,\n    signalKey: SIGNAL_STORAGE_KEY,\n    workspaceId: LOCAL_WORKSPACE_ID,\n  }), []);\n'''
+          if 'const opportunityApplication = useMemo' not in text:
+              if marker not in text:
+                  raise SystemExit('Could not find signal application marker')
+              text = text.replace(marker, addition, 1)
+          if 'async function findIdeas(signalId)' not in text:
+              marker = '''  function beginEdit(signal) {\n'''
+              fn = '''  async function findIdeas(signalId) {\n    setBusy(true);\n    setIdeaBusyId(signalId);\n    setMessage({ type: "info", text: "Evaluating whether this is worth talking about and preparing distinct narrative directions…" });\n    try {\n      const opportunity = await opportunityApplication.evaluateSignal(signalId);\n      await reload();\n      window.location.assign(`/plan?opportunity=${encodeURIComponent(opportunity.opportunityId)}`);\n    } catch (error) {\n      setMessage({ type: "error", text: error?.message || "SignalFlow could not evaluate this Signal yet." });\n    } finally {\n      setIdeaBusyId("");\n      setBusy(false);\n    }\n  }\n\n'''
+              if marker not in text:
+                  raise SystemExit('Could not find beginEdit marker')
+              text = text.replace(marker, fn + marker, 1)
+          old = '''                        <div className={styles.signalActions}>\n                          <button type="button" onClick={() => beginEdit(signal)} disabled={busy}>Edit</button>\n'''
+          new = '''                        <div className={styles.signalActions}>\n                          {! ["ignored", "archived", "snoozed"].includes(signal.status) && (\n                            <button type="button" className={styles.ideaButton} onClick={() => findIdeas(signal.signalId)} disabled={busy}>\n                              {ideaBusyId === signal.signalId ? "Finding ideas…" : "Find ideas"}\n                            </button>\n                          )}\n                          <button type="button" onClick={() => beginEdit(signal)} disabled={busy}>Edit</button>\n'''
+          if 'className={styles.ideaButton}' not in text:
+              if old not in text:
+                  raise SystemExit('Could not find signal action marker')
+              text = text.replace(old, new, 1)
+          text = text.replace(
+              'text: "Signal saved in this browser. Nothing was generated or published; opportunity evaluation is a separate next step.",',
+              'text: "Signal saved in this browser. Nothing was generated or published. Use Find ideas when you want SignalFlow to judge whether it is worth communicating.",',
+              1,
+          )
+          signals.write_text(text)
+
+          css = Path('frontend/components/SignalsWorkspace.module.css')
+          text = css.read_text()
+          if '.ideaButton {' not in text:
+              text += '''\n.ideaButton {\n  border-color: #171714 !important;\n  background: #171714 !important;\n  color: #fffdf8 !important;\n}\n\n.ideaButton:hover {\n  border-color: #8b6a28 !important;\n  background: #2b281f !important;\n}\n'''
+          css.write_text(text)
+
+          domain_test = Path('frontend/tests/domainContracts.test.mjs')
+          text = domain_test.read_text()
+          if 'ContentOpportunity:' not in text:
+              marker = '''  Campaign: { campaignId: "campaign-1", title: "Campaign", drafts: { linkedin: {} } },\n'''
+              sample = '''  ContentOpportunity: {\n    opportunityId: "opportunity-1",\n    workspaceId: "workspace-1",\n    signalIds: ["signal-1"],\n    recommendation: "post",\n    title: "Opportunity",\n    status: "proposed",\n    evaluationProvenance: { taskId: "task-1", provider: "test" },\n  },\n'''
+              if marker not in text:
+                  raise SystemExit('Could not find domain fixture marker')
+              text = text.replace(marker, sample + marker, 1)
+          domain_test.write_text(text)
+          PY
+      - name: Commit wiring
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No wiring changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/components/WorkspaceShell.js frontend/components/SignalsWorkspace.js frontend/components/SignalsWorkspace.module.css frontend/tests/domainContracts.test.mjs
+          git commit -m "feat(golden-path): wire Signals into persisted opportunity planning"
+          git push origin HEAD:feat/golden-path-opportunity-plan

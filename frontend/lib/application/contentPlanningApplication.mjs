@@ -28,6 +28,21 @@ function required(value, field) {
   return normalized;
 }
 
+function profileRef(record) {
+  if (!record || typeof record !== "object") return null;
+  const idEntry = Object.entries(record).find(([key, value]) => key.endsWith("ProfileId") && value);
+  if (!idEntry) return null;
+  return { id: idEntry[1], version: Number(record.version || 0) };
+}
+
+function activeIdentityRefs(bundle = {}) {
+  return Object.fromEntries(
+    Object.entries(bundle)
+      .map(([key, record]) => [key, profileRef(record)])
+      .filter(([, value]) => value),
+  );
+}
+
 function selectedAngle(opportunity, decision = null) {
   if (decision?.angleId) {
     const angle = opportunity.candidateAngles.find((item) => item.angleId === decision.angleId);
@@ -165,6 +180,19 @@ export function createContentPlanningApplication({
       error.code = "voice_profile_required";
       throw error;
     }
+
+    const existing = await currentStrategyForOpportunity(opportunity.opportunityId);
+    if (!refresh && existing && typeof identityApplication.getActiveBundle === "function") {
+      const activeBundle = await identityApplication.getActiveBundle({
+        platform: null,
+        projectId: opportunity.projectId || null,
+      });
+      const preflightFingerprint = strategyFingerprint(opportunity, angle, {
+        profileRefs: activeIdentityRefs(activeBundle),
+      });
+      if (existing.inputFingerprint === preflightFingerprint) return existing;
+    }
+
     const sourceSignal = await requireSourceSignal(opportunity);
     const snapshot = await identityApplication.createIdentityContextSnapshot({
       platform: null,
@@ -172,7 +200,6 @@ export function createContentPlanningApplication({
       campaignInstructions: [],
     });
     const fingerprint = strategyFingerprint(opportunity, angle, snapshot);
-    const existing = await currentStrategyForOpportunity(opportunity.opportunityId);
     if (!refresh && existing?.inputFingerprint === fingerprint) return existing;
 
     const now = appClock.now();

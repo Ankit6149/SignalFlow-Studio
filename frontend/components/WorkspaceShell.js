@@ -26,7 +26,7 @@ const NAV_GROUPS = [
     label: "System",
     items: [
       { id: "connections", label: "Connections", href: "/?workspace=connections", status: "available" },
-      { id: "voice", label: "Voice", status: "planned" },
+      { id: "voice", label: "Voice", href: "/voice", status: "available" },
       { id: "settings", label: "Settings", href: "/?workspace=settings", status: "available" },
     ],
   },

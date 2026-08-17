@@ -99,12 +99,12 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Staged generation orchestration | Partially implemented: `opportunity_evaluation` → `narrative_strategy` → destination-specific `platform_variant` writing → separate `evidence_critique` + `authenticity_critique` → exact human review/approval; bounded natural-language exact-revision change requests are implemented; durable jobs and broader stages remain planned | #158/#166 |
 | Authenticity quality critic | Implemented browser-local for the owner Golden Path against the exact destination-specific IdentityContextSnapshot used by the current revision; broader automated learning remains planned | #158/#166 |
 | Evidence/factual quality critic integrated with staged flow | Implemented browser-local for exact current LinkedIn/X revisions using the canonical source Signal/approved strategy/ContentPiece evidence contract; broader source processors remain planned | #158/#166 |
-| Today decision inbox | Planned | #159 |
+| Today decision inbox | Implemented browser-local as a derived exact-revision judgment queue over canonical Golden Path records; automatic Signal→review-ready orchestration is still planned | #159/#166/#204 |
 | Signals workspace | Implemented for browser-local manual intake/lifecycle + explicit `Find ideas`; automatic connector ingestion still planned | #152/#159/#166 |
 | Plan/opportunity/campaign-planning workspace | Implemented browser-local through opportunity explanation, angle/custom-angle decision, reviewable/approvable NarrativeStrategy, canonical ContentPiece, immutable LinkedIn/X revision history, separate critics, immutable owner edits/regeneration, and exact per-revision approve/reject decisions | #156/#157/#158/#159/#166 |
 | CadencePolicy / editorial planning | Planned | #160 |
 | Editorial calendar with intentionally empty slots | Planned | #160 |
-| Provider-neutral InferenceTask/routing/policy fabric | Thin task/adapter + server privacy-route enforcement implemented for `opportunity_evaluation`, `narrative_strategy`, `platform_variant`, `evidence_critique`, , `authenticity_critique`, and `platform_variant_revision`; full capability registry, metering, fallback and Private Hybrid remain planned | #170/#171/#172 |
+| Provider-neutral InferenceTask/routing/policy fabric | Thin task/adapter + server privacy-route enforcement implemented for `opportunity_evaluation`, `narrative_strategy`, `platform_variant`, `evidence_critique`, `authenticity_critique`, and `platform_variant_revision`; full capability registry, metering, fallback and Private Hybrid remain planned | #170/#171/#172 |
 | Curated local intelligence packs | Planned | #173 |
 | External AI-assistant client integrations | Planned | #174 |
 | Mobile low-attention companion | Planned | #175 |
@@ -240,7 +240,7 @@ Public links must fail closed as *verified usable evidence* where #127's hardene
 
 The owner-first browser-local path now implements manual `ContentSignal`, persisted `ContentOpportunity` evaluation/angle selection, explicit versioned Identity/Perception/Voice/Boundary context, reviewable/approvable `NarrativeStrategy`, canonical `ContentPiece`/LinkedIn-X `PlatformVariant`, immutable generated/owner-edited/AI-revised `PlatformVariantRevision` history, separate evidence/authenticity critics, and exact per-revision human approve/reject decisions.
 
-Automatic signal ingestion, connected-source intelligence, memory-aware opportunity ranking, StyleMemory, NarrativeMemory, Today, publishing and broader hosted persistence remain target capabilities until their owning issues are complete.
+Automatic signal ingestion, connected-source intelligence, memory-aware opportunity ranking, automatic Signal→review-ready orchestration, StyleMemory, NarrativeMemory, publishing and broader hosted persistence remain target capabilities until their owning issues are complete. The browser-local Today decision inbox is implemented as a derived view over exact reviewed current revisions; it does not create a second workflow state store.
 
 Examples:
 

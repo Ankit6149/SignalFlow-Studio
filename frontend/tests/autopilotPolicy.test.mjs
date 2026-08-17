@@ -37,7 +37,7 @@ function opportunity(overrides = {}) {
     confidence: 0.9,
     evidenceReadiness: { level: "strong", reason: "The architectural decision is directly known." },
     narrativeFit: { level: "strong", reason: "The signal contains a concrete constraint and trade-off." },
-    repetitionRisk: { level: "unknown", reason: "NarrativeMemory is not implemented." },
+    repetitionRisk: { level: "unknown", reason: "No relevant narrative history is available yet." },
     candidateAngles: [
       { title: "Architecture boundary", summary: "Explain the routing boundary.", approach: "Lead with the constraint and resulting architecture." },
       { title: "Privacy trade-off", summary: "Explain the trade-off.", approach: "Lead with what privacy prevented." },
@@ -128,7 +128,18 @@ test("strong text-ready opportunity advances under explicit versioned policy", (
   assert.equal(decision.policyVersion, AUTOPILOT_POLICY_VERSION);
   assert.equal(decision.angle.angleId, "angle-1");
   assert.deepEqual(decision.destinations, ["linkedin", "x"]);
-  assert.match(decision.notes[0], /NarrativeMemory is not implemented/);
+  assert.match(decision.notes[0], /No relevant NarrativeMemory history exists yet/i);
+  assert.doesNotMatch(decision.notes[0], /not implemented/i);
+});
+
+test("high NarrativeMemory repetition uses the persisted explanation and routes to Plan", () => {
+  const explanation = "This closely overlaps a recent prepared story in topic and angle.";
+  const decision = evaluateOpportunityForAutopilot(opportunity({
+    repetitionRisk: { level: "high", reason: explanation },
+  }));
+  assert.equal(decision.outcome, AUTOPILOT_OUTCOMES.NEEDS_PLAN);
+  assert.equal(decision.gate, "repetition_risk");
+  assert.equal(decision.reason, explanation);
 });
 
 test("policy escalates low score, weak evidence, unsupported media dependency, and skip recommendation", () => {

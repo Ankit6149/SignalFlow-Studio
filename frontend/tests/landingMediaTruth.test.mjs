@@ -7,8 +7,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const page = fs.readFileSync(path.join(root, "components/LandingPage.js"), "utf8");
 
-test("adaptive media canvas remains explicitly product direction", () => {
-  assert.match(page, /MEDIA INTELLIGENCE · PRODUCT DIRECTION/);
-  assert.match(page, /image, carousel, demo or reel/);
-  assert.match(page, /uploaded ≠ publishable/);
+test("media remains a future extension rather than the landing-page product center", () => {
+  assert.match(page, /Media intelligence \+ production/);
+  assert.match(page, /direction—not claims about what is already shipped/);
+  assert.match(page, /Automatic connected-source detection, publishing, memory and media production remain product direction/);
+  assert.doesNotMatch(page, /MediaCanvas|adaptive media canvas|automatic media production is live/i);
 });

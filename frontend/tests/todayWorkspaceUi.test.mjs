@@ -19,9 +19,9 @@ test("Today keeps the primary owner interaction to judgment rather than workflow
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /Only the decisions that need you/);
   assert.match(component, /Nothing needs your judgment/);
-  assert.match(component, />Approve</);
-  assert.match(component, />Request change</);
-  assert.match(component, />Reject</);
+  assert.match(component, /blocked \? "Resolve blockers first" : busy \? "Saving…" : "Approve"/);
+  assert.match(component, />Request change<\/button>/);
+  assert.match(component, />Reject<\/button>/);
   assert.match(component, /<summary>Details<\/summary>/);
   assert.doesNotMatch(component, /Run checks|Choose this direction|Build campaign plan|Generate drafts|Select a narrative direction/);
 });

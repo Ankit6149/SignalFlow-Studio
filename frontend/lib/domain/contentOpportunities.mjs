@@ -308,7 +308,6 @@ export function opportunityInputFingerprint(signalInput) {
     sourceArtifactIds: signal.sourceArtifactIds,
     assetIds: signal.assetIds,
     occurredAt: signal.occurredAt,
-    updatedAt: signal.updatedAt,
   });
   let hash = 2166136261;
   for (let index = 0; index < serialized.length; index += 1) {

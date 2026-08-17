@@ -303,7 +303,10 @@ export function buildNarrativeRepetitionReport(candidateInput = {}, memoryInputs
   }
 
   const scored = memories.map((memory) => {
-    const topicOverlap = jaccard(tokenSet(`${candidate.topic} ${candidate.summary}`), tokenSet(memory.topic));
+    const topicOverlap = Math.max(
+      jaccard(tokenSet(candidate.topic), tokenSet(memory.topic)),
+      jaccard(tokenSet(`${candidate.topic} ${candidate.summary}`), tokenSet(memory.topic)),
+    );
     const angleOverlap = jaccard(tokenSet(`${candidate.angle} ${candidate.angleSummary}`), tokenSet(memory.angle));
     const coreOverlap = jaccard(tokenSet(candidate.coreIdea), tokenSet(memory.coreIdea));
     const claimOverlap = jaccard(tokenSet(candidate.claims.join(" ")), tokenSet(memory.claims.join(" ")));

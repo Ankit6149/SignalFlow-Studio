@@ -1,21 +1,14 @@
-# SignalFlow Studio — Capability Matrix
+# Capability Matrix
 
-> **Purpose:** this document states what the current deployment/session can actually use. It intentionally distinguishes **target product architecture** from **implemented capability**.
+SignalFlow Studio tracks capability truth in layers. A documented target is not the same thing as implemented code, configured infrastructure, current-session availability, or production verification.
 
-SignalFlow is one product with hosted/local/self-hosted deployment profiles. Clients must read `GET /api/capabilities` and resource-specific state instead of inferring availability from documentation, hostname, visible UI, installed dependencies, or future roadmap records.
+## 1. Why this matrix exists
 
-Capability documents must not contain raw credentials, OAuth tokens, captured page content, prompts, drafts, signed private URLs, identity-profile content, private asset bytes, or private media transcripts.
+The product is intentionally moving from a campaign-generation workspace toward a content operating system. That transition creates a risk: future architecture can look like current capability if docs, UI, issues, and runtime contracts are not explicit about status.
 
-## 1. Contract
+This file is the compact implementation-truth index. The deeper product/architecture docs remain authoritative for target behavior.
 
-- Schema: `frontend/lib/capabilities/capabilityContract.mjs`
-- Current implemented schema version: `1`
-- Endpoint: `GET /api/capabilities`
-- Consumers: Studio web client, browser-extension handshake, MCP server, and future workers/clients
-- Cache policy: `no-store`
-- Compatibility: clients ignore unknown future fields but fail closed when known required fields are missing/invalid
-
-## 2. Core truth rule
+## 2. Capability-state rule
 
 A feature may be:
 
@@ -174,203 +167,63 @@ capabilities.inference
   privateHybrid
   localOnly
 
+capabilities.clients
+  aiAssistants
+  mobile
+  desktopAgent
+
 capabilities.media
-  intentResolution
-  assetUsePolicy
+  intent
+  roles
+  policy
   imageUnderstanding
-  imageEditing
-  imageGeneration
-  imageComposition
-  carouselPlanning
+  editing
+  generation
+  compositing
   carouselRendering
-  videoUnderstanding
   videoEditing
-  transcription
-  videoRendering
-  supportedAspectRatios
-
-capabilities.production
-  captureWorker
-  screenshots
-  screencast
-  mediaRenderer
-
-capabilities.editorial
-  cadencePlanning
-  calendar
-  scheduling
-
-capabilities.sources.github
-  eventIngestion
-  repositoryEvidence
-
-capabilities.destinations.<provider>
-  available
-  verifiedTarget
-  publishText
-  publishImage
-  publishVideo
-  publishCarousel
-  analyticsRead
+  capture
+  rightsConsent
 ```
 
-Do not add these fields to the public contract until their schema/implementation issue owns them and compatibility tests exist.
+Do not expose these target namespaces as `available: true` before their owning implementations and tests exist.
 
-## 7. Canonical source/media capability
+## 7. Current manual provider path
 
-Current source contracts can represent Asset/SourceArtifact/AssetProcessing records, but a canonical record does not prove:
+The current Studio flow supports a temporary manual provider path through configured server-side providers, temporary BYOK, compatible custom endpoints, and local adapters where transport allows them.
 
-- remote fetch safety;
-- extraction success;
-- OCR;
-- transcription;
-- visual analysis;
-- durable upload;
-- deletion/retention enforcement;
-- extension acknowledgement;
-- automatic capture-worker production;
-- media intent/use-policy enforcement;
-- image editing/generation;
-- carousel/video editing.
+That remains useful during Personal Alpha implementation, but it is not the final provider architecture.
 
-Those states remain explicit per artifact/processing/capability.
+Target architecture is documented in:
 
-Public links must fail closed as *verified usable evidence* where #127's hardened fetch boundary is required but not implemented.
+- `INFERENCE_AND_PRIVACY_ARCHITECTURE.md`
+- `AI_CLIENT_INTEGRATIONS.md`
+- `INFERENCE_CLIENT_CAPABILITY_MATRIX.md`
 
-## 8. Content-intelligence truth
+## 8. Current content-intelligence implementation boundary
 
 The owner-first browser-local path now implements manual `ContentSignal`, persisted `ContentOpportunity` evaluation/angle selection, explicit versioned Identity/Perception/Voice/Boundary context, reviewable/approvable `NarrativeStrategy`, canonical `ContentPiece`/LinkedIn-X `PlatformVariant`, immutable generated/owner-edited/AI-revised `PlatformVariantRevision` history, separate evidence/authenticity critics, exact per-revision human approve/reject decisions, and an explicit high-confidence `Prepare for review` orchestrator that safely composes those stages into the Today decision inbox.
 
+Current staged inference task kinds are:
+
+- `opportunity_evaluation`;
+- `narrative_strategy`;
+- `platform_variant`;
+- `platform_variant_revision`;
+- `evidence_critique`;
+- `authenticity_critique`.
+
+For the currently implemented stages, browser UI calls application services, application services construct task-oriented `InferenceTask` records, the browser inference adapter dispatches to task-specific server endpoints, and the server applies provider selection + privacy-route checks before physical model calls. Exact-revision evidence and authenticity critics are distinct inference stages; the review UI never calls providers directly.
+
+The persisted editorial records remain provider-neutral. Provider/model/route details stay in inference provenance instead of becoming provider-shaped domain fields.
+
 Automatic signal ingestion, connected-source/background triggers, memory-aware opportunity ranking, StyleMemory, NarrativeMemory, publishing and broader hosted persistence remain target capabilities until their owning issues are complete. Explicit owner-triggered high-confidence Signal→review-ready orchestration is implemented browser-local; it escalates uncertain work instead of guessing and never performs final content approval or publishing. The Today decision inbox remains a derived view over exact reviewed current revisions and does not create a second workflow state store.
 
-Examples:
+## 9. Runtime truth rules
 
-- a saved manual ContentSignal is real persisted evidence and can now be evaluated into a persisted manual-source ContentOpportunity, but it is **not** automatic work-event detection;
-- an ad-hoc model-generated `strategy` object is **not** equivalent to the implemented persisted/revisioned NarrativeStrategy contract;
-- a shallow `founder-style` tone field is **not** Identity; the explicit versioned Identity/Perception/Voice/Boundary records are the current implemented owner model;
-- a generated `PlatformVariantRevision` is **not approved content** merely because it exists; approval is a separate exact-revision decision that is invalidated for the current path when a newer edit/requested revision/regeneration becomes current;
-- campaign history is useful but is **not** NarrativeMemory until public-story semantics are implemented;
-- a prompt-generated media shot list is **not** automatic capture/media production;
-- a client-side schedule callback is **not** durable editorial/publication scheduling.
-
-## 9. Capture/production truth
-
-### Browser extension
-
-User-initiated extension capture is a separate capability family from automatic campaign capture.
-
-### Automatic capture worker
-
-The product may report this available only when:
-
-- worker/infrastructure is configured;
-- a supported CaptureRecipe can execute;
-- target/environment authorization is valid;
-- output storage is available;
-- durable job/progress behavior is functional.
-
-Installing browser automation dependencies alone is not capability evidence.
-
-### Media renderer
-
-May report available only when a validated structured media plan can produce persisted output Assets through the render pipeline.
-
-A prompt containing `videoTimeline` is not a renderer.
-
-### Creative media
-
-May report image/carousel/video-edit capability only when the specific capability has:
-
-- provider/processor/renderer implementation;
-- AssetUsePolicy/ProcessingPolicy enforcement;
-- source/derived lineage;
-- persistent job/result state where needed;
-- reviewable exact revisions;
-- truthful failure handling.
-
-Do not collapse all media capability into `supportsImages` or `supportsVideo`.
-
-## 10. Editorial planning truth
-
-The product distinguishes:
-
-- editorial recommendation/planning;
-- media recommendation/production;
-- durable publication scheduling;
-- destination provider capability.
-
-A Calendar UI alone is not durable scheduling.
-
-A schedule is real only when server/job persistence survives browser closure/restart and execution semantics are defined.
-
-## 11. Destination connector truth
-
-A connector's state is richer than `connected`.
-
-Current/future connector capability should distinguish:
-
-- configured;
-- authorized;
-- verified target identity;
-- scopes/products;
-- expiry/revocation;
-- text/image/video/carousel/multi-image capabilities;
-- platform-audio capability/handoff;
-- direct publish verified/unverified;
-- manual-only fallback;
-- provider errors/rate limits.
-
-Publishing success is recorded only after destination confirmation.
-
-Read `docs/CONNECTOR_READINESS.md`.
-
-## 12. Portable transfer capability
-
-Current portable transfer remains explicit browser ownership/recovery, not silent cloud sync.
-
-As new identity/signal/memory/calendar/media records ship, portable ownership must be extended deliberately through new archive schema versions/compatibility rules before the product claims those records are included.
-
-No new user-owned state should be silently left out of export forever merely because it was introduced after archive schema v1.
-
-## 13. Campaign data rules
-
-Current rules remain:
-
-- current edited draft is authoritative;
-- generated output is baseline/history;
-- temporary provider keys/runtime browser objects are excluded;
-- campaigns have stable IDs/source snapshots/generation runs;
-- Markdown/JSON are deterministic projections;
-- browser/memory/store-backed adapters share contracts.
-
-The implemented Golden Path ContentPiece/PlatformVariant revision model and future legacy/media migrations must preserve these invariants.
-
-Original user media must remain immutable when the new media architecture is implemented; edits and renders become derived revisions with full lineage.
-
-## 14. Session/permission rules
-
-- Public hosted deployment without valid owner/member auth reports the appropriate restricted role.
-- Owner/local/self-hosted capabilities remain permission/configuration-aware.
-- Local filesystem access remains explicit opt-in.
-- UI may hide irrelevant controls, but server/application authorization remains the security boundary.
-- `configured` and `available` are separate.
-- Resource-specific capability may be unavailable even when the provider itself is connected.
-- Media capability also depends on AssetUsePolicy/ProcessingPolicy/rights, not only provider availability.
-
-## 15. Adding a capability
-
-1. Define the owning domain/application service.
-2. Define current/future deployment profiles and authorization.
-3. Define privacy/media-use/rights policy where relevant.
-4. Add server-owned versioned capability field/schema.
-5. Add fail-closed client parsing.
-6. Implement infrastructure behind a port.
-7. Add capability fixtures for supported profiles/roles.
-8. Add relevant migration/serialization/security/job/retry tests.
-9. Add real credential-backed evidence for external side effects.
-10. Update web/MCP/extension/mobile/worker/public docs.
-11. Only then advertise the capability.
-
-## 16. Capability principle
-
-> **Documentation may describe where SignalFlow is going. Only verified implementation determines what SignalFlow can say it does today.**
+- Configured is not the same thing as production verified.
+- Provider code present is not the same thing as credentials available.
+- Connector code present is not the same thing as working publication.
+- Capture code present is not the same thing as a worker running.
+- Documented architecture is not the same thing as shipped behavior.
+- Session tooling availability is not the same thing as deployed product capability.

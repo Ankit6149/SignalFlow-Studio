@@ -54,4 +54,4 @@ test("workspace shell has an intentional mobile drawer and accessibility states"
   assert.match(css, /transform: translateX\(-105%\)/);
   assert.match(css, /\.railOpen \{ transform: translateX\(0\); \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-}
+});

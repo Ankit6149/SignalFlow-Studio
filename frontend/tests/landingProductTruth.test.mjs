@@ -7,20 +7,21 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
-test("landing presents manual ContentSignal capture as live without claiming automatic intelligence", () => {
+test("landing presents the real manual owner path without claiming connected-source automation", () => {
   const page = read("components/LandingPage.js");
-  assert.match(page, /The first Signal layer is live/);
+  assert.match(page, /Owner Golden Path is live through exact approval/);
   assert.match(page, /href="\/signals"/);
   assert.match(page, /manual ContentSignals/i);
-  assert.match(page, /Automatic signal detection and opportunity intelligence are still being built/);
-  assert.match(page, /Opportunity intelligence · building next/);
-  assert.match(page, /No fake automatic detections/);
+  assert.match(page, /persisted opportunities and angles/i);
+  assert.match(page, /evidence\/authenticity checks/i);
+  assert.match(page, /Automatic connected-source detection, publishing, memory and media production remain product direction/);
+  assert.doesNotMatch(page, /automatic posting is available|fully automatic|autopilot is live/i);
 });
 
-test("landing preserves current Studio as a real additive create path", () => {
+test("landing preserves current Studio as an additive create path", () => {
   const page = read("components/LandingPage.js");
   assert.match(page, /Open current Studio/);
-  assert.match(page, /real configured model routes/i);
+  assert.match(page, /real configured AI generation/i);
   assert.match(page, /Current Studio remains additive/);
   assert.match(page, /onClick=\{onEnter\}/);
 });

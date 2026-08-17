@@ -34,20 +34,18 @@ test("the landing route has one component owner and preserves the existing Brand
   assert.doesNotMatch(styles, /logoMark|logoCopy|brand-mark/);
 });
 
-test("the landing page separates current product truth from the content operating system direction", () => {
-  for (const anchor of ["main-content", "now", "direction", "trust", "final-cta-title"]) {
+test("the landing page separates current product truth from the judgment-first product direction", () => {
+  for (const anchor of ["main-content", "works-now", "how-it-flows", "trust", "final-title"]) {
     assert.ok(landing.includes(anchor), `missing landing anchor: ${anchor}`);
   }
 
-  assert.match(landing, /Your work should not become a second content job/);
-  assert.match(landing, /Open the current Studio/);
-  assert.match(landing, /AVAILABLE TODAY/);
-  assert.match(landing, /CURRENT FOUNDATION/);
-  assert.match(landing, /PRODUCT DIRECTION/);
-  assert.match(landing, /Future workspace/);
-  assert.match(landing, /Not presented as live functionality/);
-  assert.match(landing, /Review before anything leaves/);
-  assert.match(landing, /The user&apos;s job is judgment/);
+  assert.match(landing, /Stay in the work/);
+  assert.match(landing, /Let the story find you/);
+  assert.match(landing, /The first Signal layer is live/);
+  assert.match(landing, /Two honest ways to use SignalFlow today/);
+  assert.match(landing, /THE PERMANENT PRODUCT SHAPE/);
+  assert.match(landing, /Opportunity intelligence · building next/);
+  assert.match(landing, /SignalFlow&apos;s job is everything between the work and your judgment/);
 
   assert.doesNotMatch(landing, /Turn one product story into a campaign built for every channel/);
   assert.doesNotMatch(landing, /Create your posting package/);
@@ -55,15 +53,17 @@ test("the landing page separates current product truth from the content operatin
 });
 
 test("the landing page keeps current and future claims intentionally distinct", () => {
-  assert.match(landing, /Usable now:/);
-  assert.match(landing, /real configured AI routes/);
-  assert.match(landing, /local campaign recovery/);
-  assert.match(landing, /save the campaign locally/);
+  assert.match(landing, /Real today:/);
+  assert.match(landing, /manual ContentSignals/);
+  assert.match(landing, /browser-local recovery/);
+  assert.match(landing, /real configured AI generation/);
+  assert.match(landing, /editable destination drafts/);
   assert.match(landing, /export/);
 
-  assert.match(landing, /PRODUCT DIRECTION · IN DEVELOPMENT/);
-  assert.match(landing, /Future capability/);
-  assert.match(landing, /Architecture direction; availability depends on implementation/);
+  assert.match(landing, /Automatic signal detection and opportunity intelligence are still being built/);
+  assert.match(landing, /MEDIA INTELLIGENCE · PRODUCT DIRECTION/);
+  assert.match(landing, /BUILDING/);
+  assert.match(landing, /Target processing modes/);
   assert.match(landing, /Private Hybrid/);
   assert.match(landing, /Local Only/);
 });
@@ -105,15 +105,16 @@ test("the landing design is scoped and removes the retired global cascade", () =
   assert.doesNotMatch(containment, /\.landing-shell|\.landing-hero|\.channel-showcase|\.landing-faq/);
   assert.doesNotMatch(styles, /\.app-shell|\.studio-page|\.secondary-page/);
   assert.match(styles, /\.hero\s*\{/);
-  assert.match(styles, /\.directionSection\s*\{/);
-  assert.match(styles, /\.mediaSection\s*\{/);
+  assert.match(styles, /\.currentSection\s*[,\{]/);
+  assert.match(styles, /\.flowSection\s*\{/);
+  assert.match(styles, /\.mediaSection\s*[,\{]/);
   assert.match(styles, /\.trustSection\s*\{/);
 });
 
 test("the landing page protects responsive, zoom-safe, focus, and reduced-motion behavior", () => {
-  assert.match(styles, /@media \(max-width: 1120px\)/);
-  assert.match(styles, /@media \(max-width: 860px\)/);
-  assert.match(styles, /@media \(max-width: 560px\)/);
+  assert.match(styles, /@media \(max-width: 1100px\)/);
+  assert.match(styles, /@media \(max-width: 900px\)/);
+  assert.match(styles, /@media \(max-width: 640px\)/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /:focus-visible/);
   assert.match(styles, /overflow-x:\s*clip/);

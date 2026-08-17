@@ -86,10 +86,14 @@ export function evaluateOpportunityForAutopilot(opportunityInput) {
     });
   }
   if (opportunity.repetitionRisk.level === "high") {
-    return result(AUTOPILOT_OUTCOMES.NEEDS_PLAN, "Repetition risk is high, so the owner should inspect the narrative before preparation continues.", {
-      opportunityId: opportunity.opportunityId,
-      gate: "repetition_risk",
-    });
+    return result(
+      AUTOPILOT_OUTCOMES.NEEDS_PLAN,
+      opportunity.repetitionRisk.reason || "Repetition risk is high, so the owner should inspect the narrative before preparation continues.",
+      {
+        opportunityId: opportunity.opportunityId,
+        gate: "repetition_risk",
+      },
+    );
   }
   if (!opportunity.recommendedAngleId) {
     return result(AUTOPILOT_OUTCOMES.NEEDS_PLAN, "This opportunity predates explicit angle recommendation or the evaluator could not recommend one confidently.", {
@@ -118,13 +122,17 @@ export function evaluateOpportunityForAutopilot(opportunityInput) {
     });
   }
 
+  const repetitionNotes = opportunity.repetitionRisk.level === "unknown"
+    ? ["No relevant NarrativeMemory history exists yet, so repetition cannot be confirmed or ruled out for this first preparation."]
+    : opportunity.repetitionRisk.level === "medium"
+      ? [opportunity.repetitionRisk.reason]
+      : [];
+
   return result(AUTOPILOT_OUTCOMES.ADVANCE, "The opportunity has enough editorial confidence, evidence and narrative fit to prepare for owner judgment.", {
     opportunityId: opportunity.opportunityId,
     angle,
     destinations,
-    notes: opportunity.repetitionRisk.level === "unknown"
-      ? ["NarrativeMemory is not implemented, so repetition was not treated as checked; the policy permits this unknown state for Personal Alpha."]
-      : [],
+    notes: repetitionNotes,
   });
 }
 

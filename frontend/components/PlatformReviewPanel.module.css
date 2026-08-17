@@ -1,0 +1,301 @@
+.reviewPanel {
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.message {
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(23, 23, 20, 0.1);
+  border-radius: 0.42rem;
+  color: #5f5a50;
+  font-size: 0.6rem;
+  line-height: 1.45;
+}
+
+.message_success { background: rgba(110, 142, 107, 0.08); }
+.message_error { background: rgba(162, 72, 56, 0.08); color: #7f382e; }
+
+.reviewGate,
+.resultHeader,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.reviewGate > div,
+.resultHeader > div {
+  min-width: 0;
+}
+
+.reviewGate span,
+.resultHeader span,
+.editForm label > span,
+.rejectForm label > span {
+  color: #8b6a28;
+  font-size: 0.52rem;
+  font-weight: 830;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.reviewGate p,
+.resultHeader p,
+.criticSummary {
+  margin: 0.25rem 0 0;
+  color: #777166;
+  font-size: 0.59rem;
+  line-height: 1.45;
+}
+
+.reviewGate button,
+.resultHeader button,
+.actions button,
+.editForm button,
+.rejectForm button {
+  min-height: 2.15rem;
+  padding: 0 0.68rem;
+  border: 1px solid rgba(23, 23, 20, 0.14);
+  border-radius: 0.42rem;
+  background: transparent;
+  color: #514d45;
+  font: inherit;
+  font-size: 0.57rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.reviewGate button,
+.approveButton,
+.editForm button:last-child,
+.rejectForm button:last-child {
+  border-color: #171714 !important;
+  background: #171714 !important;
+  color: #fffdf8 !important;
+}
+
+.reviewGate button:disabled,
+.resultHeader button:disabled,
+.actions button:disabled,
+.editForm button:disabled,
+.rejectForm button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.resultHeader strong {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 540;
+}
+
+.resultHeader[data-verdict="block"] strong { color: #8a3f35; }
+.resultHeader[data-verdict="warn"] strong { color: #8b6a28; }
+.resultHeader[data-verdict="pass"] strong { color: #506c4f; }
+
+.boundaryFindings {
+  margin-top: 0.65rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid rgba(23, 23, 20, 0.07);
+  border-bottom: 1px solid rgba(23, 23, 20, 0.07);
+}
+
+.boundaryFindings > strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.58rem;
+}
+
+.boundaryFindings p {
+  margin: 0.2rem 0 0;
+  color: #6a6258;
+  font-size: 0.59rem;
+  line-height: 1.45;
+}
+
+.boundaryFindings p[data-severity="block"] { color: #7f382e; }
+.boundaryFindings p[data-severity="warning"] { color: #765e2b; }
+
+.criticGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.65rem;
+  border-top: 1px solid rgba(23, 23, 20, 0.07);
+  border-bottom: 1px solid rgba(23, 23, 20, 0.07);
+}
+
+.criticSection {
+  min-width: 0;
+  padding: 0.7rem 0;
+}
+
+.criticSection + .criticSection {
+  padding-left: 0.8rem;
+  border-left: 1px solid rgba(23, 23, 20, 0.07);
+}
+
+.criticHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.criticHeading strong { font-size: 0.62rem; }
+.criticHeading span {
+  color: #777166;
+  font-size: 0.5rem;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.criticSection[data-verdict="block"] .criticHeading span { color: #8a3f35; }
+.criticSection[data-verdict="warn"] .criticHeading span { color: #8b6a28; }
+.criticSection[data-verdict="pass"] .criticHeading span { color: #506c4f; }
+
+.findings {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.findings li {
+  padding-left: 0.6rem;
+  border-left: 2px solid rgba(23, 23, 20, 0.12);
+}
+
+.findings li[data-severity="block"] { border-left-color: #9d574c; }
+.findings li[data-severity="warning"] { border-left-color: #b8954f; }
+
+.findings li > div {
+  display: grid;
+  grid-template-columns: 3.8rem minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: start;
+}
+
+.findings li span {
+  color: #91897d;
+  font-size: 0.48rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.findings li p {
+  margin: 0;
+  color: #514d45;
+  font-size: 0.58rem;
+  line-height: 1.45;
+}
+
+.findings li small {
+  display: block;
+  margin: 0.25rem 0 0 4.25rem;
+  color: #817a6f;
+  font-size: 0.54rem;
+  line-height: 1.4;
+}
+
+.editForm,
+.rejectForm {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.editForm label,
+.rejectForm label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.editForm textarea,
+.rejectForm input {
+  width: 100%;
+  padding: 0.62rem 0.68rem;
+  border: 1px solid rgba(23, 23, 20, 0.14);
+  border-radius: 0.42rem;
+  background: #fffdf8;
+  color: #28251f;
+  font: inherit;
+  font-size: 0.64rem;
+  line-height: 1.5;
+}
+
+.editForm textarea { resize: vertical; }
+.editForm > small {
+  color: #8a8378;
+  font-size: 0.52rem;
+}
+
+.editForm > div,
+.rejectForm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.actions {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(23, 23, 20, 0.07);
+}
+
+.actions > div {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.approvedBadge,
+.rejectedBadge {
+  display: inline-flex;
+  min-height: 2.15rem;
+  align-items: center;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  font-size: 0.55rem;
+  font-weight: 740;
+}
+
+.approvedBadge {
+  background: rgba(110, 142, 107, 0.1);
+  color: #506c4f;
+}
+
+.rejectedBadge {
+  background: rgba(162, 72, 56, 0.08);
+  color: #7f382e;
+}
+
+.reviewPanel button:focus-visible,
+.reviewPanel textarea:focus-visible,
+.reviewPanel input:focus-visible {
+  outline: 2px solid #8b6a28;
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .criticGrid { grid-template-columns: 1fr; }
+  .criticSection + .criticSection {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(23, 23, 20, 0.07);
+  }
+  .reviewGate,
+  .resultHeader,
+  .actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .actions > div { width: 100%; flex-wrap: wrap; }
+  .approveButton { width: 100%; }
+}

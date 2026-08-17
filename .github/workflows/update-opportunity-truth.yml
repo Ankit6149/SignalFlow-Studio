@@ -1,0 +1,77 @@
+name: Update Opportunity Truth
+
+on:
+  push:
+    branches: [feat/golden-path-opportunity-plan]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/golden-path-opportunity-plan
+      - name: Update capability truth
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f"pattern missing in {path}: {old[:90]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace(
+              'README.md',
+              '- capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;\n- use real configured model-provider routes;',
+              '- capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;\n- evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;\n- use real configured model-provider routes;',
+          )
+          replace(
+              'README.md',
+              '- automatic ContentSignal ingestion from connected work events and persistent ContentOpportunity intelligence;\n- automatic opportunity recommendations from connected work events;',
+              '- automatic ContentSignal ingestion from connected work events and automatic opportunity evaluation/ranking across connected sources;\n- complete NarrativeMemory/identity-aware opportunity evaluation across historical content;',
+          )
+
+          replace(
+              'docs/CAPABILITY_MATRIX.md',
+              '| Explainable `ContentOpportunity` scoring/ranking | Planned | #156 |\n| Opportunity angle options + `Something else` | Planned | #156/#159 |',
+              '| Explainable `ContentOpportunity` evaluation/ranking | Implemented for browser-local manual Signals; automatic multi-source intelligence and memory-aware ranking still planned | #156/#166 |\n| Opportunity angle options + `Something else` | Implemented for persisted manual-Signal opportunities in `/plan`; campaign strategy conversion still planned | #156/#159/#166 |',
+          )
+          replace(
+              'docs/CAPABILITY_MATRIX.md',
+              '| Signals workspace | Planned | #159 |\n| Plan/opportunity/campaign-planning workspace | Planned | #159 |',
+              '| Signals workspace | Implemented for browser-local manual intake/lifecycle + explicit `Find ideas`; automatic connector ingestion still planned | #152/#159/#166 |\n| Plan/opportunity/campaign-planning workspace | Opportunity explanation + angle/custom-angle decision implemented browser-local; NarrativeStrategy/campaign plan stage still planned | #156/#157/#159/#166 |',
+          )
+          replace(
+              'docs/CAPABILITY_MATRIX.md',
+              '| Provider-neutral InferenceTask/routing/policy fabric | Planned | #170/#171/#172 |',
+              '| Provider-neutral InferenceTask/routing/policy fabric | Thin `opportunity_evaluation` task/adapter + server privacy-route denial implemented; full capability registry, metering, fallback and Private Hybrid still planned | #170/#171/#172 |',
+          )
+
+          agents = Path('AGENTS.md')
+          text = agents.read_text()
+          marker = '- Implemented manual ContentSignal domain/application: `frontend/lib/domain/contentSignals.mjs`, `frontend/lib/application/contentSignalApplication.mjs`, and `docs/CONTENT_SIGNAL_IMPLEMENTATION.md`'
+          addition = marker + '\n- Implemented manual-Signal opportunity slice: `frontend/lib/domain/contentOpportunities.mjs`, `frontend/lib/application/contentOpportunityApplication.mjs`, `frontend/lib/inference/inferenceTasks.mjs`, and `/plan`; do not confuse this with complete #156/#166 or NarrativeMemory.'
+          if addition not in text:
+              if marker not in text:
+                  raise SystemExit('AGENTS ContentSignal marker missing')
+              agents.write_text(text.replace(marker, addition, 1))
+          PY
+      - name: Commit truth updates
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md AGENTS.md docs/CAPABILITY_MATRIX.md
+          git commit -m "docs(golden-path): record manual opportunity and Plan capability"
+          git push origin HEAD:feat/golden-path-opportunity-plan

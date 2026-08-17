@@ -1,0 +1,45 @@
+name: Patch change request capability truth
+
+on:
+  push:
+    branches:
+      - feat/golden-path-change-request
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/golden-path-change-request
+      - name: Update only stale capability statements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('docs/CAPABILITY_MATRIX.md')
+          text = path.read_text()
+          replacements = {
+            'natural-language targeted change requests, durable jobs and broader stages remain planned': 'bounded natural-language exact-revision change requests are implemented; durable jobs and broader stages remain planned',
+            'and `authenticity_critique`; full capability registry': ', `authenticity_critique`, and `platform_variant_revision`; full capability registry',
+            'natural-language change requests plus feedback/StyleMemory learning remain pending': 'bounded natural-language exact-revision change requests are implemented; feedback/StyleMemory learning remains pending',
+            'immutable generated/edited `PlatformVariantRevision` history': 'immutable generated/owner-edited/AI-revised `PlatformVariantRevision` history',
+            'Today, natural-language targeted change requests, publishing and broader hosted persistence remain target capabilities': 'Today, publishing and broader hosted persistence remain target capabilities',
+            'when a newer edit/regeneration becomes current': 'when a newer edit/requested revision/regeneration becomes current',
+          }
+          for old, new in replacements.items():
+            if old not in text:
+              raise SystemExit(f'missing expected capability text: {old}')
+            text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Commit truth update
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/CAPABILITY_MATRIX.md
+          git commit -m "docs: mark exact-revision change requests implemented"
+          git push origin HEAD:feat/golden-path-change-request

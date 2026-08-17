@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentPlanningApplication } from "../lib/application/browserContentPlanningApplication.mjs";
+import { createBrowserPlatformGenerationApplication } from "../lib/application/browserPlatformGenerationApplication.mjs";
+import WorkspaceShell from "./WorkspaceShell";
 import styles from "./CampaignPlanPanel.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
@@ -25,8 +27,13 @@ function titleCase(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function destinationLabel(value) {
+  return value === "x" ? "X" : "LinkedIn";
+}
+
 export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, variants: [] });
+  const [generationBundle, setGenerationBundle] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -36,20 +43,30 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
+  const generationApplication = useMemo(() => createBrowserPlatformGenerationApplication({
+    getStorage: () => window.localStorage,
+    workspaceId: LOCAL_WORKSPACE_ID,
+  }), []);
 
   const reload = useCallback(async () => {
     if (!opportunity?.opportunityId) {
       setBundle({ strategy: null, contentPiece: null, variants: [] });
+      setGenerationBundle(null);
       return;
     }
     try {
       const next = await application.getPlanBundle(opportunity.opportunityId);
       setBundle(next);
       if (next.strategy && !editing) setForm(formFromStrategy(next.strategy));
+      if (next.contentPiece) {
+        setGenerationBundle(await generationApplication.getGenerationBundle(next.contentPiece.contentPieceId));
+      } else {
+        setGenerationBundle(null);
+      }
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "SignalFlow could not load this campaign plan." });
     }
-  }, [application, editing, opportunity?.opportunityId]);
+  }, [application, editing, generationApplication, opportunity?.opportunityId]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -103,9 +120,39 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   async function approve() {
     const result = await run(
       () => application.approveStrategy(bundle.strategy.narrativeStrategyId),
-      "Campaign plan approved. The canonical ContentPiece and permitted LinkedIn/X variant records are ready for the generation stage.",
+      "Campaign plan approved. The canonical ContentPiece and permitted LinkedIn/X variant records are ready for generation.",
     );
     if (result) setBundle(result);
+  }
+
+  async function generateDrafts() {
+    if (!bundle.contentPiece) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await generationApplication.generateReadyVariants(bundle.contentPiece.contentPieceId);
+      setGenerationBundle(result.bundle);
+      await reload();
+      if (result.failed.length && result.generated.length) {
+        setMessage({
+          type: "warning",
+          text: `${result.generated.length} platform draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without affecting the successful revision.`,
+        });
+      } else if (result.failed.length) {
+        setMessage({
+          type: "error",
+          text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" "),
+        });
+      } else if (result.generated.length) {
+        setMessage({ type: "success", text: "LinkedIn/X drafts generated as immutable review revisions. Nothing is approved or published yet." });
+      } else {
+        setMessage({ type: "success", text: "Every non-omitted destination already has a current review revision." });
+      }
+    } catch (error) {
+      setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not generate platform drafts." });
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!opportunity || opportunity.recommendation !== "post") return null;
@@ -119,6 +166,8 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   }
 
   const { strategy, contentPiece, variants } = bundle;
+  const generationRows = generationBundle?.variants || variants.map((variant) => ({ variant, currentRevision: null, history: [] }));
+  const pendingGenerationCount = generationRows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
 
   return (
     <section className={styles.panel} aria-labelledby="campaign-plan-title">
@@ -178,7 +227,7 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
             <div className={styles.subhead}><span>DESTINATION DECISIONS</span><p>Absence is valid. An excluded platform will not receive a hidden draft.</p></div>
             {strategy.destinationPlan.map((item) => (
               <div className={styles.destinationItem} key={item.destination} data-decision={item.decision}>
-                <strong>{item.destination === "x" ? "X" : "LinkedIn"}</strong>
+                <strong>{destinationLabel(item.destination)}</strong>
                 <span>{titleCase(item.decision)}</span>
                 <p>{item.reason}</p>
                 <small>{item.format}</small>
@@ -192,9 +241,38 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
           </div>
 
           {contentPiece ? (
-            <div className={styles.approvedState}>
-              <div><span>PLAN APPROVED</span><strong>One canonical ContentPiece is ready.</strong><p>Platform generation is the next Golden Path stage; it will create only non-omitted LinkedIn/X variants and will use platform-specific Voice snapshots.</p></div>
-              <div className={styles.variantStates}>{variants.map((variant) => <p key={variant.platformVariantId}><strong>{variant.destination === "x" ? "X" : "LinkedIn"}</strong><span>{titleCase(variant.status)}</span></p>)}</div>
+            <div className={styles.productionStage}>
+              <div className={styles.approvedState}>
+                <div><span>PLAN APPROVED</span><strong>One canonical ContentPiece is ready.</strong><p>Generate only the non-omitted LinkedIn/X variants. Each result is stored as an immutable review revision using that destination&apos;s exact Voice snapshot.</p></div>
+                {pendingGenerationCount > 0 ? (
+                  <button type="button" className={styles.generateButton} onClick={generateDrafts} disabled={busy}>{busy ? "Generating…" : `Generate ${pendingGenerationCount} draft${pendingGenerationCount === 1 ? "" : "s"}`}</button>
+                ) : <small className={styles.readyLabel}>Draft stage complete</small>}
+              </div>
+
+              <div className={styles.draftStage} aria-label="Generated platform drafts">
+                <div className={styles.subhead}><span>DRAFTS · GENERATED, NOT APPROVED</span><p>Read-only in this slice. Editing, critics and exact approval are the next review stage.</p></div>
+                {generationRows.map(({ variant, currentRevision, history }) => (
+                  <article className={styles.draftRow} key={variant.platformVariantId} data-status={variant.status}>
+                    <div className={styles.draftMeta}>
+                      <strong>{destinationLabel(variant.destination)}</strong>
+                      <span>{titleCase(variant.status)}</span>
+                      {currentRevision && <small>revision {currentRevision.revisionNumber} · strategy r{currentRevision.strategyRevision}</small>}
+                    </div>
+                    {variant.status === "omitted" ? (
+                      <p className={styles.draftPlaceholder}>{variant.omittedReason || "This destination is intentionally absent from the approved plan."}</p>
+                    ) : currentRevision ? (
+                      <div className={styles.draftContent}>
+                        {currentRevision.format === "thread" ? (
+                          <ol>{currentRevision.segments.map((segment, index) => <li key={`${currentRevision.platformVariantRevisionId}-${index}`}><b>{index + 1}</b><p>{segment}</p></li>)}</ol>
+                        ) : <p>{currentRevision.content}</p>}
+                        <small>{currentRevision.generationProvenance.provider} · {currentRevision.generationProvenance.model} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
+                      </div>
+                    ) : (
+                      <p className={styles.draftPlaceholder}>{variant.status === "failed" ? "Generation failed for this destination. The other platform remains intact; retry is available through the generation service." : "No generated revision yet."}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
             </div>
           ) : (
             <footer className={styles.actions}>

@@ -96,6 +96,7 @@ When target architecture and current capability truth differ, **the capability m
 - Implemented manual ContentSignal domain/application: `frontend/lib/domain/contentSignals.mjs`, `frontend/lib/application/contentSignalApplication.mjs`, and `docs/CONTENT_SIGNAL_IMPLEMENTATION.md`
 - Implemented manual-Signal opportunity slice: `frontend/lib/domain/contentOpportunities.mjs`, `frontend/lib/application/contentOpportunityApplication.mjs`, `frontend/lib/inference/inferenceTasks.mjs`, and `/plan`; do not confuse this with complete #156/#166 or NarrativeMemory.
 - Implemented explicit owner Voice/Identity slice: `frontend/lib/domain/identityProfiles.mjs`, `frontend/lib/application/identityApplication.mjs`, and `/voice`; explicit profile versions/context snapshots are real, but StyleMemory/NarrativeMemory/automatic identity learning are not.
+- Implemented owner Golden Path planning/generation/review slices: `frontend/lib/domain/contentPlanning.mjs`, `platformVariantRevisions.mjs`, `platformVariantReviews.mjs`, their application/inference adapters, and `/plan`; exact LinkedIn/X revision critics, immutable owner edits/regeneration and exact approve/reject are real, while natural-language change requests, StyleMemory, NarrativeMemory and publishing remain incomplete.
 - Transfer: `frontend/lib/transfer/`
 - Authoritative export: `frontend/lib/export/campaignExport.mjs`
 - Current primary UI: `frontend/app/page.js`
@@ -121,6 +122,7 @@ Currently implemented foundations include:
 - deterministic Markdown/JSON export;
 - canonical Asset/SourceArtifact/AssetProcessing records;
 - browser-local manual ContentSignal intake and lifecycle at `/signals`;
+- browser-local manual Signal → Opportunity/angle → explicit Voice → approved NarrativeStrategy → immutable LinkedIn/X revision → evidence/authenticity review → immutable edit/regeneration → exact revision approve/reject in `/plan`;
 - portable browser archive/import/export;
 - capability discovery;
 - current MCP operations;

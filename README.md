@@ -50,6 +50,7 @@ The current product can:
 - capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;
 - evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;
 - create and version browser-local explicit Identity, Desired Perception, Voice, Boundary, LinkedIn/X Platform Expression, and optional Project Guidance records at `/voice`, including immutable `IdentityContextSnapshot` records for exact downstream generation context;
+- move a manual Signal through persisted Opportunity/angle selection, approved NarrativeStrategy, canonical ContentPiece, destination-specific immutable LinkedIn/X revisions, separate evidence/authenticity checks, immutable owner edits/regeneration, and exact per-revision approve/reject decisions in `/plan`;
 - use real configured model-provider routes;
 - generate destination-specific campaign drafts;
 - preserve stable campaign IDs and edit-safe draft history;

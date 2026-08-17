@@ -109,7 +109,7 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
     await run(
       "regenerate",
       () => generationApplication.regenerateVariant(variant.platformVariantId),
-      "A new generated revision is current. Run checks again before approval.",
+      "A new generated revision is current. The previous review/approval is historical; run checks again before approval.",
     );
   }
 
@@ -174,7 +174,7 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
         </form>
       ) : (
         <div className={styles.actions}>
-          <div><button type="button" onClick={() => setEditing(true)} disabled={Boolean(busy) || approved}>Edit</button><button type="button" onClick={regenerate} disabled={Boolean(busy) || approved}>{busy === "regenerate" ? "Regenerating…" : "Regenerate"}</button></div>
+          <div><button type="button" onClick={() => setEditing(true)} disabled={Boolean(busy)}>Edit</button><button type="button" onClick={regenerate} disabled={Boolean(busy)}>{busy === "regenerate" ? "Regenerating…" : "Regenerate"}</button></div>
           <div>
             {!approved && !rejected && <button type="button" onClick={() => setRejecting(true)} disabled={Boolean(busy)}>Reject</button>}
             {approved ? <span className={styles.approvedBadge}>Approved · exact revision {revision.revisionNumber}</span> : rejected ? <span className={styles.rejectedBadge}>Rejected · exact revision {revision.revisionNumber}</span> : <button type="button" className={styles.approveButton} onClick={approve} disabled={Boolean(busy) || !review || blocked}>{busy === "approve" ? "Approving…" : blocked ? "Resolve blockers first" : "Approve exact revision"}</button>}

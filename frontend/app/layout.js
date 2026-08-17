@@ -7,6 +7,7 @@ import "../app/studio-product.css";
 import "../app/campaign-freshness.css";
 import "../app/campaign-versioning.css";
 import "../app/responsive-studio.css";
+import "../app/studio-decision-flow.css";
 import WorkspaceAccessibility from "../components/WorkspaceAccessibility";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";

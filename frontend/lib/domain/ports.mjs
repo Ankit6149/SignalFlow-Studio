@@ -1,6 +1,7 @@
 export const PORT_CONTRACTS = Object.freeze({
   campaignRepository: ["list", "get", "upsert", "remove"],
   contentSignalRepository: ["list", "get", "upsert", "remove"],
+  contentOpportunityRepository: ["list", "get", "upsert", "remove"],
   assetRepository: ["list", "get", "upsert", "remove"],
   sourceArtifactRepository: ["list", "get", "upsert", "remove"],
   assetProcessingRepository: ["list", "get", "upsert", "remove"],
@@ -11,6 +12,7 @@ export const PORT_CONTRACTS = Object.freeze({
   archiveSigner: ["sign", "verify", "describe"],
   jobQueue: ["enqueue", "get", "cancel"],
   providerAdapter: ["test", "generate"],
+  opportunityEvaluator: ["evaluate"],
   connectorAdapter: ["status", "publish"],
   notificationAdapter: ["send"],
   clock: ["now"],

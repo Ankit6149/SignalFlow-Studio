@@ -4,6 +4,7 @@ import test from "node:test";
 
 const pageUrl = new URL("../app/page.js", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
+const decisionUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
 
 test("Destinations exposes Core, All, and Clear selection shortcuts", async () => {
   const page = await readFile(pageUrl, "utf8");
@@ -47,11 +48,16 @@ test("one controlled temporary key powers primary setup and Advanced overrides",
   assert.match(page, /Temporary keys are sent only with this request\. SignalFlow does not save them in the campaign library\./);
 });
 
-test("Destinations primary credential guidance and disclosure remain mobile safe", async () => {
-  const css = await readFile(workflowUrl, "utf8");
-  assert.match(css, /\.model-route-primary-key \{[\s\S]*overflow-wrap|\.model-route-primary-key small \{[\s\S]*overflow-wrap:\s*anywhere/);
-  assert.match(css, /\.model-route-advanced summary:focus-visible/);
-  assert.match(css, /\.model-route-message \{[\s\S]*overflow-wrap:\s*anywhere/);
-  assert.match(css, /@media \(max-width: 68rem\)[\s\S]*\.model-route-panel \{[\s\S]*position:\s*static/);
-  assert.doesNotMatch(css, /\.model-route-panel \{[^}]*position:\s*fixed/s);
+test("model routing remains reachable but no longer permanently squeezes destination choices", async () => {
+  const [product, decision] = await Promise.all([
+    readFile(workflowUrl, "utf8"),
+    readFile(decisionUrl, "utf8"),
+  ]);
+  assert.match(product, /\.model-route-primary-key \{[\s\S]*overflow-wrap|\.model-route-primary-key small \{[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(product, /\.model-route-advanced summary:focus-visible/);
+  assert.match(product, /\.model-route-message \{[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(decision, /data-stage="destinations"\] \.output-panel[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(decision, /data-stage="destinations"\] \.model-route-panel[\s\S]*position:\s*static/);
+  assert.match(decision, /data-stage="destinations"\] \.model-route-panel[\s\S]*width:\s*min\(100%, 58rem\)/);
+  assert.doesNotMatch(decision, /data-stage="destinations"\] \.model-route-panel[^{]*\{[^}]*position:\s*fixed/s);
 });

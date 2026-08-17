@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentOpportunityApplication } from "../lib/application/browserContentOpportunityApplication.mjs";
+import CampaignPlanPanel from "./CampaignPlanPanel";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./PlanWorkspace.module.css";
 
@@ -211,6 +212,8 @@ export default function PlanWorkspace() {
                     <button type="submit" disabled={busy || !customAngle.trim()}>Use my direction</button>
                   </form>
                 </section>
+
+                <CampaignPlanPanel opportunity={active} selectedAngle={selectedAngle} />
 
                 <footer className={styles.detailFooter}>
                   <div>

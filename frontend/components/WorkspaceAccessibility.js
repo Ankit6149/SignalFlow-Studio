@@ -9,69 +9,6 @@ import {
 } from "../lib/accessibility/workspaceAccessibility.mjs";
 import { extractClipboardImageFiles } from "../lib/studio/clientReliability.mjs";
 
-const WIDE_STUDIO_STYLES = `
-@media (min-width: 68.01rem) {
-  .app-shell .studio-page,
-  .app-shell .studio-page[data-stage="source"],
-  .app-shell .studio-page[data-stage="destinations"],
-  .app-shell .studio-page[data-stage="review"] {
-    width: min(112rem, calc(100vw - clamp(2rem, 4vw, 5rem)));
-    max-width: none;
-  }
-
-  .app-shell .studio-grid:not(.studio-grid--review) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .app-shell .studio-grid:not(.studio-grid--review) .output-panel {
-    border-left: 0;
-  }
-
-  .app-shell .studio-page[data-stage="source"] .composer-panel {
-    grid-template-columns: minmax(0, 1.7fr) minmax(22rem, 0.8fr);
-    column-gap: clamp(1.75rem, 2.8vw, 3.5rem);
-  }
-
-  .app-shell .studio-page[data-stage="destinations"] .output-panel {
-    grid-template-columns: minmax(0, 1.75fr) minmax(22rem, 0.72fr);
-    gap: 1.75rem clamp(1.75rem, 2.6vw, 3rem);
-  }
-
-  .app-shell .studio-page[data-stage="source"] .upload-zone {
-    min-height: 8rem;
-  }
-}
-
-@media (min-width: 88rem) {
-  .app-shell .studio-page[data-stage="review"] .review-workspace {
-    grid-template-columns: 11rem minmax(0, 1.6fr) minmax(19rem, 0.75fr);
-    grid-template-areas:
-      "status status status"
-      "stale stale stale"
-      "tabs nav inspector"
-      "tabs editor inspector"
-      "tabs editor actions"
-      "tabs editor route"
-      "tabs notes notes"
-      "tabs export export";
-    gap: 1rem 1.5rem;
-  }
-
-  .app-shell .studio-page[data-stage="review"] .review-tabs,
-  .app-shell .studio-page[data-stage="review"] .review-inspector {
-    position: sticky;
-    top: calc(var(--app-header) + 1.25rem);
-    align-self: start;
-  }
-}
-
-@media (min-width: 96rem) {
-  .app-shell .studio-page[data-stage="destinations"] .channel-picker {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-`;
-
 function setAttributeIfChanged(element, name, value) {
   if (!element) return;
   const nextValue = String(value);
@@ -321,5 +258,5 @@ export default function WorkspaceAccessibility() {
     };
   }, []);
 
-  return <style>{WIDE_STUDIO_STYLES}</style>;
+  return null;
 }

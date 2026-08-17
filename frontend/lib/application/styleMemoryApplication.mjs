@@ -277,7 +277,7 @@ export function createStyleMemoryApplication({
         evidenceCount: item.evidenceCount,
         status: item.status,
       }));
-    return hypotheses.length ? hypotheses : scored;
+    return scored;
   }
 
   return {

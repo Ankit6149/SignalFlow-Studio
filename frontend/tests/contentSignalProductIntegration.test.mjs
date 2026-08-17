@@ -49,16 +49,19 @@ test("manual signal application owns lifecycle instead of UI or localStorage", (
   assert.doesNotMatch(ui, /localStorage\.(setItem|getItem|removeItem)/);
 });
 
-test("Signals route is usable manual intake and explicitly does not claim automatic intelligence", () => {
+test("Signals supports explicit review preparation without claiming automatic connected-source intelligence", () => {
   const route = readFrontend("app/signals/page.js");
   const ui = readFrontend("components/SignalsWorkspace.js");
   assert.match(route, /<SignalsWorkspace \/>/);
-  assert.match(ui, /SIGNALS · AVAILABLE NOW/);
+  assert.match(ui, /SIGNALS · OWNER ALPHA/);
   assert.match(ui, /Save signal/);
-  assert.match(ui, /No AI call/);
-  assert.match(ui, /Nothing was generated or published/);
-  assert.match(ui, /0<\/strong><span>Automatic detections<\/span><small>Not implemented/);
-  assert.match(ui, /Cloud sync and automatic event detection are not claimed here/);
+  assert.match(ui, /No AI call to save/);
+  assert.match(ui, /Saving does not call AI, approve content, or publish anything/);
+  assert.match(ui, /Prepare for review/);
+  assert.match(ui, /createBrowserGoldenPathAutopilotApplication/);
+  assert.match(ui, /autopilotApplication\.prepareSignal\(signalId\)/);
+  assert.match(ui, /0<\/strong><span>Automatic detections<\/span><small>Connected-source detection is not implemented/);
+  assert.match(ui, /Uncertain work stops in Plan/);
   assert.doesNotMatch(ui, /fetch\(|\/api\/launch_kit|generateCampaign|publishCampaign/);
 });
 

@@ -28,7 +28,32 @@ function required(value, field) {
   return normalized;
 }
 
-function selectedAngle(opportunity) {
+function profileRef(record) {
+  if (!record || typeof record !== "object") return null;
+  const idEntry = Object.entries(record).find(([key, value]) => key.endsWith("ProfileId") && value);
+  if (!idEntry) return null;
+  return { id: idEntry[1], version: Number(record.version || 0) };
+}
+
+function activeIdentityRefs(bundle = {}) {
+  return Object.fromEntries(
+    Object.entries(bundle)
+      .map(([key, record]) => [key, profileRef(record)])
+      .filter(([, value]) => value),
+  );
+}
+
+function selectedAngle(opportunity, decision = null) {
+  if (decision?.angleId) {
+    const angle = opportunity.candidateAngles.find((item) => item.angleId === decision.angleId);
+    if (!angle) throw new Error(`Autopilot opportunity angle ${decision.angleId} no longer exists.`);
+    return {
+      ...angle,
+      selectionOrigin: "autopilot_policy",
+      selectionPolicyVersion: decision.policyVersion || null,
+      selectionReason: decision.reason || null,
+    };
+  }
   if (!opportunity.selectedAngleId) throw new Error("Choose a narrative direction before building a campaign plan.");
   if (opportunity.selectedAngleId === "custom") {
     if (!opportunity.customAngle) throw new Error("The custom narrative direction is missing.");
@@ -37,11 +62,19 @@ function selectedAngle(opportunity) {
       title: opportunity.customAngle.title || "Something else",
       summary: opportunity.customAngle.summary,
       approach: opportunity.customAngle.approach || opportunity.customAngle.summary,
+      selectionOrigin: "owner",
+      selectionPolicyVersion: null,
+      selectionReason: null,
     };
   }
   const angle = opportunity.candidateAngles.find((item) => item.angleId === opportunity.selectedAngleId);
   if (!angle) throw new Error(`Selected opportunity angle ${opportunity.selectedAngleId} no longer exists.`);
-  return angle;
+  return {
+    ...angle,
+    selectionOrigin: "owner",
+    selectionPolicyVersion: null,
+    selectionReason: null,
+  };
 }
 
 function strategyFingerprint(opportunity, angle, identitySnapshot) {
@@ -53,6 +86,8 @@ function strategyFingerprint(opportunity, angle, identitySnapshot) {
       title: angle.title,
       summary: angle.summary,
       approach: angle.approach,
+      selectionOrigin: angle.selectionOrigin || "owner",
+      selectionPolicyVersion: angle.selectionPolicyVersion || null,
     },
     identityProfileRefs: identitySnapshot.profileRefs || {},
     projectId: opportunity.projectId || null,
@@ -135,16 +170,29 @@ export function createContentPlanningApplication({
       .sort((a, b) => b.strategyRevision - a.strategyRevision || b.updatedAt.localeCompare(a.updatedAt))[0] || null;
   }
 
-  async function buildStrategy(opportunityId, { refresh = false } = {}) {
+  async function buildStrategy(opportunityId, { refresh = false, angleDecision = null } = {}) {
     const opportunity = await requireOpportunity(opportunityId);
     if (opportunity.recommendation !== "post") throw new Error("SignalFlow is not currently recommending content from this opportunity.");
-    const angle = selectedAngle(opportunity);
+    const angle = selectedAngle(opportunity, angleDecision);
     const identity = await identityApplication.getMinimalProfile();
     if (!identity?.identity || !identity?.voice || !identity?.boundary) {
       const error = new Error("Set up your explicit Voice profile before SignalFlow builds an authentic campaign plan.");
       error.code = "voice_profile_required";
       throw error;
     }
+
+    const existing = await currentStrategyForOpportunity(opportunity.opportunityId);
+    if (!refresh && existing && typeof identityApplication.getActiveBundle === "function") {
+      const activeBundle = await identityApplication.getActiveBundle({
+        platform: null,
+        projectId: opportunity.projectId || null,
+      });
+      const preflightFingerprint = strategyFingerprint(opportunity, angle, {
+        profileRefs: activeIdentityRefs(activeBundle),
+      });
+      if (existing.inputFingerprint === preflightFingerprint) return existing;
+    }
+
     const sourceSignal = await requireSourceSignal(opportunity);
     const snapshot = await identityApplication.createIdentityContextSnapshot({
       platform: null,
@@ -152,7 +200,6 @@ export function createContentPlanningApplication({
       campaignInstructions: [],
     });
     const fingerprint = strategyFingerprint(opportunity, angle, snapshot);
-    const existing = await currentStrategyForOpportunity(opportunity.opportunityId);
     if (!refresh && existing?.inputFingerprint === fingerprint) return existing;
 
     const now = appClock.now();
@@ -197,10 +244,10 @@ export function createContentPlanningApplication({
     return plans.upsert(reviseNarrativeStrategy(strategy, patch, appClock.now()));
   }
 
-  async function approveStrategy(strategyId) {
+  async function approveStrategy(strategyId, decision = {}) {
     const strategy = await requireStrategy(strategyId);
     const now = appClock.now();
-    const approved = await plans.upsert(approveNarrativeStrategy(strategy, now));
+    const approved = await plans.upsert(approveNarrativeStrategy(strategy, now, decision));
 
     const existing = await plans.list();
     let piece = existing.find((record) => record.kind === "ContentPiece" && record.narrativeStrategyId === approved.narrativeStrategyId);

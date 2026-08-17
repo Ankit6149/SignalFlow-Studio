@@ -46,7 +46,8 @@ NON-NEGOTIABLE RULES:
 - Do not pretend you know the user's identity profile or narrative history. Set repetitionRisk.level to "unknown" and say that narrative memory is not yet supplied.
 - Recommend only LinkedIn and/or X in candidateDestinations for this Personal Alpha proof.
 - Angles must be materially different editorial directions, not paraphrases.
-- If recommendation is POST, return exactly 4 useful candidateAngles.
+- If recommendation is POST, return exactly 4 useful candidateAngles and choose exactly one of their titles as recommendedAngleTitle.
+- recommendedAngleTitle must exactly match one returned candidateAngles.title. It is the editorial direction you would choose if the owner asked SignalFlow to prepare the strongest story without another angle-selection step.
 - Prefer real evidence, reflection, trade-offs, lessons, decisions, or concrete updates over generic launch language.
 - Never recommend fabricated vulnerability or exaggerated marketing language.
 ${boundary}
@@ -75,6 +76,7 @@ Return ONLY valid JSON matching this shape:
   "candidateAngles": [
     { "title": "...", "summary": "...", "approach": "..." }
   ],
+  "recommendedAngleTitle": "exact title copied from one candidateAngles item when recommendation is post; otherwise empty string",
   "candidateDestinations": [
     { "destination": "linkedin", "recommended": true, "reason": "...", "format": "..." },
     { "destination": "x", "recommended": true, "reason": "...", "format": "..." }

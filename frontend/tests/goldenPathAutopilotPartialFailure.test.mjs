@@ -2,30 +2,58 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createGoldenPathAutopilotApplication } from "../lib/application/goldenPathAutopilotApplication.mjs";
+import { createContentOpportunity } from "../lib/domain/contentOpportunities.mjs";
+
+const NOW = "2026-08-17T16:45:00.000Z";
 
 function highConfidenceOpportunity() {
-  return {
+  return createContentOpportunity({
     opportunityId: "opportunity-partial",
-    recommendation: "post",
-    score: 92,
-    confidence: 0.94,
-    scoreBreakdown: { evidenceStrength: 90, narrativeFit: 90 },
-    evidenceReadiness: { level: "strong", reason: "Direct evidence exists." },
-    narrativeFit: { level: "strong", reason: "Clear story fit." },
-    repetitionRisk: { level: "unknown", reason: "NarrativeMemory is not implemented." },
-    freshnessState: "fresh",
-    candidateAngles: [
-      { angleId: "angle-1", title: "Architecture boundary", summary: "Explain the boundary.", approach: "Lead with the constraint." },
-      { angleId: "angle-2", title: "Fail closed", summary: "Explain fail-closed behavior.", approach: "Lead with the refusal to downgrade." },
-      { angleId: "angle-3", title: "Product promise", summary: "Explain privacy as behavior.", approach: "Lead with the promise." },
-    ],
-    recommendedAngleId: "angle-1",
-    candidateDestinations: [
-      { destination: "linkedin", recommended: true },
-      { destination: "x", recommended: true },
-    ],
-    recommendedMediaTypes: ["text_only"],
-  };
+    workspaceId: "local-personal",
+    signalIds: ["signal-partial"],
+    inputFingerprint: "fnv1a:partial",
+    evaluation: {
+      recommendation: "post",
+      title: "Privacy is an execution boundary",
+      summary: "Explain the routing consequence of a privacy classification.",
+      whyNow: "The decision is concrete and recent.",
+      score: 92,
+      confidence: 0.94,
+      scoreBreakdown: {
+        freshness: 92,
+        importance: 90,
+        novelty: 84,
+        audienceValue: 88,
+        evidenceStrength: 90,
+        narrativeFit: 90,
+      },
+      evidenceReadiness: { level: "strong", reason: "Direct evidence exists." },
+      narrativeFit: { level: "strong", reason: "Clear story fit." },
+      repetitionRisk: { level: "unknown", reason: "NarrativeMemory is not implemented." },
+      freshnessState: "fresh",
+      candidateAngles: [
+        { title: "Architecture boundary", summary: "Explain the boundary.", approach: "Lead with the constraint." },
+        { title: "Fail closed", summary: "Explain fail-closed behavior.", approach: "Lead with the refusal to downgrade." },
+        { title: "Product promise", summary: "Explain privacy as behavior.", approach: "Lead with the promise." },
+      ],
+      recommendedAngleId: "angle-1",
+      candidateDestinations: [
+        { destination: "linkedin", recommended: true, reason: "The reasoning benefits from context.", format: "single narrative post" },
+        { destination: "x", recommended: true, reason: "The lesson can be concise.", format: "single post" },
+      ],
+      recommendedMediaTypes: ["text_only"],
+      productionEffortEstimate: "low",
+    },
+    evaluationProvenance: {
+      taskId: "task-partial-opportunity",
+      taskType: "opportunity_evaluation",
+      provider: "test",
+      model: "test-model",
+      routeKind: "remote",
+      evaluatedAt: NOW,
+    },
+    createdAt: NOW,
+  });
 }
 
 function voiceProfile() {
@@ -61,7 +89,7 @@ test("autopilot preserves a reviewed destination and reports partial_failure whe
   const linkedin = { platformVariantId: "variant-linkedin", destination: "linkedin", status: "review" };
   const x = { platformVariantId: "variant-x", destination: "x", status: "failed" };
 
-  let approvalCalls = 0;
+  let internalStrategyAcceptanceCalls = 0;
   const app = createGoldenPathAutopilotApplication({
     opportunityApplication: {
       async evaluateSignal() { return opportunity; },
@@ -73,7 +101,7 @@ test("autopilot preserves a reviewed destination and reports partial_failure whe
     planningApplication: {
       async buildStrategy() { return strategy; },
       async approveStrategy() {
-        approvalCalls += 1;
+        internalStrategyAcceptanceCalls += 1;
         return {
           strategy: { ...strategy, status: "approved", approvalOrigin: "autopilot_policy" },
           contentPiece: { contentPieceId: "piece-partial" },
@@ -122,5 +150,5 @@ test("autopilot preserves a reviewed destination and reports partial_failure whe
   assert.equal(result.records.platformVariantRevisionIds[0], "revision-linkedin");
   assert.equal(result.failures.length, 1);
   assert.equal(result.failures[0].platformVariantId, "variant-x");
-  assert.equal(approvalCalls, 1, "internal strategy acceptance may happen, but final PlatformVariant approval is never part of autopilot");
+  assert.equal(internalStrategyAcceptanceCalls, 1, "autopilot may accept an internal strategy policy decision, but it never performs final PlatformVariant approval");
 });

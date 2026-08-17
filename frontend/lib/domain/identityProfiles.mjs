@@ -85,7 +85,7 @@ function stringList(values, maxItems = 80, maxLength = 1000) {
 }
 
 function common(input, { idField, kind }) {
-  const parsed = input?.kind === kind ? parseDomainRecord(input, kind) : input;
+  const parsed = input?.kind === kind && input?.schemaVersion ? parseDomainRecord(input, kind) : input;
   if (parsed?.profileSchemaVersion && parsed.profileSchemaVersion > IDENTITY_PROFILE_SCHEMA_VERSION) {
     throw new TypeError(`${kind} schema ${parsed.profileSchemaVersion} is newer than supported schema ${IDENTITY_PROFILE_SCHEMA_VERSION}.`);
   }
@@ -235,7 +235,7 @@ function normalizeProfileRefs(refs = {}) {
 }
 
 export function normalizeIdentityContextSnapshot(input = {}) {
-  const parsed = input?.kind === IDENTITY_RECORD_KINDS.CONTEXT_SNAPSHOT
+  const parsed = input?.kind === IDENTITY_RECORD_KINDS.CONTEXT_SNAPSHOT && input?.schemaVersion
     ? parseDomainRecord(input, IDENTITY_RECORD_KINDS.CONTEXT_SNAPSHOT)
     : input;
   const createdAt = timestamp(parsed.createdAt, null, "IdentityContextSnapshot.createdAt");

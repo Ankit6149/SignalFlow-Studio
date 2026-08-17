@@ -3,6 +3,7 @@ import { normalizeInferenceTask, INFERENCE_TASK_TYPES } from "../inference/infer
 import { normalizeOpportunityEvaluation } from "../domain/contentOpportunities.mjs";
 import { normalizeStrategyProposal } from "../domain/contentPlanning.mjs";
 import { normalizePlatformVariantDraft } from "../ai/platformVariantWriting.mjs";
+import { normalizeCriticResult } from "../domain/platformVariantReviews.mjs";
 
 const TASK_ROUTES = Object.freeze({
   [INFERENCE_TASK_TYPES.OPPORTUNITY_EVALUATION]: {
@@ -22,6 +23,18 @@ const TASK_ROUTES = Object.freeze({
     normalize: (output, input) => normalizePlatformVariantDraft(output, input?.variant?.destination),
     fallbackCode: "platform_variant_generation_failed",
     label: "Platform draft generation",
+  },
+  [INFERENCE_TASK_TYPES.EVIDENCE_CRITIQUE]: {
+    endpoint: "/api/intelligence/critic",
+    normalize: (output) => normalizeCriticResult(output, "evidence"),
+    fallbackCode: "evidence_critique_failed",
+    label: "Evidence review",
+  },
+  [INFERENCE_TASK_TYPES.AUTHENTICITY_CRITIQUE]: {
+    endpoint: "/api/intelligence/critic",
+    normalize: (output) => normalizeCriticResult(output, "authenticity"),
+    fallbackCode: "authenticity_critique_failed",
+    label: "Authenticity review",
   },
 });
 

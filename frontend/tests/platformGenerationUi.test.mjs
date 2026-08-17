@@ -6,12 +6,12 @@ async function source(path) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 
-test("Plan exposes the generation stage through the application service, not direct provider or legacy campaign calls", async () => {
+test("Plan exposes generation and exact review through application services, not direct provider or legacy campaign calls", async () => {
   const component = await source("../components/CampaignPlanPanel.js");
   assert.match(component, /createBrowserPlatformGenerationApplication/);
   assert.match(component, /generateReadyVariants/);
-  assert.match(component, /DRAFTS · GENERATED, NOT APPROVED/);
-  assert.match(component, /read-only/i);
+  assert.match(component, /PlatformReviewPanel/);
+  assert.match(component, /DRAFT REVIEW · EXACT REVISIONS/);
   assert.doesNotMatch(component, /\/api\/launch_kit/);
   assert.doesNotMatch(component, /generateJSON|OPENAI_API_KEY|GEMINI_API_KEY|ANTHROPIC_API_KEY/);
 });

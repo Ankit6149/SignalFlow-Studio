@@ -40,7 +40,7 @@ function normalizeDestination(value) {
 
 function normalizeSegments(value, destination, format) {
   const items = Array.isArray(value) ? value : [];
-  const segments = items.map((item) => text(item, "", 280)).filter(Boolean).slice(0, 8);
+  const segments = items.map((item) => text(item, "", 12000)).filter(Boolean).slice(0, 8);
   if (destination === "x" && format === "thread") {
     if (segments.length < 2) throw new TypeError("X thread revisions require at least two segments.");
     if (segments.some((segment) => segment.length > 280)) throw new TypeError("X thread segments must be 280 characters or fewer.");
@@ -49,7 +49,7 @@ function normalizeSegments(value, destination, format) {
 }
 
 function normalizeFormat(value, destination) {
-  const format = text(value, destination === "x" ? "single_post" : "single_post", 80).toLowerCase();
+  const format = text(value, "single_post", 80).toLowerCase();
   const allowed = destination === "x" ? new Set(["single_post", "thread"]) : new Set(["single_post"]);
   if (!allowed.has(format)) throw new TypeError(`Unsupported ${destination} revision format: ${format}.`);
   return format;

@@ -13,20 +13,28 @@ test("workspace shell represents the canonical product map without faking unavai
   for (const label of ["Today", "Signals", "Plan", "Calendar", "Create", "Assets", "Library", "Connections", "Voice", "Settings"]) {
     assert.match(shell, new RegExp(`label: "${label}"`));
   }
-  assert.match(shell, /status: "available"/);
-  assert.match(shell, /status: "next"/);
-  assert.match(shell, /status: "planned"/);
+
+  for (const [id, href] of [["today", "/today"], ["signals", "/signals"], ["plan", "/plan"]]) {
+    assert.match(shell, new RegExp(`id: "${id}", label: "[^"]+", href: "${href.replace("/", "\\/")}", status: "available"`));
+  }
+
+  assert.match(shell, /id: "assets", label: "Assets", status: "planned"/);
+  assert.match(shell, /id: "calendar", label: "Calendar", status: "planned"/);
+  assert.doesNotMatch(shell, /id: "today"[^\n]+status: "next"/);
   assert.match(shell, /aria-disabled="true"/);
   assert.match(shell, /not functional yet/);
 });
 
 test("real current surfaces share the canonical shell", () => {
   const page = read("app/page.js");
+  const today = read("components/TodayWorkspace.js");
   const signals = read("components/SignalsWorkspace.js");
   assert.match(page, /import WorkspaceShell from "\.\.\/components\/WorkspaceShell"/);
   assert.match(page, /activeItem=\{section === "studio" \? "create" : section\}/);
   assert.match(page, /workspace === "create" \? "studio" : workspace/);
+  assert.match(today, /<WorkspaceShell activeItem="today"/);
   assert.match(signals, /<WorkspaceShell activeItem="signals"/);
+  assert.doesNotMatch(today, /className=\{styles\.topbar\}/);
   assert.doesNotMatch(signals, /className=\{styles\.topbar\}/);
 });
 

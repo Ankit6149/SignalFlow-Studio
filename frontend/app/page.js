@@ -4,6 +4,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import PortableTransferPanel from "../components/PortableTransferPanel";
 import PlatformIcon from "../components/PlatformIcon";
 import LandingPage from "../components/LandingPage";
+import WorkspaceShell from "../components/WorkspaceShell";
 import {
   createSourceSnapshot,
   resolveStudioStage,
@@ -521,6 +522,11 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     void refreshProviderStatus();
 
     const params = new URLSearchParams(window.location.search);
+    const workspace = params.get("workspace");
+    if (["create", "library", "connections", "settings"].includes(workspace)) {
+      setEntered(true);
+      setSection(workspace === "create" ? "studio" : workspace);
+    }
     const socialStatus = params.get("social_status");
     const socialMessage = params.get("social_message");
     if (socialStatus) {
@@ -1382,37 +1388,17 @@ async function exportZip() {
   const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
 
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#workspace-content">
-        Skip to workspace
-      </a>
-
-      <header className="app-header">
-        <button className="brand-button" onClick={() => setEntered(false)} aria-label="Return to SignalFlow home">
-          <BrandMark compact />
-        </button>
-        <nav className="app-nav" aria-label="Primary navigation">
-          {[
-            ["studio", "Studio"],
-            ["library", "Library"],
-            ["connections", "Connections"],
-            ["settings", "Settings"],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              className={section === id ? "is-active" : ""}
-              onClick={() => navigateSection(id)}
-              aria-current={section === id ? "page" : undefined}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-        <div className="app-header__status">
-          <span className={`connection-light ${providerReadiness.ready ? "connection-light--on" : ""}`} />
-          <span>{providerReadiness.ready ? `${accessToken ? "Owner · " : ""}${provider.label}` : "Model setup needed"}</span>
-        </div>
-      </header>
+    <WorkspaceShell
+      activeItem={section === "studio" ? "create" : section}
+      onNavigate={{
+        create: () => navigateSection("studio"),
+        library: () => navigateSection("library"),
+        connections: () => navigateSection("connections"),
+        settings: () => navigateSection("settings"),
+      }}
+      statusLabel={providerReadiness.ready ? `${provider.label} ready` : "Model setup needed"}
+      statusTone={providerReadiness.ready ? "ready" : "attention"}
+    >
 
       {message && (
         <div className={`toast toast--${message.type}`} role="status" aria-live="polite">
@@ -2520,6 +2506,6 @@ async function exportZip() {
           </div>
         </main>
       )}
-    </div>
+    </WorkspaceShell>
   );
 }

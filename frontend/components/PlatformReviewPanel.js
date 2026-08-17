@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformGenerationApplication } from "../lib/application/browserPlatformGenerationApplication.mjs";
+import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
 import styles from "./PlatformReviewPanel.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
+const MAX_CHANGE_REQUEST_LENGTH = 2000;
 
 function titleCase(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -42,6 +44,8 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(editorValue(revision));
+  const [requestingChange, setRequestingChange] = useState(false);
+  const [changeRequest, setChangeRequest] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
 
@@ -50,6 +54,10 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
   const generationApplication = useMemo(() => createBrowserPlatformGenerationApplication({
+    getStorage: () => window.localStorage,
+    workspaceId: LOCAL_WORKSPACE_ID,
+  }), []);
+  const changeRequestApplication = useMemo(() => createBrowserPlatformChangeRequestApplication({
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
@@ -105,6 +113,21 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
     if (saved) setEditing(false);
   }
 
+  async function requestNaturalLanguageChange(event) {
+    event.preventDefault();
+    const instruction = changeRequest.trim();
+    if (!instruction) return;
+    const saved = await run(
+      "request-change",
+      () => changeRequestApplication.requestChange(variant.platformVariantId, instruction),
+      "SignalFlow created a new immutable revision from your instruction. The previous review/approval is historical; run checks again before approval.",
+    );
+    if (saved) {
+      setRequestingChange(false);
+      setChangeRequest("");
+    }
+  }
+
   async function regenerate() {
     await run(
       "regenerate",
@@ -114,7 +137,7 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
   }
 
   async function approve() {
-    await run("approve", () => reviewApplication.approveCurrentVariant(variant.platformVariantId), "This exact revision is approved. A later edit or regeneration will require a new review and approval.");
+    await run("approve", () => reviewApplication.approveCurrentVariant(variant.platformVariantId), "This exact revision is approved. A later edit, requested change, or regeneration will require a new review and approval.");
   }
 
   async function reject(event) {
@@ -167,6 +190,22 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
           {revision.format === "thread" && <small>Keep one blank line between X thread posts. Every segment must remain within platform limits.</small>}
           <div><button type="button" onClick={() => { setEditing(false); setEditText(editorValue(revision)); }} disabled={Boolean(busy)}>Cancel</button><button type="submit" disabled={Boolean(busy) || !editText.trim()}>{busy === "edit" ? "Saving…" : "Save as new revision"}</button></div>
         </form>
+      ) : requestingChange ? (
+        <form className={styles.changeRequestForm} onSubmit={requestNaturalLanguageChange}>
+          <label>
+            <span>REQUEST A CHANGE TO THIS EXACT REVISION</span>
+            <textarea
+              rows={3}
+              maxLength={MAX_CHANGE_REQUEST_LENGTH}
+              value={changeRequest}
+              onChange={(event) => setChangeRequest(event.target.value)}
+              placeholder="Make the opening less promotional, keep the architecture point, and shorten the ending."
+              autoFocus
+            />
+          </label>
+          <div className={styles.changeRequestMeta}><small>SignalFlow will preserve the destination, approved story plan, Voice snapshot and revision history.</small><span>{changeRequest.length}/{MAX_CHANGE_REQUEST_LENGTH}</span></div>
+          <div><button type="button" onClick={() => { setRequestingChange(false); setChangeRequest(""); }} disabled={Boolean(busy)}>Cancel</button><button type="submit" disabled={Boolean(busy) || !changeRequest.trim()}>{busy === "request-change" ? "Revising…" : "Request change"}</button></div>
+        </form>
       ) : rejecting ? (
         <form className={styles.rejectForm} onSubmit={reject}>
           <label><span>REJECTION NOTE · OPTIONAL</span><input value={rejectNote} onChange={(event) => setRejectNote(event.target.value)} placeholder="Why this version should not be used" /></label>
@@ -174,7 +213,11 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
         </form>
       ) : (
         <div className={styles.actions}>
-          <div><button type="button" onClick={() => setEditing(true)} disabled={Boolean(busy)}>Edit</button><button type="button" onClick={regenerate} disabled={Boolean(busy)}>{busy === "regenerate" ? "Regenerating…" : "Regenerate"}</button></div>
+          <div>
+            <button type="button" onClick={() => setEditing(true)} disabled={Boolean(busy)}>Edit</button>
+            <button type="button" onClick={() => setRequestingChange(true)} disabled={Boolean(busy)}>Request change</button>
+            <button type="button" onClick={regenerate} disabled={Boolean(busy)}>{busy === "regenerate" ? "Regenerating…" : "Regenerate"}</button>
+          </div>
           <div>
             {!approved && !rejected && <button type="button" onClick={() => setRejecting(true)} disabled={Boolean(busy)}>Reject</button>}
             {approved ? <span className={styles.approvedBadge}>Approved · exact revision {revision.revisionNumber}</span> : rejected ? <span className={styles.rejectedBadge}>Rejected · exact revision {revision.revisionNumber}</span> : <button type="button" className={styles.approveButton} onClick={approve} disabled={Boolean(busy) || !review || blocked}>{busy === "approve" ? "Approving…" : blocked ? "Resolve blockers first" : "Approve exact revision"}</button>}

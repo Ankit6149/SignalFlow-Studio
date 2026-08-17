@@ -96,7 +96,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Learned explainable StyleMemory | Planned | #154 |
 | Narrative/publication memory + semantic repetition | Planned | #155 |
 | NarrativeStrategy / ContentPiece / PlatformVariant domain | Implemented browser-local for the owner Golden Path, including explicit strategy approval and destination omission; hosted/team migration breadth remains planned | #157/#166 |
-| Staged generation orchestration | Partially implemented: `opportunity_evaluation` → `narrative_strategy` → destination-specific `platform_variant` writing → separate `evidence_critique` + `authenticity_critique` → exact human review/approval; natural-language targeted change requests, durable jobs and broader stages remain planned | #158/#166 |
+| Staged generation orchestration | Partially implemented: `opportunity_evaluation` → `narrative_strategy` → destination-specific `platform_variant` writing → separate `evidence_critique` + `authenticity_critique` → exact human review/approval; bounded natural-language exact-revision change requests are implemented; durable jobs and broader stages remain planned | #158/#166 |
 | Authenticity quality critic | Implemented browser-local for the owner Golden Path against the exact destination-specific IdentityContextSnapshot used by the current revision; broader automated learning remains planned | #158/#166 |
 | Evidence/factual quality critic integrated with staged flow | Implemented browser-local for exact current LinkedIn/X revisions using the canonical source Signal/approved strategy/ContentPiece evidence contract; broader source processors remain planned | #158/#166 |
 | Today decision inbox | Planned | #159 |
@@ -104,7 +104,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Plan/opportunity/campaign-planning workspace | Implemented browser-local through opportunity explanation, angle/custom-angle decision, reviewable/approvable NarrativeStrategy, canonical ContentPiece, immutable LinkedIn/X revision history, separate critics, immutable owner edits/regeneration, and exact per-revision approve/reject decisions | #156/#157/#158/#159/#166 |
 | CadencePolicy / editorial planning | Planned | #160 |
 | Editorial calendar with intentionally empty slots | Planned | #160 |
-| Provider-neutral InferenceTask/routing/policy fabric | Thin task/adapter + server privacy-route enforcement implemented for `opportunity_evaluation`, `narrative_strategy`, `platform_variant`, `evidence_critique`, and `authenticity_critique`; full capability registry, metering, fallback and Private Hybrid remain planned | #170/#171/#172 |
+| Provider-neutral InferenceTask/routing/policy fabric | Thin task/adapter + server privacy-route enforcement implemented for `opportunity_evaluation`, `narrative_strategy`, `platform_variant`, `evidence_critique`, , `authenticity_critique`, and `platform_variant_revision`; full capability registry, metering, fallback and Private Hybrid remain planned | #170/#171/#172 |
 | Curated local intelligence packs | Planned | #173 |
 | External AI-assistant client integrations | Planned | #174 |
 | Mobile low-attention companion | Planned | #175 |
@@ -122,7 +122,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Automatic deterministic raw screencast | Planned | #164 |
 | Motion composition / multi-aspect video render | Planned | #165 |
 | Exact media revision approval/publication binding | Planned | #151/#165/#168/#179–#185 |
-| Owner Golden Path 1 manual thought → authentic approval | In progress: implemented through manual Signal → Opportunity/angle → explicit Voice → approved NarrativeStrategy → ContentPiece → immutable LinkedIn/X revisions → separate evidence/authenticity checks → immutable owner edit/regenerate → exact revision approve/reject; natural-language change requests plus feedback/StyleMemory learning remain pending | #166 |
+| Owner Golden Path 1 manual thought → authentic approval | In progress: implemented through manual Signal → Opportunity/angle → explicit Voice → approved NarrativeStrategy → ContentPiece → immutable LinkedIn/X revisions → separate evidence/authenticity checks → immutable owner edit/regenerate → exact revision approve/reject; bounded natural-language exact-revision change requests are implemented; feedback/StyleMemory learning remains pending | #166 |
 | Owner Golden Path 2 GitHub event → opportunity + visual evidence | Planned | #167 |
 | Owner Golden Path 3 approved revision → durable publish → memory | Planned | #168 |
 | Performance analytics ingestion/learning | Future; not yet scoped as production capability | product vision/editorial docs |
@@ -238,16 +238,16 @@ Public links must fail closed as *verified usable evidence* where #127's hardene
 
 ## 8. Content-intelligence truth
 
-The owner-first browser-local path now implements manual `ContentSignal`, persisted `ContentOpportunity` evaluation/angle selection, explicit versioned Identity/Perception/Voice/Boundary context, reviewable/approvable `NarrativeStrategy`, canonical `ContentPiece`/LinkedIn-X `PlatformVariant`, immutable generated/edited `PlatformVariantRevision` history, separate evidence/authenticity critics, and exact per-revision human approve/reject decisions.
+The owner-first browser-local path now implements manual `ContentSignal`, persisted `ContentOpportunity` evaluation/angle selection, explicit versioned Identity/Perception/Voice/Boundary context, reviewable/approvable `NarrativeStrategy`, canonical `ContentPiece`/LinkedIn-X `PlatformVariant`, immutable generated/owner-edited/AI-revised `PlatformVariantRevision` history, separate evidence/authenticity critics, and exact per-revision human approve/reject decisions.
 
-Automatic signal ingestion, connected-source intelligence, memory-aware opportunity ranking, StyleMemory, NarrativeMemory, Today, natural-language targeted change requests, publishing and broader hosted persistence remain target capabilities until their owning issues are complete.
+Automatic signal ingestion, connected-source intelligence, memory-aware opportunity ranking, StyleMemory, NarrativeMemory, Today, publishing and broader hosted persistence remain target capabilities until their owning issues are complete.
 
 Examples:
 
 - a saved manual ContentSignal is real persisted evidence and can now be evaluated into a persisted manual-source ContentOpportunity, but it is **not** automatic work-event detection;
 - an ad-hoc model-generated `strategy` object is **not** equivalent to the implemented persisted/revisioned NarrativeStrategy contract;
 - a shallow `founder-style` tone field is **not** Identity; the explicit versioned Identity/Perception/Voice/Boundary records are the current implemented owner model;
-- a generated `PlatformVariantRevision` is **not approved content** merely because it exists; approval is a separate exact-revision decision that is invalidated for the current path when a newer edit/regeneration becomes current;
+- a generated `PlatformVariantRevision` is **not approved content** merely because it exists; approval is a separate exact-revision decision that is invalidated for the current path when a newer edit/requested revision/regeneration becomes current;
 - campaign history is useful but is **not** NarrativeMemory until public-story semantics are implemented;
 - a prompt-generated media shot list is **not** automatic capture/media production;
 - a client-side schedule callback is **not** durable editorial/publication scheduling.

@@ -34,6 +34,7 @@
 .reviewGate span,
 .resultHeader span,
 .editForm label > span,
+.changeRequestForm label > span,
 .rejectForm label > span {
   color: #8b6a28;
   font-size: 0.52rem;
@@ -55,6 +56,7 @@
 .resultHeader button,
 .actions button,
 .editForm button,
+.changeRequestForm button,
 .rejectForm button {
   min-height: 2.15rem;
   padding: 0 0.68rem;
@@ -71,6 +73,7 @@
 .reviewGate button,
 .approveButton,
 .editForm button:last-child,
+.changeRequestForm button:last-child,
 .rejectForm button:last-child {
   border-color: #171714 !important;
   background: #171714 !important;
@@ -81,6 +84,7 @@
 .resultHeader button:disabled,
 .actions button:disabled,
 .editForm button:disabled,
+.changeRequestForm button:disabled,
 .rejectForm button:disabled {
   opacity: 0.42;
   cursor: not-allowed;
@@ -205,6 +209,7 @@
 }
 
 .editForm,
+.changeRequestForm,
 .rejectForm {
   margin-top: 0.7rem;
   display: grid;
@@ -212,12 +217,14 @@
 }
 
 .editForm label,
+.changeRequestForm label,
 .rejectForm label {
   display: grid;
   gap: 0.3rem;
 }
 
 .editForm textarea,
+.changeRequestForm textarea,
 .rejectForm input {
   width: 100%;
   padding: 0.62rem 0.68rem;
@@ -230,17 +237,35 @@
   line-height: 1.5;
 }
 
-.editForm textarea { resize: vertical; }
-.editForm > small {
+.editForm textarea,
+.changeRequestForm textarea { resize: vertical; }
+
+.editForm > small,
+.changeRequestMeta small {
   color: #8a8378;
   font-size: 0.52rem;
 }
 
 .editForm > div,
+.changeRequestForm > div:last-child,
 .rejectForm > div {
   display: flex;
   justify-content: flex-end;
   gap: 0.4rem;
+}
+
+.changeRequestMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.changeRequestMeta span {
+  flex: 0 0 auto;
+  color: #91897d;
+  font-size: 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .actions {
@@ -298,4 +323,5 @@
   }
   .actions > div { width: 100%; flex-wrap: wrap; }
   .approveButton { width: 100%; }
+  .changeRequestMeta { align-items: flex-start; }
 }

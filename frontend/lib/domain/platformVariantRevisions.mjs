@@ -3,7 +3,11 @@ import { normalizePlatformVariant, VARIANT_STATUSES } from "./contentPlanning.mj
 
 export const PLATFORM_VARIANT_REVISION_SCHEMA_VERSION = 1;
 export const PLATFORM_VARIANT_REVISION_STATUS = "review";
-export const PLATFORM_VARIANT_REVISION_ORIGINS = Object.freeze({ GENERATED: "generated", EDITED: "edited" });
+export const PLATFORM_VARIANT_REVISION_ORIGINS = Object.freeze({
+  GENERATED: "generated",
+  EDITED: "edited",
+  AI_REVISED: "ai_revised",
+});
 
 const DESTINATIONS = new Set(["linkedin", "x"]);
 const ROUTE_KINDS = new Set(["remote", "local"]);
@@ -14,6 +18,10 @@ function text(value, fallback = "", maxLength = 12000) {
   const resolved = normalized || fallback;
   if (resolved.length > maxLength) throw new TypeError(`PlatformVariantRevision text exceeds ${maxLength} characters.`);
   return resolved;
+}
+
+function optionalText(value, maxLength = 12000) {
+  return text(value, "", maxLength) || null;
 }
 
 function id(value, field, required = true) {
@@ -99,11 +107,16 @@ export function normalizePlatformVariantRevision(input = {}) {
   if (!ORIGIN_VALUES.has(origin)) throw new TypeError(`Unsupported PlatformVariantRevision origin: ${origin}.`);
   const generationProvenance = normalizeGenerationProvenance(parsed.generationProvenance);
   const editProvenance = normalizeEditProvenance(parsed.editProvenance);
+  const parentRevisionId = id(parsed.parentRevisionId, "PlatformVariantRevision.parentRevisionId", false);
+  const changeRequest = optionalText(parsed.changeRequest, 2000);
   if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.GENERATED && !generationProvenance) {
     throw new TypeError("Generated PlatformVariantRevision requires generationProvenance.");
   }
-  if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.EDITED && (!editProvenance || !parsed.parentRevisionId)) {
+  if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.EDITED && (!editProvenance || !parentRevisionId)) {
     throw new TypeError("Edited PlatformVariantRevision requires parentRevisionId and editProvenance.");
+  }
+  if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.AI_REVISED && (!generationProvenance || !parentRevisionId || !changeRequest)) {
+    throw new TypeError("AI-revised PlatformVariantRevision requires parentRevisionId, changeRequest, and generationProvenance.");
   }
   const createdAt = timestamp(parsed.createdAt, "PlatformVariantRevision.createdAt");
   return createDomainRecord("PlatformVariantRevision", {
@@ -118,7 +131,8 @@ export function normalizePlatformVariantRevision(input = {}) {
     strategyRevision: positiveInteger(parsed.strategyRevision, "PlatformVariantRevision.strategyRevision"),
     status: PLATFORM_VARIANT_REVISION_STATUS,
     origin,
-    parentRevisionId: id(parsed.parentRevisionId, "PlatformVariantRevision.parentRevisionId", false),
+    parentRevisionId,
+    changeRequest,
     format,
     content,
     segments,
@@ -195,6 +209,39 @@ export function createEditedPlatformVariantRevision({
     inputFingerprint: `user-edit:${parent.platformVariantRevisionId}:${revisionNumber}`,
     identityContextSnapshotId: parent.identityContextSnapshotId,
     editProvenance: { editedBy, editedAt: createdAt },
+    createdAt,
+  });
+}
+
+export function createRequestedPlatformVariantRevision({
+  platformVariantRevisionId,
+  parentRevision,
+  revisionNumber,
+  output,
+  changeRequest,
+  generationProvenance,
+  createdAt,
+} = {}) {
+  const parent = normalizePlatformVariantRevision(parentRevision);
+  return normalizePlatformVariantRevision({
+    platformVariantRevisionId,
+    workspaceId: parent.workspaceId,
+    platformVariantId: parent.platformVariantId,
+    contentPieceId: parent.contentPieceId,
+    narrativeStrategyId: parent.narrativeStrategyId,
+    destination: parent.destination,
+    revisionNumber,
+    strategyRevision: parent.strategyRevision,
+    status: PLATFORM_VARIANT_REVISION_STATUS,
+    origin: PLATFORM_VARIANT_REVISION_ORIGINS.AI_REVISED,
+    parentRevisionId: parent.platformVariantRevisionId,
+    changeRequest,
+    format: output?.format || parent.format,
+    content: output?.content,
+    segments: output?.segments,
+    inputFingerprint: `change-request:${parent.platformVariantRevisionId}:${revisionNumber}`,
+    identityContextSnapshotId: parent.identityContextSnapshotId,
+    generationProvenance,
     createdAt,
   });
 }

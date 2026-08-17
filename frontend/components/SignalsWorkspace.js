@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentSignalApplication } from "../lib/application/browserContentSignalApplication.mjs";
+import { createBrowserContentOpportunityApplication } from "../lib/application/browserContentOpportunityApplication.mjs";
 import { CONTENT_SIGNAL_KINDS } from "../lib/domain/contentSignals.mjs";
 import styles from "./SignalsWorkspace.module.css";
 import WorkspaceShell from "./WorkspaceShell";
@@ -90,6 +91,7 @@ export default function SignalsWorkspace() {
   const [signals, setSignals] = useState([]);
   const [filter, setFilter] = useState("active");
   const [busy, setBusy] = useState(false);
+  const [ideaBusyId, setIdeaBusyId] = useState("");
   const [message, setMessage] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
@@ -99,6 +101,12 @@ export default function SignalsWorkspace() {
     key: SIGNAL_STORAGE_KEY,
     workspaceId: LOCAL_WORKSPACE_ID,
     validateCanonicalReferences: true,
+  }), []);
+
+  const opportunityApplication = useMemo(() => createBrowserContentOpportunityApplication({
+    getStorage: () => window.localStorage,
+    signalKey: SIGNAL_STORAGE_KEY,
+    workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
 
   const reload = useCallback(async () => {
@@ -153,7 +161,7 @@ export default function SignalsWorkspace() {
       await reload();
       setMessage({
         type: "success",
-        text: "Signal saved in this browser. Nothing was generated or published; opportunity evaluation is a separate next step.",
+        text: "Signal saved in this browser. Nothing was generated or published. Use Find ideas when you want SignalFlow to judge whether it is worth communicating.",
       });
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "The signal could not be saved." });
@@ -172,6 +180,22 @@ export default function SignalsWorkspace() {
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "The signal could not be updated." });
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function findIdeas(signalId) {
+    setBusy(true);
+    setIdeaBusyId(signalId);
+    setMessage({ type: "info", text: "Evaluating whether this is worth talking about and preparing distinct narrative directions…" });
+    try {
+      const opportunity = await opportunityApplication.evaluateSignal(signalId);
+      await reload();
+      window.location.assign(`/plan?opportunity=${encodeURIComponent(opportunity.opportunityId)}`);
+    } catch (error) {
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not evaluate this Signal yet." });
+    } finally {
+      setIdeaBusyId("");
       setBusy(false);
     }
   }
@@ -390,6 +414,11 @@ export default function SignalsWorkspace() {
                           {(signal.sourceArtifactIds.length > 0 || signal.assetIds.length > 0) && <span>{signal.sourceArtifactIds.length} sources · {signal.assetIds.length} assets</span>}
                         </div>
                         <div className={styles.signalActions}>
+                          {! ["ignored", "archived", "snoozed"].includes(signal.status) && (
+                            <button type="button" className={styles.ideaButton} onClick={() => findIdeas(signal.signalId)} disabled={busy}>
+                              {ideaBusyId === signal.signalId ? "Finding ideas…" : "Find ideas"}
+                            </button>
+                          )}
                           <button type="button" onClick={() => beginEdit(signal)} disabled={busy}>Edit</button>
                           {signal.status === "ignored" || signal.status === "archived" || signal.status === "snoozed" ? (
                             <button type="button" onClick={() => runAction(() => application.restoreSignal(signal.signalId), "Signal restored to active review.")} disabled={busy}>Restore</button>

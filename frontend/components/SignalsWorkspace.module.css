@@ -648,3 +648,14 @@
     transition: none;
   }
 }
+
+.ideaButton {
+  border-color: #171714 !important;
+  background: #171714 !important;
+  color: #fffdf8 !important;
+}
+
+.ideaButton:hover {
+  border-color: #8b6a28 !important;
+  background: #2b281f !important;
+}

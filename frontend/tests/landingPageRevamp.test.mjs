@@ -21,14 +21,14 @@ const manifest = read("public/manifest.webmanifest");
 const structuredDataText = read("public/schema.jsonld");
 const structuredData = JSON.parse(structuredDataText);
 
-test("the landing route has one component owner and preserves the existing BrandMark", () => {
+test("the landing route has one component owner and uses the shared BrandMark", () => {
   assert.match(page, /import LandingPage from "\.\.\/components\/LandingPage";/);
   assert.doesNotMatch(page, /function LandingPage\(\{ onEnter \}\)/);
-  assert.match(page, /<LandingPage onEnter=\{enterStudio\} brand=\{<BrandMark \/>\} \/>/);
-  assert.match(page, /function BrandMark\(\{ compact = false, dark = false \}\)/);
-  assert.match(globals, /\.brand-mark__glyph/);
-  assert.match(landing, /export default function LandingPage\(\{ onEnter, brand \}\)/);
-  assert.match(landing, /\{brand\}/);
+  assert.match(page, /<LandingPage onEnter=\{enterStudio\}/);
+  assert.match(landing, /import BrandMark from "\.\/BrandMark"/);
+  assert.match(landing, /export default function LandingPage\(\{ onEnter \}\)/);
+  assert.match(landing, /<BrandMark tone="light" \/>/);
+  assert.match(landing, /<BrandMark tone="dark" \/>/);
   assert.doesNotMatch(landing, /function SignalFlowLogo|logoMark|logoCopy|brand-mark__glyph/);
   assert.doesNotMatch(styles, /logoMark|logoCopy|brand-mark/);
 });

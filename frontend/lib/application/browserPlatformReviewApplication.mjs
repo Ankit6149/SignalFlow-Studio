@@ -1,10 +1,12 @@
 import { createPlatformReviewApplication } from "./platformReviewApplication.mjs";
 import { createIdentityApplication } from "./identityApplication.mjs";
+import { createNarrativeMemoryApplication } from "./narrativeMemoryApplication.mjs";
 import { createBrowserContentPlanningRepository } from "../infrastructure/contentPlanningAdapters.mjs";
 import { createBrowserContentReviewRepository } from "../infrastructure/contentReviewAdapters.mjs";
 import { createBrowserContentOpportunityRepository } from "../infrastructure/contentOpportunityAdapters.mjs";
 import { createBrowserContentSignalRepository } from "../infrastructure/contentSignalAdapters.mjs";
 import { createBrowserIdentityRepository } from "../infrastructure/identityAdapters.mjs";
+import { createBrowserNarrativeMemoryRepository } from "../infrastructure/narrativeMemoryAdapters.mjs";
 import { createBrowserInferenceAdapter } from "../infrastructure/browserInferenceAdapter.mjs";
 import { createSystemIdService } from "../domain/ports.mjs";
 
@@ -15,6 +17,7 @@ export function createBrowserPlatformReviewApplication({
   opportunityKey = "signalflow_content_opportunities_v1",
   signalKey = "signalflow_content_signals_v1",
   identityKey = "signalflow_identity_profiles_v1",
+  narrativeMemoryKey = "signalflow_narrative_memory_v1",
   workspaceId = "local-personal",
   userId = "owner",
   clock,
@@ -30,6 +33,12 @@ export function createBrowserPlatformReviewApplication({
     clock,
     idService: sharedIds,
   });
+  const narrativeMemoryApplication = createNarrativeMemoryApplication({
+    narrativeMemoryRepository: createBrowserNarrativeMemoryRepository({ getStorage, key: narrativeMemoryKey }),
+    workspaceId,
+    clock,
+    idService: sharedIds,
+  });
   return createPlatformReviewApplication({
     contentPlanningRepository: createBrowserContentPlanningRepository({ getStorage, key: planningKey }),
     contentReviewRepository: createBrowserContentReviewRepository({ getStorage, key: reviewKey }),
@@ -37,6 +46,7 @@ export function createBrowserPlatformReviewApplication({
     contentSignalRepository: createBrowserContentSignalRepository({ getStorage, key: signalKey }),
     identityRepository,
     identityApplication,
+    narrativeMemoryApplication,
     inferenceAdapter: createBrowserInferenceAdapter({ fetchImpl }),
     workspaceId,
     userId,

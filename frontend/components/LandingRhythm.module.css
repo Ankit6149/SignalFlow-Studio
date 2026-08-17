@@ -1,0 +1,322 @@
+.current.current,
+.flow.flow,
+.direction.direction,
+.trust.trust {
+  position: relative;
+  padding-block: clamp(6.5rem, 10vw, 9.5rem);
+  padding-inline: max(1.5rem, calc((100% - 86rem) / 2));
+}
+
+.current.current::before,
+.direction.direction::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: max(1.5rem, calc((100% - 86rem) / 2));
+  right: max(1.5rem, calc((100% - 86rem) / 2));
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(23, 23, 20, 0.16) 16%, rgba(211, 184, 116, 0.36) 50%, rgba(23, 23, 20, 0.16) 84%, transparent);
+}
+
+.current.current {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 13%, rgba(211, 184, 116, 0.12), transparent 24rem),
+    #f5f0e5;
+}
+
+.current.current::after {
+  content: "";
+  position: absolute;
+  width: 26rem;
+  height: 26rem;
+  right: -12rem;
+  bottom: -12rem;
+  border: 1px solid rgba(211, 184, 116, 0.12);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.currentIntro {
+  max-width: 68rem;
+}
+
+.currentComposition.currentComposition {
+  margin-top: clamp(4rem, 7vw, 6.5rem);
+  grid-template-columns: minmax(0, 1fr) 4.5rem minmax(0, 1fr);
+  border-top-color: rgba(23, 23, 20, 0.1);
+  border-bottom-color: rgba(23, 23, 20, 0.1);
+}
+
+.currentStatement.currentStatement {
+  padding-block: clamp(2.6rem, 4.4vw, 4rem);
+}
+
+.currentDivider.currentDivider {
+  border-inline: 0;
+  color: rgba(23, 23, 20, 0.34);
+}
+
+.currentDivider.currentDivider::before {
+  content: "";
+  position: absolute;
+  width: 1px;
+  height: 58%;
+  background: linear-gradient(180deg, transparent, rgba(23, 23, 20, 0.15), transparent);
+}
+
+.currentDivider.currentDivider {
+  position: relative;
+}
+
+.currentDivider.currentDivider span {
+  position: relative;
+  z-index: 1;
+  padding: 0.6rem 0;
+  background: #f5f0e5;
+}
+
+.liveProof.liveProof {
+  margin-top: 1.2rem;
+  padding: 0.55rem;
+  gap: 0.2rem;
+  border: 1px solid rgba(23, 23, 20, 0.09);
+  background: rgba(255, 253, 248, 0.42);
+}
+
+.liveProof.liveProof > div {
+  padding: 1.15rem 1.25rem;
+  border: 0;
+}
+
+.liveProof.liveProof > div + div {
+  padding-left: 1.25rem;
+  border-left: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.compatibility.compatibility {
+  padding-top: 1.65rem;
+}
+
+.flow.flow,
+.trust.trust {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 16%, rgba(211, 184, 116, 0.1), transparent 28rem),
+    linear-gradient(180deg, #11120f, #0e0f0d 100%);
+}
+
+.flow.flow::before,
+.trust.trust::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 8rem 100%;
+  mask-image: linear-gradient(to right, transparent 4%, black 50%, transparent 96%);
+}
+
+.flowHeader.flowHeader,
+.trustHeader.trustHeader,
+.productPath.productPath,
+.coreContract.coreContract,
+.trustRows.trustRows,
+.processing.processing {
+  position: relative;
+  z-index: 1;
+}
+
+.flowHeader.flowHeader,
+.trustHeader.trustHeader {
+  grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.65fr);
+  gap: clamp(4rem, 9vw, 9rem);
+}
+
+.productPath.productPath {
+  margin-top: clamp(4.5rem, 7vw, 6.5rem);
+}
+
+.coreContract.coreContract {
+  margin-top: clamp(3.5rem, 5vw, 5rem);
+  padding-top: 2rem;
+}
+
+.direction.direction {
+  grid-template-columns: minmax(0, 1.05fr) minmax(25rem, 0.78fr);
+  gap: clamp(5rem, 10vw, 10rem);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 82% 50%, rgba(211, 184, 116, 0.1), transparent 25rem),
+    #f5f0e5;
+}
+
+.directionCopy {
+  position: sticky;
+  top: 3rem;
+  align-self: start;
+}
+
+.futureList.futureList {
+  position: relative;
+  padding: 0.35rem 1.35rem;
+  border: 1px solid rgba(23, 23, 20, 0.1);
+  background: rgba(255, 253, 248, 0.5);
+}
+
+.futureList.futureList > div {
+  min-height: 6.4rem;
+}
+
+.trustRows.trustRows {
+  margin-top: clamp(4.5rem, 7vw, 6.5rem);
+}
+
+.trustRows.trustRows article {
+  min-height: 9.75rem;
+  grid-template-columns: 4.25rem minmax(12rem, 0.62fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+}
+
+.processing.processing {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 253, 248, 0.08);
+}
+
+.final.final {
+  padding-block: clamp(8rem, 14vw, 12rem);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(211, 184, 116, 0.12), transparent 23rem),
+    #f5f0e5;
+}
+
+.footer.footer {
+  padding-inline: max(1.5rem, calc((100% - 86rem) / 2));
+}
+
+@media (max-width: 980px) {
+  .current.current,
+  .flow.flow,
+  .direction.direction,
+  .trust.trust {
+    padding-block: clamp(5.5rem, 10vw, 7rem);
+    padding-inline: clamp(1.25rem, 4vw, 2.5rem);
+  }
+
+  .current.current::before,
+  .direction.direction::before {
+    left: clamp(1.25rem, 4vw, 2.5rem);
+    right: clamp(1.25rem, 4vw, 2.5rem);
+  }
+
+  .flowHeader.flowHeader,
+  .trustHeader.trustHeader,
+  .direction.direction {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+  }
+
+  .directionCopy {
+    position: static;
+  }
+
+  .currentComposition.currentComposition {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .currentDivider.currentDivider {
+    min-height: 3rem;
+  }
+
+  .currentDivider.currentDivider::before {
+    width: 58%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(23, 23, 20, 0.15), transparent);
+  }
+
+  .currentDivider.currentDivider span {
+    transform: none;
+    padding: 0 0.7rem;
+  }
+
+  .liveProof.liveProof {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .liveProof.liveProof > div + div {
+    border-left: 0;
+  }
+
+  .liveProof.liveProof > div:nth-child(even) {
+    border-left: 1px solid rgba(23, 23, 20, 0.08);
+  }
+
+  .liveProof.liveProof > div:nth-child(n + 3) {
+    border-top: 1px solid rgba(23, 23, 20, 0.08);
+  }
+
+  .trustRows.trustRows article {
+    grid-template-columns: 3rem minmax(10rem, 0.7fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .current.current,
+  .flow.flow,
+  .direction.direction,
+  .trust.trust {
+    padding-block: 4.75rem;
+    padding-inline: 1rem;
+  }
+
+  .current.current::before,
+  .direction.direction::before {
+    left: 1rem;
+    right: 1rem;
+  }
+
+  .currentComposition.currentComposition {
+    margin-top: 3rem;
+  }
+
+  .currentStatement.currentStatement {
+    padding-block: 2.3rem;
+  }
+
+  .liveProof.liveProof {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .liveProof.liveProof > div,
+  .liveProof.liveProof > div + div,
+  .liveProof.liveProof > div:nth-child(even),
+  .liveProof.liveProof > div:nth-child(n + 3) {
+    border-left: 0;
+    border-top: 1px solid rgba(23, 23, 20, 0.08);
+  }
+
+  .liveProof.liveProof > div:first-child {
+    border-top: 0;
+  }
+
+  .futureList.futureList {
+    padding-inline: 1rem;
+  }
+
+  .trustRows.trustRows article {
+    min-height: 0;
+    padding-block: 1.75rem;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: 0.75rem 1rem;
+  }
+
+  .trustRows.trustRows article p {
+    grid-column: 2;
+  }
+
+  .final.final {
+    padding-block: 7rem;
+  }
+}

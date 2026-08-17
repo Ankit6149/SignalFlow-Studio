@@ -2,6 +2,7 @@ import { assertPort } from "../domain/ports.mjs";
 import { normalizeInferenceTask, INFERENCE_TASK_TYPES } from "../inference/inferenceTasks.mjs";
 import { normalizeOpportunityEvaluation } from "../domain/contentOpportunities.mjs";
 import { normalizeStrategyProposal } from "../domain/contentPlanning.mjs";
+import { normalizePlatformVariantDraft } from "../ai/platformVariantWriting.mjs";
 
 const TASK_ROUTES = Object.freeze({
   [INFERENCE_TASK_TYPES.OPPORTUNITY_EVALUATION]: {
@@ -15,6 +16,12 @@ const TASK_ROUTES = Object.freeze({
     normalize: normalizeStrategyProposal,
     fallbackCode: "narrative_strategy_failed",
     label: "Narrative strategy",
+  },
+  [INFERENCE_TASK_TYPES.PLATFORM_VARIANT]: {
+    endpoint: "/api/intelligence/platform-variant",
+    normalize: (output, input) => normalizePlatformVariantDraft(output, input?.variant?.destination),
+    fallbackCode: "platform_variant_generation_failed",
+    label: "Platform draft generation",
   },
 });
 
@@ -45,7 +52,7 @@ export function createBrowserInferenceAdapter({ fetchImpl } = {}) {
         throw error;
       }
       return {
-        output: route.normalize(data.output),
+        output: route.normalize(data.output, input),
         provenance: data.provenance,
       };
     },

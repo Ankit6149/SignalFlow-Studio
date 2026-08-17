@@ -105,6 +105,11 @@
   background: rgba(110, 142, 107, 0.08);
 }
 
+.message_warning {
+  background: rgba(167, 126, 48, 0.09);
+  color: #6e5626;
+}
+
 .message_error {
   background: rgba(162, 72, 56, 0.08);
   color: #7f382e;
@@ -146,7 +151,8 @@
 
 .buildState button,
 .editActions button,
-.actions button {
+.actions button,
+.generateButton {
   min-height: 2.55rem;
   padding: 0 0.85rem;
   border: 1px solid rgba(23, 23, 20, 0.15);
@@ -161,7 +167,8 @@
 
 .buildState > button,
 .actions .approveButton,
-.editActions button:last-child {
+.editActions button:last-child,
+.generateButton {
   border-color: #171714;
   background: #171714;
   color: #fffdf8;
@@ -361,12 +368,18 @@
 
 .actions button:disabled,
 .buildState button:disabled,
-.editActions button:disabled {
+.editActions button:disabled,
+.generateButton:disabled {
   opacity: 0.45;
   cursor: wait;
 }
 
+.productionStage {
+  border-top: 1px solid rgba(23, 23, 20, 0.08);
+}
+
 .approvedState {
+  border-top: 0;
   background: rgba(110, 142, 107, 0.05);
 }
 
@@ -388,6 +401,13 @@
   line-height: 1.5;
 }
 
+.readyLabel {
+  flex: 0 0 auto;
+  color: #6f6b61;
+  font-size: 0.58rem;
+  font-weight: 720;
+}
+
 .variantStates {
   min-width: 10rem;
   display: grid;
@@ -404,6 +424,109 @@
 
 .variantStates span {
   color: #8b6a28;
+}
+
+.draftStage {
+  padding: 1rem 1.25rem 0.4rem;
+  border-top: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.draftStage .subhead {
+  padding-bottom: 0.55rem;
+}
+
+.draftRow {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid rgba(23, 23, 20, 0.07);
+}
+
+.draftMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+}
+
+.draftMeta strong {
+  font-size: 0.72rem;
+}
+
+.draftMeta span {
+  color: #8b6a28;
+  font-size: 0.56rem;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.draftRow[data-status="failed"] .draftMeta span,
+.draftRow[data-status="omitted"] .draftMeta span {
+  color: #8a6860;
+}
+
+.draftMeta small,
+.draftContent small {
+  color: #948d81;
+  font-size: 0.54rem;
+  line-height: 1.4;
+}
+
+.draftContent {
+  min-width: 0;
+}
+
+.draftContent > p {
+  max-width: 48rem;
+  margin: 0;
+  color: #36322c;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.71rem;
+  line-height: 1.62;
+}
+
+.draftContent > small {
+  display: block;
+  margin-top: 0.65rem;
+}
+
+.draftContent ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.draftContent li {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.draftContent li b {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eee3c9;
+  color: #7b5b20;
+  font-size: 0.5rem;
+}
+
+.draftContent li p,
+.draftPlaceholder {
+  margin: 0;
+  color: #5f5a50;
+  font-size: 0.68rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .editForm {
@@ -493,8 +616,19 @@
     grid-column: 1 / -1;
   }
 
+  .draftStage .subhead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .draftRow {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
   .buildState > button,
-  .actions .approveButton {
+  .actions .approveButton,
+  .generateButton {
     width: 100%;
   }
 }

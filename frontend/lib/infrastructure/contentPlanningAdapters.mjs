@@ -5,8 +5,9 @@ import {
   normalizeNarrativeStrategy,
   normalizePlatformVariant,
 } from "../domain/contentPlanning.mjs";
+import { normalizePlatformVariantRevision } from "../domain/platformVariantRevisions.mjs";
 
-const SUPPORTED = new Set(["NarrativeStrategy", "ContentPiece", "PlatformVariant"]);
+const SUPPORTED = new Set(["NarrativeStrategy", "ContentPiece", "PlatformVariant", "PlatformVariantRevision"]);
 
 function clone(value) { return portableClone(value); }
 
@@ -15,13 +16,15 @@ function normalize(input) {
   if (!SUPPORTED.has(input.kind)) throw new TypeError(`Unsupported content planning record: ${input.kind || "missing"}.`);
   if (input.kind === "NarrativeStrategy") return normalizeNarrativeStrategy(input);
   if (input.kind === "ContentPiece") return normalizeContentPiece(input);
-  return normalizePlatformVariant(input);
+  if (input.kind === "PlatformVariant") return normalizePlatformVariant(input);
+  return normalizePlatformVariantRevision(input);
 }
 
 function recordId(record) {
   if (record.kind === "NarrativeStrategy") return record.narrativeStrategyId;
   if (record.kind === "ContentPiece") return record.contentPieceId;
   if (record.kind === "PlatformVariant") return record.platformVariantId;
+  if (record.kind === "PlatformVariantRevision") return record.platformVariantRevisionId;
   throw new TypeError(`Unsupported content planning record: ${record.kind || "missing"}.`);
 }
 

@@ -28,7 +28,7 @@ infrastructure configured
         ≠
 available to this session
         ≠
-credential-backed production verified
+credential-backed production verified capability
 ```
 
 UI/public claims use the last applicable truthful state, not the most optimistic one.
@@ -44,6 +44,10 @@ UI/public claims use the last applicable truthful state, not the most optimistic
 | Versioned approval/current revision rules | Available | Available | Available | Available |
 | Canonical Asset / SourceArtifact / AssetProcessing contract | Available | Available | Available | Available |
 | Browser-local manual `ContentSignal` intake/lifecycle | Available | Available | Available | Available |
+| Browser-local manual-Signal `ContentOpportunity` + angle decision | Available when a permitted model route is configured | Available when configured | Available when configured | Available when configured |
+| Browser-local explicit Identity/Perception/Voice/Boundary profiles | Available | Available | Available | Available |
+| Browser-local NarrativeStrategy/ContentPiece/LinkedIn-X PlatformVariant planning | Available when a permitted model route is configured | Available when configured | Available when configured | Available when configured |
+| Generated read-only LinkedIn/X `PlatformVariantRevision` | Available when a permitted model route is configured | Available when configured | Available when configured | Available when configured |
 | Hardened remote URL evidence fetch (#127) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Complete source-health diagnostics (#128) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Remote evidence revalidation/version adoption (#129) | Not implemented | Not implemented | Not implemented | Not implemented |
@@ -87,20 +91,20 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Canonical `ContentSignal` persistence/manual intake | Implemented browser-local; hosted persistence/automatic ingestion still planned | #152, `CONTENT_SIGNAL_IMPLEMENTATION.md` |
 | GitHub App/webhook → ContentSignal ingestion | Planned | #161, `GITHUB_INTEGRATION_AND_MCP.md` |
 | Explainable `ContentOpportunity` evaluation/ranking | Implemented for browser-local manual Signals; automatic multi-source intelligence and memory-aware ranking still planned | #156/#166 |
-| Opportunity angle options + `Something else` | Implemented for persisted manual-Signal opportunities in `/plan`; campaign strategy conversion still planned | #156/#159/#166 |
+| Opportunity angle options + `Something else` | Implemented for persisted manual-Signal opportunities in `/plan`; selected angles can now continue into a persisted NarrativeStrategy | #156/#159/#166 |
 | Persistent Identity/Perception/Voice/Boundary profiles | Implemented browser-local for explicit owner profiles + version history + LinkedIn/X expression + identity-context snapshots; hosted sync and automatic inference still planned | #153/#166 |
 | Learned explainable StyleMemory | Planned | #154 |
 | Narrative/publication memory + semantic repetition | Planned | #155 |
-| NarrativeStrategy / ContentPiece / PlatformVariant domain | Planned | #157 |
-| Staged generation orchestration | Planned | #158 |
+| NarrativeStrategy / ContentPiece / PlatformVariant domain | Implemented browser-local for the owner Golden Path, including explicit strategy approval and destination omission; hosted/team migration breadth remains planned | #157/#166 |
+| Staged generation orchestration | Partially implemented: `opportunity_evaluation` → `narrative_strategy` → destination-specific `platform_variant` writing with immutable LinkedIn/X revisions; critics, bounded targeted revision, durable jobs and broader stages remain planned | #158/#166 |
 | Authenticity quality critic | Planned | #158 |
 | Evidence/factual quality critic integrated with staged flow | Planned | #158 |
 | Today decision inbox | Planned | #159 |
 | Signals workspace | Implemented for browser-local manual intake/lifecycle + explicit `Find ideas`; automatic connector ingestion still planned | #152/#159/#166 |
-| Plan/opportunity/campaign-planning workspace | Opportunity explanation + angle/custom-angle decision implemented browser-local; NarrativeStrategy/campaign plan stage still planned | #156/#157/#159/#166 |
+| Plan/opportunity/campaign-planning workspace | Implemented browser-local through opportunity explanation, angle/custom-angle decision, reviewable/approvable NarrativeStrategy, canonical ContentPiece and read-only generated LinkedIn/X review revisions; editing/critics/exact draft approval remain planned | #156/#157/#158/#159/#166 |
 | CadencePolicy / editorial planning | Planned | #160 |
 | Editorial calendar with intentionally empty slots | Planned | #160 |
-| Provider-neutral InferenceTask/routing/policy fabric | Thin `opportunity_evaluation` task/adapter + server privacy-route denial implemented; full capability registry, metering, fallback and Private Hybrid still planned | #170/#171/#172 |
+| Provider-neutral InferenceTask/routing/policy fabric | Thin task/adapter + server privacy-route enforcement implemented for `opportunity_evaluation`, `narrative_strategy`, and `platform_variant`; full capability registry, metering, fallback and Private Hybrid remain planned | #170/#171/#172 |
 | Curated local intelligence packs | Planned | #173 |
 | External AI-assistant client integrations | Planned | #174 |
 | Mobile low-attention companion | Planned | #175 |
@@ -118,7 +122,7 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Automatic deterministic raw screencast | Planned | #164 |
 | Motion composition / multi-aspect video render | Planned | #165 |
 | Exact media revision approval/publication binding | Planned | #151/#165/#168/#179–#185 |
-| Owner Golden Path 1 manual thought → authentic approval | In progress: manual Signal, Opportunity/angles, Plan, and explicit Voice/Identity context implemented; NarrativeStrategy, LinkedIn/X generation/critique/review/memory still pending | #166 |
+| Owner Golden Path 1 manual thought → authentic approval | In progress: implemented through manual Signal → Opportunity/angle → explicit Voice → approved NarrativeStrategy → ContentPiece → destination-specific immutable read-only LinkedIn/X `PlatformVariantRevision`; authenticity/evidence critics, editing/change requests, exact draft approval and NarrativeMemory remain pending | #166 |
 | Owner Golden Path 2 GitHub event → opportunity + visual evidence | Planned | #167 |
 | Owner Golden Path 3 approved revision → durable publish → memory | Planned | #168 |
 | Performance analytics ingestion/learning | Future; not yet scoped as production capability | product vision/editorial docs |
@@ -234,13 +238,16 @@ Public links must fail closed as *verified usable evidence* where #127's hardene
 
 ## 8. Content-intelligence truth
 
-Manual browser-local ContentSignal intake is now implemented and may be presented as such. Automatic signal ingestion, ContentOpportunity intelligence, Identity, StyleMemory, NarrativeMemory, and the unified Today/Plan experience remain target capabilities until their owning issues are complete.
+The owner-first browser-local path now implements manual `ContentSignal`, persisted `ContentOpportunity` evaluation/angle selection, explicit versioned Identity/Perception/Voice/Boundary context, reviewable/approvable `NarrativeStrategy`, canonical `ContentPiece`/LinkedIn-X `PlatformVariant`, and immutable generated `PlatformVariantRevision` records that stop at review state.
+
+Automatic signal ingestion, connected-source intelligence, memory-aware opportunity ranking, StyleMemory, NarrativeMemory, Today, critics, exact draft approval and broader hosted persistence remain target capabilities until their owning issues are complete.
 
 Examples:
 
-- a saved manual ContentSignal is real persisted evidence, but it is **not** automatic detection or a persistent ContentOpportunity system;
-- a one-off model-generated `strategy` object is **not** a persistent ContentOpportunity system;
-- a `founder-style` tone field is **not** an IdentityProfile;
+- a saved manual ContentSignal is real persisted evidence and can now be evaluated into a persisted manual-source ContentOpportunity, but it is **not** automatic work-event detection;
+- an ad-hoc model-generated `strategy` object is **not** equivalent to the implemented persisted/revisioned NarrativeStrategy contract;
+- a shallow `founder-style` tone field is **not** Identity; the explicit versioned Identity/Perception/Voice/Boundary records are the current implemented owner model;
+- a generated `PlatformVariantRevision` is **not approved content** merely because it exists; current Golden Path output stops at read-only review until the critic/edit/approval slice ships;
 - campaign history is useful but is **not** NarrativeMemory until public-story semantics are implemented;
 - a prompt-generated media shot list is **not** automatic capture/media production;
 - a client-side schedule callback is **not** durable editorial/publication scheduling.
@@ -335,9 +342,9 @@ Current rules remain:
 - Markdown/JSON are deterministic projections;
 - browser/memory/store-backed adapters share contracts.
 
-Target ContentPiece/PlatformVariant/media migrations must preserve these invariants.
+The implemented Golden Path ContentPiece/PlatformVariant revision model and future legacy/media migrations must preserve these invariants.
 
-Original user media must remain immutable when the new media architecture is implemented; edits become derived versions/compositions.
+Original user media must remain immutable when the new media architecture is implemented; edits and renders become derived revisions with full lineage.
 
 ## 14. Session/permission rules
 

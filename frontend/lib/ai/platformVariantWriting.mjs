@@ -6,6 +6,12 @@ function cleanString(value, maxLength = 12000) {
   return String(value ?? "").replace(/\r\n?/g, "\n").trim().slice(0, maxLength);
 }
 
+function outputString(value, field, maxLength = 12000) {
+  const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
+  if (normalized.length > maxLength) throw new TypeError(`${field} exceeds ${maxLength} characters.`);
+  return normalized;
+}
+
 function cleanList(value, maxItems = 40, maxLength = 1200) {
   return (Array.isArray(value) ? value : [])
     .map((item) => cleanString(item, maxLength))
@@ -78,24 +84,27 @@ export function normalizePlatformVariantDraft(raw = {}, destination = "") {
   const source = safeRecord(raw);
   const platform = cleanString(destination, 40).toLowerCase();
   if (!["linkedin", "x"].includes(platform)) throw new TypeError("Platform draft destination must be LinkedIn or X.");
-  const format = cleanString(source.format, "".length || 80).toLowerCase() || "single_post";
+  const format = outputString(source.format || "single_post", "Platform draft format", 80).toLowerCase();
 
   if (platform === "linkedin") {
     if (format !== "single_post") throw new TypeError("LinkedIn Personal Alpha currently accepts a single_post draft.");
-    const content = cleanString(source.content, 12000);
+    const content = outputString(source.content, "LinkedIn draft", 12000);
     if (!content) throw new TypeError("LinkedIn draft content is required.");
     return { format, content, segments: [] };
   }
 
   if (!["single_post", "thread"].includes(format)) throw new TypeError("X draft format must be single_post or thread.");
   if (format === "single_post") {
-    const content = cleanString(source.content, 12000);
+    const content = outputString(source.content, "X draft", 12000);
     if (!content) throw new TypeError("X draft content is required.");
     if (content.length > 280) throw new TypeError("X single-post draft exceeds 280 characters.");
     return { format, content, segments: [] };
   }
 
-  const segments = cleanList(source.segments, 8, 12000);
+  const segments = (Array.isArray(source.segments) ? source.segments : [])
+    .map((item, index) => outputString(item, `X thread segment ${index + 1}`, 12000))
+    .filter(Boolean)
+    .slice(0, 8);
   if (segments.length < 2) throw new TypeError("X thread draft requires at least two segments.");
   if (segments.some((segment) => segment.length > 280)) throw new TypeError("X thread segments must be 280 characters or fewer.");
   return { format, content: segments.join("\n\n"), segments };

@@ -8,19 +8,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const page = fs.readFileSync(path.join(root, "components/LandingPage.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "components/LandingPage.module.css"), "utf8");
 
-test("landing is organized around product scenes instead of architecture-card overload", () => {
-  assert.match(page, /HeroProductScene/);
-  assert.match(page, /MediaCanvas/);
-  assert.match(page, /Stay in the work/);
-  assert.match(page, /Two honest ways to use SignalFlow today/);
-  assert.match(page, /Trust is not a settings page/);
-  assert.doesNotMatch(page, /CURRENT_FOUNDATION|PRODUCT_DIRECTION =|TRUST_POINTS/);
+test("landing is organized around the real owner path rather than card or faux-dashboard overload", () => {
+  assert.match(page, /HeroFlowScene/);
+  assert.match(page, /ProductPath/);
+  assert.match(page, /OWNER PATH · LIVE NOW/);
+  assert.match(page, /Start with the work/);
+  assert.match(page, /Trust is system behavior/);
+  assert.doesNotMatch(page, /HeroProductScene|MediaCanvas|CURRENT_FOUNDATION|PRODUCT_DIRECTION =|TRUST_POINTS/);
 });
 
-test("landing has cinematic depth without relying on unbounded motion", () => {
+test("landing has quiet depth without ornamental floating motion", () => {
   assert.match(css, /radial-gradient/);
-  assert.match(css, /perspective\(80rem\)/);
-  assert.match(css, /@keyframes floatLabel/);
-  assert.match(css, /@keyframes orbitDrift/);
+  assert.match(css, /backdrop-filter:\s*blur/);
   assert.match(css, /prefers-reduced-motion/);
+  assert.doesNotMatch(css, /perspective\(|@keyframes floatLabel|@keyframes orbitDrift|#d9f36a|#a9a1ff/i);
 });

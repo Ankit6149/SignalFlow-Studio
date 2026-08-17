@@ -7,22 +7,22 @@
  */
 
 .app-shell {
-  --app-bg: #f5f5f2;
-  --app-surface: #ffffff;
-  --app-surface-subtle: #fafaf8;
-  --app-ink: #1d1d1a;
-  --app-muted: #686761;
-  --app-faint: #8d8b84;
-  --app-line: #deddd7;
-  --app-line-strong: #c9c7be;
-  --app-accent: #9b8248;
-  --app-accent-soft: #f2eee3;
+  --app-bg: #f5f0e5;
+  --app-surface: #fffdf8;
+  --app-surface-subtle: #f8f3ea;
+  --app-ink: #171714;
+  --app-muted: #6f6b61;
+  --app-faint: #989184;
+  --app-line: #ded5c6;
+  --app-line-strong: #c9bda9;
+  --app-accent: #8b6a28;
+  --app-accent-soft: #eee3c9;
   --app-success: #456650;
   --app-success-soft: #edf4ef;
   --app-warning: #765a27;
   --app-warning-soft: #f8f2e7;
   --app-danger: #8d3e35;
-  --app-radius: 0.625rem;
+  --app-radius: 0.5rem;
   --app-control: 2.875rem;
   --app-shell-max: 88rem;
   --app-header-desktop: 4.5rem;

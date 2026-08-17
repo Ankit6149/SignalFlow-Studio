@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { createBrowserContentSignalApplication } from "../lib/application/browserContentSignalApplication.mjs";
 import { CONTENT_SIGNAL_KINDS } from "../lib/domain/contentSignals.mjs";
 import styles from "./SignalsWorkspace.module.css";
+import WorkspaceShell from "./WorkspaceShell";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
 const SIGNAL_STORAGE_KEY = "signalflow_content_signals_v1";
@@ -214,17 +214,8 @@ export default function SignalsWorkspace() {
   }
 
   return (
-    <main className={styles.page} id="main-content">
-      <header className={styles.topbar}>
-        <Link className={styles.brand} href="/" aria-label="SignalFlow Studio home">
-          <span className={styles.brandGlyph} aria-hidden="true"><i /><i /><i /></span>
-          <span><strong>SignalFlow</strong><small>STUDIO</small></span>
-        </Link>
-        <div className={styles.topActions}>
-          <span className={styles.localBadge}>Browser-local owner workspace</span>
-          <Link className={styles.studioLink} href="/">Current Studio</Link>
-        </div>
-      </header>
+    <WorkspaceShell activeItem="signals" statusLabel="Manual signals available" statusTone="ready">
+      <main className={styles.page} id="workspace-content">
 
       <section className={styles.hero} aria-labelledby="signals-title">
         <div>
@@ -420,5 +411,6 @@ export default function SignalsWorkspace() {
         )}
       </section>
     </main>
+    </WorkspaceShell>
   );
 }

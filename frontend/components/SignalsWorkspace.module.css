@@ -1,13 +1,13 @@
 .page {
-  min-height: 100vh;
-  background: #f3f0e8;
+  min-height: 100%;
+  background: transparent;
   color: #171713;
   padding-bottom: 6rem;
   overflow-x: clip;
 }
 
 .topbar {
-  width: min(1180px, calc(100% - 40px));
+  width: min(74rem, calc(100% - 3rem));
   margin: 0 auto;
   padding: 1.25rem 0;
   display: flex;
@@ -91,13 +91,13 @@
 .workspaceGrid,
 .librarySection,
 .message {
-  width: min(1180px, calc(100% - 40px));
+  width: min(74rem, calc(100% - 3rem));
   margin-left: auto;
   margin-right: auto;
 }
 
 .hero {
-  padding: 5.5rem 0 3rem;
+  padding: clamp(3.25rem, 6vw, 5rem) 0 2.5rem;
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(270px, 0.75fr);
   gap: clamp(2rem, 6vw, 6rem);
@@ -139,8 +139,8 @@
 .emptyState {
   border: 1px solid rgba(23, 23, 19, 0.12);
   background: rgba(255, 253, 247, 0.78);
-  border-radius: 24px;
-  box-shadow: 0 12px 36px rgba(43, 37, 24, 0.05);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(43, 37, 24, 0.035);
 }
 
 .principleCard {
@@ -208,7 +208,7 @@
 .message {
   margin-top: 1.5rem;
   padding: 0.9rem 1rem;
-  border-radius: 14px;
+  border-radius: 0.65rem;
   font-size: 0.86rem;
   line-height: 1.5;
 }
@@ -307,7 +307,7 @@
   width: 100%;
   max-width: 100%;
   border: 1px solid #d7d1c5;
-  border-radius: 12px;
+  border-radius: 0.55rem;
   background: #fffdf8;
   color: #171713;
   padding: 0.8rem 0.9rem;

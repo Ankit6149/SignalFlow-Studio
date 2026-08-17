@@ -1,0 +1,506 @@
+.panel,
+.gate {
+  border: 1px solid rgba(23, 23, 20, 0.11);
+  border-radius: 0.7rem;
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.gate {
+  padding: 1rem 1.2rem;
+}
+
+.gate > div {
+  max-width: 44rem;
+}
+
+.gate span,
+.header span,
+.buildState span,
+.ideaBlock span,
+.takeawayBlock span,
+.subhead span,
+.secondaryGrid > div > span,
+.approvedState > div:first-child > span {
+  color: #8b6a28;
+  font-size: 0.56rem;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.gate strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 520;
+}
+
+.gate p {
+  margin: 0.4rem 0 0;
+  color: #777166;
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.panel {
+  overflow: hidden;
+}
+
+.header {
+  padding: 1.2rem 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.header > div {
+  min-width: 0;
+}
+
+.header h3 {
+  max-width: 22ch;
+  margin: 0.45rem 0 0;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.55rem, 2.5vw, 2.35rem);
+  font-weight: 520;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.header p {
+  max-width: 48rem;
+  margin: 0.6rem 0 0;
+  color: #777166;
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.header > small {
+  flex: 0 0 auto;
+  padding: 0.32rem 0.5rem;
+  border: 1px solid rgba(23, 23, 20, 0.1);
+  border-radius: 999px;
+  color: #7f796f;
+  font-size: 0.55rem;
+}
+
+.message {
+  margin: 0.85rem 1.15rem 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(23, 23, 20, 0.1);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: #5f5a50;
+  font-size: 0.65rem;
+  line-height: 1.45;
+}
+
+.message_success {
+  background: rgba(110, 142, 107, 0.08);
+}
+
+.message_error {
+  background: rgba(162, 72, 56, 0.08);
+  color: #7f382e;
+}
+
+.message a {
+  flex: 0 0 auto;
+  color: #7b5b20;
+  font-weight: 760;
+}
+
+.buildState {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.buildState > div {
+  min-width: 0;
+}
+
+.buildState strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 520;
+}
+
+.buildState p {
+  max-width: 45rem;
+  margin: 0.4rem 0 0;
+  color: #6f6b61;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.buildState button,
+.editActions button,
+.actions button {
+  min-height: 2.55rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(23, 23, 20, 0.15);
+  border-radius: 0.48rem;
+  background: transparent;
+  color: #514d45;
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 730;
+  cursor: pointer;
+}
+
+.buildState > button,
+.actions .approveButton,
+.editActions button:last-child {
+  border-color: #171714;
+  background: #171714;
+  color: #fffdf8;
+}
+
+.primaryPlan {
+  padding: 1.2rem 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(14rem, 0.8fr);
+  gap: 1.5rem;
+  border-bottom: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.ideaBlock strong {
+  display: block;
+  max-width: 34ch;
+  margin-top: 0.45rem;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.3rem, 2.3vw, 2rem);
+  font-weight: 520;
+  line-height: 1.1;
+}
+
+.takeawayBlock {
+  padding-left: 1.1rem;
+  border-left: 1px solid rgba(23, 23, 20, 0.1);
+}
+
+.takeawayBlock p {
+  margin: 0.45rem 0 0;
+  color: #5d594f;
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.planRows {
+  padding: 0 1.25rem;
+}
+
+.planRow {
+  padding: 0.9rem 0;
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 1rem;
+  border-bottom: 1px solid rgba(23, 23, 20, 0.07);
+}
+
+.planRow > span {
+  color: #8c8579;
+  font-size: 0.58rem;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.planRow > p,
+.planRow ul,
+.planRow ol {
+  margin: 0;
+  color: #59554d;
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.planRow ol,
+.planRow ul {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.planRow li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.planRow li b {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 1.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eee3c9;
+  color: #7b5b20;
+  font-size: 0.5rem;
+}
+
+.planRow li p {
+  margin: 0;
+}
+
+.destinationPlan {
+  padding: 1.05rem 1.25rem;
+  border-bottom: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.subhead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+
+.subhead p {
+  margin: 0;
+  color: #827b70;
+  font-size: 0.62rem;
+}
+
+.destinationItem {
+  padding: 0.72rem 0;
+  display: grid;
+  grid-template-columns: 5rem 5rem minmax(0, 1fr) 10rem;
+  gap: 0.8rem;
+  align-items: center;
+  border-bottom: 1px solid rgba(23, 23, 20, 0.06);
+}
+
+.destinationItem:last-child {
+  border-bottom: 0;
+}
+
+.destinationItem strong {
+  font-size: 0.72rem;
+}
+
+.destinationItem > span {
+  color: #8b6a28;
+  font-size: 0.59rem;
+  font-weight: 760;
+}
+
+.destinationItem[data-decision="exclude"] > span {
+  color: #8a6860;
+}
+
+.destinationItem p {
+  margin: 0;
+  color: #5f5a50;
+  font-size: 0.65rem;
+  line-height: 1.45;
+}
+
+.destinationItem small {
+  color: #948d81;
+  font-size: 0.56rem;
+}
+
+.secondaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.secondaryGrid > div {
+  min-width: 0;
+  padding: 1rem 1.25rem;
+}
+
+.secondaryGrid > div + div {
+  border-left: 1px solid rgba(23, 23, 20, 0.08);
+}
+
+.secondaryGrid p {
+  margin: 0.4rem 0 0;
+  color: #666157;
+  font-size: 0.63rem;
+  line-height: 1.5;
+}
+
+.secondaryGrid p b {
+  color: #413d36;
+}
+
+.secondaryGrid small {
+  display: block;
+  margin-top: 0.45rem;
+  color: #938c80;
+  font-size: 0.55rem;
+}
+
+.actions,
+.approvedState {
+  padding: 0.95rem 1.25rem;
+  border-top: 1px solid rgba(23, 23, 20, 0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.actions > div {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.actions button:disabled,
+.buildState button:disabled,
+.editActions button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.approvedState {
+  background: rgba(110, 142, 107, 0.05);
+}
+
+.approvedState > div:first-child {
+  min-width: 0;
+}
+
+.approvedState strong {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.approvedState p {
+  max-width: 44rem;
+  margin: 0.3rem 0 0;
+  color: #6f6b61;
+  font-size: 0.63rem;
+  line-height: 1.5;
+}
+
+.variantStates {
+  min-width: 10rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.variantStates p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.6rem;
+}
+
+.variantStates span {
+  color: #8b6a28;
+}
+
+.editForm {
+  padding: 1.2rem 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.editForm label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.editForm label > span {
+  color: #5f5a50;
+  font-size: 0.6rem;
+  font-weight: 730;
+}
+
+.editForm textarea {
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid rgba(23, 23, 20, 0.14);
+  border-radius: 0.48rem;
+  resize: vertical;
+  background: #fffdf8;
+  color: #28251f;
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.editColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.panel button:focus-visible,
+.panel textarea:focus-visible,
+.panel a:focus-visible {
+  outline: 2px solid #8b6a28;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .header,
+  .buildState,
+  .actions,
+  .approvedState {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .primaryPlan,
+  .secondaryGrid,
+  .editColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .takeawayBlock,
+  .secondaryGrid > div + div {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(23, 23, 20, 0.08);
+    padding-top: 0.9rem;
+  }
+
+  .planRow {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .destinationItem {
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem 0.75rem;
+  }
+
+  .destinationItem p,
+  .destinationItem small {
+    grid-column: 1 / -1;
+  }
+
+  .buildState > button,
+  .actions .approveButton {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel * {
+    scroll-behavior: auto !important;
+  }
+}

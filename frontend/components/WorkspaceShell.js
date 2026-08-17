@@ -8,7 +8,7 @@ const NAV_GROUPS = [
   {
     label: "Decide",
     items: [
-      { id: "today", label: "Today", status: "next" },
+      { id: "today", label: "Today", href: "/today", status: "available" },
       { id: "signals", label: "Signals", href: "/signals", status: "available" },
       { id: "plan", label: "Plan", href: "/plan", status: "available" },
     ],

@@ -86,8 +86,8 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | --- | --- | --- |
 | Canonical `ContentSignal` persistence/manual intake | Implemented browser-local; hosted persistence/automatic ingestion still planned | #152, `CONTENT_SIGNAL_IMPLEMENTATION.md` |
 | GitHub App/webhook → ContentSignal ingestion | Planned | #161, `GITHUB_INTEGRATION_AND_MCP.md` |
-| Explainable `ContentOpportunity` scoring/ranking | Planned | #156 |
-| Opportunity angle options + `Something else` | Planned | #156/#159 |
+| Explainable `ContentOpportunity` evaluation/ranking | Implemented for browser-local manual Signals; automatic multi-source intelligence and memory-aware ranking still planned | #156/#166 |
+| Opportunity angle options + `Something else` | Implemented for persisted manual-Signal opportunities in `/plan`; campaign strategy conversion still planned | #156/#159/#166 |
 | Persistent Identity/Perception/Voice/Boundary profiles | Planned | #153 |
 | Learned explainable StyleMemory | Planned | #154 |
 | Narrative/publication memory + semantic repetition | Planned | #155 |
@@ -96,11 +96,11 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Authenticity quality critic | Planned | #158 |
 | Evidence/factual quality critic integrated with staged flow | Planned | #158 |
 | Today decision inbox | Planned | #159 |
-| Signals workspace | Planned | #159 |
-| Plan/opportunity/campaign-planning workspace | Planned | #159 |
+| Signals workspace | Implemented for browser-local manual intake/lifecycle + explicit `Find ideas`; automatic connector ingestion still planned | #152/#159/#166 |
+| Plan/opportunity/campaign-planning workspace | Opportunity explanation + angle/custom-angle decision implemented browser-local; NarrativeStrategy/campaign plan stage still planned | #156/#157/#159/#166 |
 | CadencePolicy / editorial planning | Planned | #160 |
 | Editorial calendar with intentionally empty slots | Planned | #160 |
-| Provider-neutral InferenceTask/routing/policy fabric | Planned | #170/#171/#172 |
+| Provider-neutral InferenceTask/routing/policy fabric | Thin `opportunity_evaluation` task/adapter + server privacy-route denial implemented; full capability registry, metering, fallback and Private Hybrid still planned | #170/#171/#172 |
 | Curated local intelligence packs | Planned | #173 |
 | External AI-assistant client integrations | Planned | #174 |
 | Mobile low-attention companion | Planned | #175 |

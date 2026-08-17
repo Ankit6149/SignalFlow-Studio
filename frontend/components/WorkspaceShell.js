@@ -10,7 +10,7 @@ const NAV_GROUPS = [
     items: [
       { id: "today", label: "Today", status: "next" },
       { id: "signals", label: "Signals", href: "/signals", status: "available" },
-      { id: "plan", label: "Plan", status: "next" },
+      { id: "plan", label: "Plan", href: "/plan", status: "available" },
     ],
   },
   {

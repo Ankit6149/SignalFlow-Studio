@@ -94,6 +94,7 @@ When target architecture and current capability truth differ, **the capability m
 - Infrastructure adapters: `frontend/lib/infrastructure/`
 - Canonical source graph: `frontend/lib/domain/sourceArtifacts.mjs`
 - Implemented manual ContentSignal domain/application: `frontend/lib/domain/contentSignals.mjs`, `frontend/lib/application/contentSignalApplication.mjs`, and `docs/CONTENT_SIGNAL_IMPLEMENTATION.md`
+- Implemented manual-Signal opportunity slice: `frontend/lib/domain/contentOpportunities.mjs`, `frontend/lib/application/contentOpportunityApplication.mjs`, `frontend/lib/inference/inferenceTasks.mjs`, and `/plan`; do not confuse this with complete #156/#166 or NarrativeMemory.
 - Transfer: `frontend/lib/transfer/`
 - Authoritative export: `frontend/lib/export/campaignExport.mjs`
 - Current primary UI: `frontend/app/page.js`

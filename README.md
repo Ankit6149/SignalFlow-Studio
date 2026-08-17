@@ -48,6 +48,7 @@ The current product can:
 - ingest supported public links and GitHub repository context within current safety/implementation limits;
 - accept supported browser file inputs and canonical source/asset records;
 - capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;
+- evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;
 - use real configured model-provider routes;
 - generate destination-specific campaign drafts;
 - preserve stable campaign IDs and edit-safe draft history;
@@ -64,8 +65,8 @@ The current product can:
 
 The repository must **not** claim the following are already available until their issues and acceptance evidence are complete:
 
-- automatic ContentSignal ingestion from connected work events and persistent ContentOpportunity intelligence;
-- automatic opportunity recommendations from connected work events;
+- automatic ContentSignal ingestion from connected work events and automatic opportunity evaluation/ranking across connected sources;
+- complete NarrativeMemory/identity-aware opportunity evaluation across historical content;
 - long-lived identity/style/narrative learning;
 - a `Today` decision inbox;
 - editorial cadence planning;

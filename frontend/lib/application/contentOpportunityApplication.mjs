@@ -129,7 +129,7 @@ export function createContentOpportunityApplication({
   async function evaluateSignal(signalId, { evaluationContext = {}, force = false } = {}) {
     const signal = await requireOwnedSignal(signalId);
     if (["device_private", "restricted"].includes(signal.privacyClassification)) {
-      throw new Error("This signal is marked for private processing and cannot use the current remote opportunity evaluator. Change the processing/privacy choice deliberately or use a future local/private route.");
+      throw new Error("This signal is marked for private processing and requires a local/private processing route. The current remote opportunity evaluator will not receive it. Change the processing/privacy choice deliberately or use a supported local/private route.");
     }
 
     const existing = await readOpportunityForSignal(signalId);

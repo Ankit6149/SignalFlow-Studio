@@ -1,7 +1,9 @@
 "use client";
 
+import BrandMark from "./BrandMark";
 import PlatformIcon from "./PlatformIcon";
 import styles from "./LandingPage.module.css";
+import rhythm from "./LandingRhythm.module.css";
 
 const LIVE_PATH = [
   ["01", "Signal", "Keep the thought or work event before it disappears."],
@@ -100,7 +102,7 @@ function HeroFlowScene() {
 
 function ProductPath() {
   return (
-    <div className={styles.productPath}>
+    <div className={`${styles.productPath} ${rhythm.productPath}`}>
       {LIVE_PATH.map(([number, title, detail], index) => (
         <article className={styles.pathStep} key={title}>
           <div className={styles.pathIndex}><span>{number}</span><i aria-hidden="true" /></div>
@@ -124,14 +126,14 @@ function PlatformPair() {
   );
 }
 
-export default function LandingPage({ onEnter, brand }) {
+export default function LandingPage({ onEnter }) {
   return (
     <div className={styles.page} id="top">
       <a className={styles.skipLink} href="#main-content">Skip to main content</a>
 
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <a className={styles.logoLink} href="#top" aria-label="SignalFlow Studio home">{brand}</a>
+          <a className={styles.logoLink} href="#top" aria-label="SignalFlow Studio home"><BrandMark tone="light" /></a>
           <nav className={styles.nav} aria-label="Public navigation">
             <a href="#works-now">Works now</a>
             <a href="#how-it-flows">How it works</a>
@@ -161,23 +163,23 @@ export default function LandingPage({ onEnter, brand }) {
           <a className={styles.scrollCue} href="#works-now" aria-label="Continue to what works now"><span /> The useful part, now</a>
         </section>
 
-        <section className={styles.currentSection} id="works-now" aria-labelledby="current-title">
-          <div className={styles.sectionIntro}>
+        <section className={`${styles.currentSection} ${rhythm.current}`} id="works-now" aria-labelledby="current-title">
+          <div className={`${styles.sectionIntro} ${rhythm.currentIntro}`}>
             <span className={styles.sectionNumber}>01</span>
             <p className={styles.sectionEyebrow}>PERSONAL ALPHA · FUNCTIONAL NOW</p>
             <h2 id="current-title">Start with the work.<br />Not a content template.</h2>
             <p className={styles.sectionLead}>You can already use the core owner loop without pretending the future automation exists.</p>
           </div>
 
-          <div className={styles.currentComposition}>
-            <div className={styles.currentStatement}>
+          <div className={`${styles.currentComposition} ${rhythm.currentComposition}`}>
+            <div className={`${styles.currentStatement} ${rhythm.currentStatement}`}>
               <span>CAPTURE</span>
               <strong>Something happened. Or you had a thought.</strong>
               <p>Save it as a browser-local ContentSignal. No campaign. No AI call. No pressure to publish.</p>
               <a href="/signals">Open Signals <ArrowIcon /></a>
             </div>
-            <div className={styles.currentDivider} aria-hidden="true"><span>then</span></div>
-            <div className={styles.currentStatement}>
+            <div className={`${styles.currentDivider} ${rhythm.currentDivider}`} aria-hidden="true"><span>then</span></div>
+            <div className={`${styles.currentStatement} ${rhythm.currentStatement}`}>
               <span>JUDGE</span>
               <strong>SignalFlow does the middle work.</strong>
               <p>Opportunity, angle, Voice, plan, destination draft, critics and immutable revision history lead back to one explicit decision.</p>
@@ -185,21 +187,21 @@ export default function LandingPage({ onEnter, brand }) {
             </div>
           </div>
 
-          <div className={styles.liveProof}>
+          <div className={`${styles.liveProof} ${rhythm.liveProof}`}>
             <div><span>DESTINATIONS IN THE GOLDEN PATH</span><PlatformPair /></div>
             <div><span>STORAGE TODAY</span><strong>Browser-local recovery</strong></div>
             <div><span>INFERENCE TODAY</span><strong>Real configured AI generation</strong></div>
             <div><span>OUTPUT FOUNDATION</span><strong>Editable destination-specific drafts + export</strong></div>
           </div>
 
-          <div className={styles.compatibilityLine}>
+          <div className={`${styles.compatibilityLine} ${rhythm.compatibility}`}>
             <span><CheckIcon /> Current Studio remains additive</span>
             <button type="button" onClick={onEnter}>Open current Studio <ArrowIcon /></button>
           </div>
         </section>
 
-        <section className={styles.flowSection} id="how-it-flows" aria-labelledby="flow-title">
-          <div className={styles.flowHeader}>
+        <section className={`${styles.flowSection} ${rhythm.flow}`} id="how-it-flows" aria-labelledby="flow-title">
+          <div className={`${styles.flowHeader} ${rhythm.flowHeader}`}>
             <div>
               <span className={styles.sectionNumberLight}>02</span>
               <p className={styles.sectionEyebrowLight}>THE OWNER PATH</p>
@@ -208,28 +210,28 @@ export default function LandingPage({ onEnter, brand }) {
             <p>Each stage owns one decision and one durable record. That is what lets this start personal and scale later without replacing the core.</p>
           </div>
           <ProductPath />
-          <div className={styles.coreContract}>
+          <div className={`${styles.coreContract} ${rhythm.coreContract}`}>
             <span>THE CORE CONTRACT</span>
             <p>SignalFlow&apos;s job is everything between the work and your judgment.</p>
           </div>
         </section>
 
-        <section className={styles.directionSection} aria-labelledby="direction-title">
-          <div className={styles.directionCopy}>
+        <section className={`${styles.directionSection} ${rhythm.direction}`} aria-labelledby="direction-title">
+          <div className={`${styles.directionCopy} ${rhythm.directionCopy}`}>
             <span className={styles.sectionNumber}>03</span>
             <p className={styles.sectionEyebrow}>WHAT COMES AFTER THE CORE LOOP</p>
             <h2 id="direction-title">Automation should extend the path.<br />Not replace your control.</h2>
             <p>Source connections, media production, durable publishing and memory are being added behind the same records and approval rules. They are direction—not claims about what is already shipped.</p>
           </div>
-          <div className={styles.futureList}>
+          <div className={`${styles.futureList} ${rhythm.futureList}`}>
             {FUTURE.map((item, index) => (
               <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item}</strong><small>direction</small></div>
             ))}
           </div>
         </section>
 
-        <section className={styles.trustSection} id="trust" aria-labelledby="trust-title">
-          <div className={styles.trustHeader}>
+        <section className={`${styles.trustSection} ${rhythm.trust}`} id="trust" aria-labelledby="trust-title">
+          <div className={`${styles.trustHeader} ${rhythm.trustHeader}`}>
             <div>
               <span className={styles.sectionNumberLight}>04</span>
               <p className={styles.sectionEyebrowLight}>AUTOMATION WITHOUT SURRENDERING CONTROL</p>
@@ -238,7 +240,7 @@ export default function LandingPage({ onEnter, brand }) {
             <p>Not another preferences panel. These rules shape what SignalFlow may do before a provider, worker or destination ever receives the task.</p>
           </div>
 
-          <div className={styles.trustRows}>
+          <div className={`${styles.trustRows} ${rhythm.trustRows}`}>
             {TRUST.map(([title, body], index) => (
               <article key={title}>
                 <span>0{index + 1}</span>
@@ -248,7 +250,7 @@ export default function LandingPage({ onEnter, brand }) {
             ))}
           </div>
 
-          <div className={styles.processingModes}>
+          <div className={`${styles.processingModes} ${rhythm.processing}`}>
             <div><i /> Standard</div>
             <div><i /> BYO provider</div>
             <div><i /> Private Hybrid</div>
@@ -257,7 +259,7 @@ export default function LandingPage({ onEnter, brand }) {
           </div>
         </section>
 
-        <section className={styles.finalSection} aria-labelledby="final-title">
+        <section className={`${styles.finalSection} ${rhythm.final}`} aria-labelledby="final-title">
           <p className={styles.sectionEyebrow}>START WITH SOMETHING REAL</p>
           <h2 id="final-title">Keep the thought.<br /><em>Decide later.</em></h2>
           <p>SignalFlow does not need you to become a content operator before it can be useful.</p>
@@ -268,8 +270,8 @@ export default function LandingPage({ onEnter, brand }) {
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        <div>{brand}<p>Content operating system · Personal Alpha</p></div>
+      <footer className={`${styles.footer} ${rhythm.footer}`}>
+        <div><BrandMark tone="dark" /><p>Content operating system · Personal Alpha</p></div>
         <nav aria-label="Footer navigation"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#top">Back to top</a></nav>
       </footer>
     </div>

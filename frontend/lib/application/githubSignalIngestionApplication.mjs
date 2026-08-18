@@ -1,6 +1,10 @@
 import { createContentSignalApplication } from "./contentSignalApplication.mjs";
-import { createSourceConnectionApplication } from "./sourceConnectionApplication.mjs";
-import { SOURCE_CONNECTION_STATUSES } from "../domain/sourceConnections.mjs";
+import { assertPort, createSystemClock, createSystemIdService } from "../domain/ports.mjs";
+import {
+  normalizeSourceConnection,
+  SOURCE_CONNECTION_STATUSES,
+  updateSourceConnection,
+} from "../domain/sourceConnections.mjs";
 import { normalizeGithubWorkEvent } from "../integrations/github/githubEvents.mjs";
 
 export function createGithubSignalIngestionApplication({
@@ -8,37 +12,44 @@ export function createGithubSignalIngestionApplication({
   contentSignalRepository,
   sourceArtifactRepository = null,
   assetRepository = null,
-  workspaceId = "local-personal",
-  clock,
-  idService,
+  clock = createSystemClock(),
+  idService = createSystemIdService("signalflow"),
 } = {}) {
-  const connections = createSourceConnectionApplication({
-    sourceConnectionRepository,
-    workspaceId,
-    clock,
-    idService,
-  });
-  const signals = createContentSignalApplication({
-    contentSignalRepository,
-    sourceArtifactRepository,
-    assetRepository,
-    workspaceId,
-    actorRef: "github-webhook",
-    clock,
-    idService,
-  });
+  const connections = assertPort("sourceConnectionRepository", sourceConnectionRepository);
+  const applicationClock = assertPort("clock", clock);
+  const applicationIds = assertPort("idService", idService);
+  assertPort("contentSignalRepository", contentSignalRepository);
 
   async function resolveAuthorizedConnection(event) {
-    const candidates = await connections.listConnections({ provider: "github", includeRevoked: true });
-    for (const connection of candidates) {
-      if (connection.status !== SOURCE_CONNECTION_STATUSES.ACTIVE) continue;
-      if (String(connection.installationRef || "") !== String(event.installationRef)) continue;
-      const resource = connection.resourceScopes.find((item) => item.resourceRef === event.resourceRef && item.enabled);
-      if (!resource) continue;
-      if (!resource.eventFamilies.includes(event.eventFamily)) continue;
-      return { connection, resource };
+    const candidates = (await connections.findByProviderInstallation("github", event.installationRef))
+      .map((item) => normalizeSourceConnection(item))
+      .filter((connection) => connection.status === SOURCE_CONNECTION_STATUSES.ACTIVE)
+      .map((connection) => ({
+        connection,
+        resource: connection.resourceScopes.find((item) => (
+          item.resourceRef === event.resourceRef
+          && item.enabled
+          && item.eventFamilies.includes(event.eventFamily)
+        )) || null,
+      }))
+      .filter((item) => item.resource);
+
+    if (candidates.length > 1) {
+      const error = new Error("GitHub event maps to more than one active SourceConnection resource scope.");
+      error.code = "github_source_ambiguous";
+      throw error;
     }
-    return null;
+    return candidates[0] || null;
+  }
+
+  async function markEventReceived(connection, occurredAt) {
+    const current = normalizeSourceConnection(await connections.get(connection.sourceConnectionId));
+    const now = applicationClock.now();
+    const next = updateSourceConnection(current, {
+      lastEventAt: occurredAt || now,
+      lastErrorCode: null,
+    }, now);
+    return connections.upsert(next);
   }
 
   async function ingest({ eventName, deliveryId, payload } = {}) {
@@ -54,6 +65,15 @@ export function createGithubSignalIngestionApplication({
       throw error;
     }
 
+    const signals = createContentSignalApplication({
+      contentSignalRepository,
+      sourceArtifactRepository,
+      assetRepository,
+      workspaceId: authorized.connection.workspaceId,
+      actorRef: "github-webhook",
+      clock: applicationClock,
+      idService: applicationIds,
+    });
     const result = await signals.createExternalSignal({
       projectId: authorized.resource.projectId,
       sourceType: event.sourceType,
@@ -68,7 +88,7 @@ export function createGithubSignalIngestionApplication({
       actorRef: "github-webhook",
     });
 
-    await connections.markEventReceived(authorized.connection.sourceConnectionId, event.occurredAt);
+    await markEventReceived(authorized.connection, event.occurredAt);
 
     return Object.freeze({
       status: result.created ? "created" : "duplicate",

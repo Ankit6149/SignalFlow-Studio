@@ -19,31 +19,99 @@ function assertSameOwner(existing, next) {
   }
 }
 
+function externalEventKey({ workspaceId, provider, eventId } = {}) {
+  const workspace = String(workspaceId || "").trim();
+  const sourceProvider = String(provider || "").trim().toLowerCase();
+  const sourceEventId = String(eventId || "").trim();
+  if (!workspace || !sourceProvider || !sourceEventId) return null;
+  return `${workspace}\u0000${sourceProvider}\u0000${sourceEventId}`;
+}
+
+function signalExternalEventKey(signal) {
+  if (!signal?.externalEventRef) return null;
+  return externalEventKey({
+    workspaceId: signal.workspaceId,
+    provider: signal.externalEventRef.provider,
+    eventId: signal.externalEventRef.eventId,
+  });
+}
+
+function findExternalSignal(items, query) {
+  const target = externalEventKey(query);
+  if (!target) return null;
+  const match = items.find((item) => signalExternalEventKey(item) === target);
+  return match ? clone(match) : null;
+}
+
 export function createMemoryContentSignalRepository(initial = []) {
   const records = new Map();
+  const externalIndex = new Map();
   for (const item of initial) {
     const signal = normalizeContentSignal(item);
     const existing = records.get(signal.signalId);
     assertSameOwner(existing, signal);
+    const eventKey = signalExternalEventKey(signal);
+    if (eventKey && externalIndex.has(eventKey) && externalIndex.get(eventKey) !== signal.signalId) {
+      throw new Error("Duplicate external ContentSignal event in repository seed data.");
+    }
     records.set(signal.signalId, signal);
+    if (eventKey) externalIndex.set(eventKey, signal.signalId);
+  }
+
+  async function list() {
+    return sortSignals(Array.from(records.values())).map(clone);
+  }
+
+  async function get(signalId) {
+    return records.has(signalId) ? clone(records.get(signalId)) : null;
+  }
+
+  async function upsert(input) {
+    const signal = normalizeContentSignal(input);
+    const existing = records.get(signal.signalId);
+    assertSameOwner(existing, signal);
+    const nextEventKey = signalExternalEventKey(signal);
+    const existingByEvent = nextEventKey ? externalIndex.get(nextEventKey) : null;
+    if (existingByEvent && existingByEvent !== signal.signalId) {
+      throw new Error("Duplicate external ContentSignal event.");
+    }
+    const previousEventKey = signalExternalEventKey(existing);
+    if (previousEventKey && previousEventKey !== nextEventKey) externalIndex.delete(previousEventKey);
+    records.set(signal.signalId, signal);
+    if (nextEventKey) externalIndex.set(nextEventKey, signal.signalId);
+    return clone(signal);
+  }
+
+  async function remove(signalId) {
+    const existing = records.get(signalId);
+    const removed = records.delete(signalId);
+    const eventKey = signalExternalEventKey(existing);
+    if (removed && eventKey) externalIndex.delete(eventKey);
+    return removed;
+  }
+
+  async function findByExternalEvent(query) {
+    const key = externalEventKey(query);
+    const signalId = key ? externalIndex.get(key) : null;
+    return signalId ? get(signalId) : null;
+  }
+
+  async function insertExternalIfAbsent(input) {
+    const signal = normalizeContentSignal(input);
+    const eventKey = signalExternalEventKey(signal);
+    if (!eventKey) throw new TypeError("insertExternalIfAbsent requires a connected ContentSignal externalEventRef.");
+    const existingSignalId = externalIndex.get(eventKey);
+    if (existingSignalId) return { signal: await get(existingSignalId), created: false };
+    return { signal: await upsert(signal), created: true };
   }
 
   return assertPort("contentSignalRepository", {
-    async list() {
-      return sortSignals(Array.from(records.values())).map(clone);
-    },
-    async get(signalId) {
-      return records.has(signalId) ? clone(records.get(signalId)) : null;
-    },
-    async upsert(input) {
-      const signal = normalizeContentSignal(input);
-      assertSameOwner(records.get(signal.signalId), signal);
-      records.set(signal.signalId, signal);
-      return clone(signal);
-    },
-    async remove(signalId) {
-      return records.delete(signalId);
-    },
+    list,
+    get,
+    upsert,
+    remove,
+    findByExternalEvent,
+    insertExternalIfAbsent,
   });
 }
 
@@ -72,6 +140,13 @@ export function createBrowserContentSignalRepository({
 
   function write(items) {
     const normalized = sortSignals(items.map(normalizeContentSignal)).slice(0, limit);
+    const eventKeys = new Set();
+    for (const signal of normalized) {
+      const eventKey = signalExternalEventKey(signal);
+      if (!eventKey) continue;
+      if (eventKeys.has(eventKey)) throw new Error("Duplicate external ContentSignal event in browser storage.");
+      eventKeys.add(eventKey);
+    }
     storage().setItem(key, `[${normalized.map((item) => serializeDomainRecord(item)).join(",")}]`);
     return normalized;
   }
@@ -96,6 +171,10 @@ export function createBrowserContentSignalRepository({
     const items = await list();
     const existing = items.find((item) => item.signalId === signal.signalId);
     assertSameOwner(existing, signal);
+    const duplicate = signalExternalEventKey(signal)
+      ? items.find((item) => item.signalId !== signal.signalId && signalExternalEventKey(item) === signalExternalEventKey(signal))
+      : null;
+    if (duplicate) throw new Error("Duplicate external ContentSignal event.");
     write([signal, ...items.filter((item) => item.signalId !== signal.signalId)]);
     return clone(signal);
   }
@@ -107,7 +186,31 @@ export function createBrowserContentSignalRepository({
     return next.length !== items.length;
   }
 
-  return assertPort("contentSignalRepository", { list, get, upsert, remove });
+  async function findByExternalEvent(query) {
+    return findExternalSignal(await list(), query);
+  }
+
+  async function insertExternalIfAbsent(input) {
+    const signal = normalizeContentSignal(input);
+    const query = signal.externalEventRef && {
+      workspaceId: signal.workspaceId,
+      provider: signal.externalEventRef.provider,
+      eventId: signal.externalEventRef.eventId,
+    };
+    if (!query) throw new TypeError("insertExternalIfAbsent requires a connected ContentSignal externalEventRef.");
+    const existing = await findByExternalEvent(query);
+    if (existing) return { signal: existing, created: false };
+    return { signal: await upsert(signal), created: true };
+  }
+
+  return assertPort("contentSignalRepository", {
+    list,
+    get,
+    upsert,
+    remove,
+    findByExternalEvent,
+    insertExternalIfAbsent,
+  });
 }
 
 export function createStoreBackedContentSignalRepository({ store, prefix = "content-signal/" } = {}) {
@@ -142,6 +245,10 @@ export function createStoreBackedContentSignalRepository({ store, prefix = "cont
     const signal = normalizeContentSignal(input);
     const existing = await get(signal.signalId);
     assertSameOwner(existing, signal);
+    const duplicate = signalExternalEventKey(signal)
+      ? (await list()).find((item) => item.signalId !== signal.signalId && signalExternalEventKey(item) === signalExternalEventKey(signal))
+      : null;
+    if (duplicate) throw new Error("Duplicate external ContentSignal event.");
     await store.set(keyFor(signal.signalId), signal);
     return clone(signal);
   }
@@ -150,5 +257,29 @@ export function createStoreBackedContentSignalRepository({ store, prefix = "cont
     return Boolean(await store.remove(keyFor(signalId)));
   }
 
-  return assertPort("contentSignalRepository", { list, get, upsert, remove });
+  async function findByExternalEvent(query) {
+    return findExternalSignal(await list(), query);
+  }
+
+  async function insertExternalIfAbsent(input) {
+    const signal = normalizeContentSignal(input);
+    const query = signal.externalEventRef && {
+      workspaceId: signal.workspaceId,
+      provider: signal.externalEventRef.provider,
+      eventId: signal.externalEventRef.eventId,
+    };
+    if (!query) throw new TypeError("insertExternalIfAbsent requires a connected ContentSignal externalEventRef.");
+    const existing = await findByExternalEvent(query);
+    if (existing) return { signal: existing, created: false };
+    return { signal: await upsert(signal), created: true };
+  }
+
+  return assertPort("contentSignalRepository", {
+    list,
+    get,
+    upsert,
+    remove,
+    findByExternalEvent,
+    insertExternalIfAbsent,
+  });
 }

@@ -18,12 +18,20 @@ function required(value, field, maxLength = 240) {
   return normalized;
 }
 
+function styleMemoryRefs(memory = []) {
+  return (Array.isArray(memory) ? memory : []).slice(0, 20).map((item) => ({
+    styleMemoryId: item.styleMemoryId,
+    updatedAt: item.updatedAt,
+  }));
+}
+
 export function createPlatformChangeRequestApplication({
   contentPlanningRepository,
   contentReviewRepository,
   contentOpportunityRepository,
   contentSignalRepository,
   identityRepository,
+  styleMemoryApplication = null,
   inferenceAdapter,
   workspaceId = "local-personal",
   userId = "owner",
@@ -40,6 +48,9 @@ export function createPlatformChangeRequestApplication({
   const appIds = assertPort("idService", idService);
   const ownerWorkspaceId = required(workspaceId, "workspaceId");
   const ownerUserId = required(userId, "userId");
+  if (styleMemoryApplication && typeof styleMemoryApplication.relevantMemory !== "function") {
+    throw new TypeError("Platform change requests StyleMemory integration requires relevantMemory().");
+  }
 
   function assertOwned(record) {
     if (record.workspaceId !== ownerWorkspaceId) throw new Error(`${record.kind} belongs to another workspace.`);
@@ -103,6 +114,14 @@ export function createPlatformChangeRequestApplication({
   async function requestChange(platformVariantId, instruction) {
     const changeRequest = required(instruction, "changeRequest", 2000);
     const context = await contextForCurrentVariant(platformVariantId);
+    const styleMemory = styleMemoryApplication
+      ? await styleMemoryApplication.relevantMemory({
+        platform: context.variant.destination,
+        projectId: context.strategy.projectId || null,
+        limit: 8,
+      })
+      : [];
+    const memoryRefs = styleMemoryRefs(styleMemory);
     const now = appClock.now();
     const task = createInferenceTask({
       taskId: appIds.create("task"),
@@ -115,8 +134,9 @@ export function createPlatformChangeRequestApplication({
         context.strategy.narrativeStrategyId,
         context.sourceSignal.signalId,
         context.identityContext.identityContextSnapshotId,
+        ...memoryRefs.map((ref) => ref.styleMemoryId),
       ],
-      requirements: ["structured_output", "exact_revision", "bounded_change_request", "identity_context"],
+      requirements: ["structured_output", "exact_revision", "bounded_change_request", "identity_context", "bounded_style_memory"],
       createdAt: now,
     });
 
@@ -136,6 +156,7 @@ export function createPlatformChangeRequestApplication({
           privacyClassification: context.sourceSignal.privacyClassification,
         },
         identityContext: context.identityContext,
+        styleMemory,
         review: context.review,
         changeRequest,
         dataClassification: context.sourceSignal.privacyClassification,
@@ -151,6 +172,7 @@ export function createPlatformChangeRequestApplication({
       revisionNumber: Math.max(0, ...history.map((item) => item.revisionNumber)) + 1,
       output: result.output,
       changeRequest,
+      styleMemoryRefs: memoryRefs,
       generationProvenance: {
         taskId: task.taskId,
         provider: result.provenance?.provider || "unknown",

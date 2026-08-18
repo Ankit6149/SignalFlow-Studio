@@ -91,7 +91,7 @@ test("ProjectContextSnapshot is versioned, source-neutral, provenance-backed por
   assert.equal(context.synthesis.safeClaims[0], "Owner judgment remains required.");
   assert.equal("destination" in context, false);
   assert.equal("platform" in context, false);
-  assert.equal("linkedin" in JSON.stringify(context).toLowerCase(), false);
+  assert.equal(JSON.stringify(context).toLowerCase().includes("linkedin"), false);
   assert.equal("x" in Object.keys(context), false);
 });
 

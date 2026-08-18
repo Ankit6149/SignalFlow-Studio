@@ -2,6 +2,7 @@ import { portableClone } from "../domain/contracts.mjs";
 import { PRIVACY_CLASSES } from "../domain/sourceArtifacts.mjs";
 
 export const INFERENCE_TASK_TYPES = Object.freeze({
+  PROJECT_CONTEXT_SYNTHESIS: "project_context_synthesis",
   OPPORTUNITY_EVALUATION: "opportunity_evaluation",
   NARRATIVE_STRATEGY: "narrative_strategy",
   PLATFORM_VARIANT: "platform_variant",

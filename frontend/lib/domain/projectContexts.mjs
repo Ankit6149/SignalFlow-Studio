@@ -127,7 +127,7 @@ function normalizeRepositoryRef(input) {
   });
 }
 
-function normalizeSynthesis(input = {}) {
+export function normalizeProjectContextSynthesis(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new TypeError("ProjectContextSnapshot.synthesis must be an object.");
   }
@@ -195,7 +195,7 @@ export function normalizeProjectContextSnapshot(input = {}) {
     throw new TypeError(`ProjectContextSnapshot schema ${parsed.projectContextSchemaVersion} is newer than supported schema ${PROJECT_CONTEXT_SCHEMA_VERSION}.`);
   }
 
-  const synthesis = normalizeSynthesis(parsed.synthesis || {});
+  const synthesis = normalizeProjectContextSynthesis(parsed.synthesis || {});
   const repositoryRef = normalizeRepositoryRef(parsed.repositoryRef);
   const sourceArtifactIds = opaqueIdList(parsed.sourceArtifactIds, "ProjectContextSnapshot.sourceArtifactIds", 300);
   const supplementalSourceArtifactIds = opaqueIdList(parsed.supplementalSourceArtifactIds, "ProjectContextSnapshot.supplementalSourceArtifactIds", 200);

@@ -25,7 +25,8 @@ test("history lets the owner inspect and compare immutable revisions without mut
   assert.match(component, /application\.getRevisionHistory\(variantId\)/);
   assert.match(component, /CURRENT · r\{current\.revision\.revisionNumber\}/);
   assert.match(component, /SELECTED · r\{selected\.revision\.revisionNumber\}/);
-  assert.match(component, /selected\.revision\.parentRevisionId/);
+  assert.match(component, /revisionLabel\(history, selected\?\.revision\.parentRevisionId\)/);
+  assert.match(component, /child of \$\{parentLabel\}/);
   assert.match(component, /decisionLabel\(selected\)/);
   assert.match(component, /reviewFindings\(selected\?\.review\)/);
   assert.match(component, /History never silently changes the active draft/i);
@@ -43,6 +44,19 @@ test("historical judgment is exact, stale-client safe, and restore creates a new
   assert.match(component, /newer revision became current/i);
   assert.match(component, /Restore as new current/);
   assert.match(component, /restored as a new immutable current child/i);
+});
+
+test("Today restore keeps the restored revision inside the judgment loop and surfaces outcomes", async () => {
+  const component = await source("../components/RevisionHistoryPanel.js");
+  const today = await source("../components/TodayWorkspace.js");
+
+  assert.match(component, /context === "today"/);
+  assert.match(component, /await application\.reviewRevision\(variantId, restored\.platformVariantRevisionId/);
+  assert.match(component, /expectedCurrentRevisionId:\s*restored\.platformVariantRevisionId/);
+  assert.match(component, /restored as a new immutable current child and re-checked/i);
+  assert.match(component, /It remains in Today for your judgment/i);
+  assert.match(component, /restored as the new current revision, but its evidence\/authenticity checks did not finish/i);
+  assert.match(today, /onStatus=\{setMessage\}/);
 });
 
 test("older planning-contract revisions stay inspectable but cannot be newly judged under a newer story", async () => {

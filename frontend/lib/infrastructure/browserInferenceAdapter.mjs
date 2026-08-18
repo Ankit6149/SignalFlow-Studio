@@ -3,6 +3,7 @@ import { normalizeInferenceTask, INFERENCE_TASK_TYPES } from "../inference/infer
 import { normalizeOpportunityEvaluation } from "../domain/contentOpportunities.mjs";
 import { normalizeStrategyProposal } from "../domain/contentPlanning.mjs";
 import { normalizePlatformVariantDraft } from "../ai/platformVariantWriting.mjs";
+import { acceptPlatformRevisionRequest } from "../ai/platformVariantRevisionRequest.mjs";
 import { normalizeCriticResult } from "../domain/platformVariantReviews.mjs";
 
 const TASK_ROUTES = Object.freeze({
@@ -23,6 +24,16 @@ const TASK_ROUTES = Object.freeze({
     normalize: (output, input) => normalizePlatformVariantDraft(output, input?.variant?.destination),
     fallbackCode: "platform_variant_generation_failed",
     label: "Platform draft generation",
+  },
+  [INFERENCE_TASK_TYPES.PLATFORM_VARIANT_REVISION]: {
+    endpoint: "/api/intelligence/platform-revision",
+    normalize: (output, input) => acceptPlatformRevisionRequest(
+      output,
+      input?.parentRevision?.destination,
+      input?.parentRevision?.format,
+    ),
+    fallbackCode: "platform_variant_revision_failed",
+    label: "Platform change request",
   },
   [INFERENCE_TASK_TYPES.EVIDENCE_CRITIQUE]: {
     endpoint: "/api/intelligence/critic",

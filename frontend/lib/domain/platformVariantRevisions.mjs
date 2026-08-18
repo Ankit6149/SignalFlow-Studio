@@ -104,6 +104,7 @@ function normalizeEditProvenance(value = null) {
   return portableClone({
     editedBy: id(value.editedBy, "PlatformVariantRevision.editProvenance.editedBy"),
     editedAt: timestamp(value.editedAt, "PlatformVariantRevision.editProvenance.editedAt"),
+    restoredFromRevisionId: id(value.restoredFromRevisionId, "PlatformVariantRevision.editProvenance.restoredFromRevisionId", false),
   });
 }
 
@@ -208,6 +209,7 @@ export function createEditedPlatformVariantRevision({
   segments,
   format,
   editedBy,
+  restoredFromRevisionId = null,
   createdAt,
 } = {}) {
   const parent = normalizePlatformVariantRevision(parentRevision);
@@ -226,10 +228,57 @@ export function createEditedPlatformVariantRevision({
     format: format || parent.format,
     content,
     segments: segments || [],
-    inputFingerprint: `user-edit:${parent.platformVariantRevisionId}:${revisionNumber}`,
+    inputFingerprint: restoredFromRevisionId
+      ? `restore:${restoredFromRevisionId}:${parent.platformVariantRevisionId}:${revisionNumber}`
+      : `user-edit:${parent.platformVariantRevisionId}:${revisionNumber}`,
     identityContextSnapshotId: parent.identityContextSnapshotId,
     styleMemoryRefs: parent.styleMemoryRefs,
-    editProvenance: { editedBy, editedAt: createdAt },
+    editProvenance: { editedBy, editedAt: createdAt, restoredFromRevisionId },
+    createdAt,
+  });
+}
+
+export function createRestoredPlatformVariantRevision({
+  platformVariantRevisionId,
+  currentRevision,
+  sourceRevision,
+  revisionNumber,
+  restoredBy,
+  createdAt,
+} = {}) {
+  const current = normalizePlatformVariantRevision(currentRevision);
+  const source = normalizePlatformVariantRevision(sourceRevision);
+  if (current.workspaceId !== source.workspaceId
+    || current.platformVariantId !== source.platformVariantId
+    || current.contentPieceId !== source.contentPieceId
+    || current.narrativeStrategyId !== source.narrativeStrategyId
+    || current.destination !== source.destination
+    || current.strategyRevision !== source.strategyRevision) {
+    throw new TypeError("Only a prior revision from the same exact PlatformVariant planning contract can be restored.");
+  }
+  return normalizePlatformVariantRevision({
+    platformVariantRevisionId,
+    workspaceId: current.workspaceId,
+    platformVariantId: current.platformVariantId,
+    contentPieceId: current.contentPieceId,
+    narrativeStrategyId: current.narrativeStrategyId,
+    destination: current.destination,
+    revisionNumber,
+    strategyRevision: current.strategyRevision,
+    status: PLATFORM_VARIANT_REVISION_STATUS,
+    origin: PLATFORM_VARIANT_REVISION_ORIGINS.EDITED,
+    parentRevisionId: current.platformVariantRevisionId,
+    format: source.format,
+    content: source.content,
+    segments: source.segments,
+    inputFingerprint: `restore:${source.platformVariantRevisionId}:${current.platformVariantRevisionId}:${revisionNumber}`,
+    identityContextSnapshotId: source.identityContextSnapshotId,
+    styleMemoryRefs: source.styleMemoryRefs,
+    editProvenance: {
+      editedBy: restoredBy,
+      editedAt: createdAt,
+      restoredFromRevisionId: source.platformVariantRevisionId,
+    },
     createdAt,
   });
 }

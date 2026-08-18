@@ -10,6 +10,8 @@ export const PROJECT_CONTEXT_SCHEMA_VERSION = 1;
 
 const PRIVACY_VALUES = new Set(Object.values(PRIVACY_CLASSES));
 const SYNTHESIS_MODES = new Set(["deterministic", "model", "owner_supplied", "hybrid"]);
+const SENSITIVE_FIELD = /(api[_-]?key|access[_-]?token|refresh[_-]?token|oauth|authorization|cookie|password|client[_-]?secret|private[_-]?key|signed[_-]?url|presigned|database[_-]?url|connection[_-]?string)/i;
+const LOCAL_PATH_FIELD = /(^|_)(path|filepath|filesystempath|localpath|absolutepath|workingdirectory|rootdirectory)$/i;
 
 function text(value, fallback = "", maxLength = 12000) {
   const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
@@ -29,6 +31,21 @@ function opaqueId(value, field, required = true) {
   if (!normalized) throw new TypeError(`${field} is required.`);
   if (/[/\\]|^[a-zA-Z]:/.test(normalized)) throw new TypeError(`${field} must be an opaque ID.`);
   return normalized;
+}
+
+function opaqueIdList(values, field, maxItems) {
+  if (values === undefined || values === null) return [];
+  if (!Array.isArray(values)) throw new TypeError(`${field} must be an array.`);
+  const seen = new Set();
+  const result = [];
+  for (const value of values) {
+    const normalized = opaqueId(value, field);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+    if (result.length >= maxItems) break;
+  }
+  return result;
 }
 
 function timestamp(value, field) {
@@ -65,6 +82,20 @@ function enumValue(value, allowed, fallback, field) {
   return normalized;
 }
 
+function assertNoSensitiveFields(value, path = "ProjectContextSnapshot") {
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoSensitiveFields(item, `${path}[${index}]`));
+    return;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if (SENSITIVE_FIELD.test(key) || LOCAL_PATH_FIELD.test(key)) {
+      throw new TypeError(`${path}.${key} is forbidden in project-context input.`);
+    }
+    assertNoSensitiveFields(item, `${path}.${key}`);
+  }
+}
+
 function safeRepositoryToken(value, field) {
   const normalized = text(value, "", 240);
   if (!normalized) throw new TypeError(`${field} is required.`);
@@ -75,7 +106,7 @@ function safeRepositoryToken(value, field) {
 function safeRevision(value) {
   const normalized = text(value, "", 240);
   if (!normalized) throw new TypeError("ProjectContextSnapshot.repositoryRef.revision is required.");
-  if (/[:?\\]|\.\./.test(normalized) || /^https?:/i.test(normalized)) {
+  if (/[:?\\/]|\.\./.test(normalized) || /^https?:/i.test(normalized)) {
     throw new TypeError("ProjectContextSnapshot.repositoryRef.revision must be a safe revision identifier, not a URL or path.");
   }
   return normalized;
@@ -86,6 +117,7 @@ function normalizeRepositoryRef(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new TypeError("ProjectContextSnapshot.repositoryRef must be an object.");
   }
+  assertNoSensitiveFields(input, "ProjectContextSnapshot.repositoryRef");
   return portableClone({
     provider: safeRepositoryToken(input.provider, "ProjectContextSnapshot.repositoryRef.provider").toLowerCase(),
     owner: safeRepositoryToken(input.owner, "ProjectContextSnapshot.repositoryRef.owner"),
@@ -99,6 +131,7 @@ function normalizeSynthesis(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new TypeError("ProjectContextSnapshot.synthesis must be an object.");
   }
+  assertNoSensitiveFields(input, "ProjectContextSnapshot.synthesis");
   return portableClone({
     projectName: optionalText(input.projectName, 500),
     purpose: optionalText(input.purpose, 4000),
@@ -118,6 +151,7 @@ function normalizeSynthesisProvenance(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new TypeError("ProjectContextSnapshot.synthesisProvenance must be an object.");
   }
+  assertNoSensitiveFields(input, "ProjectContextSnapshot.synthesisProvenance");
   return portableClone({
     mode: enumValue(input.mode, SYNTHESIS_MODES, "deterministic", "ProjectContextSnapshot.synthesisProvenance.mode"),
     taskId: opaqueId(input.taskId, "ProjectContextSnapshot.synthesisProvenance.taskId", false),
@@ -140,13 +174,13 @@ function fnv1a64(value) {
 }
 
 export function createProjectContextFingerprint(input = {}) {
+  assertNoSensitiveFields(input, "ProjectContextFingerprint");
   const canonical = {
     projectId: opaqueId(input.projectId, "ProjectContextFingerprint.projectId"),
     repositoryRef: normalizeRepositoryRef(input.repositoryRef),
-    sourceArtifactIds: stringList(input.sourceArtifactIds, { maxItems: 300, maxLength: 240 }).sort(),
-    supplementalSourceArtifactIds: stringList(input.supplementalSourceArtifactIds, { maxItems: 200, maxLength: 240 }).sort(),
-    assetIds: stringList(input.assetIds, { maxItems: 200, maxLength: 240 }).sort(),
-    synthesis: normalizeSynthesis(input.synthesis || {}),
+    sourceArtifactIds: opaqueIdList(input.sourceArtifactIds, "ProjectContextFingerprint.sourceArtifactIds", 300).sort(),
+    supplementalSourceArtifactIds: opaqueIdList(input.supplementalSourceArtifactIds, "ProjectContextFingerprint.supplementalSourceArtifactIds", 200).sort(),
+    assetIds: opaqueIdList(input.assetIds, "ProjectContextFingerprint.assetIds", 200).sort(),
   };
   return `sf-project-context-v1-${fnv1a64(stableStringify(canonical))}`;
 }
@@ -155,6 +189,7 @@ export function normalizeProjectContextSnapshot(input = {}) {
   const parsed = input?.kind === "ProjectContextSnapshot" && input?.schemaVersion
     ? parseDomainRecord(input, "ProjectContextSnapshot")
     : input;
+  assertNoSensitiveFields(parsed, "ProjectContextSnapshot");
 
   if (parsed?.projectContextSchemaVersion && parsed.projectContextSchemaVersion > PROJECT_CONTEXT_SCHEMA_VERSION) {
     throw new TypeError(`ProjectContextSnapshot schema ${parsed.projectContextSchemaVersion} is newer than supported schema ${PROJECT_CONTEXT_SCHEMA_VERSION}.`);
@@ -162,13 +197,24 @@ export function normalizeProjectContextSnapshot(input = {}) {
 
   const synthesis = normalizeSynthesis(parsed.synthesis || {});
   const repositoryRef = normalizeRepositoryRef(parsed.repositoryRef);
-  const sourceArtifactIds = stringList(parsed.sourceArtifactIds, { maxItems: 300, maxLength: 240 });
-  const supplementalSourceArtifactIds = stringList(parsed.supplementalSourceArtifactIds, { maxItems: 200, maxLength: 240 });
-  const assetIds = stringList(parsed.assetIds, { maxItems: 200, maxLength: 240 });
+  const sourceArtifactIds = opaqueIdList(parsed.sourceArtifactIds, "ProjectContextSnapshot.sourceArtifactIds", 300);
+  const supplementalSourceArtifactIds = opaqueIdList(parsed.supplementalSourceArtifactIds, "ProjectContextSnapshot.supplementalSourceArtifactIds", 200);
+  const assetIds = opaqueIdList(parsed.assetIds, "ProjectContextSnapshot.assetIds", 200);
   const projectId = opaqueId(parsed.projectId, "ProjectContextSnapshot.projectId");
   const fingerprint = text(parsed.fingerprint, "", 240);
   if (!/^sf-project-context-v1-[a-f0-9]{16}$/.test(fingerprint)) {
     throw new TypeError("ProjectContextSnapshot.fingerprint is invalid.");
+  }
+
+  const expectedFingerprint = createProjectContextFingerprint({
+    projectId,
+    repositoryRef,
+    sourceArtifactIds,
+    supplementalSourceArtifactIds,
+    assetIds,
+  });
+  if (fingerprint !== expectedFingerprint) {
+    throw new TypeError("ProjectContextSnapshot.fingerprint does not match its exact evidence identity.");
   }
 
   return createDomainRecord("ProjectContextSnapshot", {
@@ -198,6 +244,5 @@ export function projectContextFingerprintInput(snapshotInput) {
     sourceArtifactIds: snapshot.sourceArtifactIds,
     supplementalSourceArtifactIds: snapshot.supplementalSourceArtifactIds,
     assetIds: snapshot.assetIds,
-    synthesis: snapshot.synthesis,
   };
 }

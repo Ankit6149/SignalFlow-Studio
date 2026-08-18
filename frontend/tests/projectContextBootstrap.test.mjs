@@ -6,6 +6,7 @@ import {
   createProjectContextFingerprint,
   normalizeProjectContextSnapshot,
 } from "../lib/domain/projectContexts.mjs";
+import { INFERENCE_TASK_TYPES } from "../lib/inference/inferenceTasks.mjs";
 import { createProjectContextApplication } from "../lib/application/projectContextApplication.mjs";
 import { createBrowserProjectContextApplication } from "../lib/application/browserProjectContextApplication.mjs";
 import {
@@ -67,7 +68,6 @@ test("ProjectContextSnapshot is versioned, source-neutral, provenance-backed por
     sourceArtifactIds: ["source-readme", "source-package"],
     supplementalSourceArtifactIds: ["source-owner-note"],
     assetIds: [],
-    synthesis,
   });
   const context = normalizeProjectContextSnapshot({
     projectContextSnapshotId: "context-1",
@@ -95,7 +95,7 @@ test("ProjectContextSnapshot is versioned, source-neutral, provenance-backed por
   assert.equal("x" in Object.keys(context), false);
 });
 
-test("bootstrap reuses unchanged evidence and creates an immutable successor when project evidence changes", async () => {
+test("bootstrap identity follows exact evidence, not nondeterministic model wording", async () => {
   const repository = createMemoryProjectContextRepository();
   const application = createProjectContextApplication({
     workspaceId: "workspace-1",
@@ -117,7 +117,7 @@ test("bootstrap reuses unchanged evidence and creates an immutable successor whe
     repositoryRef,
     sourceArtifactIds: ["source-package", "source-readme"],
     supplementalSourceArtifactIds: ["source-owner-note"],
-    synthesis,
+    synthesis: { ...synthesis, purpose: "A differently worded retry that uses the exact same evidence." },
     synthesisProvenance: { mode: "model", taskId: "task-2" },
   });
   const changed = await application.bootstrapProjectContext({
@@ -132,11 +132,65 @@ test("bootstrap reuses unchanged evidence and creates an immutable successor whe
   assert.equal(first.reused, false);
   assert.equal(repeated.reused, true);
   assert.equal(repeated.context.projectContextSnapshotId, first.context.projectContextSnapshotId);
+  assert.equal(repeated.context.synthesis.purpose, first.context.synthesis.purpose);
   assert.equal(changed.reused, false);
   assert.equal(changed.context.version, 2);
   assert.equal(changed.context.supersedesId, first.context.projectContextSnapshotId);
   assert.notEqual(changed.context.fingerprint, first.context.fingerprint);
   assert.equal((await application.listProjectContexts({ projectId: "project-1" })).length, 2);
+});
+
+test("AI synthesis uses the provider-neutral task fabric once and skips repeat inference for unchanged evidence", async () => {
+  const calls = [];
+  const inferenceAdapter = {
+    async execute({ task, input }) {
+      calls.push({ task, input });
+      return {
+        output: synthesis,
+        provenance: {
+          taskId: task.taskId,
+          taskType: task.taskType,
+          provider: "test-provider",
+          model: "test-context-model",
+          routeKind: "remote",
+          promptVersion: "project_context_v1",
+          generatedAt: "2026-08-19T00:00:00.000Z",
+        },
+      };
+    },
+  };
+  const application = createProjectContextApplication({
+    workspaceId: "workspace-1",
+    repository: createMemoryProjectContextRepository(),
+    inferenceAdapter,
+    clock: fixedClock(),
+    idService: createDeterministicIdService("inference"),
+  });
+  const evidence = [
+    { sourceArtifactId: "source-readme", kind: "readme", title: "README", excerpt: "SignalFlow turns meaningful work into reviewable content decisions." },
+    { sourceArtifactId: "source-architecture", kind: "architecture_doc", title: "Architecture", excerpt: "Source observation remains separate from editorial destination planning." },
+  ];
+
+  const first = await application.synthesizeAndBootstrapProjectContext({
+    projectId: "project-1",
+    repositoryRef,
+    evidence,
+  });
+  const repeated = await application.synthesizeAndBootstrapProjectContext({
+    projectId: "project-1",
+    repositoryRef,
+    evidence,
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].task.taskType, INFERENCE_TASK_TYPES.PROJECT_CONTEXT_SYNTHESIS);
+  assert.equal(calls[0].task.dataClassification, "workspace_private");
+  assert.deepEqual(calls[0].task.inputRefs.sort(), ["project-1", "source-architecture", "source-readme"].sort());
+  assert.equal("repositoryRef" in calls[0].input, false);
+  assert.equal("destination" in calls[0].input, false);
+  assert.equal(first.context.synthesisProvenance.provider, "test-provider");
+  assert.equal(repeated.reused, true);
+  assert.equal(repeated.inferenceSkipped, true);
 });
 
 test("Not now requires no context mutation and a later Signal automatically resolves the retained project context", async () => {
@@ -154,8 +208,6 @@ test("Not now requires no context mutation and a later Signal automatically reso
     synthesis,
   });
 
-  // Choosing “Not now” belongs to opportunity/onboarding judgment, not ProjectContext.
-  // No context write is needed or allowed merely because the owner deferred posting.
   const beforeLaterSignal = await application.listProjectContexts({ projectId: "project-1" });
   const resolved = await application.resolveLatestForSignal({
     workspaceId: "workspace-1",
@@ -175,6 +227,7 @@ test("browser reconstruction keeps project understanding available for later aut
   const first = createBrowserProjectContextApplication({
     workspaceId: "workspace-1",
     getStorage: () => storage,
+    inferenceAdapter: { execute: async () => { throw new Error("not used"); } },
     clock: fixedClock(),
     idService: createDeterministicIdService("browser"),
   });
@@ -188,6 +241,7 @@ test("browser reconstruction keeps project understanding available for later aut
   const reopened = createBrowserProjectContextApplication({
     workspaceId: "workspace-1",
     getStorage: () => storage,
+    inferenceAdapter: { execute: async () => { throw new Error("not used"); } },
     clock: fixedClock("2026-08-19T01:00:00.000Z"),
     idService: createDeterministicIdService("reopened"),
   });
@@ -206,7 +260,7 @@ test("memory, browser and store-backed repositories enforce the same portable pr
     createBrowserProjectContextRepository({ getStorage: () => storage }),
     createStoreBackedProjectContextRepository({ store }),
   ];
-  const fingerprint = createProjectContextFingerprint({ projectId: "project-1", repositoryRef, synthesis });
+  const fingerprint = createProjectContextFingerprint({ projectId: "project-1", repositoryRef });
 
   for (let index = 0; index < repositories.length; index += 1) {
     const repository = repositories[index];
@@ -228,10 +282,14 @@ test("memory, browser and store-backed repositories enforce the same portable pr
   }
 });
 
-test("project context rejects credential-shaped fields, local paths, unsafe repository refs and cross-workspace signal reuse", async () => {
+test("project context rejects credential-shaped fields, local paths, unsafe refs and cross-workspace signal reuse", async () => {
   assert.throws(
-    () => createProjectContextFingerprint({ projectId: "project-1", repositoryRef: { ...repositoryRef, owner: "https://github.com/example" }, synthesis }),
+    () => createProjectContextFingerprint({ projectId: "project-1", repositoryRef: { ...repositoryRef, owner: "https://github.com/example" } }),
     /safe repository token/i,
+  );
+  assert.throws(
+    () => createProjectContextFingerprint({ projectId: "project-1", repositoryRef, sourceArtifactIds: ["C:\\repo\\README.md"] }),
+    /opaque ID/i,
   );
   assert.throws(
     () => normalizeProjectContextSnapshot({
@@ -239,7 +297,7 @@ test("project context rejects credential-shaped fields, local paths, unsafe repo
       workspaceId: "workspace-1",
       projectId: "project-1",
       version: 1,
-      fingerprint: createProjectContextFingerprint({ projectId: "project-1", repositoryRef, synthesis }),
+      fingerprint: createProjectContextFingerprint({ projectId: "project-1", repositoryRef }),
       repositoryRef,
       privacyClass: "workspace_private",
       synthesis: { ...synthesis, apiKey: "secret" },

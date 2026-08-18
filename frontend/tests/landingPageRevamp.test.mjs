@@ -51,9 +51,11 @@ test("current and future claims remain intentionally distinct", () => {
   assert.match(landing, /browser-local recovery/i);
   assert.match(landing, /real configured AI generation/i);
   assert.match(landing, /Editable destination-specific drafts \+ export/i);
-  assert.match(landing, /Automatic connected-source detection, publishing, memory and media production remain product direction/);
+  assert.match(landing, /browser-local NarrativeMemory \+ explainable StyleMemory/);
+  assert.match(landing, /Automatic connected-source detection, durable publishing, cross-device memory sync and media production remain product direction/);
   assert.match(landing, /WHAT COMES AFTER THE CORE LOOP/);
   assert.match(landing, /direction—not claims about what is already shipped/);
+  assert.match(landing, /Cross-device memory \+ confirmed-public history/);
   assert.match(landing, /Private Hybrid/);
   assert.match(landing, /Local Only/);
 });

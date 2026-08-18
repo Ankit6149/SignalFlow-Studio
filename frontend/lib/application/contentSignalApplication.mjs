@@ -6,6 +6,7 @@ import {
 import {
   attachContentSignalReferences,
   CONTENT_SIGNAL_STATUSES,
+  createConnectedContentSignal,
   createManualContentSignal,
   normalizeContentSignal,
   transitionContentSignal,
@@ -22,6 +23,13 @@ function normalizeIdList(value) {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) throw new TypeError("Signal references must be arrays of canonical IDs.");
   return Array.from(new Set(value.map((item) => String(item || "").trim()).filter(Boolean))).sort();
+}
+
+function sameExternalEvent(signal, externalEventRef) {
+  const current = signal?.externalEventRef;
+  if (!current || !externalEventRef) return false;
+  return String(current.provider || "").toLowerCase() === String(externalEventRef.provider || "").toLowerCase()
+    && String(current.eventId || "") === String(externalEventRef.eventId || "");
 }
 
 export function createContentSignalApplication({
@@ -96,6 +104,26 @@ export function createContentSignalApplication({
       actorRef,
     });
     return repository.upsert(signal);
+  }
+
+  async function createExternalSignal(input = {}) {
+    if (!input.externalEventRef) throw new TypeError("Connected signal creation requires externalEventRef.");
+    const existing = (await repository.list())
+      .map((item) => normalizeContentSignal(item))
+      .find((item) => item.workspaceId === ownerWorkspaceId && sameExternalEvent(item, input.externalEventRef));
+    if (existing) return { signal: existing, created: false };
+
+    const now = applicationClock.now();
+    const references = await validateReferences(input);
+    const signal = createConnectedContentSignal({
+      ...input,
+      ...references,
+      signalId: applicationIds.create("signal"),
+      workspaceId: ownerWorkspaceId,
+      observedAt: now,
+      actorRef: input.actorRef || "source-ingestion",
+    });
+    return { signal: await repository.upsert(signal), created: true };
   }
 
   async function listSignals({ status = null, projectId = null, includeArchived = false } = {}) {
@@ -192,6 +220,7 @@ export function createContentSignalApplication({
 
   return {
     createManualSignal,
+    createExternalSignal,
     listSignals,
     readSignal,
     updateSignalMetadata,

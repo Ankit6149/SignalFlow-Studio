@@ -21,6 +21,14 @@ const samples = {
     status: "new",
     provenance: { source: "manual", ingestionMethod: "user_input" },
   },
+  SourceConnection: {
+    sourceConnectionId: "source-connection-1",
+    workspaceId: "workspace-1",
+    provider: "github",
+    status: "active",
+    createdAt: "2026-08-18T10:00:00.000Z",
+    updatedAt: "2026-08-18T10:00:00.000Z",
+  },
   ContentOpportunity: {
     opportunityId: "opportunity-1",
     workspaceId: "workspace-1",

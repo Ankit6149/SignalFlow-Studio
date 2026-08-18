@@ -108,7 +108,7 @@ function normalizeExternalEventRef(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("ContentSignal.externalEventRef must be a portable object.");
   }
-  const provider = optionalText(value.provider, 80);
+  const provider = optionalText(value.provider, 80)?.toLowerCase() || null;
   const eventId = optionalText(value.eventId, 240);
   const idempotencyKey = optionalText(value.idempotencyKey, 240);
   if (!provider || !eventId) {
@@ -219,6 +219,67 @@ export function createManualContentSignal({
     provenance: {
       source: "manual",
       ingestionMethod: "user_input",
+      capturedAt: observedAt,
+      actorRef,
+    },
+  });
+}
+
+export function createConnectedContentSignal({
+  signalId,
+  workspaceId,
+  projectId = null,
+  sourceType,
+  sourceConnectionId,
+  externalEventRef,
+  headline,
+  summary = "",
+  signalKind = CONTENT_SIGNAL_KINDS.OTHER,
+  sourceArtifactIds = [],
+  assetIds = [],
+  occurredAt = null,
+  privacyClassification = DEFAULT_PRIVACY,
+  boundaryNote = null,
+  importanceHints = [],
+  observedAt,
+  actorRef = "source-ingestion",
+} = {}) {
+  const normalizedSourceType = enumValue(sourceType, SOURCE_TYPE_VALUES, CONTENT_SIGNAL_SOURCE_TYPES.OTHER, "sourceType");
+  if (normalizedSourceType === CONTENT_SIGNAL_SOURCE_TYPES.MANUAL) {
+    throw new TypeError("Connected ContentSignals cannot use the manual source type.");
+  }
+  const normalizedConnectionId = opaqueId(sourceConnectionId, "sourceConnectionId", { required: true });
+  const normalizedEventRef = normalizeExternalEventRef(externalEventRef);
+  if (normalizedSourceType !== CONTENT_SIGNAL_SOURCE_TYPES.OTHER && normalizedEventRef.provider !== normalizedSourceType) {
+    throw new TypeError("Connected ContentSignal sourceType must match externalEventRef.provider.");
+  }
+  const normalizedHeadline = text(headline || summary, "", 240);
+  if (!normalizedHeadline) throw new TypeError("A connected ContentSignal requires a headline or summary.");
+
+  return normalizeContentSignal({
+    signalId,
+    workspaceId,
+    projectId,
+    sourceType: normalizedSourceType,
+    sourceConnectionId: normalizedConnectionId,
+    sourceArtifactIds,
+    assetIds,
+    externalEventRef: normalizedEventRef,
+    occurredAt,
+    observedAt,
+    createdAt: observedAt,
+    updatedAt: observedAt,
+    headline: normalizedHeadline,
+    summary: text(summary || headline, "", 12000),
+    signalKind,
+    importanceHints,
+    privacyClassification,
+    boundaryNote,
+    status: CONTENT_SIGNAL_STATUSES.NEW,
+    statusChangedAt: observedAt,
+    provenance: {
+      source: normalizedSourceType,
+      ingestionMethod: "provider_event",
       capturedAt: observedAt,
       actorRef,
     },

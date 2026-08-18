@@ -13,6 +13,7 @@ export const SOURCE_CONNECTION_STATUSES = Object.freeze({
 const STATUS_VALUES = new Set(Object.values(SOURCE_CONNECTION_STATUSES));
 const SAFE_PROVIDER = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const SAFE_CAPABILITY = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
+const RAW_CREDENTIAL_SHAPE = /^(?:bearer\s+|basic\s+|gh[pousr]_|github_pat_|sk[-_]|xox[baprs]-)/i;
 
 function text(value, fallback = "", maxLength = 4000) {
   const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
@@ -38,12 +39,29 @@ function opaqueId(value, field, { required = false } = {}) {
   return normalized;
 }
 
+function credentialReference(value) {
+  const normalized = opaqueId(value, "credentialRef");
+  if (!normalized) return null;
+  if (RAW_CREDENTIAL_SHAPE.test(normalized) || normalized.length > 180) {
+    throw new TypeError("SourceConnection.credentialRef must reference a secret stored outside the domain record; raw credential values are forbidden.");
+  }
+  return normalized;
+}
+
 function timestamp(value, fallback = null, field = "timestamp") {
   const candidate = value || fallback;
   if (!candidate) return null;
   const parsed = Date.parse(candidate);
   if (!Number.isFinite(parsed)) throw new TypeError(`SourceConnection.${field} must be an ISO-compatible timestamp.`);
   return new Date(parsed).toISOString();
+}
+
+function laterTimestamp(currentValue, candidateValue) {
+  const current = timestamp(currentValue, null, "lastEventAt");
+  const candidate = timestamp(candidateValue, null, "lastEventAt");
+  if (!current) return candidate;
+  if (!candidate) return current;
+  return Date.parse(candidate) > Date.parse(current) ? candidate : current;
 }
 
 function normalizeProvider(value) {
@@ -120,7 +138,7 @@ export function normalizeSourceConnection(input = {}) {
     provider: normalizeProvider(parsed.provider),
     providerAccountRef: opaqueId(parsed.providerAccountRef, "providerAccountRef"),
     installationRef: opaqueId(parsed.installationRef, "installationRef"),
-    credentialRef: opaqueId(parsed.credentialRef, "credentialRef"),
+    credentialRef: credentialReference(parsed.credentialRef),
     status,
     permissionScopes: uniqueCapabilities(parsed.permissionScopes, "permissionScopes"),
     capabilities: uniqueCapabilities(parsed.capabilities, "capabilities"),
@@ -170,7 +188,11 @@ export function updateSourceConnection(connection, patch = {}, now) {
   for (const field of immutable) {
     if (Object.prototype.hasOwnProperty.call(patch, field)) throw new TypeError(`SourceConnection.${field} is immutable.`);
   }
-  return normalizeSourceConnection({ ...current, ...portableClone(patch), updatedAt: timestamp(now, current.updatedAt, "updatedAt") });
+  const nextPatch = portableClone(patch);
+  if (Object.prototype.hasOwnProperty.call(nextPatch, "lastEventAt")) {
+    nextPatch.lastEventAt = laterTimestamp(current.lastEventAt, nextPatch.lastEventAt);
+  }
+  return normalizeSourceConnection({ ...current, ...nextPatch, updatedAt: timestamp(now, current.updatedAt, "updatedAt") });
 }
 
 export function transitionSourceConnection(connection, status, now, patch = {}) {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
+import RevisionHistoryPanel from "./RevisionHistoryPanel";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./TodayWorkspace.module.css";
 
@@ -91,7 +92,13 @@ export default function TodayWorkspace() {
       setMessage({ type: "success", text: successText });
       return true;
     } catch (error) {
-      setMessage({ type: "error", text: error?.message || "SignalFlow could not save that decision." });
+      await reload();
+      setMessage({
+        type: "error",
+        text: error?.code === "stale_revision_context"
+          ? "A newer revision became current after this decision loaded. SignalFlow refreshed Today instead of applying your judgment to unseen content."
+          : (error?.message || "SignalFlow could not save that decision."),
+      });
       return false;
     } finally {
       setBusyId("");
@@ -101,7 +108,9 @@ export default function TodayWorkspace() {
   async function approve(item) {
     await decide(
       item,
-      () => reviewApplication.approveCurrentVariant(item.platformVariantId),
+      () => reviewApplication.approveRevision(item.platformVariantId, item.platformVariantRevisionId, {
+        expectedCurrentRevisionId: item.platformVariantRevisionId,
+      }),
       `${destinationLabel(item.destination)} revision ${item.revisionNumber} is approved exactly.`,
     );
   }
@@ -110,7 +119,10 @@ export default function TodayWorkspace() {
     event.preventDefault();
     const saved = await decide(
       item,
-      () => reviewApplication.rejectCurrentVariant(item.platformVariantId, rejectNote.trim()),
+      () => reviewApplication.rejectRevision(item.platformVariantId, item.platformVariantRevisionId, {
+        expectedCurrentRevisionId: item.platformVariantRevisionId,
+        note: rejectNote.trim(),
+      }),
       `${destinationLabel(item.destination)} revision ${item.revisionNumber} is rejected. Its history is preserved.`,
     );
     if (saved) {
@@ -127,6 +139,12 @@ export default function TodayWorkspace() {
     setMessage(null);
     let revisionCreated = false;
     try {
+      const visible = await reviewApplication.getReviewBundle(item.platformVariantId);
+      if (visible.revision?.platformVariantRevisionId !== item.platformVariantRevisionId) {
+        const error = new Error("A newer revision became current after this decision loaded.");
+        error.code = "stale_revision_context";
+        throw error;
+      }
       await changeApplication.requestChange(item.platformVariantId, instruction);
       revisionCreated = true;
       await reviewApplication.reviewCurrentVariant(item.platformVariantId);
@@ -138,9 +156,11 @@ export default function TodayWorkspace() {
       await reload();
       setMessage({
         type: "error",
-        text: revisionCreated
-          ? `The new revision was saved, but its checks did not finish: ${error?.message || "review unavailable"}. It will not appear as approval-ready until checks complete.`
-          : (error?.message || "SignalFlow could not apply that change request."),
+        text: error?.code === "stale_revision_context"
+          ? "A newer revision became current after this decision loaded. SignalFlow refreshed Today instead of changing unseen content."
+          : revisionCreated
+            ? `The new revision was saved, but its checks did not finish: ${error?.message || "review unavailable"}. It will not appear as approval-ready until checks complete.`
+            : (error?.message || "SignalFlow could not apply that change request."),
       });
     } finally {
       setBusyId("");
@@ -230,6 +250,13 @@ export default function TodayWorkspace() {
                       <section><span>REVIEW</span><strong>{titleCase(item.reviewVerdict)}</strong><p>{item.evidenceSummary} {item.authenticitySummary}</p></section>
                     </div>
                     {item.findings.length > 0 && <div className={styles.findings}><span>FINDINGS</span>{item.findings.map((finding, index) => <p key={`${finding.code}-${index}`} data-severity={finding.severity}><strong>{titleCase(finding.severity)}</strong>{finding.message}</p>)}</div>}
+                    <RevisionHistoryPanel
+                      variantId={item.platformVariantId}
+                      currentRevisionId={item.platformVariantRevisionId}
+                      onChanged={reload}
+                      onStatus={setMessage}
+                      context="today"
+                    />
                     <div className={styles.detailLinks}>{item.opportunity?.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunity.opportunityId)}`}>Open full plan</Link>}</div>
                   </details>
                 </article>

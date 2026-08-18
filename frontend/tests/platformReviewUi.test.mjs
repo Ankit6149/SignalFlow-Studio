@@ -18,11 +18,12 @@ test("exact revision review UI uses application services and exposes the intende
   assert.match(component, /Request change/);
   assert.match(component, /Approve exact revision/);
   assert.match(component, /Reject exact revision/);
-  assert.match(component, /reviewCurrentVariant/);
+  assert.match(component, /reviewRevision\(variant\.platformVariantId, revision\.platformVariantRevisionId/);
   assert.match(component, /editCurrentVariant/);
   assert.match(component, /requestChange\(variant\.platformVariantId, instruction\)/);
-  assert.match(component, /approveCurrentVariant/);
-  assert.match(component, /rejectCurrentVariant/);
+  assert.match(component, /approveRevision\(variant\.platformVariantId, revision\.platformVariantRevisionId/);
+  assert.match(component, /rejectRevision\(variant\.platformVariantId, revision\.platformVariantRevisionId/);
+  assert.match(component, /expectedCurrentRevisionId:\s*revision\.platformVariantRevisionId/);
   assert.match(component, /regenerateVariant/);
   assert.doesNotMatch(component, /\/api\/launch_kit|\/api\/intelligence\/platform-revision|generateJSON|OPENAI_API_KEY|GEMINI_API_KEY|ANTHROPIC_API_KEY/);
 });
@@ -35,6 +36,14 @@ test("natural-language change request is bounded and explicitly invalidates old 
   assert.match(component, /preserve the destination, approved story plan, Voice snapshot and revision history/i);
   assert.match(component, /previous review\/approval is historical; run checks again before approval/i);
   assert.match(component, /A later edit, requested change, or regeneration will require a new review and approval/i);
+});
+
+test("stale Plan judgment refreshes instead of acting on a newer unseen revision", async () => {
+  const component = await source("../components/PlatformReviewPanel.js");
+  assert.match(component, /error\?\.code === "stale_revision_context"/);
+  assert.match(component, /newer revision became current/i);
+  assert.match(component, /unseen content/i);
+  assert.match(component, /await onChanged\?\.\(\)/);
 });
 
 test("blocking review prevents approval while an unreviewed revision cannot be approved from the UI", async () => {

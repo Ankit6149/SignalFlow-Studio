@@ -10,6 +10,7 @@ import {
 import {
   attachPlatformVariantRevision,
   createEditedPlatformVariantRevision,
+  createRestoredPlatformVariantRevision,
   normalizePlatformVariantRevision,
 } from "../domain/platformVariantRevisions.mjs";
 import {
@@ -97,6 +98,15 @@ export function createPlatformReviewApplication({
     return revision;
   }
 
+  function assertExpectedCurrent(variant, expectedCurrentRevisionId) {
+    const expected = required(expectedCurrentRevisionId, "expectedCurrentRevisionId");
+    if (variant.currentRevisionId !== expected) {
+      const error = new Error("This review surface is stale because a newer current revision exists. Reload before making a judgment.");
+      error.code = "stale_revision_context";
+      throw error;
+    }
+  }
+
   async function opportunityForStrategy(strategy) {
     const storedOpportunity = await opportunities.get(strategy.opportunityId);
     if (!storedOpportunity) throw new Error(`ContentOpportunity ${strategy.opportunityId} does not exist.`);
@@ -141,22 +151,34 @@ export function createPlatformReviewApplication({
       .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0] || null;
   }
 
-  async function contextForCurrentVariant(platformVariantId) {
+  async function contextForRevision(platformVariantId, revisionId, { expectedCurrentRevisionId = null } = {}) {
     const variant = await requireVariant(platformVariantId);
     if (variant.status === VARIANT_STATUSES.OMITTED) throw new Error("An omitted destination has no draft to review.");
-    const revision = await requireCurrentRevision(variant);
+    if (expectedCurrentRevisionId) assertExpectedCurrent(variant, expectedCurrentRevisionId);
+    const revision = await requireRevision(revisionId);
+    if (revision.platformVariantId !== variant.platformVariantId) throw new Error("Selected revision does not belong to the PlatformVariant.");
     const piece = await planningRecord(variant.contentPieceId, "ContentPiece", normalizeContentPiece);
     const strategy = await planningRecord(variant.narrativeStrategyId, "NarrativeStrategy", normalizeNarrativeStrategy);
-    if (revision.contentPieceId !== piece.contentPieceId || revision.narrativeStrategyId !== strategy.narrativeStrategyId || revision.strategyRevision !== strategy.strategyRevision) {
-      throw new Error("The current revision is stale against its planning dependencies.");
+    if (revision.contentPieceId !== piece.contentPieceId
+      || revision.narrativeStrategyId !== strategy.narrativeStrategyId
+      || revision.strategyRevision !== strategy.strategyRevision) {
+      const error = new Error("This revision belongs to an older planning contract and cannot be judged as the current story without rebuilding the plan.");
+      error.code = "stale_planning_contract";
+      throw error;
     }
     const sourceSignal = await sourceForStrategy(strategy);
     const identityContext = await exactIdentitySnapshot(revision);
     return { variant, revision, piece, strategy, sourceSignal, identityContext };
   }
 
-  async function reviewCurrentVariant(platformVariantId, { refresh = false } = {}) {
-    const context = await contextForCurrentVariant(platformVariantId);
+  async function contextForCurrentVariant(platformVariantId) {
+    const variant = await requireVariant(platformVariantId);
+    const revision = await requireCurrentRevision(variant);
+    return contextForRevision(platformVariantId, revision.platformVariantRevisionId, { expectedCurrentRevisionId: revision.platformVariantRevisionId });
+  }
+
+  async function reviewRevision(platformVariantId, platformVariantRevisionId, { refresh = false, expectedCurrentRevisionId } = {}) {
+    const context = await contextForRevision(platformVariantId, platformVariantRevisionId, { expectedCurrentRevisionId });
     const existing = await latestReviewForRevision(context.revision.platformVariantRevisionId);
     if (existing && !refresh) return existing;
 
@@ -224,6 +246,15 @@ export function createPlatformReviewApplication({
     }));
   }
 
+  async function reviewCurrentVariant(platformVariantId, { refresh = false } = {}) {
+    const variant = await requireVariant(platformVariantId);
+    const revision = await requireCurrentRevision(variant);
+    return reviewRevision(platformVariantId, revision.platformVariantRevisionId, {
+      refresh,
+      expectedCurrentRevisionId: revision.platformVariantRevisionId,
+    });
+  }
+
   async function editCurrentVariant(platformVariantId, { content, segments = [], format = null } = {}) {
     const { variant, revision } = await contextForCurrentVariant(platformVariantId);
     const normalizedContent = String(content ?? "").replace(/\r\n?/g, "\n").trim();
@@ -248,106 +279,200 @@ export function createPlatformReviewApplication({
     return persisted;
   }
 
-  async function approveCurrentVariant(platformVariantId, note = "") {
-    const { variant, revision, piece, strategy } = await contextForCurrentVariant(platformVariantId);
-    const review = await latestReviewForRevision(revision.platformVariantRevisionId);
-    if (!review) {
-      const error = new Error("Run the evidence and authenticity checks on this exact revision before approving it.");
-      error.code = "review_required";
-      throw error;
-    }
-    if (!reviewAllowsApproval(review)) {
-      const error = new Error("This revision has blocking review findings. Edit or regenerate it before approval.");
-      error.code = "review_blocked";
-      throw error;
+  async function persistApproval(context, decision, note = "") {
+    const review = await latestReviewForRevision(context.revision.platformVariantRevisionId);
+    if (decision === APPROVAL_DECISIONS.APPROVED) {
+      if (!review) {
+        const error = new Error("Run the evidence and authenticity checks on this exact revision before approving it.");
+        error.code = "review_required";
+        throw error;
+      }
+      if (!reviewAllowsApproval(review)) {
+        const error = new Error("This revision has blocking review findings. Edit, restore, or regenerate before approval.");
+        error.code = "review_blocked";
+        throw error;
+      }
     }
     const now = appClock.now();
     const approvalRecord = createPlatformVariantApproval({
       platformVariantApprovalId: appIds.create("variant-approval"),
       workspaceId: ownerWorkspaceId,
-      platformVariantId: variant.platformVariantId,
-      platformVariantRevisionId: revision.platformVariantRevisionId,
-      platformVariantReviewId: review.platformVariantReviewId,
-      destination: variant.destination,
-      decision: APPROVAL_DECISIONS.APPROVED,
+      platformVariantId: context.variant.platformVariantId,
+      platformVariantRevisionId: context.revision.platformVariantRevisionId,
+      platformVariantReviewId: review?.platformVariantReviewId || null,
+      destination: context.variant.destination,
+      decision,
       note,
       decidedBy: ownerUserId,
       decidedAt: now,
     });
 
     let derivedMemory = null;
-    if (narrativeMemoryApplication) {
-      const opportunity = await opportunityForStrategy(strategy);
+    if (decision === APPROVAL_DECISIONS.APPROVED && narrativeMemoryApplication) {
+      const opportunity = await opportunityForStrategy(context.strategy);
       derivedMemory = await narrativeMemoryApplication.recordApprovedVariant({
         approval: approvalRecord,
-        variant,
-        revision,
-        strategy,
-        contentPiece: piece,
+        variant: context.variant,
+        revision: context.revision,
+        strategy: context.strategy,
+        contentPiece: context.piece,
         opportunity,
       });
     }
 
-    let approval;
+    let persisted;
     try {
-      approval = await reviews.upsert(approvalRecord);
+      persisted = await reviews.upsert(approvalRecord);
     } catch (error) {
       if (derivedMemory?.narrativeMemoryId && narrativeMemoryApplication) {
-        try {
-          await narrativeMemoryApplication.removeMemory(derivedMemory.narrativeMemoryId);
-        } catch {}
+        try { await narrativeMemoryApplication.removeMemory(derivedMemory.narrativeMemoryId); } catch {}
       }
       throw error;
     }
 
-    await plans.upsert(normalizePlatformVariant({ ...variant, status: VARIANT_STATUSES.APPROVED, updatedAt: now }));
-    return approval;
+    if (context.variant.currentRevisionId === context.revision.platformVariantRevisionId) {
+      await plans.upsert(normalizePlatformVariant({
+        ...context.variant,
+        status: decision === APPROVAL_DECISIONS.APPROVED ? VARIANT_STATUSES.APPROVED : VARIANT_STATUSES.REJECTED,
+        updatedAt: now,
+      }));
+    }
+    return persisted;
+  }
+
+  async function approveRevision(platformVariantId, platformVariantRevisionId, { expectedCurrentRevisionId, note = "" } = {}) {
+    const context = await contextForRevision(platformVariantId, platformVariantRevisionId, { expectedCurrentRevisionId });
+    return persistApproval(context, APPROVAL_DECISIONS.APPROVED, note);
+  }
+
+  async function approveCurrentVariant(platformVariantId, note = "") {
+    const variant = await requireVariant(platformVariantId);
+    const revision = await requireCurrentRevision(variant);
+    return approveRevision(platformVariantId, revision.platformVariantRevisionId, {
+      expectedCurrentRevisionId: revision.platformVariantRevisionId,
+      note,
+    });
+  }
+
+  async function rejectRevision(platformVariantId, platformVariantRevisionId, { expectedCurrentRevisionId, note = "" } = {}) {
+    const context = await contextForRevision(platformVariantId, platformVariantRevisionId, { expectedCurrentRevisionId });
+    return persistApproval(context, APPROVAL_DECISIONS.REJECTED, note);
   }
 
   async function rejectCurrentVariant(platformVariantId, note = "") {
-    const { variant, revision } = await contextForCurrentVariant(platformVariantId);
-    const review = await latestReviewForRevision(revision.platformVariantRevisionId);
-    const now = appClock.now();
-    const decision = await reviews.upsert(createPlatformVariantApproval({
-      platformVariantApprovalId: appIds.create("variant-approval"),
-      workspaceId: ownerWorkspaceId,
-      platformVariantId: variant.platformVariantId,
-      platformVariantRevisionId: revision.platformVariantRevisionId,
-      platformVariantReviewId: review?.platformVariantReviewId || null,
-      destination: variant.destination,
-      decision: APPROVAL_DECISIONS.REJECTED,
+    const variant = await requireVariant(platformVariantId);
+    const revision = await requireCurrentRevision(variant);
+    return rejectRevision(platformVariantId, revision.platformVariantRevisionId, {
+      expectedCurrentRevisionId: revision.platformVariantRevisionId,
       note,
-      decidedBy: ownerUserId,
-      decidedAt: now,
-    }));
-    await plans.upsert(normalizePlatformVariant({ ...variant, status: VARIANT_STATUSES.REJECTED, updatedAt: now }));
-    return decision;
+    });
   }
 
-  async function getReviewBundle(platformVariantId) {
+  async function restoreRevision(platformVariantId, sourceRevisionId, { expectedCurrentRevisionId } = {}) {
     const variant = await requireVariant(platformVariantId);
-    const revision = variant.currentRevisionId ? await requireRevision(variant.currentRevisionId) : null;
-    if (!revision) return { variant, revision: null, review: null, decision: null, approvalValid: false };
+    assertExpectedCurrent(variant, expectedCurrentRevisionId);
+    if (!variant.currentRevisionId) throw new Error("There is no current revision to restore against.");
+    if (sourceRevisionId === variant.currentRevisionId) {
+      const error = new Error("That revision is already current.");
+      error.code = "revision_already_current";
+      throw error;
+    }
+    const currentRevision = await requireRevision(variant.currentRevisionId);
+    const sourceRevision = await requireRevision(sourceRevisionId);
+    if (sourceRevision.platformVariantId !== variant.platformVariantId) throw new Error("The selected historical revision belongs to another PlatformVariant.");
+    const strategy = await planningRecord(variant.narrativeStrategyId, "NarrativeStrategy", normalizeNarrativeStrategy);
+    if (sourceRevision.strategyRevision !== strategy.strategyRevision || currentRevision.strategyRevision !== strategy.strategyRevision) {
+      const error = new Error("A revision from an older campaign-plan revision cannot be restored into the current story contract.");
+      error.code = "stale_planning_contract";
+      throw error;
+    }
+    const history = (await plans.list())
+      .filter((record) => record.kind === "PlatformVariantRevision" && record.platformVariantId === variant.platformVariantId)
+      .map(normalizePlatformVariantRevision);
+    const now = appClock.now();
+    const restored = createRestoredPlatformVariantRevision({
+      platformVariantRevisionId: appIds.create("variant-revision"),
+      currentRevision,
+      sourceRevision,
+      revisionNumber: Math.max(0, ...history.map((item) => item.revisionNumber)) + 1,
+      restoredBy: ownerUserId,
+      createdAt: now,
+    });
+    const persisted = await plans.upsert(restored);
+    await plans.upsert(attachPlatformVariantRevision(variant, persisted, now));
+    return persisted;
+  }
+
+  async function getReviewBundleForRevision(platformVariantId, platformVariantRevisionId) {
+    const variant = await requireVariant(platformVariantId);
+    const revision = await requireRevision(platformVariantRevisionId);
+    if (revision.platformVariantId !== variant.platformVariantId) throw new Error("Selected revision does not belong to the PlatformVariant.");
     const review = await latestReviewForRevision(revision.platformVariantRevisionId);
     const decision = await latestDecisionForRevision(revision.platformVariantRevisionId);
+    const currentStrategy = await planningRecord(variant.narrativeStrategyId, "NarrativeStrategy", normalizeNarrativeStrategy);
+    const approvalValid = Boolean(decision?.decision === APPROVAL_DECISIONS.APPROVED
+      && review
+      && decision.platformVariantReviewId === review.platformVariantReviewId
+      && reviewAllowsApproval(review));
     return {
       variant,
       revision,
       review,
       decision,
-      approvalValid: Boolean(decision?.decision === APPROVAL_DECISIONS.APPROVED
-        && decision.platformVariantRevisionId === variant.currentRevisionId
-        && review
-        && decision.platformVariantReviewId === review.platformVariantReviewId
-        && reviewAllowsApproval(review)),
+      approvalValid,
+      isCurrent: variant.currentRevisionId === revision.platformVariantRevisionId,
+      planningCurrent: revision.strategyRevision === currentStrategy.strategyRevision,
     };
   }
 
+  async function getReviewBundle(platformVariantId) {
+    const variant = await requireVariant(platformVariantId);
+    if (!variant.currentRevisionId) return { variant, revision: null, review: null, decision: null, approvalValid: false, isCurrent: false, planningCurrent: false };
+    return getReviewBundleForRevision(platformVariantId, variant.currentRevisionId);
+  }
+
+  async function getRevisionHistory(platformVariantId) {
+    const variant = await requireVariant(platformVariantId);
+    const history = (await plans.list())
+      .filter((record) => record.kind === "PlatformVariantRevision" && record.workspaceId === ownerWorkspaceId && record.platformVariantId === variant.platformVariantId)
+      .map(normalizePlatformVariantRevision)
+      .sort((left, right) => right.revisionNumber - left.revisionNumber || right.createdAt.localeCompare(left.createdAt));
+    const records = await reviewRecords();
+    const currentStrategy = await planningRecord(variant.narrativeStrategyId, "NarrativeStrategy", normalizeNarrativeStrategy);
+    return history.map((revision) => {
+      const review = records
+        .filter((record) => record.kind === "PlatformVariantReview" && record.platformVariantRevisionId === revision.platformVariantRevisionId)
+        .map(normalizePlatformVariantReview)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] || null;
+      const decision = records
+        .filter((record) => record.kind === "PlatformVariantApproval" && record.platformVariantRevisionId === revision.platformVariantRevisionId)
+        .map(normalizePlatformVariantApproval)
+        .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0] || null;
+      return {
+        revision,
+        review,
+        decision,
+        isCurrent: variant.currentRevisionId === revision.platformVariantRevisionId,
+        planningCurrent: revision.strategyRevision === currentStrategy.strategyRevision,
+        approvalValid: Boolean(decision?.decision === APPROVAL_DECISIONS.APPROVED
+          && review
+          && decision.platformVariantReviewId === review.platformVariantReviewId
+          && reviewAllowsApproval(review)),
+      };
+    });
+  }
+
   return {
+    reviewRevision,
     reviewCurrentVariant,
     editCurrentVariant,
+    approveRevision,
     approveCurrentVariant,
+    rejectRevision,
     rejectCurrentVariant,
+    restoreRevision,
+    getReviewBundleForRevision,
     getReviewBundle,
+    getRevisionHistory,
   };
 }

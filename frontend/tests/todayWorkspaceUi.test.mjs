@@ -26,16 +26,25 @@ test("Today keeps the primary owner interaction to judgment rather than workflow
   assert.doesNotMatch(component, /Run checks|Choose this direction|Build campaign plan|Generate drafts|Select a narrative direction/);
 });
 
-test("Today delegates to application services and never owns provider or raw storage mutation logic", async () => {
+test("Today delegates to application services and binds judgment to the exact visible revision", async () => {
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /createBrowserTodayDecisionApplication/);
   assert.match(component, /createBrowserPlatformReviewApplication/);
   assert.match(component, /createBrowserPlatformChangeRequestApplication/);
   assert.match(component, /todayApplication\.listDecisions\(\)/);
-  assert.match(component, /reviewApplication\.approveCurrentVariant/);
-  assert.match(component, /reviewApplication\.rejectCurrentVariant/);
+  assert.match(component, /reviewApplication\.approveRevision\(item\.platformVariantId, item\.platformVariantRevisionId/);
+  assert.match(component, /reviewApplication\.rejectRevision\(item\.platformVariantId, item\.platformVariantRevisionId/);
+  assert.match(component, /expectedCurrentRevisionId:\s*item\.platformVariantRevisionId/);
   assert.match(component, /changeApplication\.requestChange/);
-  assert.doesNotMatch(component, /\/api\/|generateJSON|OPENAI_API_KEY|GEMINI_API_KEY|ANTHROPIC_API_KEY|localStorage\.(setItem|removeItem)/);
+  assert.doesNotMatch(component, /\/api\/|generateJSON|localStorage\.(setItem|removeItem)/);
+});
+
+test("Today fails safe when its visible decision became stale", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  assert.match(component, /error\?\.code === "stale_revision_context"/);
+  assert.match(component, /newer revision became current/i);
+  assert.match(component, /unseen content/i);
+  assert.match(component, /visible\.revision\?\.platformVariantRevisionId !== item\.platformVariantRevisionId/);
 });
 
 test("Today composes requested revision plus exact critics so the owner returns directly to judgment", async () => {

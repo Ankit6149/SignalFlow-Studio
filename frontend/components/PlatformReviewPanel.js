@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformGenerationApplication } from "../lib/application/browserPlatformGenerationApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
+import RevisionHistoryPanel from "./RevisionHistoryPanel";
 import styles from "./PlatformReviewPanel.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
@@ -224,6 +225,13 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
           </div>
         </div>
       )}
+
+      <RevisionHistoryPanel
+        variantId={variant.platformVariantId}
+        currentRevisionId={revision.platformVariantRevisionId}
+        onChanged={onChanged}
+        context="plan"
+      />
     </div>
   );
 }

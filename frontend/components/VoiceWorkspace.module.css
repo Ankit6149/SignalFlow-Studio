@@ -78,6 +78,14 @@
 .memoryMeta { display: flex; flex-wrap: wrap; gap: .35rem; }
 .memoryMeta span { padding: .24rem .42rem; border: 1px solid rgba(23,23,20,.09); border-radius: 999px; color: #777166; font-size: .52rem; }
 .memoryText { margin: .65rem 0 .7rem; color: #302d27; font-size: .72rem; line-height: 1.52; }
+.memoryEvidence { margin: 0 0 .7rem; border-block: 1px solid rgba(23,23,20,.07); }
+.memoryEvidence summary { padding: .5rem 0; color: #6a6459; font-size: .57rem; font-weight: 720; cursor: pointer; }
+.memoryEvidence > p { margin: 0 0 .55rem; color: #8a8377; font-size: .54rem; line-height: 1.45; }
+.evidenceGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; padding-bottom: .65rem; }
+.evidenceGrid > div { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .25rem .5rem; padding: .5rem; border: 1px solid rgba(23,23,20,.07); border-radius: .4rem; }
+.evidenceGrid span { color: #777166; font-size: .51rem; }
+.evidenceGrid b { color: #37332d; font-size: .54rem; }
+.evidenceGrid code { grid-column: 1 / -1; overflow: hidden; color: #827a6c; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .49rem; text-overflow: ellipsis; white-space: nowrap; }
 .memoryActions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .memoryActions button,
 .quietButton,
@@ -122,7 +130,8 @@
 
 .page textarea:focus-visible,
 .page select:focus-visible,
-.page button:focus-visible { outline: 2px solid #8b6a28; outline-offset: 2px; }
+.page button:focus-visible,
+.memoryEvidence summary:focus-visible { outline: 2px solid #8b6a28; outline-offset: 2px; }
 
 @media (max-width: 1000px) {
   .page { width: min(100% - 2rem, 50rem); padding-top: 2.6rem; }
@@ -138,7 +147,8 @@
   .page { width: min(100% - 1.25rem, 42rem); }
   .heading h1 { font-size: clamp(2.2rem, 12vw, 3.5rem); }
   .twoCol,
-  .compactGrid { grid-template-columns: 1fr; }
+  .compactGrid,
+  .evidenceGrid { grid-template-columns: 1fr; }
   .saveBar,
   .learnedHeader { align-items: stretch; flex-direction: column; }
   .saveBar button,

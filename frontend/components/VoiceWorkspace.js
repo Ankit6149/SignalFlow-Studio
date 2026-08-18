@@ -77,6 +77,15 @@ function statusLabel(status) {
   return "Candidate";
 }
 
+function compactRefs(values) {
+  return (Array.isArray(values) ? values : []).slice(0, 4);
+}
+
+function shortRef(value) {
+  const normalized = String(value || "");
+  return normalized.length <= 22 ? normalized : `…${normalized.slice(-18)}`;
+}
+
 export default function VoiceWorkspace() {
   const [form, setForm] = useState(defaultForm);
   const [profile, setProfile] = useState(null);
@@ -313,6 +322,10 @@ export default function VoiceWorkspace() {
                     {hypotheses.map((item) => {
                       const editing = editingMemoryId === item.styleMemoryId;
                       const actionBusy = memoryBusyId === item.styleMemoryId;
+                      const supporting = compactRefs(item.supportingFeedbackEventIds);
+                      const contradicting = compactRefs(item.contradictingFeedbackEventIds);
+                      const approvedExamples = compactRefs(item.exampleApprovedRevisionIds);
+                      const rejectedExamples = compactRefs(item.exampleRejectedRevisionIds);
                       return (
                         <article className={styles.memoryItem} key={item.styleMemoryId}>
                           <div className={styles.memoryMeta}>
@@ -324,6 +337,16 @@ export default function VoiceWorkspace() {
                           {editing ? (
                             <label className={styles.memoryEdit}><span>Edit learned preference</span><textarea rows={3} value={editingMemoryText} onChange={(event) => setEditingMemoryText(event.target.value)} maxLength={600} /></label>
                           ) : <p className={styles.memoryText}>{item.hypothesis}</p>}
+                          <details className={styles.memoryEvidence}>
+                            <summary>Why SignalFlow learned this</summary>
+                            <p>Only safe immutable references are shown here. Raw before/after draft text is not copied into StyleMemory.</p>
+                            <div className={styles.evidenceGrid}>
+                              <div><span>Supporting feedback</span><b>{item.supportingFeedbackEventIds?.length || 0}</b>{supporting.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                              <div><span>Contradicting feedback</span><b>{item.contradictingFeedbackEventIds?.length || 0}</b>{contradicting.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                              <div><span>Approved examples</span><b>{item.exampleApprovedRevisionIds?.length || 0}</b>{approvedExamples.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                              <div><span>Rejected examples</span><b>{item.exampleRejectedRevisionIds?.length || 0}</b>{rejectedExamples.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                            </div>
+                          </details>
                           <div className={styles.memoryActions}>
                             {editing ? (
                               <>

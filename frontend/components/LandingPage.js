@@ -20,7 +20,7 @@ const TRUST = [
   ["Silence is allowed", "A signal can be ignored. A destination can be omitted. An empty calendar slot can remain empty."],
 ];
 
-const FUTURE = ["Connected-source detection", "Editorial calendar + durable publishing", "Narrative + StyleMemory", "Media intelligence + production"];
+const FUTURE = ["Connected-source detection", "Editorial calendar + durable publishing", "Cross-device memory + confirmed-public history", "Media intelligence + production"];
 
 function ArrowIcon() {
   return (
@@ -157,7 +157,7 @@ export default function LandingPage({ onEnter }) {
               <a className={styles.primaryButton} href="/signals">Capture your first signal <ArrowIcon /></a>
               <a className={styles.textButton} href="/plan">See the planning path <ArrowIcon /></a>
             </div>
-            <p className={styles.heroTruth}><strong>Working now:</strong> manual ContentSignals → persisted opportunities and angles → explicit Voice → approved NarrativeStrategy → immutable LinkedIn/X drafts → evidence/authenticity checks → exact revision approve/reject. Automatic connected-source detection, publishing, memory and media production remain product direction.</p>
+            <p className={styles.heroTruth}><strong>Working now:</strong> manual ContentSignals → persisted opportunities and angles → explicit Voice → approved NarrativeStrategy → immutable LinkedIn/X drafts → evidence/authenticity checks → exact revision approve/reject → browser-local NarrativeMemory + explainable StyleMemory. Automatic connected-source detection, durable publishing, cross-device memory sync and media production remain product direction.</p>
           </div>
           <HeroFlowScene />
           <a className={styles.scrollCue} href="#works-now" aria-label="Continue to what works now"><span /> The useful part, now</a>
@@ -221,7 +221,7 @@ export default function LandingPage({ onEnter }) {
             <span className={styles.sectionNumber}>03</span>
             <p className={styles.sectionEyebrow}>WHAT COMES AFTER THE CORE LOOP</p>
             <h2 id="direction-title">Automation should extend the path.<br />Not replace your control.</h2>
-            <p>Source connections, media production, durable publishing and memory are being added behind the same records and approval rules. They are direction—not claims about what is already shipped.</p>
+            <p>Source connections, media production, durable publishing, cross-device memory sync and confirmed-public history are being added behind the same records and approval rules. They are direction—not claims about what is already shipped.</p>
           </div>
           <div className={`${styles.futureList} ${rhythm.futureList}`}>
             {FUTURE.map((item, index) => (

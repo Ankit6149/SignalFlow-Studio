@@ -27,9 +27,15 @@ function revisionText(revision) {
 function decisionLabel(entry) {
   if (entry?.approvalValid) return "Approved";
   if (entry?.decision?.decision === "rejected") return "Rejected";
-  if (entry?.decision?.decision === "approved") return "Approval needs re-confirmation";
+  if (entry?.decision?.decision === "approved") return "Previously approved";
   if (entry?.review?.overallVerdict) return `Reviewed · ${titleCase(entry.review.overallVerdict)}`;
   return "Not reviewed";
+}
+
+function decisionState(entry) {
+  if (entry?.approvalValid) return "approved";
+  if (entry?.decision?.decision === "rejected") return "rejected";
+  return entry?.review?.overallVerdict || "pending";
 }
 
 function displayTime(value) {
@@ -46,6 +52,12 @@ function reviewFindings(review) {
     ...(review.evidence?.findings || []),
     ...(review.authenticity?.findings || []),
   ];
+}
+
+function revisionLabel(history, revisionId, fallbackLength = 10) {
+  if (!revisionId) return null;
+  const entry = history.find((item) => item.revision.platformVariantRevisionId === revisionId);
+  return entry ? `r${entry.revision.revisionNumber}` : revisionId.slice(-fallbackLength);
 }
 
 export default function RevisionHistoryPanel({ variantId, currentRevisionId, onChanged, context = "plan" }) {
@@ -83,6 +95,8 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
   const selectedIsCurrent = Boolean(selected?.isCurrent);
   const findings = reviewFindings(selected?.review);
   const blocked = selected?.review?.overallVerdict === "block";
+  const parentLabel = revisionLabel(history, selected?.revision.parentRevisionId);
+  const restoredFromLabel = revisionLabel(history, selected?.revision.editProvenance?.restoredFromRevisionId, 12);
 
   async function run(key, operation, successText) {
     setBusy(key);
@@ -192,13 +206,16 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
               <div>
                 <span>{selectedIsCurrent ? "CURRENT WORKING REVISION" : "SELECTED HISTORICAL REVISION"}</span>
                 <strong>Revision {selected.revision.revisionNumber} · {originLabel(selected.revision)}</strong>
-                <p>{displayTime(selected.revision.createdAt)}{selected.revision.parentRevisionId ? ` · child of ${selected.revision.parentRevisionId.slice(-10)}` : ""}</p>
+                <p>{displayTime(selected.revision.createdAt)}{parentLabel ? ` · child of ${parentLabel}` : ""}</p>
               </div>
-              <div className={styles.state} data-state={selected.approvalValid ? "approved" : selected.decision?.decision || selected.review?.overallVerdict || "pending"}>{decisionLabel(selected)}</div>
+              <div className={styles.state} data-state={decisionState(selected)}>{decisionLabel(selected)}</div>
             </header>
 
-            {selected.revision.editProvenance?.restoredFromRevisionId && (
-              <p className={styles.restoreNote}>Restored from immutable revision {selected.revision.editProvenance.restoredFromRevisionId.slice(-12)}; the intervening revisions were not overwritten.</p>
+            {selected.revision.changeRequest && (
+              <p className={styles.restoreNote}>AI change request: “{selected.revision.changeRequest}”</p>
+            )}
+            {restoredFromLabel && (
+              <p className={styles.restoreNote}>Restored from immutable revision {restoredFromLabel}; the intervening revisions were not overwritten.</p>
             )}
             {!selected.planningCurrent && (
               <p className={styles.staleNote}>This revision belongs to an older campaign-plan revision. It remains inspectable, but SignalFlow will not newly review, judge, or restore it into the current story contract.</p>

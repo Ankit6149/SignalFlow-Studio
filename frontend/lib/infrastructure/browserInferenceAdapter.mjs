@@ -2,11 +2,18 @@ import { assertPort } from "../domain/ports.mjs";
 import { normalizeInferenceTask, INFERENCE_TASK_TYPES } from "../inference/inferenceTasks.mjs";
 import { normalizeOpportunityEvaluation } from "../domain/contentOpportunities.mjs";
 import { normalizeStrategyProposal } from "../domain/contentPlanning.mjs";
+import { acceptProjectContextSynthesis } from "../ai/projectContextSynthesis.mjs";
 import { normalizePlatformVariantDraft } from "../ai/platformVariantWriting.mjs";
 import { acceptPlatformRevisionRequest } from "../ai/platformVariantRevisionRequest.mjs";
 import { normalizeCriticResult } from "../domain/platformVariantReviews.mjs";
 
 const TASK_ROUTES = Object.freeze({
+  [INFERENCE_TASK_TYPES.PROJECT_CONTEXT_SYNTHESIS]: {
+    endpoint: "/api/intelligence/project-context",
+    normalize: acceptProjectContextSynthesis,
+    fallbackCode: "project_context_synthesis_failed",
+    label: "Project understanding",
+  },
   [INFERENCE_TASK_TYPES.OPPORTUNITY_EVALUATION]: {
     endpoint: "/api/intelligence/opportunity",
     normalize: normalizeOpportunityEvaluation,

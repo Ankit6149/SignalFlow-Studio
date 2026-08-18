@@ -254,6 +254,7 @@ export default function TodayWorkspace() {
                       variantId={item.platformVariantId}
                       currentRevisionId={item.platformVariantRevisionId}
                       onChanged={reload}
+                      onStatus={setMessage}
                       context="today"
                     />
                     <div className={styles.detailLinks}>{item.opportunity?.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunity.opportunityId)}`}>Open full plan</Link>}</div>

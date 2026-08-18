@@ -10,6 +10,7 @@ const page = fs.readFileSync(path.join(root, "components/LandingPage.js"), "utf8
 test("media remains a future extension rather than the landing-page product center", () => {
   assert.match(page, /Media intelligence \+ production/);
   assert.match(page, /direction—not claims about what is already shipped/);
-  assert.match(page, /Automatic connected-source detection, publishing, memory and media production remain product direction/);
+  assert.match(page, /browser-local NarrativeMemory \+ explainable StyleMemory/);
+  assert.match(page, /Automatic connected-source detection, durable publishing, cross-device memory sync and media production remain product direction/);
   assert.doesNotMatch(page, /MediaCanvas|adaptive media canvas|automatic media production is live/i);
 });

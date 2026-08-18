@@ -4,6 +4,15 @@ import {
   normalizeProjectContextSnapshot,
 } from "../domain/projectContexts.mjs";
 import { PRIVACY_CLASSES } from "../domain/sourceArtifacts.mjs";
+import {
+  createInferenceTask,
+  INFERENCE_TASK_TYPES,
+} from "../inference/inferenceTasks.mjs";
+import {
+  acceptProjectContextSynthesis,
+  normalizeProjectContextTaskInput,
+  PROJECT_CONTEXT_PROMPT_VERSION,
+} from "../ai/projectContextSynthesis.mjs";
 
 function requiredId(value, field) {
   const normalized = String(value || "").trim();
@@ -12,11 +21,16 @@ function requiredId(value, field) {
   return normalized;
 }
 
-function normalizeIds(values) {
-  return Array.from(new Set((Array.isArray(values) ? values : [])
-    .map((value) => String(value || "").trim())
-    .filter(Boolean)))
-    .sort((left, right) => left.localeCompare(right));
+function normalizeIds(values, field) {
+  const result = [];
+  const seen = new Set();
+  for (const value of Array.isArray(values) ? values : []) {
+    const normalized = requiredId(value, field);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result.sort((left, right) => left.localeCompare(right));
 }
 
 function ensureWorkspace(record, workspaceId, label) {
@@ -29,11 +43,13 @@ function ensureWorkspace(record, workspaceId, label) {
 export function createProjectContextApplication({
   workspaceId,
   repository,
+  inferenceAdapter = null,
   clock,
   idService,
 } = {}) {
   const ownerWorkspaceId = requiredId(workspaceId, "workspaceId");
   const projectContextRepository = assertPort("projectContextRepository", repository);
+  const inference = inferenceAdapter ? assertPort("inferenceAdapter", inferenceAdapter) : null;
   const systemClock = assertPort("clock", clock);
   const ids = assertPort("idService", idService);
 
@@ -77,10 +93,9 @@ export function createProjectContextApplication({
     const fingerprintInput = {
       projectId: normalizedProjectId,
       repositoryRef,
-      sourceArtifactIds: normalizeIds(sourceArtifactIds),
-      supplementalSourceArtifactIds: normalizeIds(supplementalSourceArtifactIds),
-      assetIds: normalizeIds(assetIds),
-      synthesis,
+      sourceArtifactIds: normalizeIds(sourceArtifactIds, "sourceArtifactIds"),
+      supplementalSourceArtifactIds: normalizeIds(supplementalSourceArtifactIds, "supplementalSourceArtifactIds"),
+      assetIds: normalizeIds(assetIds, "assetIds"),
     };
     const fingerprint = createProjectContextFingerprint(fingerprintInput);
     const existing = (await listProjectContexts({ projectId: normalizedProjectId }))
@@ -109,6 +124,71 @@ export function createProjectContextApplication({
     return { context, reused: false };
   }
 
+  async function synthesizeAndBootstrapProjectContext({
+    projectId,
+    repositoryRef = null,
+    evidence = [],
+    supplementalSourceArtifactIds = [],
+    assetIds = [],
+    privacyClass = PRIVACY_CLASSES.WORKSPACE_PRIVATE,
+  } = {}) {
+    if (!inference) throw new Error("Project-context synthesis requires a configured inference adapter.");
+    const normalizedProjectId = requiredId(projectId, "projectId");
+    const normalizedInput = normalizeProjectContextTaskInput({
+      workspaceId: ownerWorkspaceId,
+      projectId: normalizedProjectId,
+      evidence,
+    });
+    const sourceArtifactIds = normalizeIds(
+      normalizedInput.evidence.map((item) => item.sourceArtifactId),
+      "sourceArtifactIds",
+    );
+    const normalizedSupplementalIds = normalizeIds(supplementalSourceArtifactIds, "supplementalSourceArtifactIds");
+    const normalizedAssetIds = normalizeIds(assetIds, "assetIds");
+    const fingerprint = createProjectContextFingerprint({
+      projectId: normalizedProjectId,
+      repositoryRef,
+      sourceArtifactIds,
+      supplementalSourceArtifactIds: normalizedSupplementalIds,
+      assetIds: normalizedAssetIds,
+    });
+    const existing = (await listProjectContexts({ projectId: normalizedProjectId }))
+      .find((record) => record.fingerprint === fingerprint);
+    if (existing) return { context: existing, reused: true, inferenceSkipped: true };
+
+    const now = systemClock.now();
+    const task = createInferenceTask({
+      taskId: ids.create("task"),
+      workspaceId: ownerWorkspaceId,
+      taskType: INFERENCE_TASK_TYPES.PROJECT_CONTEXT_SYNTHESIS,
+      dataClassification: privacyClass,
+      inputRefs: [normalizedProjectId, ...sourceArtifactIds, ...normalizedSupplementalIds],
+      requirements: ["bounded_evidence", "structured_output", "project_understanding", "no_destination_decision"],
+      createdAt: now,
+    });
+    const result = await inference.execute({ task, input: normalizedInput });
+    const synthesis = acceptProjectContextSynthesis(result.output);
+    const provenance = result.provenance || {};
+    return bootstrapProjectContext({
+      projectId: normalizedProjectId,
+      repositoryRef,
+      sourceArtifactIds,
+      supplementalSourceArtifactIds: normalizedSupplementalIds,
+      assetIds: normalizedAssetIds,
+      privacyClass,
+      synthesis,
+      synthesisProvenance: {
+        mode: "model",
+        taskId: task.taskId,
+        provider: provenance.provider || null,
+        model: provenance.model || null,
+        routeKind: provenance.routeKind || null,
+        promptVersion: provenance.promptVersion || PROJECT_CONTEXT_PROMPT_VERSION,
+        generatedAt: provenance.generatedAt || provenance.evaluatedAt || now,
+      },
+    });
+  }
+
   async function resolveLatestForSignal(signal) {
     if (!signal || typeof signal !== "object") throw new TypeError("signal is required.");
     ensureWorkspace(signal, ownerWorkspaceId, "ContentSignal");
@@ -121,6 +201,7 @@ export function createProjectContextApplication({
     readProjectContext,
     getLatestProjectContext,
     bootstrapProjectContext,
+    synthesizeAndBootstrapProjectContext,
     resolveLatestForSignal,
   };
 }

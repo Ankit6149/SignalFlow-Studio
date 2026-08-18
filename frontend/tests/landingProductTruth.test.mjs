@@ -14,7 +14,8 @@ test("landing presents the real manual owner path without claiming connected-sou
   assert.match(page, /manual ContentSignals/i);
   assert.match(page, /persisted opportunities and angles/i);
   assert.match(page, /evidence\/authenticity checks/i);
-  assert.match(page, /Automatic connected-source detection, publishing, memory and media production remain product direction/);
+  assert.match(page, /browser-local NarrativeMemory \+ explainable StyleMemory/);
+  assert.match(page, /Automatic connected-source detection, durable publishing, cross-device memory sync and media production remain product direction/);
   assert.doesNotMatch(page, /automatic posting is available|fully automatic|autopilot is live/i);
 });
 

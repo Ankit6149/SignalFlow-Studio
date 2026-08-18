@@ -33,49 +33,87 @@ export function withStyleLearningReview({
   styleMemoryApplication,
   clock = null,
 } = {}) {
-  for (const name of ["reviewCurrentVariant", "editCurrentVariant", "approveCurrentVariant", "rejectCurrentVariant", "getReviewBundle"]) {
+  for (const name of [
+    "reviewRevision",
+    "reviewCurrentVariant",
+    "editCurrentVariant",
+    "approveRevision",
+    "approveCurrentVariant",
+    "rejectRevision",
+    "rejectCurrentVariant",
+    "restoreRevision",
+    "getReviewBundleForRevision",
+    "getReviewBundle",
+    "getRevisionHistory",
+  ]) {
     requireMethod("reviewApplication", name, reviewApplication);
   }
   requireMethod("contentPlanningRepository", "get", contentPlanningRepository);
   for (const name of ["recordApprovedRevision", "recordRejection"]) requireMethod("styleMemoryApplication", name, styleMemoryApplication);
   const diagnostics = diagnosticsBuffer(clock);
 
+  async function learnApproved(approval, before) {
+    if (!before?.revision) return;
+    await safeLearn(diagnostics, "approved_revision", async () => {
+      const parentRevision = before.revision.parentRevisionId
+        ? await contentPlanningRepository.get(before.revision.parentRevisionId)
+        : null;
+      await styleMemoryApplication.recordApprovedRevision({
+        approval,
+        revision: before.revision,
+        parentRevision,
+      });
+    });
+  }
+
+  async function learnRejected(decision, before) {
+    if (!before?.revision) return;
+    await safeLearn(diagnostics, "rejected_revision", () => styleMemoryApplication.recordRejection({
+      approval: decision,
+      revision: before.revision,
+    }));
+  }
+
+  async function approveRevision(platformVariantId, platformVariantRevisionId, options = {}) {
+    const before = await reviewApplication.getReviewBundleForRevision(platformVariantId, platformVariantRevisionId);
+    const approval = await reviewApplication.approveRevision(platformVariantId, platformVariantRevisionId, options);
+    await learnApproved(approval, before);
+    return approval;
+  }
+
   async function approveCurrentVariant(platformVariantId, note = "") {
     const before = await reviewApplication.getReviewBundle(platformVariantId);
     const approval = await reviewApplication.approveCurrentVariant(platformVariantId, note);
-    if (before.revision) {
-      await safeLearn(diagnostics, "approved_revision", async () => {
-        const parentRevision = before.revision.parentRevisionId
-          ? await contentPlanningRepository.get(before.revision.parentRevisionId)
-          : null;
-        await styleMemoryApplication.recordApprovedRevision({
-          approval,
-          revision: before.revision,
-          parentRevision,
-        });
-      });
-    }
+    await learnApproved(approval, before);
     return approval;
+  }
+
+  async function rejectRevision(platformVariantId, platformVariantRevisionId, options = {}) {
+    const before = await reviewApplication.getReviewBundleForRevision(platformVariantId, platformVariantRevisionId);
+    const decision = await reviewApplication.rejectRevision(platformVariantId, platformVariantRevisionId, options);
+    await learnRejected(decision, before);
+    return decision;
   }
 
   async function rejectCurrentVariant(platformVariantId, note = "") {
     const before = await reviewApplication.getReviewBundle(platformVariantId);
     const decision = await reviewApplication.rejectCurrentVariant(platformVariantId, note);
-    if (before.revision) {
-      await safeLearn(diagnostics, "rejected_revision", () => styleMemoryApplication.recordRejection({
-        approval: decision,
-        revision: before.revision,
-      }));
-    }
+    await learnRejected(decision, before);
     return decision;
   }
 
   return Object.freeze({
+    reviewRevision: (...args) => reviewApplication.reviewRevision(...args),
     reviewCurrentVariant: (...args) => reviewApplication.reviewCurrentVariant(...args),
     editCurrentVariant: (...args) => reviewApplication.editCurrentVariant(...args),
+    approveRevision,
     approveCurrentVariant,
+    rejectRevision,
     rejectCurrentVariant,
+    restoreRevision: (...args) => reviewApplication.restoreRevision(...args),
+    getReviewBundleForRevision: (...args) => reviewApplication.getReviewBundleForRevision(...args),
     getReviewBundle: (...args) => reviewApplication.getReviewBundle(...args),
+    getRevisionHistory: (...args) => reviewApplication.getRevisionHistory(...args),
     getLearningDiagnostics: () => diagnostics.list(),
   });
 }

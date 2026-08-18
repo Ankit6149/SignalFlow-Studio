@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
+import RevisionHistoryPanel from "./RevisionHistoryPanel";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./TodayWorkspace.module.css";
 
@@ -230,6 +231,12 @@ export default function TodayWorkspace() {
                       <section><span>REVIEW</span><strong>{titleCase(item.reviewVerdict)}</strong><p>{item.evidenceSummary} {item.authenticitySummary}</p></section>
                     </div>
                     {item.findings.length > 0 && <div className={styles.findings}><span>FINDINGS</span>{item.findings.map((finding, index) => <p key={`${finding.code}-${index}`} data-severity={finding.severity}><strong>{titleCase(finding.severity)}</strong>{finding.message}</p>)}</div>}
+                    <RevisionHistoryPanel
+                      variantId={item.platformVariantId}
+                      currentRevisionId={item.platformVariantRevisionId}
+                      onChanged={reload}
+                      context="today"
+                    />
                     <div className={styles.detailLinks}>{item.opportunity?.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunity.opportunityId)}`}>Open full plan</Link>}</div>
                   </details>
                 </article>

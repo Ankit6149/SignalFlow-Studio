@@ -27,6 +27,7 @@ function revisionText(revision) {
 function decisionLabel(entry) {
   if (entry?.approvalValid) return "Approved";
   if (entry?.decision?.decision === "rejected") return "Rejected";
+  if (entry?.decision?.decision === "approved") return "Approval needs re-confirmation";
   if (entry?.review?.overallVerdict) return `Reviewed · ${titleCase(entry.review.overallVerdict)}`;
   return "Not reviewed";
 }
@@ -96,7 +97,7 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
       setMessage({
         type: "error",
         text: error?.code === "stale_revision_context"
-          ? "A newer revision became current after this history view loaded. Reloaded state is required before any judgment."
+          ? "A newer revision became current after this history view loaded. SignalFlow refreshed the state instead of applying a judgment to unseen content."
           : (error?.message || "SignalFlow could not update this revision judgment."),
       });
       await onChanged?.();
@@ -166,15 +167,15 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
       <div className={styles.body}>
         {message && <div className={`${styles.message} ${styles[`message_${message.type}`] || ""}`} role="status">{message.text}</div>}
 
-        <div className={styles.rail} role="list" aria-label="Immutable revisions">
+        <div className={styles.rail} aria-label="Immutable revisions">
           {history.map((entry) => (
             <button
               type="button"
-              role="listitem"
               className={styles.revisionButton}
               data-selected={entry.revision.platformVariantRevisionId === selectedId}
               data-current={entry.isCurrent}
               aria-pressed={entry.revision.platformVariantRevisionId === selectedId}
+              aria-current={entry.isCurrent ? "true" : undefined}
               key={entry.revision.platformVariantRevisionId}
               onClick={() => { setSelectedId(entry.revision.platformVariantRevisionId); setMessage(null); }}
             >

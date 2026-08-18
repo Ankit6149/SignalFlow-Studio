@@ -3,6 +3,7 @@ export const PORT_CONTRACTS = Object.freeze({
   contentSignalRepository: ["list", "get", "upsert", "remove"],
   sourceConnectionRepository: ["list", "get", "upsert", "remove"],
   contentOpportunityRepository: ["list", "get", "upsert", "remove"],
+  projectContextRepository: ["list", "get", "upsert", "remove"],
   contentPlanningRepository: ["list", "get", "upsert", "remove"],
   contentReviewRepository: ["list", "get", "upsert", "remove"],
   narrativeMemoryRepository: ["list", "get", "upsert", "remove"],

@@ -67,6 +67,32 @@
 .compactGrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .65rem; }
 .policyNote { margin: 0; padding: .7rem .8rem; border-left: 2px solid #8b6a28; background: rgba(238,227,201,.25); color: #676157; font-size: .64rem; line-height: 1.5; }
 
+.learnedPanel { min-width: 0; display: grid; gap: .75rem; }
+.learnedHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; padding-bottom: .7rem; border-bottom: 1px solid rgba(23,23,20,.08); }
+.learnedHeader > div { min-width: 0; display: grid; gap: .2rem; }
+.learnedHeader strong { font-size: .72rem; }
+.learnedHeader span { max-width: 36rem; color: #817b70; font-size: .58rem; line-height: 1.45; }
+.learnedEmpty { padding: .9rem; border: 1px dashed rgba(23,23,20,.14); border-radius: .5rem; color: #817b70; font-size: .64rem; line-height: 1.55; }
+.memoryList { display: grid; gap: .55rem; }
+.memoryItem { min-width: 0; padding: .8rem; border: 1px solid rgba(23,23,20,.1); border-radius: .52rem; background: rgba(255,253,248,.62); }
+.memoryMeta { display: flex; flex-wrap: wrap; gap: .35rem; }
+.memoryMeta span { padding: .24rem .42rem; border: 1px solid rgba(23,23,20,.09); border-radius: 999px; color: #777166; font-size: .52rem; }
+.memoryText { margin: .65rem 0 .7rem; color: #302d27; font-size: .72rem; line-height: 1.52; }
+.memoryActions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.memoryActions button,
+.quietButton,
+.dangerButton { min-height: 2.15rem; padding: 0 .62rem; border: 1px solid #171714; border-radius: .42rem; background: #171714; color: #fffdf8; font: inherit; font-size: .57rem; font-weight: 720; cursor: pointer; }
+.memoryActions button:disabled,
+.quietButton:disabled,
+.dangerButton:disabled { opacity: .4; cursor: not-allowed; }
+.memoryActions .quietButton,
+.quietButton { border-color: rgba(23,23,20,.14); background: transparent; color: #514d45; }
+.memoryActions .dangerButton,
+.dangerButton { border-color: rgba(127,56,46,.25); background: transparent; color: #7f382e; }
+.memoryEdit { display: grid; gap: .35rem; margin: .65rem 0 .7rem; }
+.memoryEdit > span { color: #5d594f; font-size: .58rem; font-weight: 730; }
+.memoryEdit textarea { width: 100%; min-width: 0; padding: .68rem .72rem; border: 1px solid rgba(23,23,20,.14); border-radius: .48rem; resize: vertical; background: #fffdf8; color: #27241f; font: inherit; font-size: .7rem; line-height: 1.5; }
+
 .saveBar { position: sticky; bottom: .75rem; z-index: 10; margin-top: 1.1rem; padding: .8rem .85rem; border: 1px solid rgba(23,23,20,.12); border-radius: .6rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: rgba(255,253,248,.94); box-shadow: 0 .55rem 1.6rem rgba(43,37,24,.06); backdrop-filter: blur(.75rem); }
 .saveBar > div { min-width: 0; display: grid; gap: .15rem; }
 .saveBar strong { font-size: .72rem; }
@@ -113,8 +139,10 @@
   .heading h1 { font-size: clamp(2.2rem, 12vw, 3.5rem); }
   .twoCol,
   .compactGrid { grid-template-columns: 1fr; }
-  .saveBar { align-items: flex-start; flex-direction: column; }
-  .saveBar button { width: 100%; }
+  .saveBar,
+  .learnedHeader { align-items: stretch; flex-direction: column; }
+  .saveBar button,
+  .learnedHeader > button { width: 100%; }
   .snapshotControls { grid-template-columns: 1fr; }
 }
 

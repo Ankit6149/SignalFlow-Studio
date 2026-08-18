@@ -85,7 +85,17 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
       if (successText) setMessage({ type: "success", text: successText });
       return result;
     } catch (error) {
-      setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not update this review." });
+      if (error?.code === "stale_revision_context") {
+        await onChanged?.();
+        await reload();
+      }
+      setMessage({
+        type: "error",
+        code: error?.code || "",
+        text: error?.code === "stale_revision_context"
+          ? "A newer revision became current after this review loaded. SignalFlow refreshed the state instead of applying your action to unseen content."
+          : (error?.message || "SignalFlow could not update this review."),
+      });
       return null;
     } finally {
       setBusy("");
@@ -93,7 +103,14 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
   }
 
   async function runChecks() {
-    await run("review", () => reviewApplication.reviewCurrentVariant(variant.platformVariantId, { refresh: Boolean(bundle.review) }), "Evidence and authenticity checks are now pinned to this exact revision.");
+    await run(
+      "review",
+      () => reviewApplication.reviewRevision(variant.platformVariantId, revision.platformVariantRevisionId, {
+        expectedCurrentRevisionId: revision.platformVariantRevisionId,
+        refresh: Boolean(bundle.review),
+      }),
+      "Evidence and authenticity checks are now pinned to this exact revision.",
+    );
   }
 
   async function saveEdit(event) {
@@ -138,12 +155,25 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
   }
 
   async function approve() {
-    await run("approve", () => reviewApplication.approveCurrentVariant(variant.platformVariantId), "This exact revision is approved. A later edit, requested change, or regeneration will require a new review and approval.");
+    await run(
+      "approve",
+      () => reviewApplication.approveRevision(variant.platformVariantId, revision.platformVariantRevisionId, {
+        expectedCurrentRevisionId: revision.platformVariantRevisionId,
+      }),
+      "This exact visible revision is approved. A later edit, requested change, or regeneration will require a new review and approval.",
+    );
   }
 
   async function reject(event) {
     event.preventDefault();
-    const result = await run("reject", () => reviewApplication.rejectCurrentVariant(variant.platformVariantId, rejectNote.trim()), "This exact revision is rejected; its history is preserved.");
+    const result = await run(
+      "reject",
+      () => reviewApplication.rejectRevision(variant.platformVariantId, revision.platformVariantRevisionId, {
+        expectedCurrentRevisionId: revision.platformVariantRevisionId,
+        note: rejectNote.trim(),
+      }),
+      "This exact visible revision is rejected; its history is preserved.",
+    );
     if (result) {
       setRejecting(false);
       setRejectNote("");

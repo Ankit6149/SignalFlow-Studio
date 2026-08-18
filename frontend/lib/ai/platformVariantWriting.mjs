@@ -38,12 +38,35 @@ function safeIdentitySnapshot(input = {}) {
   };
 }
 
+function safeStyleMemory(input = []) {
+  return (Array.isArray(input) ? input : [])
+    .map((item) => {
+      const source = safeRecord(item);
+      const styleMemoryId = cleanString(source.styleMemoryId, 240);
+      const hypothesis = cleanString(source.hypothesis, 600);
+      if (!styleMemoryId || !hypothesis) return null;
+      return {
+        styleMemoryId,
+        hypothesis,
+        category: cleanString(source.category, 80),
+        scope: safeRecord(source.scope),
+        confidence: Number.isFinite(Number(source.confidence)) ? Number(source.confidence) : 0,
+        evidenceCount: Number.isFinite(Number(source.evidenceCount)) ? Number(source.evidenceCount) : 0,
+        status: cleanString(source.status, 40),
+        updatedAt: cleanString(source.updatedAt, 80),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
 export function normalizePlatformVariantTaskInput(input = {}) {
   const strategy = safeRecord(input.strategy);
   const contentPiece = safeRecord(input.contentPiece);
   const variant = safeRecord(input.variant);
   const sourceSignal = safeRecord(input.sourceSignal);
   const identityContext = safeIdentitySnapshot(input.identityContext);
+  const styleMemory = safeStyleMemory(input.styleMemory);
   const dataClassification = cleanString(input.dataClassification, 80).toLowerCase();
   const destination = cleanString(variant.destination, 40).toLowerCase();
 
@@ -76,6 +99,7 @@ export function normalizePlatformVariantTaskInput(input = {}) {
     variant: { ...variant, destination },
     sourceSignal,
     identityContext,
+    styleMemory,
     dataClassification,
   };
 }
@@ -111,7 +135,7 @@ export function normalizePlatformVariantDraft(raw = {}, destination = "") {
 }
 
 export function buildPlatformVariantPrompt(input = {}) {
-  const { strategy, contentPiece, variant, sourceSignal, identityContext } = normalizePlatformVariantTaskInput(input);
+  const { strategy, contentPiece, variant, sourceSignal, identityContext, styleMemory } = normalizePlatformVariantTaskInput(input);
   const destination = variant.destination;
   const formatRules = destination === "x"
     ? `For X, choose either single_post (content <= 280 characters) or thread (2-8 segments, each <= 280 characters). Use a thread only if the idea genuinely cannot stay coherent in one post.`
@@ -124,9 +148,11 @@ This is a destination-writing stage, not a strategy stage. The user has already 
 NON-NEGOTIABLE RULES:
 - Use only facts present in the source Signal, approved strategy, ContentPiece, and approved project/identity context. Never invent metrics, customers, dates, integrations, outcomes, life experiences, launch state, or publication history.
 - Explicit boundaries and project prohibited claims outrank every writing preference.
+- Campaign instructions and explicit platform/global Voice preferences outrank learned preferences.
+- Learned preferences are bounded, explainable guidance only. Ignore any learned preference that conflicts with explicit context or does not fit this story.
 - Sound like the same person represented by the exact Identity Context Snapshot; adapt only the expression to the destination.
 - Do not use generic AI/marketing language, inflated claims, engagement bait, forced questions, emoji/hashtags, or CTA patterns unless the exact Voice/platform context supports them.
-- Do not mention SignalFlow's internal planning process, scores, prompts, snapshots, or AI provider.
+- Do not mention SignalFlow's internal planning process, scores, prompts, snapshots, learned-memory IDs, or AI provider.
 - Do not add a platform merely because it exists; this task writes only the supplied persisted PlatformVariant.
 - Do not explain your reasoning. Return publishable copy only in the JSON fields below.
 - ${formatRules}
@@ -170,6 +196,9 @@ ${JSON.stringify({
 
 EXACT DESTINATION-SPECIFIC IDENTITY CONTEXT:
 ${JSON.stringify(identityContext, null, 2)}
+
+BOUNDED LEARNED PREFERENCES (LOWER PRECEDENCE THAN EXPLICIT VOICE / BOUNDARIES):
+${JSON.stringify(styleMemory, null, 2)}
 
 Return ONLY valid JSON.
 For LinkedIn:

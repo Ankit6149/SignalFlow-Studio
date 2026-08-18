@@ -60,7 +60,7 @@ function revisionLabel(history, revisionId, fallbackLength = 10) {
   return entry ? `r${entry.revision.revisionNumber}` : revisionId.slice(-fallbackLength);
 }
 
-export default function RevisionHistoryPanel({ variantId, currentRevisionId, onChanged, context = "plan" }) {
+export default function RevisionHistoryPanel({ variantId, currentRevisionId, onChanged, onStatus = null, context = "plan" }) {
   const [history, setHistory] = useState([]);
   const [selectedId, setSelectedId] = useState(currentRevisionId || "");
   const [busy, setBusy] = useState("");
@@ -70,6 +70,11 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
+
+  const publishStatus = useCallback((status) => {
+    setMessage(status);
+    onStatus?.(status);
+  }, [onStatus]);
 
   const reload = useCallback(async ({ preserveSelection = true } = {}) => {
     if (!variantId) return;
@@ -81,9 +86,9 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
         return next.find((entry) => entry.isCurrent)?.revision.platformVariantRevisionId || next[0]?.revision.platformVariantRevisionId || "";
       });
     } catch (error) {
-      setMessage({ type: "error", text: error?.message || "SignalFlow could not load revision history." });
+      publishStatus({ type: "error", text: error?.message || "SignalFlow could not load revision history." });
     }
-  }, [application, variantId]);
+  }, [application, publishStatus, variantId]);
 
   useEffect(() => {
     setSelectedId(currentRevisionId || "");
@@ -100,20 +105,18 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
 
   async function run(key, operation, successText) {
     setBusy(key);
-    setMessage(null);
+    publishStatus(null);
     try {
       const result = await operation();
       await onChanged?.();
       await reload({ preserveSelection: key !== "restore" });
-      setMessage({ type: "success", text: successText });
+      publishStatus({ type: "success", text: successText });
       return result;
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: error?.code === "stale_revision_context"
-          ? "A newer revision became current after this history view loaded. SignalFlow refreshed the state instead of applying a judgment to unseen content."
-          : (error?.message || "SignalFlow could not update this revision judgment."),
-      });
+      const text = error?.code === "stale_revision_context"
+        ? "A newer revision became current after this history view loaded. SignalFlow refreshed the state instead of applying a judgment to unseen content."
+        : (error?.message || "SignalFlow could not update this revision judgment.");
+      publishStatus({ type: "error", text });
       await onChanged?.();
       await reload({ preserveSelection: false });
       return null;
@@ -160,12 +163,29 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
 
   async function restoreHistorical() {
     if (!selected || !currentRevisionId) return;
+    const sourceRevisionNumber = selected.revision.revisionNumber;
     await run(
       "restore",
-      () => application.restoreRevision(variantId, selected.revision.platformVariantRevisionId, {
-        expectedCurrentRevisionId: currentRevisionId,
-      }),
-      `Revision ${selected.revision.revisionNumber} was restored as a new immutable current child. Run checks on the new revision before approval.`,
+      async () => {
+        const restored = await application.restoreRevision(variantId, selected.revision.platformVariantRevisionId, {
+          expectedCurrentRevisionId: currentRevisionId,
+        });
+        if (context === "today") {
+          try {
+            await application.reviewRevision(variantId, restored.platformVariantRevisionId, {
+              expectedCurrentRevisionId: restored.platformVariantRevisionId,
+            });
+          } catch (error) {
+            const reviewError = new Error(`Revision ${sourceRevisionNumber} was restored as the new current revision, but its evidence/authenticity checks did not finish: ${error?.message || "review unavailable"}. Open Plan or retry checks before approval.`);
+            reviewError.code = "restored_review_failed";
+            throw reviewError;
+          }
+        }
+        return restored;
+      },
+      context === "today"
+        ? `Revision ${sourceRevisionNumber} was restored as a new immutable current child and re-checked. It remains in Today for your judgment.`
+        : `Revision ${sourceRevisionNumber} was restored as a new immutable current child. Run checks on the new revision before approval.`,
     );
   }
 
@@ -191,7 +211,7 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
               aria-pressed={entry.revision.platformVariantRevisionId === selectedId}
               aria-current={entry.isCurrent ? "true" : undefined}
               key={entry.revision.platformVariantRevisionId}
-              onClick={() => { setSelectedId(entry.revision.platformVariantRevisionId); setMessage(null); }}
+              onClick={() => { setSelectedId(entry.revision.platformVariantRevisionId); publishStatus(null); }}
             >
               <span>r{entry.revision.revisionNumber}</span>
               <strong>{entry.isCurrent ? "Current" : originLabel(entry.revision)}</strong>
@@ -247,7 +267,7 @@ export default function RevisionHistoryPanel({ variantId, currentRevisionId, onC
                   <button type="button" className={styles.approve} onClick={approveHistorical} disabled={Boolean(busy) || !selected.review || blocked}>{blocked ? "Blocked" : busy === "approve" ? "Approving…" : "Approve selected"}</button>
                 )}
                 {!selected.approvalValid && selected.decision?.decision !== "rejected" && <button type="button" onClick={rejectHistorical} disabled={Boolean(busy)}>{busy === "reject" ? "Rejecting…" : "Reject selected"}</button>}
-                <button type="button" className={styles.restore} onClick={restoreHistorical} disabled={Boolean(busy)}>{busy === "restore" ? "Restoring…" : "Restore as new current"}</button>
+                <button type="button" className={styles.restore} onClick={restoreHistorical} disabled={Boolean(busy)}>{busy === "restore" ? (context === "today" ? "Restoring + checking…" : "Restoring…") : "Restore as new current"}</button>
               </div>
             )}
 

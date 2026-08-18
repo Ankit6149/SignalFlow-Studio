@@ -271,6 +271,10 @@ test("browser generation/change-request composition and Voice UI keep StyleMemor
   assert.match(changeRequest, /styleMemoryRefs: memoryRefs/);
 
   assert.match(voice, /LEARNED PREFERENCES/);
+  assert.match(voice, /Why SignalFlow learned this/);
+  assert.match(voice, /supportingFeedbackEventIds/);
+  assert.match(voice, /exampleApprovedRevisionIds/);
+  assert.match(voice, /Raw before\/after draft text is not copied into StyleMemory/);
   assert.match(voice, /Confirm/);
   assert.match(voice, /Not always/);
   assert.match(voice, /Forget/);

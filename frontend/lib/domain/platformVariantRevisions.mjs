@@ -81,6 +81,23 @@ function normalizeGenerationProvenance(value = null) {
   });
 }
 
+function normalizeStyleMemoryRefs(value = []) {
+  const refs = [];
+  const seen = new Set();
+  for (const item of Array.isArray(value) ? value : []) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const styleMemoryId = id(item.styleMemoryId, "PlatformVariantRevision.styleMemoryRefs.styleMemoryId");
+    if (seen.has(styleMemoryId)) continue;
+    seen.add(styleMemoryId);
+    refs.push({
+      styleMemoryId,
+      updatedAt: timestamp(item.updatedAt, "PlatformVariantRevision.styleMemoryRefs.updatedAt"),
+    });
+    if (refs.length >= 20) break;
+  }
+  return portableClone(refs);
+}
+
 function normalizeEditProvenance(value = null) {
   if (!value) return null;
   if (typeof value !== "object" || Array.isArray(value)) throw new TypeError("PlatformVariantRevision.editProvenance must be an object.");
@@ -138,6 +155,7 @@ export function normalizePlatformVariantRevision(input = {}) {
     segments,
     inputFingerprint: text(parsed.inputFingerprint, "", 6000),
     identityContextSnapshotId: id(parsed.identityContextSnapshotId, "PlatformVariantRevision.identityContextSnapshotId"),
+    styleMemoryRefs: normalizeStyleMemoryRefs(parsed.styleMemoryRefs),
     generationProvenance,
     editProvenance,
     createdAt,
@@ -156,6 +174,7 @@ export function createPlatformVariantRevision({
   output,
   inputFingerprint,
   identityContextSnapshotId,
+  styleMemoryRefs = [],
   generationProvenance,
   createdAt,
 } = {}) {
@@ -175,6 +194,7 @@ export function createPlatformVariantRevision({
     segments: output?.segments,
     inputFingerprint,
     identityContextSnapshotId,
+    styleMemoryRefs,
     generationProvenance,
     createdAt,
   });
@@ -208,6 +228,7 @@ export function createEditedPlatformVariantRevision({
     segments: segments || [],
     inputFingerprint: `user-edit:${parent.platformVariantRevisionId}:${revisionNumber}`,
     identityContextSnapshotId: parent.identityContextSnapshotId,
+    styleMemoryRefs: parent.styleMemoryRefs,
     editProvenance: { editedBy, editedAt: createdAt },
     createdAt,
   });
@@ -219,6 +240,7 @@ export function createRequestedPlatformVariantRevision({
   revisionNumber,
   output,
   changeRequest,
+  styleMemoryRefs = null,
   generationProvenance,
   createdAt,
 } = {}) {
@@ -241,6 +263,7 @@ export function createRequestedPlatformVariantRevision({
     segments: output?.segments,
     inputFingerprint: `change-request:${parent.platformVariantRevisionId}:${revisionNumber}`,
     identityContextSnapshotId: parent.identityContextSnapshotId,
+    styleMemoryRefs: styleMemoryRefs || parent.styleMemoryRefs,
     generationProvenance,
     createdAt,
   });

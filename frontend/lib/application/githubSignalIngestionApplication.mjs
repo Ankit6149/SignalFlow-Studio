@@ -1,0 +1,84 @@
+import { createContentSignalApplication } from "./contentSignalApplication.mjs";
+import { createSourceConnectionApplication } from "./sourceConnectionApplication.mjs";
+import { SOURCE_CONNECTION_STATUSES } from "../domain/sourceConnections.mjs";
+import { normalizeGithubWorkEvent } from "../integrations/github/githubEvents.mjs";
+
+export function createGithubSignalIngestionApplication({
+  sourceConnectionRepository,
+  contentSignalRepository,
+  sourceArtifactRepository = null,
+  assetRepository = null,
+  workspaceId = "local-personal",
+  clock,
+  idService,
+} = {}) {
+  const connections = createSourceConnectionApplication({
+    sourceConnectionRepository,
+    workspaceId,
+    clock,
+    idService,
+  });
+  const signals = createContentSignalApplication({
+    contentSignalRepository,
+    sourceArtifactRepository,
+    assetRepository,
+    workspaceId,
+    actorRef: "github-webhook",
+    clock,
+    idService,
+  });
+
+  async function resolveAuthorizedConnection(event) {
+    const candidates = await connections.listConnections({ provider: "github", includeRevoked: true });
+    for (const connection of candidates) {
+      if (connection.status !== SOURCE_CONNECTION_STATUSES.ACTIVE) continue;
+      if (String(connection.installationRef || "") !== String(event.installationRef)) continue;
+      const resource = connection.resourceScopes.find((item) => item.resourceRef === event.resourceRef && item.enabled);
+      if (!resource) continue;
+      if (!resource.eventFamilies.includes(event.eventFamily)) continue;
+      return { connection, resource };
+    }
+    return null;
+  }
+
+  async function ingest({ eventName, deliveryId, payload } = {}) {
+    const event = normalizeGithubWorkEvent({ eventName, deliveryId, payload });
+    if (!event) {
+      return Object.freeze({ status: "ignored_unsupported", signal: null, shouldEvaluateOpportunity: false });
+    }
+
+    const authorized = await resolveAuthorizedConnection(event);
+    if (!authorized) {
+      const error = new Error("GitHub event is not authorized for an active SourceConnection resource scope.");
+      error.code = "github_source_not_authorized";
+      throw error;
+    }
+
+    const result = await signals.createExternalSignal({
+      projectId: authorized.resource.projectId,
+      sourceType: event.sourceType,
+      sourceConnectionId: authorized.connection.sourceConnectionId,
+      externalEventRef: event.externalEventRef,
+      occurredAt: event.occurredAt,
+      headline: event.headline,
+      summary: event.summary,
+      signalKind: event.signalKind,
+      importanceHints: event.importanceHints,
+      boundaryNote: "GitHub event metadata is a signal, not complete claim evidence. Gather only bounded authorized evidence before production.",
+      actorRef: "github-webhook",
+    });
+
+    await connections.markEventReceived(authorized.connection.sourceConnectionId, event.occurredAt);
+
+    return Object.freeze({
+      status: result.created ? "created" : "duplicate",
+      signal: result.signal,
+      noiseDecision: event.noiseDecision,
+      shouldEvaluateOpportunity: !event.noiseDecision.deprioritize,
+      eventFamily: event.eventFamily,
+      providerResourceRef: event.providerResourceRef,
+    });
+  }
+
+  return { ingest };
+}

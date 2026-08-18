@@ -323,6 +323,7 @@ export function styleObservationsFromExplicitReason(reason) {
   const value = String(reason || "").toLowerCase();
   const observations = [];
   const push = (input) => observations.push(normalizeStyleObservation(input));
+  if (/more direct|direct opening|get to the point|too indirect/.test(value)) push({ hypothesisKey: "opening.more_direct", hypothesis: "Prefer direct openings that get to the point quickly.", category: STYLE_MEMORY_CATEGORIES.OPENING, weight: 0.76 });
   if (/less (corporate|formal)|too corporate/.test(value)) push({ hypothesisKey: "tone.less_corporate", hypothesis: "Prefer a less corporate, more natural tone.", category: STYLE_MEMORY_CATEGORIES.TONE, weight: 0.82 });
   if (/less (generic|vague)|too generic|more specific/.test(value)) push({ hypothesisKey: "specificity.more_concrete", hypothesis: "Prefer concrete, specific language over generic phrasing.", category: STYLE_MEMORY_CATEGORIES.SPECIFICITY, weight: 0.82 });
   if (/less promotional|too promotional|less hype|no hype/.test(value)) push({ hypothesisKey: "tone.restrained_over_promotional", hypothesis: "Prefer restrained, concrete language over promotional hype.", category: STYLE_MEMORY_CATEGORIES.PROMOTION, weight: 0.88 });

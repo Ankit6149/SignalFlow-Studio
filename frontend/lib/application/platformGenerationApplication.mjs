@@ -37,6 +37,13 @@ function activeIdentityRefs(bundle = {}) {
   );
 }
 
+function styleMemoryRefs(memory = []) {
+  return (Array.isArray(memory) ? memory : []).slice(0, 20).map((item) => ({
+    styleMemoryId: item.styleMemoryId,
+    updatedAt: item.updatedAt,
+  }));
+}
+
 function compactFingerprint(value) {
   const source = stableStringify(value);
   let left = 0x811c9dc5;
@@ -51,7 +58,7 @@ function compactFingerprint(value) {
   return `sf-cache-v1-${left.toString(16).padStart(8, "0")}${right.toString(16).padStart(8, "0")}-${source.length}`;
 }
 
-function generationFingerprint({ strategy, contentPiece, variant, sourceSignal, identityBundle }) {
+function generationFingerprint({ strategy, contentPiece, variant, sourceSignal, identityBundle, styleMemory = [] }) {
   return compactFingerprint({
     narrativeStrategyId: strategy.narrativeStrategyId,
     strategyRevision: strategy.strategyRevision,
@@ -72,6 +79,7 @@ function generationFingerprint({ strategy, contentPiece, variant, sourceSignal, 
       privacyClassification: sourceSignal.privacyClassification,
     },
     identityProfileRefs: activeIdentityRefs(identityBundle),
+    styleMemoryRefs: styleMemoryRefs(styleMemory),
   });
 }
 
@@ -92,6 +100,7 @@ export function createPlatformGenerationApplication({
   contentOpportunityRepository,
   contentSignalRepository,
   identityApplication,
+  styleMemoryApplication = null,
   inferenceAdapter,
   workspaceId = "local-personal",
   clock = createSystemClock(),
@@ -106,6 +115,9 @@ export function createPlatformGenerationApplication({
   const ownerWorkspaceId = required(workspaceId, "workspaceId");
   if (!identityApplication || typeof identityApplication.getActiveBundle !== "function" || typeof identityApplication.createIdentityContextSnapshot !== "function") {
     throw new TypeError("Platform generation requires the Identity application service.");
+  }
+  if (styleMemoryApplication && typeof styleMemoryApplication.relevantMemory !== "function") {
+    throw new TypeError("Platform generation StyleMemory integration requires relevantMemory().");
   }
 
   function assertOwned(record) {
@@ -183,8 +195,11 @@ export function createPlatformGenerationApplication({
       error.code = "voice_profile_required";
       throw error;
     }
+    const styleMemory = styleMemoryApplication
+      ? await styleMemoryApplication.relevantMemory({ platform: variant.destination, projectId: strategy.projectId || null, limit: 8 })
+      : [];
 
-    const inputFingerprint = generationFingerprint({ strategy, contentPiece, variant, sourceSignal, identityBundle });
+    const inputFingerprint = generationFingerprint({ strategy, contentPiece, variant, sourceSignal, identityBundle, styleMemory });
     const current = await currentRevisionForVariant(variant);
     if (!refresh && current?.inputFingerprint === inputFingerprint && current.strategyRevision === strategy.strategyRevision) return current;
 
@@ -198,6 +213,7 @@ export function createPlatformGenerationApplication({
         variant.adaptationIntent ? `Destination adaptation: ${variant.adaptationIntent}` : "",
       ].filter(Boolean),
     });
+    const memoryRefs = styleMemoryRefs(styleMemory);
 
     const task = createInferenceTask({
       taskId: appIds.create("task"),
@@ -210,8 +226,9 @@ export function createPlatformGenerationApplication({
         variant.platformVariantId,
         sourceSignal.signalId,
         identityContext.identityContextSnapshotId,
+        ...memoryRefs.map((ref) => ref.styleMemoryId),
       ],
-      requirements: ["structured_output", "destination_native_copy", "identity_context", "exact_strategy_revision"],
+      requirements: ["structured_output", "destination_native_copy", "identity_context", "exact_strategy_revision", "bounded_style_memory"],
       createdAt: now,
     });
 
@@ -225,6 +242,7 @@ export function createPlatformGenerationApplication({
           variant,
           sourceSignal: minimizedSignal(sourceSignal),
           identityContext,
+          styleMemory,
           dataClassification: sourceSignal.privacyClassification,
         },
       });
@@ -241,6 +259,7 @@ export function createPlatformGenerationApplication({
         output: result.output,
         inputFingerprint,
         identityContextSnapshotId: identityContext.identityContextSnapshotId,
+        styleMemoryRefs: memoryRefs,
         generationProvenance: {
           taskId: task.taskId,
           provider: result.provenance?.provider || "unknown",

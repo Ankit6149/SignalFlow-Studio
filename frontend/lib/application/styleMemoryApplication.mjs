@@ -79,6 +79,13 @@ export function createStyleMemoryApplication({
       .sort((left, right) => right.confidence - left.confidence || right.updatedAt.localeCompare(left.updatedAt));
   }
 
+  async function requireHypothesis(styleMemoryId) {
+    const id = required(styleMemoryId, "styleMemoryId");
+    const stored = await repository.get(id);
+    if (!stored || stored.kind !== "StyleMemoryHypothesis") throw new Error(`StyleMemoryHypothesis ${id} does not exist.`);
+    return assertOwned(normalizeStyleMemoryHypothesis(stored));
+  }
+
   async function existingEvent(candidate) {
     const key = eventKey(candidate);
     return (await listFeedbackEvents()).find((event) => eventKey(event) === key) || null;
@@ -230,17 +237,40 @@ export function createStyleMemoryApplication({
   }
 
   async function confirmHypothesis(styleMemoryId) {
-    const stored = await repository.get(required(styleMemoryId, "styleMemoryId"));
-    if (!stored || stored.kind !== "StyleMemoryHypothesis") throw new Error(`StyleMemoryHypothesis ${styleMemoryId} does not exist.`);
-    const current = assertOwned(normalizeStyleMemoryHypothesis(stored));
+    const current = await requireHypothesis(styleMemoryId);
     const now = appClock.now();
     return repository.upsert(normalizeStyleMemoryHypothesis({ ...current, status: STYLE_MEMORY_STATUSES.USER_CONFIRMED, confidence: 1, lastEvaluatedAt: now, updatedAt: now }));
   }
 
+  async function editHypothesis(styleMemoryId, hypothesis) {
+    const current = await requireHypothesis(styleMemoryId);
+    const nextText = required(hypothesis, "hypothesis");
+    if (nextText.length > 600) throw new TypeError("hypothesis exceeds 600 characters.");
+    const now = appClock.now();
+    return repository.upsert(normalizeStyleMemoryHypothesis({
+      ...current,
+      hypothesis: nextText,
+      status: STYLE_MEMORY_STATUSES.USER_CONFIRMED,
+      confidence: 1,
+      lastEvaluatedAt: now,
+      updatedAt: now,
+    }));
+  }
+
+  async function weakenHypothesis(styleMemoryId) {
+    const current = await requireHypothesis(styleMemoryId);
+    const now = appClock.now();
+    return repository.upsert(normalizeStyleMemoryHypothesis({
+      ...current,
+      status: STYLE_MEMORY_STATUSES.CANDIDATE,
+      confidence: Math.min(current.confidence, 0.35),
+      lastEvaluatedAt: now,
+      updatedAt: now,
+    }));
+  }
+
   async function rejectHypothesis(styleMemoryId) {
-    const stored = await repository.get(required(styleMemoryId, "styleMemoryId"));
-    if (!stored || stored.kind !== "StyleMemoryHypothesis") throw new Error(`StyleMemoryHypothesis ${styleMemoryId} does not exist.`);
-    const current = assertOwned(normalizeStyleMemoryHypothesis(stored));
+    const current = await requireHypothesis(styleMemoryId);
     const now = appClock.now();
     return repository.upsert(normalizeStyleMemoryHypothesis({ ...current, status: STYLE_MEMORY_STATUSES.REJECTED, lastEvaluatedAt: now, updatedAt: now }));
   }
@@ -276,6 +306,7 @@ export function createStyleMemoryApplication({
         confidence: item.confidence,
         evidenceCount: item.evidenceCount,
         status: item.status,
+        updatedAt: item.updatedAt,
       }));
     return scored;
   }
@@ -290,6 +321,8 @@ export function createStyleMemoryApplication({
     recordRegeneration,
     recordExplicitPreference,
     confirmHypothesis,
+    editHypothesis,
+    weakenHypothesis,
     rejectHypothesis,
     forgetHypothesis,
     resetHypotheses,

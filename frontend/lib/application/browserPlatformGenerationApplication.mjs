@@ -31,11 +31,20 @@ export function createBrowserPlatformGenerationApplication({
     clock,
     idService: sharedIds,
   });
+  const styleMemoryApplication = createBrowserStyleMemoryApplication({
+    getStorage,
+    key: styleMemoryKey,
+    workspaceId,
+    userId,
+    clock,
+    idService: sharedIds,
+  });
   const generationApplication = createPlatformGenerationApplication({
     contentPlanningRepository: planningRepository,
     contentOpportunityRepository: createBrowserContentOpportunityRepository({ getStorage, key: opportunityKey }),
     contentSignalRepository: createBrowserContentSignalRepository({ getStorage, key: signalKey }),
     identityApplication,
+    styleMemoryApplication,
     inferenceAdapter: createBrowserInferenceAdapter({ fetchImpl }),
     workspaceId,
     clock,
@@ -44,14 +53,7 @@ export function createBrowserPlatformGenerationApplication({
   return withStyleLearningGeneration({
     generationApplication,
     contentPlanningRepository: planningRepository,
-    styleMemoryApplication: createBrowserStyleMemoryApplication({
-      getStorage,
-      key: styleMemoryKey,
-      workspaceId,
-      userId,
-      clock,
-      idService: sharedIds,
-    }),
+    styleMemoryApplication,
     clock,
   });
 }

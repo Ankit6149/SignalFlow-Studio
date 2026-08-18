@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserIdentityApplication } from "../lib/application/browserIdentityApplication.mjs";
+import { createBrowserStyleMemoryApplication } from "../lib/application/browserStyleMemoryApplication.mjs";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./VoiceWorkspace.module.css";
 
@@ -62,6 +63,29 @@ function versionLabel(record) {
   return record ? `v${record.version}` : "Not set";
 }
 
+function scopeLabel(scope = {}) {
+  if (scope.type === "platform") return scope.platform === "x" ? "X" : "LinkedIn";
+  if (scope.type === "project") return "Project";
+  return "Global";
+}
+
+function statusLabel(status) {
+  if (status === "user_confirmed") return "Confirmed";
+  if (status === "active") return "Active";
+  if (status === "rejected") return "Rejected";
+  if (status === "superseded") return "Superseded";
+  return "Candidate";
+}
+
+function compactRefs(values) {
+  return (Array.isArray(values) ? values : []).slice(0, 4);
+}
+
+function shortRef(value) {
+  const normalized = String(value || "");
+  return normalized.length <= 22 ? normalized : `…${normalized.slice(-18)}`;
+}
+
 export default function VoiceWorkspace() {
   const [form, setForm] = useState(defaultForm);
   const [profile, setProfile] = useState(null);
@@ -69,6 +93,10 @@ export default function VoiceWorkspace() {
   const [message, setMessage] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
   const [snapshotPlatform, setSnapshotPlatform] = useState("linkedin");
+  const [hypotheses, setHypotheses] = useState([]);
+  const [memoryBusyId, setMemoryBusyId] = useState(null);
+  const [editingMemoryId, setEditingMemoryId] = useState(null);
+  const [editingMemoryText, setEditingMemoryText] = useState("");
 
   const application = useMemo(() => createBrowserIdentityApplication({
     getStorage: () => window.localStorage,
@@ -76,15 +104,25 @@ export default function VoiceWorkspace() {
     userId: LOCAL_USER_ID,
   }), []);
 
+  const styleApplication = useMemo(() => createBrowserStyleMemoryApplication({
+    getStorage: () => window.localStorage,
+    workspaceId: LOCAL_WORKSPACE_ID,
+    userId: LOCAL_USER_ID,
+  }), []);
+
   const reload = useCallback(async () => {
     try {
-      const current = await application.getMinimalProfile();
+      const [current, learned] = await Promise.all([
+        application.getMinimalProfile(),
+        styleApplication.listHypotheses(),
+      ]);
       setProfile(current);
       setForm(formFromProfile(current));
+      setHypotheses(learned);
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "SignalFlow could not load your Voice profile." });
     }
-  }, [application]);
+  }, [application, styleApplication]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -121,14 +159,59 @@ export default function VoiceWorkspace() {
     }
   }
 
+  async function runMemoryAction(styleMemoryId, operation, successText) {
+    setMemoryBusyId(styleMemoryId);
+    setMessage(null);
+    try {
+      await operation();
+      setEditingMemoryId(null);
+      setEditingMemoryText("");
+      setHypotheses(await styleApplication.listHypotheses());
+      setMessage({ type: "success", text: successText });
+    } catch (error) {
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not update this learned preference." });
+    } finally {
+      setMemoryBusyId(null);
+    }
+  }
+
+  function startMemoryEdit(item) {
+    setEditingMemoryId(item.styleMemoryId);
+    setEditingMemoryText(item.hypothesis);
+  }
+
+  async function saveMemoryEdit(item) {
+    await runMemoryAction(
+      item.styleMemoryId,
+      () => styleApplication.editHypothesis(item.styleMemoryId, editingMemoryText),
+      "Learned preference edited and explicitly confirmed. Explicit Voice and boundaries still outrank it.",
+    );
+  }
+
+  async function resetLearning() {
+    setMemoryBusyId("reset");
+    setMessage(null);
+    try {
+      const count = await styleApplication.resetHypotheses();
+      setHypotheses([]);
+      setEditingMemoryId(null);
+      setEditingMemoryText("");
+      setMessage({ type: "success", text: `Reset ${count} learned preference${count === 1 ? "" : "s"}. Review/campaign history was not deleted.` });
+    } catch (error) {
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not reset style learning." });
+    } finally {
+      setMemoryBusyId(null);
+    }
+  }
+
   return (
-    <WorkspaceShell activeItem="voice" statusLabel="Explicit identity · browser-local" statusTone="ready">
+    <WorkspaceShell activeItem="voice" statusLabel="Explicit identity + explainable learning · browser-local" statusTone="ready">
       <main className={styles.page} id="workspace-content">
         <header className={styles.heading}>
           <div>
             <p className={styles.eyebrow}>VOICE · EXPLICIT IDENTITY</p>
             <h1>Teach SignalFlow what should remain recognizably you.</h1>
-            <p>This is not a tone preset. These are explicit, versioned instructions about identity, perception, voice and boundaries that future strategy and generation must cite.</p>
+            <p>This is not a tone preset. These are explicit, versioned instructions about identity, perception, voice and boundaries. Learned preferences sit below them and remain visible and controllable.</p>
           </div>
           <div className={styles.versionStrip} aria-label="Current profile versions">
             <span>Identity <b>{versionLabel(profile?.identity)}</b></span>
@@ -176,7 +259,7 @@ export default function VoiceWorkspace() {
               <div className={styles.sectionIntro}>
                 <span>03 · VOICE</span>
                 <h2>What makes AI-written content stop sounding like you?</h2>
-                <p>Write rules in plain language. SignalFlow will later learn from edits separately; explicit rules always outrank learned guesses.</p>
+                <p>Write rules in plain language. Explicit rules always outrank learned preferences.</p>
               </div>
               <div className={styles.fields}>
                 <div className={styles.twoCol}>
@@ -196,7 +279,7 @@ export default function VoiceWorkspace() {
               <div className={styles.sectionIntro}>
                 <span>04 · BOUNDARIES</span>
                 <h2>What must SignalFlow never invent, expose or turn into a style?</h2>
-                <p>Explicit boundaries have higher precedence than campaign instructions, platform conventions, or later learned preferences.</p>
+                <p>Explicit boundaries have higher precedence than campaign instructions, platform conventions, or learned preferences.</p>
               </div>
               <div className={styles.fields}>
                 <div className={styles.twoCol}>
@@ -221,6 +304,72 @@ export default function VoiceWorkspace() {
               </div>
             </section>
 
+            <section className={styles.section}>
+              <div className={styles.sectionIntro}>
+                <span>06 · LEARNED PREFERENCES</span>
+                <h2>What SignalFlow has inferred from your real corrections.</h2>
+                <p>These are explainable hypotheses, not a hidden personality profile. Candidate patterns need evidence; confirmed patterns still remain below explicit Voice and boundaries.</p>
+              </div>
+              <div className={styles.learnedPanel}>
+                <div className={styles.learnedHeader}>
+                  <div><strong>{hypotheses.length} learned preference{hypotheses.length === 1 ? "" : "s"}</strong><span>Reset removes style hypotheses only. It does not delete campaign, approval, or publication history.</span></div>
+                  <button type="button" className={styles.quietButton} onClick={resetLearning} disabled={memoryBusyId === "reset" || hypotheses.length === 0}>{memoryBusyId === "reset" ? "Resetting…" : "Reset learning"}</button>
+                </div>
+                {hypotheses.length === 0 ? (
+                  <div className={styles.learnedEmpty}>No learned preferences yet. SignalFlow will only create them from eligible review feedback; one isolated edit normally remains a candidate rather than becoming a rule.</div>
+                ) : (
+                  <div className={styles.memoryList}>
+                    {hypotheses.map((item) => {
+                      const editing = editingMemoryId === item.styleMemoryId;
+                      const actionBusy = memoryBusyId === item.styleMemoryId;
+                      const supporting = compactRefs(item.supportingFeedbackEventIds);
+                      const contradicting = compactRefs(item.contradictingFeedbackEventIds);
+                      const approvedExamples = compactRefs(item.exampleApprovedRevisionIds);
+                      const rejectedExamples = compactRefs(item.exampleRejectedRevisionIds);
+                      return (
+                        <article className={styles.memoryItem} key={item.styleMemoryId}>
+                          <div className={styles.memoryMeta}>
+                            <span>{scopeLabel(item.scope)}</span>
+                            <span>{statusLabel(item.status)}</span>
+                            <span>{Math.round(item.confidence * 100)}% confidence</span>
+                            <span>{item.evidenceCount} evidence</span>
+                          </div>
+                          {editing ? (
+                            <label className={styles.memoryEdit}><span>Edit learned preference</span><textarea rows={3} value={editingMemoryText} onChange={(event) => setEditingMemoryText(event.target.value)} maxLength={600} /></label>
+                          ) : <p className={styles.memoryText}>{item.hypothesis}</p>}
+                          <details className={styles.memoryEvidence}>
+                            <summary>Why SignalFlow learned this</summary>
+                            <p>Only safe immutable references are shown here. Raw before/after draft text is not copied into StyleMemory.</p>
+                            <div className={styles.evidenceGrid}>
+                              <div><span>Supporting feedback</span><b>{item.supportingFeedbackEventIds?.length || 0}</b>{supporting.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                              <div><span>Contradicting feedback</span><b>{item.contradictingFeedbackEventIds?.length || 0}</b>{contradicting.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                              <div><span>Approved examples</span><b>{item.exampleApprovedRevisionIds?.length || 0}</b>{approvedExamples.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                              <div><span>Rejected examples</span><b>{item.exampleRejectedRevisionIds?.length || 0}</b>{rejectedExamples.map((ref) => <code key={ref} title={ref}>{shortRef(ref)}</code>)}</div>
+                            </div>
+                          </details>
+                          <div className={styles.memoryActions}>
+                            {editing ? (
+                              <>
+                                <button type="button" onClick={() => saveMemoryEdit(item)} disabled={actionBusy || !editingMemoryText.trim()}>Save + confirm</button>
+                                <button type="button" className={styles.quietButton} onClick={() => { setEditingMemoryId(null); setEditingMemoryText(""); }} disabled={actionBusy}>Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button type="button" onClick={() => runMemoryAction(item.styleMemoryId, () => styleApplication.confirmHypothesis(item.styleMemoryId), "Learned preference explicitly confirmed.")} disabled={actionBusy || item.status === "user_confirmed"}>Confirm</button>
+                                <button type="button" className={styles.quietButton} onClick={() => startMemoryEdit(item)} disabled={actionBusy}>Edit</button>
+                                <button type="button" className={styles.quietButton} onClick={() => runMemoryAction(item.styleMemoryId, () => styleApplication.weakenHypothesis(item.styleMemoryId), "Preference weakened to a candidate. More consistent evidence is required before it becomes active again.")} disabled={actionBusy}>Not always</button>
+                                <button type="button" className={styles.dangerButton} onClick={() => runMemoryAction(item.styleMemoryId, () => styleApplication.forgetHypothesis(item.styleMemoryId), "Learned preference forgotten. Historical campaign/review records remain intact.")} disabled={actionBusy}>Forget</button>
+                              </>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+
             <div className={styles.saveBar}>
               <div><strong>Save explicit profile</strong><span>Creates new versions; it does not erase the previous profile history.</span></div>
               <button type="submit" disabled={busy}>{busy ? "Saving…" : "Save Voice"}</button>
@@ -228,7 +377,7 @@ export default function VoiceWorkspace() {
           </form>
 
           <aside className={styles.inspector}>
-            <div className={styles.inspectorHead}><span>GENERATION CONTEXT</span><strong>See what a future draft will inherit.</strong><p>A snapshot freezes exact profile versions so changing Voice tomorrow does not rewrite how an older draft was produced.</p></div>
+            <div className={styles.inspectorHead}><span>GENERATION CONTEXT</span><strong>See what a future draft will inherit.</strong><p>A snapshot freezes exact explicit profile versions. Learned preferences are resolved separately at generation time and their safe IDs/timestamps are recorded on the exact draft revision.</p></div>
             <div className={styles.snapshotControls}>
               <label><span>Preview for</span><select value={snapshotPlatform} onChange={(event) => setSnapshotPlatform(event.target.value)}><option value="linkedin">LinkedIn</option><option value="x">X</option></select></label>
               <button type="button" onClick={previewSnapshot} disabled={busy}>Resolve snapshot</button>
@@ -240,7 +389,7 @@ export default function VoiceWorkspace() {
               <li><b>3</b><span>Campaign instruction</span></li>
               <li><b>4</b><span>Platform expression</span></li>
               <li><b>5</b><span>Global identity + voice</span></li>
-              <li className={styles.future}><b>6</b><span>Learned preference · later</span></li>
+              <li><b>6</b><span>Learned preference · bounded</span></li>
             </ol>
 
             {snapshot ? (
@@ -250,10 +399,10 @@ export default function VoiceWorkspace() {
                 <div className={styles.snapshotRefs}>
                   {Object.entries(snapshot.profileRefs || {}).map(([key, ref]) => <p key={key}><span>{key}</span><b>v{ref.version}</b></p>)}
                 </div>
-                <small>{snapshot.effectiveRules.length} ordered rules available to strategy/generation.</small>
+                <small>{snapshot.effectiveRules.length} ordered explicit rules available to strategy/generation. Learned preferences remain a separate lower-precedence input.</small>
               </div>
             ) : (
-              <div className={styles.snapshotEmpty}>Save your profile, then resolve a context snapshot to inspect the versioned generation input.</div>
+              <div className={styles.snapshotEmpty}>Save your profile, then resolve a context snapshot to inspect the versioned explicit generation input.</div>
             )}
           </aside>
         </div>

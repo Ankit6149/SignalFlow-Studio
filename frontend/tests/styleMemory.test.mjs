@@ -120,7 +120,7 @@ test("explicit owner preference can be user-confirmed immediately and remains sc
   assert.equal(result.hypotheses[0].scope.platform, "linkedin");
 });
 
-test("bounded relevant memory excludes another platform and returns compact snapshots rather than full evidence records", async () => {
+test("bounded relevant memory excludes another platform and returns compact snapshots with safe version provenance", async () => {
   const { application } = fixture();
   await application.recordExplicitPreference({ reason: "Use less promotional language", platform: "linkedin" });
   await application.recordExplicitPreference({ reason: "Make it shorter", platform: "x" });
@@ -130,7 +130,8 @@ test("bounded relevant memory excludes another platform and returns compact snap
   assert.equal(linkedin[0].scope.platform, "linkedin");
   assert.equal(Object.hasOwn(linkedin[0], "supportingFeedbackEventIds"), false);
   assert.equal(Object.hasOwn(linkedin[0], "exampleApprovedRevisionIds"), false);
-  assert.equal(Object.hasOwn(linkedin[0], "updatedAt"), false);
+  assert.equal(Object.hasOwn(linkedin[0], "updatedAt"), true);
+  assert.match(linkedin[0].updatedAt, /^2026-08-18T/);
 
   const x = await application.relevantMemory({ platform: "x", limit: 1 });
   assert.equal(x.length, 1);

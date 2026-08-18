@@ -25,12 +25,21 @@ export function createBrowserPlatformChangeRequestApplication({
 } = {}) {
   const sharedIds = idService || createSystemIdService("signalflow");
   const planningRepository = createBrowserContentPlanningRepository({ getStorage, key: planningKey });
+  const styleMemoryApplication = createBrowserStyleMemoryApplication({
+    getStorage,
+    key: styleMemoryKey,
+    workspaceId,
+    userId,
+    clock,
+    idService: sharedIds,
+  });
   const changeRequestApplication = createPlatformChangeRequestApplication({
     contentPlanningRepository: planningRepository,
     contentReviewRepository: createBrowserContentReviewRepository({ getStorage, key: reviewKey }),
     contentOpportunityRepository: createBrowserContentOpportunityRepository({ getStorage, key: opportunityKey }),
     contentSignalRepository: createBrowserContentSignalRepository({ getStorage, key: signalKey }),
     identityRepository: createBrowserIdentityRepository({ getStorage, key: identityKey }),
+    styleMemoryApplication,
     inferenceAdapter: createBrowserInferenceAdapter({ fetchImpl }),
     workspaceId,
     userId,
@@ -40,14 +49,7 @@ export function createBrowserPlatformChangeRequestApplication({
   return withStyleLearningChangeRequests({
     changeRequestApplication,
     contentPlanningRepository: planningRepository,
-    styleMemoryApplication: createBrowserStyleMemoryApplication({
-      getStorage,
-      key: styleMemoryKey,
-      workspaceId,
-      userId,
-      clock,
-      idService: sharedIds,
-    }),
+    styleMemoryApplication,
     clock,
   });
 }

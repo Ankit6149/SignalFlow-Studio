@@ -36,6 +36,28 @@ function conciseReview(reviewInput = null) {
   };
 }
 
+function safeStyleMemory(input = []) {
+  return (Array.isArray(input) ? input : [])
+    .map((item) => {
+      const source = record(item);
+      const styleMemoryId = text(source.styleMemoryId, 240);
+      const hypothesis = text(source.hypothesis, 600);
+      if (!styleMemoryId || !hypothesis) return null;
+      return {
+        styleMemoryId,
+        hypothesis,
+        category: text(source.category, 80),
+        scope: record(source.scope),
+        confidence: Number.isFinite(Number(source.confidence)) ? Number(source.confidence) : 0,
+        evidenceCount: Number.isFinite(Number(source.evidenceCount)) ? Number(source.evidenceCount) : 0,
+        status: text(source.status, 40),
+        updatedAt: text(source.updatedAt, 80),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
 export function normalizePlatformRevisionRequestInput(input = {}) {
   const parentRevision = record(input.parentRevision);
   const variant = record(input.variant);
@@ -43,6 +65,7 @@ export function normalizePlatformRevisionRequestInput(input = {}) {
   const contentPiece = record(input.contentPiece);
   const sourceSignal = record(input.sourceSignal);
   const identityContext = record(input.identityContext);
+  const styleMemory = safeStyleMemory(input.styleMemory);
   const changeRequest = text(input.changeRequest, 2000);
   const dataClassification = text(input.dataClassification, 80).toLowerCase();
   const review = conciseReview(input.review);
@@ -69,6 +92,7 @@ export function normalizePlatformRevisionRequestInput(input = {}) {
     contentPiece,
     sourceSignal,
     identityContext,
+    styleMemory,
     changeRequest,
     review,
     dataClassification,
@@ -77,7 +101,7 @@ export function normalizePlatformRevisionRequestInput(input = {}) {
 
 export function buildPlatformRevisionRequestPrompt(input = {}) {
   const normalized = normalizePlatformRevisionRequestInput(input);
-  const { parentRevision, strategy, contentPiece, sourceSignal, identityContext, changeRequest, review } = normalized;
+  const { parentRevision, strategy, contentPiece, sourceSignal, identityContext, styleMemory, changeRequest, review } = normalized;
   const destination = parentRevision.destination;
   const formatRule = destination === "x"
     ? parentRevision.format === "thread"
@@ -97,9 +121,12 @@ NON-NEGOTIABLE RULES:
 - Preserve the approved NarrativeStrategy's core idea and audience takeaway.
 - Do not invent or add metrics, customers, dates, integrations, outcomes, personal experiences, launch state, or other unsupported facts.
 - Explicit boundaries and project prohibited claims outrank the requested change.
+- Explicit campaign instructions and platform/global Voice rules outrank learned preferences.
+- Learned preferences are bounded guidance only; ignore them when they conflict with the exact Voice snapshot, boundaries, strategy, or this user change request.
 - Preserve the exact destination-specific Identity/Voice context unless the request asks for a compatible stylistic adjustment.
 - ${formatRule}
 - Do not change destination.
+- Do not mention learned-memory IDs or internal SignalFlow state.
 - Do not explain your reasoning or list what you changed.
 - Return ONLY the revised publishable copy in the required JSON structure.
 
@@ -150,6 +177,9 @@ ${JSON.stringify({
     campaignInstructions: Array.isArray(identityContext.campaignInstructions) ? identityContext.campaignInstructions.slice(0, 40) : [],
     effectiveRules: Array.isArray(identityContext.effectiveRules) ? identityContext.effectiveRules.slice(0, 100) : [],
   }, null, 2)}
+
+BOUNDED LEARNED PREFERENCES (LOWER PRECEDENCE THAN EXPLICIT CONTEXT):
+${JSON.stringify(styleMemory, null, 2)}
 
 ${review ? `CURRENT USER-VISIBLE REVIEW FINDINGS (context only; do not invent additional issues):\n${JSON.stringify(review, null, 2)}\n` : ""}
 Return ONLY valid JSON using the SAME format as the parent revision.

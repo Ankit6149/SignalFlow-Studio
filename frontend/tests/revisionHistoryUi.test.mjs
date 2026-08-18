@@ -68,7 +68,7 @@ test("revision-history styling remains compact, responsive and keyboard-focus vi
   assert.match(css, /\.rail\s*\{/);
   assert.match(css, /overflow-x:\s*auto/);
   assert.match(css, /\.compare\s*\{/);
-  assert.match(css, /@media \(max-width: 720px\)/);
+  assert.match(css, /@media \(max-width: 640px\)/);
   assert.match(css, /:focus-visible/);
   assert.doesNotMatch(css, /box-shadow:\s*0\s+\d+px\s+\d+px/);
 });

@@ -38,6 +38,16 @@ const samples = {
     status: "proposed",
     evaluationProvenance: { taskId: "task-1", provider: "test" },
   },
+  ProjectContextSnapshot: {
+    projectContextSnapshotId: "project-context-1",
+    workspaceId: "workspace-1",
+    projectId: "project-1",
+    version: 1,
+    fingerprint: "sf-project-context-v1-0123456789abcdef",
+    privacyClass: "workspace_private",
+    synthesis: { projectName: "Project" },
+    createdAt: "2026-08-18T11:00:00.000Z",
+  },
   NarrativeStrategy: {
     narrativeStrategyId: "strategy-1",
     workspaceId: "workspace-1",

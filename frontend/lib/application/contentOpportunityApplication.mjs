@@ -18,10 +18,13 @@ import {
   normalizeContentSignal,
   transitionContentSignal,
 } from "../domain/contentSignals.mjs";
+import { normalizeProjectContextSnapshot } from "../domain/projectContexts.mjs";
 import {
   createInferenceTask,
   INFERENCE_TASK_TYPES,
+  minimizeProjectContextForOpportunity,
   minimizeSignalForOpportunity,
+  mostRestrictivePrivacyClassification,
 } from "../inference/inferenceTasks.mjs";
 
 function normalizeWorkspaceId(value) {
@@ -80,6 +83,18 @@ export function createContentOpportunityApplication({
     return signal;
   }
 
+  function normalizeProjectContextForSignal(signal, input) {
+    if (!input) return null;
+    const projectContext = normalizeProjectContextSnapshot(input);
+    if (projectContext.workspaceId !== ownerWorkspaceId || projectContext.workspaceId !== signal.workspaceId) {
+      throw new Error("ProjectContextSnapshot belongs to another workspace.");
+    }
+    if (!signal.projectId || projectContext.projectId !== signal.projectId) {
+      throw new Error("ProjectContextSnapshot does not match the ContentSignal project.");
+    }
+    return projectContext;
+  }
+
   async function requireOpportunity(opportunityId) {
     const stored = await opportunities.get(String(opportunityId || "").trim());
     if (!stored) throw new Error(`ContentOpportunity ${opportunityId || "missing"} does not exist.`);
@@ -105,18 +120,20 @@ export function createContentOpportunityApplication({
     return stored ? assertOwnedOpportunity(stored) : null;
   }
 
-  async function findCurrentForSignal(signalId) {
+  async function findCurrentForSignal(signalId, { projectContext = null } = {}) {
     const signal = await requireSignal(signalId);
-    const fingerprint = opportunityInputFingerprint(signal);
+    const normalizedContext = normalizeProjectContextForSignal(signal, projectContext);
+    const fingerprint = opportunityInputFingerprint(signal, normalizedContext);
     const stored = await listRankedOpportunities({ includeRejected: true });
     return stored.find((item) => item.signalIds.includes(signal.signalId) && item.inputFingerprint === fingerprint) || null;
   }
 
-  async function evaluateSignal(signalId, { refresh = false } = {}) {
+  async function evaluateSignal(signalId, { refresh = false, projectContext = null } = {}) {
     const signal = await requireSignal(signalId);
-    const inputFingerprint = opportunityInputFingerprint(signal);
+    const normalizedContext = normalizeProjectContextForSignal(signal, projectContext);
+    const inputFingerprint = opportunityInputFingerprint(signal, normalizedContext);
     if (!refresh) {
-      const cached = await findCurrentForSignal(signal.signalId);
+      const cached = await findCurrentForSignal(signal.signalId, { projectContext: normalizedContext });
       if (cached) return cached;
     }
 
@@ -136,18 +153,29 @@ export function createContentOpportunityApplication({
         evaluatedAt: now,
       };
     } else {
+      const dataClassification = mostRestrictivePrivacyClassification(
+        signal.privacyClassification,
+        normalizedContext?.privacyClass,
+      );
+      const inputRefs = [
+        signal.signalId,
+        normalizedContext?.projectContextSnapshotId,
+      ].filter(Boolean);
       const task = createInferenceTask({
         taskId: applicationIds.create("task"),
         workspaceId: ownerWorkspaceId,
         taskType: INFERENCE_TASK_TYPES.OPPORTUNITY_EVALUATION,
-        dataClassification: signal.privacyClassification,
-        inputRefs: [signal.signalId],
-        requirements: ["structured_output", "editorial_reasoning"],
+        dataClassification,
+        inputRefs,
+        requirements: ["structured_output", "editorial_reasoning", ...(normalizedContext ? ["project_context"] : [])],
         createdAt: now,
       });
       const result = await inference.execute({
         task,
-        input: { signal: minimizeSignalForOpportunity(signal) },
+        input: {
+          signal: minimizeSignalForOpportunity(signal),
+          projectContext: normalizedContext ? minimizeProjectContextForOpportunity(normalizedContext) : null,
+        },
       });
       evaluation = result.output;
       evaluationProvenance = result.provenance;
@@ -157,6 +185,7 @@ export function createContentOpportunityApplication({
       opportunityId: applicationIds.create("opportunity"),
       workspaceId: ownerWorkspaceId,
       projectId: signal.projectId,
+      projectContextSnapshotId: normalizedContext?.projectContextSnapshotId || null,
       signalIds: [signal.signalId],
       inputFingerprint,
       evaluation,

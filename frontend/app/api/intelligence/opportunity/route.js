@@ -10,6 +10,7 @@ import {
 import {
   assertInferenceRouteAllowed,
   INFERENCE_TASK_TYPES,
+  mostRestrictivePrivacyClassification,
   normalizeInferenceTask,
 } from "../../../../lib/inference/inferenceTasks.mjs";
 
@@ -65,8 +66,16 @@ export async function POST(request) {
     if (input.signal.workspaceId !== task.workspaceId) {
       return json({ ok: false, code: "cross_workspace_inference", error: "Inference task and signal must belong to the same workspace." }, 403);
     }
-    if (input.signal.privacyClassification !== task.dataClassification) {
-      return json({ ok: false, code: "inference_privacy_mismatch", error: "Inference task classification must match the persisted signal classification." }, 400);
+    const expectedClassification = mostRestrictivePrivacyClassification(
+      input.signal.privacyClassification,
+      input.projectContext?.privacyClass,
+    );
+    if (expectedClassification !== task.dataClassification) {
+      return json({ ok: false, code: "inference_privacy_mismatch", error: "Inference task classification must match the most restrictive supplied persisted input." }, 400);
+    }
+    const requiredRefs = [input.signal.signalId, input.projectContext?.projectContextSnapshotId].filter(Boolean);
+    if (requiredRefs.some((ref) => !task.inputRefs.includes(ref))) {
+      return json({ ok: false, code: "inference_provenance_mismatch", error: "Inference task refs must bind every supplied canonical input." }, 400);
     }
 
     const requestedProvider = String(body?.provider || "").trim().toLowerCase();

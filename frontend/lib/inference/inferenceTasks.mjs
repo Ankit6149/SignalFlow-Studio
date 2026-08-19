@@ -1,4 +1,5 @@
 import { portableClone } from "../domain/contracts.mjs";
+import { normalizeProjectContextSnapshot } from "../domain/projectContexts.mjs";
 import { PRIVACY_CLASSES } from "../domain/sourceArtifacts.mjs";
 
 export const INFERENCE_TASK_TYPES = Object.freeze({
@@ -22,6 +23,12 @@ const REMOTE_DENIED = new Set([
   PRIVACY_CLASSES.DEVICE_PRIVATE,
   PRIVACY_CLASSES.RESTRICTED,
 ]);
+const PRIVACY_RANK = new Map([
+  [PRIVACY_CLASSES.PUBLIC, 0],
+  [PRIVACY_CLASSES.WORKSPACE_PRIVATE, 1],
+  [PRIVACY_CLASSES.DEVICE_PRIVATE, 2],
+  [PRIVACY_CLASSES.RESTRICTED, 3],
+]);
 
 function text(value, fallback = "", maxLength = 240) {
   const normalized = String(value ?? "").trim();
@@ -41,6 +48,27 @@ function timestamp(value, field = "createdAt") {
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) throw new TypeError(`InferenceTask.${field} must be an ISO timestamp.`);
   return new Date(parsed).toISOString();
+}
+
+function boundedList(values, maxItems, maxLength) {
+  return Array.isArray(values)
+    ? values.map((value) => text(value, "", maxLength)).filter(Boolean).slice(0, maxItems)
+    : [];
+}
+
+export function mostRestrictivePrivacyClassification(...values) {
+  let selected = PRIVACY_CLASSES.PUBLIC;
+  let selectedRank = PRIVACY_RANK.get(selected);
+  for (const value of values.filter(Boolean)) {
+    const normalized = text(value, "", 80).toLowerCase();
+    if (!PRIVACY_VALUES.has(normalized)) throw new TypeError(`Unsupported inference data classification: ${normalized}.`);
+    const rank = PRIVACY_RANK.get(normalized);
+    if (rank > selectedRank) {
+      selected = normalized;
+      selectedRank = rank;
+    }
+  }
+  return selected;
 }
 
 export function createInferenceTask({
@@ -104,5 +132,29 @@ export function minimizeSignalForOpportunity(signal = {}) {
     observedAt: signal.observedAt || null,
     sourceArtifactCount: Array.isArray(signal.sourceArtifactIds) ? signal.sourceArtifactIds.length : 0,
     assetCount: Array.isArray(signal.assetIds) ? signal.assetIds.length : 0,
+  });
+}
+
+export function minimizeProjectContextForOpportunity(snapshotInput) {
+  const snapshot = normalizeProjectContextSnapshot(snapshotInput);
+  const synthesis = snapshot.synthesis || {};
+  return portableClone({
+    projectContextSnapshotId: snapshot.projectContextSnapshotId,
+    workspaceId: snapshot.workspaceId,
+    projectId: snapshot.projectId,
+    version: snapshot.version,
+    fingerprint: snapshot.fingerprint,
+    privacyClass: snapshot.privacyClass,
+    projectName: synthesis.projectName ? text(synthesis.projectName, "", 500) : null,
+    purpose: synthesis.purpose ? text(synthesis.purpose, "", 4000) : null,
+    problem: synthesis.problem ? text(synthesis.problem, "", 4000) : null,
+    capabilities: boundedList(synthesis.capabilities, 24, 800),
+    audiences: boundedList(synthesis.audiences, 16, 600),
+    terminology: boundedList(synthesis.terminology, 30, 300),
+    maturityStage: synthesis.maturityStage ? text(synthesis.maturityStage, "", 800) : null,
+    architectureNotes: boundedList(synthesis.architectureNotes, 20, 1000),
+    constraints: boundedList(synthesis.constraints, 20, 1000),
+    safeClaims: boundedList(synthesis.safeClaims, 30, 1000),
+    uncertainties: boundedList(synthesis.uncertainties, 20, 1000),
   });
 }

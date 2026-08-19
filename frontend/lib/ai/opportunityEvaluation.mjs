@@ -24,33 +24,81 @@ function safeSignal(input = {}) {
   };
 }
 
+function safeList(values, maxItems, maxLength) {
+  return Array.isArray(values)
+    ? values.map((value) => clean(value, maxLength)).filter(Boolean).slice(0, maxItems)
+    : [];
+}
+
+function safeProjectContext(input = null) {
+  if (!input) return null;
+  if (typeof input !== "object" || Array.isArray(input)) throw new TypeError("Opportunity project context must be an object.");
+  return {
+    projectContextSnapshotId: clean(input.projectContextSnapshotId, 240),
+    workspaceId: clean(input.workspaceId, 240),
+    projectId: clean(input.projectId, 240),
+    version: Number(input.version || 0),
+    fingerprint: clean(input.fingerprint, 240),
+    privacyClass: clean(input.privacyClass, 80),
+    projectName: input.projectName ? clean(input.projectName, 500) : null,
+    purpose: input.purpose ? clean(input.purpose, 4000) : null,
+    problem: input.problem ? clean(input.problem, 4000) : null,
+    capabilities: safeList(input.capabilities, 24, 800),
+    audiences: safeList(input.audiences, 16, 600),
+    terminology: safeList(input.terminology, 30, 300),
+    maturityStage: input.maturityStage ? clean(input.maturityStage, 800) : null,
+    architectureNotes: safeList(input.architectureNotes, 20, 1000),
+    constraints: safeList(input.constraints, 20, 1000),
+    safeClaims: safeList(input.safeClaims, 30, 1000),
+    uncertainties: safeList(input.uncertainties, 20, 1000),
+  };
+}
+
 export function normalizeOpportunityTaskInput(input = {}) {
   const signal = safeSignal(input.signal || {});
   if (!signal.signalId || !signal.workspaceId || !signal.headline) {
     throw new TypeError("Opportunity evaluation requires a minimized ContentSignal with stable ID, workspace, and headline.");
   }
-  return { signal };
+  const projectContext = safeProjectContext(input.projectContext || null);
+  if (projectContext) {
+    if (!projectContext.projectContextSnapshotId || !projectContext.workspaceId || !projectContext.projectId || !projectContext.fingerprint || projectContext.version < 1) {
+      throw new TypeError("Opportunity evaluation requires complete ProjectContext identity when project context is supplied.");
+    }
+    if (projectContext.workspaceId !== signal.workspaceId) {
+      throw new Error("Opportunity ProjectContext belongs to another workspace.");
+    }
+    if (!signal.projectId || projectContext.projectId !== signal.projectId) {
+      throw new Error("Opportunity ProjectContext does not match the signal project.");
+    }
+  }
+  return { signal, projectContext };
 }
 
 export function buildOpportunityEvaluationPrompt(input = {}) {
-  const { signal } = normalizeOpportunityTaskInput(input);
+  const { signal, projectContext } = normalizeOpportunityTaskInput(input);
   const boundary = signal.boundaryNote
     ? `\nHARD USER BOUNDARY (must not be crossed):\n${signal.boundaryNote}\n`
     : "";
+  const projectContextBlock = projectContext
+    ? `\nPROJECT CONTEXT (evidence-backed project understanding; not person identity or narrative memory):\n${JSON.stringify(projectContext, null, 2)}\n`
+    : "";
 
-  return `You are SignalFlow's editorial opportunity evaluator. Decide whether a user-captured signal is worth turning into public content now. This is editorial judgment, not engagement bait.
+  return `You are SignalFlow's editorial opportunity evaluator. Decide whether a captured signal is worth turning into public content now. This is editorial judgment, not engagement bait.
 
 NON-NEGOTIABLE RULES:
-- Use ONLY the supplied signal. Do not invent product facts, metrics, customers, dates, outcomes, personal history, expertise, or prior publications.
-- The user explicitly captured this signal, so treat that as intent evidence, but you may still recommend HOLD or SKIP when substance is weak.
-- Do not pretend you know the user's identity profile or narrative history. Set repetitionRisk.level to "unknown" and say that narrative memory is not yet supplied.
-- Recommend only LinkedIn and/or X in candidateDestinations for this Personal Alpha proof.
+- Use ONLY the supplied signal and, when present, the supplied ProjectContext. Do not invent product facts, metrics, customers, dates, outcomes, personal history, expertise, or prior publications.
+- ProjectContext describes the project, not the person. Never infer the owner's identity, voice, personal beliefs, employment, expertise, or audience history from it.
+- Treat ProjectContext.safeClaims as bounded established project claims for this evaluation. Treat ProjectContext.uncertainties as unresolved; never turn them into claims.
+- The signal may describe a new event not yet present in ProjectContext. You may discuss that event only to the extent the signal itself supports it; do not expand it into unsupported project-wide claims.
+- The user explicitly captured or authorized this signal, so treat that as intent evidence, but you may still recommend HOLD or SKIP when substance is weak.
+- Do not pretend you know narrative history. Set repetitionRisk.level to "unknown" and say that NarrativeMemory is not supplied.
+- Recommend only LinkedIn and/or X in candidateDestinations for this current Personal Alpha compatibility proof. Destination generalization is a separate downstream capability.
 - Angles must be materially different editorial directions, not paraphrases.
 - If recommendation is POST, return exactly 4 useful candidateAngles and choose exactly one of their titles as recommendedAngleTitle.
-- recommendedAngleTitle must exactly match one returned candidateAngles.title. It is the editorial direction you would choose if the owner asked SignalFlow to prepare the strongest story without another angle-selection step.
+- recommendedAngleTitle must exactly match one returned candidateAngles.title.
 - Prefer real evidence, reflection, trade-offs, lessons, decisions, or concrete updates over generic launch language.
 - Never recommend fabricated vulnerability or exaggerated marketing language.
-${boundary}
+${boundary}${projectContextBlock}
 SIGNAL:
 ${JSON.stringify(signal, null, 2)}
 

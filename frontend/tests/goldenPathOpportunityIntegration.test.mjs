@@ -37,13 +37,20 @@ test("opportunity inference is task-scoped, minimized, and privacy checked serve
   assert.match(route, /normalizeInferenceTask/);
   assert.match(route, /assertInferenceRouteAllowed/);
   assert.match(route, /input\.signal\.workspaceId !== task\.workspaceId/);
-  assert.match(route, /privacyClassification !== task\.dataClassification/);
+  assert.match(route, /mostRestrictivePrivacyClassification/);
+  assert.match(route, /input\.signal\.privacyClassification/);
+  assert.match(route, /input\.projectContext\?\.privacyClass/);
+  assert.match(route, /expectedClassification !== task\.dataClassification/);
+  assert.match(route, /projectContext\?\.projectContextSnapshotId/);
+  assert.match(route, /inference_provenance_mismatch/);
   assert.match(task, /DEVICE_PRIVATE/);
   assert.match(task, /RESTRICTED/);
   assert.match(task, /sourceArtifactCount/);
   assert.match(task, /assetCount/);
   assert.doesNotMatch(task, /sourceArtifactText|repositoryContents|rawRepository/);
-  assert.match(prompt, /Do not pretend you know the user's identity profile or narrative history/);
+  assert.match(prompt, /ProjectContext describes the project, not the person/);
+  assert.match(prompt, /Never infer the owner's identity, voice, personal beliefs, employment, expertise, or audience history from it/);
+  assert.match(prompt, /uncertainties as unresolved/);
 });
 
 test("Golden Path opportunity UI follows the shared restrained design system", () => {

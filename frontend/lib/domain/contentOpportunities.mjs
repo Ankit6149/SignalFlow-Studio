@@ -5,8 +5,9 @@ import {
   stableStringify,
 } from "./contracts.mjs";
 import { normalizeContentSignal } from "./contentSignals.mjs";
+import { normalizeProjectContextSnapshot } from "./projectContexts.mjs";
 
-export const CONTENT_OPPORTUNITY_SCHEMA_VERSION = 1;
+export const CONTENT_OPPORTUNITY_SCHEMA_VERSION = 2;
 
 export const OPPORTUNITY_RECOMMENDATIONS = Object.freeze({
   POST: "post",
@@ -255,6 +256,7 @@ export function normalizeContentOpportunity(input = {}) {
     opportunityId: opaqueId(parsed.opportunityId, "opportunityId"),
     workspaceId: opaqueId(parsed.workspaceId, "workspaceId"),
     projectId: opaqueId(parsed.projectId, "projectId", false),
+    projectContextSnapshotId: opaqueId(parsed.projectContextSnapshotId, "projectContextSnapshotId", false),
     signalIds: uniqueIds(parsed.signalIds || [], "signalIds"),
     inputFingerprint: text(parsed.inputFingerprint, "", 160),
     ...evaluation,
@@ -273,6 +275,7 @@ export function createContentOpportunity({
   opportunityId,
   workspaceId,
   projectId = null,
+  projectContextSnapshotId = null,
   signalIds,
   inputFingerprint,
   evaluation,
@@ -284,6 +287,7 @@ export function createContentOpportunity({
     opportunityId,
     workspaceId,
     projectId,
+    projectContextSnapshotId,
     signalIds,
     inputFingerprint,
     ...normalizedEvaluation,
@@ -294,9 +298,9 @@ export function createContentOpportunity({
   });
 }
 
-export function opportunityInputFingerprint(signalInput) {
+export function opportunityInputFingerprint(signalInput, projectContextInput = null) {
   const signal = normalizeContentSignal(signalInput);
-  const serialized = stableStringify({
+  const canonical = {
     signalId: signal.signalId,
     projectId: signal.projectId,
     headline: signal.headline,
@@ -308,7 +312,13 @@ export function opportunityInputFingerprint(signalInput) {
     sourceArtifactIds: signal.sourceArtifactIds,
     assetIds: signal.assetIds,
     occurredAt: signal.occurredAt,
-  });
+  };
+  if (projectContextInput) {
+    const projectContext = normalizeProjectContextSnapshot(projectContextInput);
+    canonical.projectContextSnapshotId = projectContext.projectContextSnapshotId;
+    canonical.projectContextFingerprint = projectContext.fingerprint;
+  }
+  const serialized = stableStringify(canonical);
   let hash = 2166136261;
   for (let index = 0; index < serialized.length; index += 1) {
     hash ^= serialized.charCodeAt(index);

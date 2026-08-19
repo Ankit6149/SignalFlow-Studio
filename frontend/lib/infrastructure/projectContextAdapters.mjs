@@ -23,6 +23,29 @@ function assertSameOwner(existing, next) {
   }
 }
 
+function projectMatches(item, projectId) {
+  return item.projectId === String(projectId || "").trim();
+}
+
+function fingerprintMatches(item, projectId, fingerprint) {
+  return projectMatches(item, projectId) && item.fingerprint === String(fingerprint || "").trim();
+}
+
+function withProjectQueries(repository) {
+  return {
+    ...repository,
+    async listByProject(projectId) {
+      return (await repository.list()).filter((item) => projectMatches(item, projectId));
+    },
+    async findByFingerprint(projectId, fingerprint) {
+      return (await repository.list()).find((item) => fingerprintMatches(item, projectId, fingerprint)) || null;
+    },
+    async getLatestByProject(projectId) {
+      return (await repository.list()).find((item) => projectMatches(item, projectId)) || null;
+    },
+  };
+}
+
 export function createMemoryProjectContextRepository(initial = []) {
   const records = new Map();
   for (const input of initial) {
@@ -31,7 +54,7 @@ export function createMemoryProjectContextRepository(initial = []) {
     records.set(context.projectContextSnapshotId, context);
   }
 
-  return assertPort("projectContextRepository", {
+  const repository = {
     async list() {
       return sortContexts(Array.from(records.values())).map(clone);
     },
@@ -47,7 +70,9 @@ export function createMemoryProjectContextRepository(initial = []) {
     async remove(projectContextSnapshotId) {
       return records.delete(projectContextSnapshotId);
     },
-  });
+  };
+
+  return assertPort("projectContextRepository", withProjectQueries(repository));
 }
 
 export function createBrowserProjectContextRepository({
@@ -108,7 +133,7 @@ export function createBrowserProjectContextRepository({
     return next.length !== items.length;
   }
 
-  return assertPort("projectContextRepository", { list, get, upsert, remove });
+  return assertPort("projectContextRepository", withProjectQueries({ list, get, upsert, remove }));
 }
 
 export function createStoreBackedProjectContextRepository({ store, prefix = "project-context/" } = {}) {
@@ -151,5 +176,5 @@ export function createStoreBackedProjectContextRepository({ store, prefix = "pro
     return Boolean(await store.remove(keyFor(projectContextSnapshotId)));
   }
 
-  return assertPort("projectContextRepository", { list, get, upsert, remove });
+  return assertPort("projectContextRepository", withProjectQueries({ list, get, upsert, remove }));
 }

@@ -25,13 +25,6 @@ function normalizeIdList(value) {
   return Array.from(new Set(value.map((item) => String(item || "").trim()).filter(Boolean))).sort();
 }
 
-function sameExternalEvent(signal, externalEventRef) {
-  const current = signal?.externalEventRef;
-  if (!current || !externalEventRef) return false;
-  return String(current.provider || "").toLowerCase() === String(externalEventRef.provider || "").toLowerCase()
-    && String(current.eventId || "") === String(externalEventRef.eventId || "");
-}
-
 export function createContentSignalApplication({
   contentSignalRepository,
   sourceArtifactRepository = null,
@@ -108,11 +101,6 @@ export function createContentSignalApplication({
 
   async function createExternalSignal(input = {}) {
     if (!input.externalEventRef) throw new TypeError("Connected signal creation requires externalEventRef.");
-    const existing = (await repository.list())
-      .map((item) => normalizeContentSignal(item))
-      .find((item) => item.workspaceId === ownerWorkspaceId && sameExternalEvent(item, input.externalEventRef));
-    if (existing) return { signal: existing, created: false };
-
     const now = applicationClock.now();
     const references = await validateReferences(input);
     const signal = createConnectedContentSignal({
@@ -123,7 +111,7 @@ export function createContentSignalApplication({
       observedAt: now,
       actorRef: input.actorRef || "source-ingestion",
     });
-    return { signal: await repository.upsert(signal), created: true };
+    return repository.insertExternalIfAbsent(signal);
   }
 
   async function listSignals({ status = null, projectId = null, includeArchived = false } = {}) {

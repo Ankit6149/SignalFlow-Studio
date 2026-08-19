@@ -19,6 +19,22 @@ function assertSameOwner(existing, next) {
   }
 }
 
+function normalizeInstallationLookup(provider, installationRef) {
+  return {
+    provider: String(provider || "").trim().toLowerCase(),
+    installationRef: String(installationRef || "").trim(),
+  };
+}
+
+function matchesInstallation(connection, lookup) {
+  return Boolean(
+    lookup.provider
+    && lookup.installationRef
+    && connection.provider === lookup.provider
+    && connection.installationRef === lookup.installationRef
+  );
+}
+
 export function createMemorySourceConnectionRepository(initial = []) {
   const records = new Map();
   for (const item of initial) {
@@ -42,6 +58,13 @@ export function createMemorySourceConnectionRepository(initial = []) {
     },
     async remove(sourceConnectionId) {
       return records.delete(sourceConnectionId);
+    },
+    async findByProviderInstallation(provider, installationRef) {
+      const lookup = normalizeInstallationLookup(provider, installationRef);
+      if (!lookup.provider || !lookup.installationRef) return [];
+      return sortConnections(
+        Array.from(records.values()).filter((connection) => matchesInstallation(connection, lookup)),
+      ).map(clone);
     },
   });
 }
@@ -80,5 +103,17 @@ export function createStoreBackedSourceConnectionRepository({ store, prefix = "s
     return Boolean(await store.remove(keyFor(sourceConnectionId)));
   }
 
-  return assertPort("sourceConnectionRepository", { list, get, upsert, remove });
+  async function findByProviderInstallation(provider, installationRef) {
+    const lookup = normalizeInstallationLookup(provider, installationRef);
+    if (!lookup.provider || !lookup.installationRef) return [];
+    return (await list()).filter((connection) => matchesInstallation(connection, lookup));
+  }
+
+  return assertPort("sourceConnectionRepository", {
+    list,
+    get,
+    upsert,
+    remove,
+    findByProviderInstallation,
+  });
 }

@@ -1,6 +1,6 @@
 # ContentSignal Manual Intake — Implemented Contract
 
-> Status: implemented by issue #152 for the browser-local Personal Alpha path. This document describes the capability that exists now, not the broader automatic signal engine planned for later issues.
+> Status: manual browser-local intake is implemented by #152. The GitHub connected-source ingestion core is implemented in code and its durable webhook/Postgres boundary is in progress under #161/#167/#71; production automatic detection is not yet configured or verified.
 
 ## 1. Product boundary
 
@@ -53,7 +53,7 @@ The Signals workspace lets the owner:
 - archive it;
 - restore ignored/snoozed/archived records.
 
-The UI deliberately states that automatic detection is not implemented.
+The current Signals UI deliberately states that automatic detection is not implemented for the live owner experience. GitHub connected-source ingestion core is implemented behind application/server boundaries, and the dedicated SignalFlow Neon schema is now migrated and verified; production automatic detection is still not configured because the GitHub App install flow, deployment database/webhook secrets, live repository mapping, and background Opportunity continuation are not yet complete.
 
 ## 3. Canonical domain record
 
@@ -70,7 +70,7 @@ The record contains:
 - optional `sourceConnectionId`;
 - canonical `sourceArtifactIds[]` references;
 - canonical `assetIds[]` references;
-- optional external event reference for future ingestors;
+- optional external event reference for connected ingestors;
 - `occurredAt` and `observedAt` timestamps;
 - headline and summary;
 - signal kind;
@@ -165,6 +165,7 @@ Signal metadata therefore remains portable domain state instead of carrying prov
 Supported operations:
 
 - `createManualSignal`
+- `createExternalSignal`
 - `listSignals`
 - `readSignal`
 - `updateSignalMetadata`
@@ -206,16 +207,20 @@ This avoids domain duplication and keeps future storage migrations additive.
 
 1. memory adapter — deterministic domain/application tests;
 2. browser adapter — current Personal Alpha persistence;
-3. generic store-backed adapter — future Postgres/service adapter seam.
+3. generic store-backed adapter — portable service/storage seam.
 
-All expose:
+The canonical ContentSignal repository port now exposes:
 
 ```text
 list
 get
 upsert
 remove
+findByExternalEvent
+insertExternalIfAbsent
 ```
+
+The browser/memory/store-backed adapters implement the same contract. Connected-source server ingestion additionally has a Postgres adapter in `frontend/lib/infrastructure/postgresConnectedSourceAdapters.mjs`; its migration is applied to the dedicated SignalFlow Neon database, while production runtime configuration is tracked separately from browser-local manual durability.
 
 The browser key is currently:
 
@@ -246,25 +251,17 @@ That is an explicit current limitation rather than silent omission.
 
 Before signals become cloud-only or cross-device-owned state, portable ownership must be extended through a new archive schema/version or a workspace-level export that includes ContentSignals. The existing campaign archive must not be falsely described as exporting signal history today.
 
-## 12. Automatic ingestion remains separate
+## 12. Connected-source ingestion remains a separate vertical capability
 
-Automatic event detection remains unimplemented.
+Manual intake and automatic source observation share the canonical ContentSignal record, but they have different trust and durability boundaries.
 
-In particular, issue #152 does not implement:
+The GitHub connected-source ingestion core is implemented in code: allowlisted merged-PR/release normalization, raw-body HMAC verification, SourceConnection/resource authorization, bounded event metadata, external-event idempotency operations, dependency-only prefiltering, Postgres repository/migration code, and a Node webhook route.
 
-- GitHub webhook ingestion;
-- background repository monitoring;
-- automatic opportunity ranking;
-- event deduplication from external providers;
-- scheduled polling;
-- ContentOpportunity persistence;
-- AI interpretation of incoming events.
+The dedicated SignalFlow Neon migration is applied and verified. Production automatic detection is not yet configured or verified. Remaining work under #161/#167 includes the GitHub App install/connect lifecycle, production runtime database/webhook secrets, repository mapping, real delivery acceptance, durable/background continuation into ContentOpportunity, and bounded repository evidence/media steps.
 
-GitHub App/webhook ingestion is owned by #161.
+ContentOpportunity scoring/ranking for manual Signals is implemented under #156/#166; the connected-source trigger must reuse that canonical intelligence rather than inventing a GitHub-specific destination generator.
 
-ContentOpportunity scoring/ranking is owned by #156.
-
-The Today/Signals/Plan unified decision center is owned by #159.
+The Today/Signals/Plan decision center remains the owner-judgment surface under #159/#167.
 
 ## 13. Scale path
 
@@ -278,10 +275,15 @@ ContentSignal domain
   → ContentSignal application service
   → browser repository
 
-later
+connected-source server path in code
 same ContentSignal domain
   → same application-service contract
-  → authenticated hosted API / Postgres repository adapter
+  → Postgres repository adapter + authenticated provider webhook boundary
+
+later production
+  → configured runtime access to the dedicated migrated SignalFlow database
+  → GitHub App installation lifecycle + durable background continuation
+  → broader authenticated hosted APIs and sources
 ```
 
 Workspace/project IDs are already part of the record so SaaS ownership does not require replacing the signal model.
@@ -306,17 +308,19 @@ Issue #152 is complete only when tests prove:
 
 ## 15. Next vertical slice
 
-The next owner-visible intelligence step is not automatic publishing.
-
-It is:
+Manual ContentSignal → explainable ContentOpportunity → owner judgment is already implemented and accepted in Golden Path 1. The next vertical slice is not automatic publishing; it is connected work reaching that same canonical judgment path:
 
 ```text
-ContentSignal
+verified GitHub work event
+  → canonical ContentSignal
+  → cheap noise gate
   → explainable ContentOpportunity
-  → why this matters now
-  → 3–5 angle choices + Something else
-  → user judgment
+  → bounded authorized evidence
+  → media/content-form requirement when useful
+  → Today / Plan owner judgment
 ```
+
+Destination choice remains downstream policy informed by owner preference, connected destinations and the editorial calendar; GitHub ingestion must never hardcode LinkedIn/X.
 
 That preserves the core SignalFlow rule:
 

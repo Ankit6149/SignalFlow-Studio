@@ -21,6 +21,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@neondatabase/serverless": "1.1.0",
     "jszip": "3.10.1",
     "next": "16.2.11",
     "react": "19.2.8",

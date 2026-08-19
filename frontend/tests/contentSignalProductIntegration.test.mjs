@@ -16,7 +16,7 @@ test("ContentSignal is a first-class workspace-owned domain record behind a repo
   const domain = readFrontend("lib/domain/contentSignals.mjs");
   assert.match(contracts, /CONTENT_SIGNAL: "ContentSignal"/);
   assert.match(contracts, /ContentSignal: \{ idField: "signalId", owner: "workspace"/);
-  assert.match(ports, /contentSignalRepository: \["list", "get", "upsert", "remove"\]/);
+  assert.match(ports, /contentSignalRepository: \["list", "get", "upsert", "remove", "findByExternalEvent", "insertExternalIfAbsent"\]/);
   assert.match(domain, /CONTENT_SIGNAL_SCHEMA_VERSION = 1/);
   assert.match(domain, /WORKSPACE_PRIVATE/);
   assert.match(domain, /provenance/);
@@ -83,14 +83,14 @@ test("current campaign application remains independent from ContentSignal creati
   assert.doesNotMatch(browserCampaignApplication, /contentSignal/i);
 });
 
-test("capability documentation keeps automatic signals planned while manual intake is implemented", () => {
+test("capability documentation distinguishes connected-source code from production automatic detection", () => {
   const matrix = readRepository("docs/CAPABILITY_MATRIX.md");
   const implementation = readRepository("docs/CONTENT_SIGNAL_IMPLEMENTATION.md");
   assert.match(matrix, /Browser-local manual `ContentSignal` intake.*Available/);
-  assert.match(matrix, /GitHub App\/webhook → ContentSignal ingestion \| Planned/);
-  assert.match(matrix, /Automatic signal ingestion.*remain target capabilities/i);
-  assert.match(matrix, /Canonical `ContentSignal` persistence\/manual intake \| Implemented/);
+  assert.match(matrix, /GitHub App\/webhook → ContentSignal ingestion \| Implementation in progress:/);
+  assert.match(matrix, /GitHub App install lifecycle, dedicated database migration\/configuration, production secrets and real webhook acceptance are not yet complete/i);
+  assert.match(matrix, /Canonical `ContentSignal` persistence\/manual intake \| Implemented browser-local; hosted persistence\/automatic ingestion still planned/);
   assert.match(implementation, /manual signal is not a post, campaign, or opportunity/i);
   assert.match(implementation, /not yet included in the portable campaign archive/i);
-  assert.match(implementation, /automatic event detection remains unimplemented/i);
+  assert.match(implementation, /production automatic detection is not yet configured or verified/i);
 });

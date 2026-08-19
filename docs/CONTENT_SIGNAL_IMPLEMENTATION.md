@@ -53,7 +53,7 @@ The Signals workspace lets the owner:
 - archive it;
 - restore ignored/snoozed/archived records.
 
-The current Signals UI deliberately states that automatic detection is not implemented for the live owner experience. GitHub connected-source ingestion core is implemented behind application/server boundaries, but production automatic detection is not yet configured: there is no completed GitHub App install flow, dedicated migrated SignalFlow database, production webhook secret/configuration, or background Opportunity continuation yet.
+The current Signals UI deliberately states that automatic detection is not implemented for the live owner experience. GitHub connected-source ingestion core is implemented behind application/server boundaries, and the dedicated SignalFlow Neon schema is now migrated and verified; production automatic detection is still not configured because the GitHub App install flow, deployment database/webhook secrets, live repository mapping, and background Opportunity continuation are not yet complete.
 
 ## 3. Canonical domain record
 
@@ -220,7 +220,7 @@ findByExternalEvent
 insertExternalIfAbsent
 ```
 
-The browser/memory/store-backed adapters implement the same contract. Connected-source server ingestion additionally has a Postgres adapter in `frontend/lib/infrastructure/postgresConnectedSourceAdapters.mjs`; its migration and production configuration are tracked separately from browser-local manual durability.
+The browser/memory/store-backed adapters implement the same contract. Connected-source server ingestion additionally has a Postgres adapter in `frontend/lib/infrastructure/postgresConnectedSourceAdapters.mjs`; its migration is applied to the dedicated SignalFlow Neon database, while production runtime configuration is tracked separately from browser-local manual durability.
 
 The browser key is currently:
 
@@ -257,7 +257,7 @@ Manual intake and automatic source observation share the canonical ContentSignal
 
 The GitHub connected-source ingestion core is implemented in code: allowlisted merged-PR/release normalization, raw-body HMAC verification, SourceConnection/resource authorization, bounded event metadata, external-event idempotency operations, dependency-only prefiltering, Postgres repository/migration code, and a Node webhook route.
 
-Production automatic detection is not yet configured or verified. Remaining work under #161/#167 includes the GitHub App install/connect lifecycle, a dedicated migrated SignalFlow database, production webhook/database secrets, real delivery acceptance, durable/background continuation into ContentOpportunity, and bounded repository evidence/media steps.
+The dedicated SignalFlow Neon migration is applied and verified. Production automatic detection is not yet configured or verified. Remaining work under #161/#167 includes the GitHub App install/connect lifecycle, production runtime database/webhook secrets, repository mapping, real delivery acceptance, durable/background continuation into ContentOpportunity, and bounded repository evidence/media steps.
 
 ContentOpportunity scoring/ranking for manual Signals is implemented under #156/#166; the connected-source trigger must reuse that canonical intelligence rather than inventing a GitHub-specific destination generator.
 
@@ -281,7 +281,7 @@ same ContentSignal domain
   → Postgres repository adapter + authenticated provider webhook boundary
 
 later production
-  → dedicated migrated/configured database
+  → configured runtime access to the dedicated migrated SignalFlow database
   → GitHub App installation lifecycle + durable background continuation
   → broader authenticated hosted APIs and sources
 ```

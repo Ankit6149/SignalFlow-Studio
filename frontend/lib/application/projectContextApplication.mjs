@@ -53,30 +53,59 @@ export function createProjectContextApplication({
   const systemClock = assertPort("clock", clock);
   const ids = assertPort("idService", idService);
 
+  function normalizeOwnedProjectContext(record, expectedProjectId = null) {
+    if (!record) return null;
+    const normalized = ensureWorkspace(normalizeProjectContextSnapshot(record), ownerWorkspaceId, "Project context");
+    if (expectedProjectId && normalized.projectId !== expectedProjectId) {
+      throw new Error("Project context belongs to another project.");
+    }
+    return normalized;
+  }
+
   async function listProjectContexts({ projectId = null } = {}) {
     const normalizedProjectId = projectId ? requiredId(projectId, "projectId") : null;
-    const records = (await projectContextRepository.list())
-      .map(normalizeProjectContextSnapshot)
-      .filter((record) => record.workspaceId === ownerWorkspaceId)
+    const stored = normalizedProjectId && typeof projectContextRepository.listByProject === "function"
+      ? await projectContextRepository.listByProject(normalizedProjectId)
+      : await projectContextRepository.list();
+    return stored
+      .map((record) => normalizeOwnedProjectContext(record, normalizedProjectId))
       .filter((record) => !normalizedProjectId || record.projectId === normalizedProjectId)
       .sort((left, right) => {
         const projectOrder = String(left.projectId).localeCompare(String(right.projectId));
         if (projectOrder) return projectOrder;
         return Number(right.version) - Number(left.version);
       });
-    return records;
   }
 
   async function readProjectContext(projectContextSnapshotId) {
     const record = await projectContextRepository.get(requiredId(projectContextSnapshotId, "projectContextSnapshotId"));
-    if (!record) return null;
-    return ensureWorkspace(normalizeProjectContextSnapshot(record), ownerWorkspaceId, "Project context");
+    return normalizeOwnedProjectContext(record);
   }
 
   async function getLatestProjectContext(projectId) {
     const normalizedProjectId = requiredId(projectId, "projectId");
+    if (typeof projectContextRepository.getLatestByProject === "function") {
+      return normalizeOwnedProjectContext(
+        await projectContextRepository.getLatestByProject(normalizedProjectId),
+        normalizedProjectId,
+      );
+    }
     const records = await listProjectContexts({ projectId: normalizedProjectId });
     return records[0] || null;
+  }
+
+  async function findProjectContextByFingerprint(projectId, fingerprint) {
+    const normalizedProjectId = requiredId(projectId, "projectId");
+    const normalizedFingerprint = String(fingerprint || "").trim();
+    if (!normalizedFingerprint) throw new TypeError("fingerprint is required.");
+    if (typeof projectContextRepository.findByFingerprint === "function") {
+      return normalizeOwnedProjectContext(
+        await projectContextRepository.findByFingerprint(normalizedProjectId, normalizedFingerprint),
+        normalizedProjectId,
+      );
+    }
+    return (await listProjectContexts({ projectId: normalizedProjectId }))
+      .find((record) => record.fingerprint === normalizedFingerprint) || null;
   }
 
   async function bootstrapProjectContext({
@@ -98,13 +127,12 @@ export function createProjectContextApplication({
       assetIds: normalizeIds(assetIds, "assetIds"),
     };
     const fingerprint = createProjectContextFingerprint(fingerprintInput);
-    const existing = (await listProjectContexts({ projectId: normalizedProjectId }))
-      .find((record) => record.fingerprint === fingerprint);
+    const existing = await findProjectContextByFingerprint(normalizedProjectId, fingerprint);
     if (existing) return { context: existing, reused: true };
 
     const latest = await getLatestProjectContext(normalizedProjectId);
     const createdAt = systemClock.now();
-    const context = normalizeProjectContextSnapshot({
+    const candidate = normalizeProjectContextSnapshot({
       projectContextSnapshotId: ids.create("project-context"),
       workspaceId: ownerWorkspaceId,
       projectId: normalizedProjectId,
@@ -120,8 +148,17 @@ export function createProjectContextApplication({
       synthesisProvenance,
       createdAt,
     });
-    await projectContextRepository.upsert(context);
-    return { context, reused: false };
+    const persisted = normalizeOwnedProjectContext(
+      await projectContextRepository.upsert(candidate),
+      normalizedProjectId,
+    );
+    if (!persisted || persisted.fingerprint !== fingerprint) {
+      throw new Error("Persisted ProjectContextSnapshot does not match the requested evidence identity.");
+    }
+    return {
+      context: persisted,
+      reused: persisted.projectContextSnapshotId !== candidate.projectContextSnapshotId,
+    };
   }
 
   async function synthesizeAndBootstrapProjectContext({
@@ -152,8 +189,7 @@ export function createProjectContextApplication({
       supplementalSourceArtifactIds: normalizedSupplementalIds,
       assetIds: normalizedAssetIds,
     });
-    const existing = (await listProjectContexts({ projectId: normalizedProjectId }))
-      .find((record) => record.fingerprint === fingerprint);
+    const existing = await findProjectContextByFingerprint(normalizedProjectId, fingerprint);
     if (existing) return { context: existing, reused: true, inferenceSkipped: true };
 
     const now = systemClock.now();

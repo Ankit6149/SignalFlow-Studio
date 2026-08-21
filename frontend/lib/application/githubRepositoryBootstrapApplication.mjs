@@ -50,12 +50,26 @@ function safeContextView(context, { reused = false } = {}) {
   });
 }
 
+function safeOpportunityView(opportunity) {
+  if (!opportunity) return null;
+  return Object.freeze({
+    opportunityId: opportunity.opportunityId,
+    recommendation: opportunity.recommendation,
+    score: opportunity.score,
+    title: opportunity.title,
+    summary: opportunity.summary,
+    recommendedAngleId: opportunity.recommendedAngleId || null,
+    status: opportunity.status,
+  });
+}
+
 export function createGithubRepositoryBootstrapApplication({
   workspaceId,
   sourceConnectionRepository,
   sourceArtifactRepository,
   projectContextApplication,
   githubRepositoryApi,
+  firstOpportunityApplication = null,
   clock,
 } = {}) {
   const ownerWorkspaceId = requiredOpaque(workspaceId, "workspaceId");
@@ -71,6 +85,9 @@ export function createGithubRepositoryBootstrapApplication({
     "readTextFiles",
     "GitHub repository API",
   );
+  const firstOpportunity = firstOpportunityApplication
+    ? requiredMethod(firstOpportunityApplication, "ensureInitialOpportunity", "First Opportunity application")
+    : null;
   const systemClock = assertPort("clock", clock);
 
   async function requireActiveRepository(sourceConnectionId, repositoryId) {
@@ -115,6 +132,27 @@ export function createGithubRepositoryBootstrapApplication({
     return persisted;
   }
 
+  async function ensureFirstOpportunity({ connection, repository, context }) {
+    if (!firstOpportunity) return { firstOpportunity: null, firstOpportunityStatus: "not_configured" };
+    try {
+      const result = await firstOpportunity.ensureInitialOpportunity({
+        sourceConnectionId: connection.sourceConnectionId,
+        repository,
+        projectContext: context,
+      });
+      return {
+        firstOpportunity: safeOpportunityView(result.opportunity),
+        firstOpportunityStatus: "ready",
+      };
+    } catch (error) {
+      return {
+        firstOpportunity: null,
+        firstOpportunityStatus: "retryable_error",
+        firstOpportunityErrorCode: String(error?.code || "first_opportunity_failed"),
+      };
+    }
+  }
+
   async function bootstrapRepository({ sourceConnectionId, repositoryId } = {}) {
     const { connection, resource, repositoryId: repoId } = await requireActiveRepository(sourceConnectionId, repositoryId);
     const snapshot = await github.getRepositorySnapshot(connection.installationRef, repoId);
@@ -131,6 +169,7 @@ export function createGithubRepositoryBootstrapApplication({
 
     const latest = await contexts.getLatestProjectContext(resource.projectId);
     if (latest && sameRepositoryRevision(latest, snapshot.repository, snapshot.revision)) {
+      const first = await ensureFirstOpportunity({ connection, repository: snapshot.repository, context: latest });
       return Object.freeze({
         projectId: resource.projectId,
         repository: snapshot.repository,
@@ -139,6 +178,7 @@ export function createGithubRepositoryBootstrapApplication({
         context: safeContextView(latest, { reused: true }),
         reused: true,
         inferenceSkipped: true,
+        ...first,
       });
     }
 
@@ -178,6 +218,7 @@ export function createGithubRepositoryBootstrapApplication({
       evidence: bundle.evidence,
       privacyClass: bundle.privacyClass,
     });
+    const first = await ensureFirstOpportunity({ connection, repository: snapshot.repository, context: result.context });
 
     return Object.freeze({
       projectId: resource.projectId,
@@ -187,6 +228,7 @@ export function createGithubRepositoryBootstrapApplication({
       context: safeContextView(result.context, { reused: result.reused }),
       reused: Boolean(result.reused),
       inferenceSkipped: Boolean(result.inferenceSkipped),
+      ...first,
     });
   }
 

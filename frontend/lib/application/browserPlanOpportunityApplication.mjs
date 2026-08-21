@@ -99,9 +99,16 @@ export function createBrowserPlanOpportunityApplication({
 } = {}) {
   const local = localApplication || createBrowserContentOpportunityApplication({ getStorage, workspaceId, fetchImpl });
   const hosted = hostedClient || createBrowserHostedContentOpportunityClient({ fetchImpl });
-  const identity = identityApplication || createBrowserIdentityApplication({ getStorage, workspaceId });
   const hostedIdentity = hostedIdentityClient || createBrowserHostedIdentityClient({ fetchImpl });
   const hostedPlanning = hostedPlanningClient || createBrowserHostedPlanningClient({ fetchImpl });
+  let resolvedIdentity = identityApplication || null;
+
+  function getIdentityApplication() {
+    if (!resolvedIdentity) {
+      resolvedIdentity = createBrowserIdentityApplication({ getStorage, workspaceId });
+    }
+    return resolvedIdentity;
+  }
 
   async function listRankedOpportunities({ includeRejected = false } = {}) {
     const localItems = await local.listRankedOpportunities({ includeRejected: true });
@@ -136,7 +143,7 @@ export function createBrowserPlanOpportunityApplication({
   }
 
   async function ensureHostedIdentity() {
-    const localProfile = await identity.getMinimalProfile();
+    const localProfile = await getIdentityApplication().getMinimalProfile();
     if (!localProfile?.identity || !localProfile?.voice || !localProfile?.boundary) {
       const error = new Error("Set up your explicit Voice profile before SignalFlow builds the connected-source plan.");
       error.code = "voice_profile_required";

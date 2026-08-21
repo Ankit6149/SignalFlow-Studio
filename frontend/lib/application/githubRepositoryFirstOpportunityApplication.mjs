@@ -2,6 +2,7 @@ import {
   CONTENT_SIGNAL_KINDS,
   CONTENT_SIGNAL_SOURCE_TYPES,
   createConnectedContentSignal,
+  normalizeContentSignal,
 } from "../domain/contentSignals.mjs";
 import { normalizeProjectContextSnapshot } from "../domain/projectContexts.mjs";
 import { assertPort, createSystemClock, createSystemIdService } from "../domain/ports.mjs";
@@ -83,7 +84,7 @@ export function createGithubRepositoryFirstOpportunityApplication({
 
     if (!signal) {
       const now = systemClock.now();
-      const created = createConnectedContentSignal({
+      const connected = createConnectedContentSignal({
         signalId: ids.create("signal"),
         workspaceId: ownerWorkspaceId,
         projectId: context.projectId,
@@ -104,7 +105,14 @@ export function createGithubRepositoryFirstOpportunityApplication({
         importanceHints: ["connected_repository_context", "initial_editorial_review"],
         observedAt: now,
         actorRef: "repository-bootstrap",
-        ingestionMethod: "repository_bootstrap",
+      });
+      const created = normalizeContentSignal({
+        ...connected,
+        provenance: {
+          ...connected.provenance,
+          ingestionMethod: "repository_bootstrap",
+          actorRef: "repository-bootstrap",
+        },
       });
       const inserted = await signals.insertExternalIfAbsent(created);
       signal = inserted.signal;

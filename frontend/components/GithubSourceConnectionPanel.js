@@ -16,8 +16,8 @@ async function readJson(response) {
   let body = {};
   try { body = text ? JSON.parse(text) : {}; } catch { body = {}; }
   if (!response.ok) {
-    const error = new Error(body?.error || `request_failed_${response.status}`);
-    error.code = body?.error || `request_failed_${response.status}`;
+    const error = new Error(body?.error || body?.code || `request_failed_${response.status}`);
+    error.code = body?.code || body?.error || `request_failed_${response.status}`;
     error.status = response.status;
     throw error;
   }
@@ -29,11 +29,17 @@ function friendlyError(error) {
   if (error?.status === 401) return "Unlock the owner session in Settings before changing source connections.";
   if (code === "github_app_unconfigured") return "GitHub App setup is not configured on this deployment yet.";
   if (code === "github_connection_not_verified") return "Finish the verified GitHub installation before choosing a repository.";
+  if (code === "github_connection_not_active") return "The GitHub source must stay active while SignalFlow builds project understanding.";
   if (code === "github_user_authorization_denied" || code === "github_user_authorization_failed") return "GitHub did not authorize this installation for the current owner. Reconnect and approve the App before continuing.";
   if (code === "github_installation_permissions_insufficient") return "The GitHub App installation is missing required repository read permissions. Update the App permissions and reconnect.";
   if (code === "github_installation_suspended") return "This GitHub App installation is suspended. Restore it in GitHub before resuming SignalFlow.";
   if (code === "github_repository_not_observable") return "That repository is archived or disabled and cannot be observed automatically.";
-  if (code.startsWith("github_app_http_")) return "GitHub could not verify the installation right now. Try again after checking the App installation.";
+  if (code === "github_repository_scope_mismatch") return "That repository is no longer authorized by this GitHub source connection.";
+  if (code === "github_repository_tree_truncated" || code === "github_repository_tree_too_large") return "SignalFlow refused to infer from an incomplete repository tree. The connection remains active; bounded support for larger repositories can be added without reconnecting.";
+  if (code === "github_repository_evidence_unavailable" || code === "github_repository_evidence_insufficient") return "The repository is connected, but SignalFlow could not find enough safe representative evidence to build trustworthy project understanding yet.";
+  if (code === "inference_route_unavailable") return "The repository is connected and evidence is ready, but no permitted project-understanding model route is configured yet.";
+  if (code.startsWith("project_context_") || code.startsWith("inference_")) return "The repository remains connected, but project understanding could not finish right now. You can retry without reconnecting GitHub.";
+  if (code.startsWith("github_app_http_") || code.startsWith("github_repository_http_")) return "GitHub could not verify or read the repository right now. The existing connection was not changed.";
   return "SignalFlow could not complete that GitHub connection action.";
 }
 
@@ -43,10 +49,14 @@ function statusTone(status) {
   return "muted";
 }
 
-function repositoryCount(connection) {
+function enabledResources(connection) {
   return Array.isArray(connection?.resourceScopes)
-    ? connection.resourceScopes.filter((item) => item.enabled).length
-    : 0;
+    ? connection.resourceScopes.filter((item) => item.enabled)
+    : [];
+}
+
+function repositoryCount(connection) {
+  return enabledResources(connection).length;
 }
 
 export default function GithubSourceConnectionPanel() {
@@ -96,6 +106,31 @@ export default function GithubSourceConnectionPanel() {
     }
   }
 
+  async function bootstrapRepository(sourceConnectionId, repositoryId, repositoryName) {
+    setBusy(`bootstrap:${repositoryId}`);
+    setMessage({ tone: "ready", text: `Understanding ${repositoryName || "the repository"} from bounded representative evidence…` });
+    try {
+      const response = await fetch("/api/sources/github/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceConnectionId, repositoryId }),
+      });
+      const body = await readJson(response);
+      const projectName = body.context?.projectName || repositoryName || "Repository";
+      const reuseText = body.reused ? " Existing project understanding was reused." : ` Project context v${body.context?.version || 1} is ready.`;
+      setMessage({
+        tone: "ready",
+        text: `${projectName} is connected and understood from ${body.evidenceCount || 0} bounded evidence items.${reuseText} SignalFlow can reuse this context for future work automatically.`,
+      });
+      return body;
+    } catch (error) {
+      setMessage({ tone: "attention", text: `${friendlyError(error)} GitHub observation remains connected.` });
+      return null;
+    } finally {
+      setBusy("");
+    }
+  }
+
   useEffect(() => {
     void refresh();
     const params = new URLSearchParams(window.location.search);
@@ -131,24 +166,39 @@ export default function GithubSourceConnectionPanel() {
 
   async function selectRepository(repository) {
     if (!repositoryConnectionId) return;
+    const sourceConnectionId = repositoryConnectionId;
     setBusy(`select:${repository.id}`);
     setMessage(null);
     try {
       const response = await fetch("/api/sources/github/repositories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceConnectionId: repositoryConnectionId, repositoryId: repository.id }),
+        body: JSON.stringify({ sourceConnectionId, repositoryId: repository.id }),
       });
       const body = await readJson(response);
       setRepositories([]);
       setRepositoryConnectionId("");
-      setMessage({ tone: "ready", text: `${body.repository?.fullName || repository.fullName} is connected. SignalFlow will observe supported work events automatically; there is no trigger setup.` });
       await refresh({ quiet: true });
+      await bootstrapRepository(
+        body.connection?.sourceConnectionId || sourceConnectionId,
+        body.repository?.id || repository.id,
+        body.repository?.fullName || repository.fullName,
+      );
     } catch (error) {
       setMessage({ tone: "attention", text: friendlyError(error) });
-    } finally {
       setBusy("");
     }
+  }
+
+  async function refreshUnderstanding(connection) {
+    const resources = enabledResources(connection);
+    if (!resources.length) return;
+    if (resources.length > 1) {
+      await loadRepositories(connection.sourceConnectionId);
+      return;
+    }
+    const resource = resources[0];
+    await bootstrapRepository(connection.sourceConnectionId, resource.resourceRef, resource.displayName || "the repository");
   }
 
   async function mutate(connection, action) {
@@ -180,7 +230,7 @@ export default function GithubSourceConnectionPanel() {
         <div>
           <p className={styles.eyebrow}>Source connections</p>
           <h2 id="github-source-title">Let SignalFlow notice the work worth talking about.</h2>
-          <p>Connect a GitHub repository once. SignalFlow will use supported repository events as signals; you do not configure webhooks or trigger families here.</p>
+          <p>Connect a GitHub repository once. SignalFlow builds persistent project understanding and then uses supported repository events as signals; there is no trigger setup.</p>
         </div>
         <div className={styles.headingActions}>
           <span className={styles.summary}>{activeCount} active</span>
@@ -219,7 +269,7 @@ export default function GithubSourceConnectionPanel() {
                       </div>
                       <p>
                         {connection.status === "active"
-                          ? `${count} ${count === 1 ? "repository" : "repositories"} observed automatically.`
+                          ? `${count} ${count === 1 ? "repository" : "repositories"} observed automatically. Project understanding is reusable and refreshes only when repository revision evidence changes.`
                           : connection.installationRef && connection.status === "pending"
                             ? "Installation verified. Choose a repository to finish the connection."
                             : connection.status === "paused"
@@ -246,6 +296,11 @@ export default function GithubSourceConnectionPanel() {
                     {!connection.installationRef && connection.status === "pending" && (
                       <button type="button" onClick={() => void startInstallation()} disabled={Boolean(busy)}>Restart installation</button>
                     )}
+                    {connection.status === "active" && count > 0 && (
+                      <button type="button" onClick={() => void refreshUnderstanding(connection)} disabled={Boolean(busy)}>
+                        {String(busy).startsWith("bootstrap:") ? "Understanding…" : count === 1 ? "Refresh understanding" : "Choose repository"}
+                      </button>
+                    )}
                     {connection.status === "active" && <button type="button" onClick={() => void mutate(connection, "pause")} disabled={Boolean(busy)}>Pause</button>}
                     {connection.status === "paused" && <button type="button" onClick={() => void mutate(connection, "resume")} disabled={Boolean(busy)}>Resume</button>}
                     {connection.status !== "revoked" && <button type="button" className={styles.quietButton} onClick={() => void mutate(connection, "revoke")} disabled={Boolean(busy)}>Disconnect</button>}
@@ -259,7 +314,7 @@ export default function GithubSourceConnectionPanel() {
             <div className={styles.connectRow}>
               <div>
                 <strong>{connections.length ? "Connect another repository" : "Connect your first repository"}</strong>
-                <p>GitHub controls which repositories the App can access. SignalFlow only stores the selected repository mapping and safe connection metadata.</p>
+                <p>GitHub controls which repositories the App can access. SignalFlow stores the selected mapping and safe evidence provenance, not raw repository credentials.</p>
               </div>
               <button type="button" className={styles.primaryButton} onClick={() => void startInstallation()} disabled={Boolean(busy)}>
                 {busy === "install" ? "Opening GitHub…" : "Connect GitHub"}

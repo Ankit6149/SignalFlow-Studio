@@ -1,10 +1,10 @@
 # Repository Bootstrap and Persistent Project Context
 
-> Status: first source-neutral core implemented on the #222 branch. This document does **not** claim that the production GitHub App install flow, automatic repository scan, or first-opportunity onboarding is complete.
+> Status: the source-neutral ProjectContext core, hosted Neon persistence, secure GitHub App connection lifecycle, and automatic bounded repository-bootstrap code path are implemented. This document does **not** claim that production GitHub credentials/live installation acceptance, initial hosted Opportunities/Today, or durable background webhook continuation are complete.
 
 ## Product outcome
 
-A new SignalFlow user should eventually be able to connect a supported repository once and reach useful judgment without configuring internal trigger mechanics:
+A new SignalFlow user should be able to connect a supported repository once and reach useful judgment without configuring internal trigger mechanics:
 
 ```text
 connect repository
@@ -33,9 +33,26 @@ Person Identity / Voice / Boundaries
 
 A project-context refresh must never silently rewrite person identity or historical content provenance.
 
-## Implemented core in this slice
+## Current implemented path
 
-The current slice adds a versioned `ProjectContextSnapshot` contract with:
+The current web path is:
+
+```text
+Connections
+→ secure GitHub App install + owner authorization
+→ choose authorized repository
+→ SourceConnection ACTIVE
+→ resolve exact default-branch commit/tree
+→ deterministic bounded evidence plan
+→ ephemeral exact-revision file reads
+→ immutable SourceArtifact metadata/provenance
+→ project_context_synthesis
+→ hosted immutable ProjectContextSnapshot
+```
+
+Repository selection starts project understanding automatically. There is no normal-user “Analyze repository” setup step. A transient repository-read or inference failure does not revoke, pause, or downgrade a valid GitHub SourceConnection; project understanding is retryable independently.
+
+The ProjectContext contract provides:
 
 - workspace/project ownership;
 - immutable version + `supersedesId` lineage;
@@ -45,17 +62,42 @@ The current slice adds a versioned `ProjectContextSnapshot` contract with:
 - privacy classification;
 - structured synthesis for project name, purpose, problem, capabilities, audiences, terminology, maturity, architecture notes, constraints, safe claims and uncertainties;
 - model/deterministic synthesis provenance;
-- memory, browser and store-backed repository adapters;
-- browser persistence/reopen support;
+- memory, browser, store-backed and hosted Postgres persistence;
 - application lookup of the latest project context for a later project-scoped Signal.
 
-The fingerprint intentionally follows **exact evidence identity**, not generated summary wording. Retrying the same model task over the same exact repository revision/source refs therefore reuses the existing ProjectContextSnapshot instead of creating false history because model phrasing changed.
+The fingerprint follows **exact evidence identity**, not generated summary wording. Retrying the same model task over the same exact repository revision/source refs therefore reuses the existing ProjectContextSnapshot instead of creating false history because model phrasing changed.
 
 Meaningful evidence changes create a new immutable project-context version. Existing historical content remains free to retain the exact prior context reference it used.
 
+## Bounded GitHub evidence acquisition
+
+SignalFlow does not send an unrestricted repository dump to project-context synthesis.
+
+The GitHub repository adapter first resolves the exact current default-branch commit and tree. The deterministic planner then selects a bounded representative set with priority toward:
+
+- README/product documentation;
+- architecture/design documentation;
+- manifests;
+- changelog/release/roadmap context;
+- route/module structure;
+- selected representative entry/source files.
+
+Current repository-bootstrap bounds are stricter than the model contract:
+
+- at most 5,000 repository tree entries in this first hosted path;
+- at most 12 selected repository files;
+- at most 96 KB per selected file;
+- at most 48,000 aggregate repository evidence characters plus bounded structure inventory;
+- at most 9,000 excerpt characters per selected file;
+- truncated GitHub recursive trees fail closed rather than pretending incomplete structure is complete.
+
+Known dependency/build outputs, lockfiles, generated/minified content and secret/key-shaped filenames are excluded before file reads. Repository file bodies are ephemeral synthesis input. Hosted SourceArtifact persistence stores normalized metadata, source reference, content hash, evidence usability/privacy and provenance—not raw repository file bodies.
+
+A ProjectContextSnapshot therefore retains exact inspectable SourceArtifact IDs without turning the relational database into a repository mirror.
+
 ## Provider-neutral synthesis boundary
 
-Repository/project synthesis now uses the shared `InferenceTask` fabric via:
+Repository/project synthesis uses the shared `InferenceTask` fabric via:
 
 ```text
 project_context_synthesis
@@ -63,32 +105,26 @@ project_context_synthesis
 
 The task accepts only bounded evidence selected upstream. It does not accept an unrestricted repository payload.
 
-Current hard limits:
+The shared synthesis contract still enforces:
 
 - at most 24 evidence items per synthesis task;
 - at most 60,000 aggregate evidence characters;
-- only supported evidence categories such as README, product/architecture docs, manifests, changelog/release context, route/module inventories, representative source, and owner context;
+- supported evidence categories only;
 - exact SourceArtifact IDs remain task refs;
-- device-private/restricted evidence cannot silently use a remote inference route;
+- privacy route policy before model invocation;
 - secret/path-shaped fields fail closed before prompt construction.
 
 The synthesis prompt explicitly forbids content ideas, destination choices, hooks, engagement tactics and publishing advice. Its job is only durable project understanding.
 
-## What “AI goes through the repo” means
+## Exact-revision reuse
 
-The product target is broad repository understanding without blindly shipping an entire private codebase to a remote model.
+Before rereading selected file bodies or invoking synthesis, repository bootstrap resolves the current Git commit and checks the latest ProjectContextSnapshot.
 
-The repository planner may inspect repository structure broadly and select representative evidence. The model stage receives a bounded, provenance-backed evidence set. Later local/private intelligence routes may support richer local-only analysis through the same ProjectContextSnapshot contract.
+If the latest eligible context already represents the same GitHub repository and exact immutable commit revision, SignalFlow reuses it and skips file-body reads and model synthesis.
 
-High-signal evidence should prefer, where present and authorized:
+If the repository revision changes, bounded evidence is acquired again and the normal evidence fingerprint determines whether a new immutable context version is required.
 
-- README/product documentation;
-- manifests;
-- architecture docs;
-- route/module inventory;
-- changelog/release context;
-- selected representative source files;
-- owner-provided canonical SourceArtifacts.
+This makes reconnect/retry behavior inexpensive while preserving exact historical provenance.
 
 ## Not-now semantics
 
@@ -102,57 +138,46 @@ This prevents a second onboarding state machine and preserves the rule that Proj
 
 Project context is source neutral and destination neutral.
 
-It must not know whether a later piece becomes:
-
-- LinkedIn text;
-- Instagram carousel;
-- Reel/Short;
-- X/thread;
-- blog/newsletter;
-- YouTube;
-- another supported destination/form;
-- or no content at all.
+It must not know whether a later piece becomes LinkedIn text, an Instagram carousel, a Reel/Short, an X/thread, a blog/newsletter, YouTube, another supported destination/form, or no content at all.
 
 Those decisions belong downstream to editorial fit, connected/preferred destinations, calendar/cadence, media requirements, NarrativeMemory and owner judgment.
 
-## Still required before #222 closes
+## Current deployment truth / non-claims
 
-This slice does **not** yet claim:
+The code path above is implemented, but the following claims are still intentionally withheld:
 
-- production GitHub App connect/install UX;
-- automatic repo traversal/evidence-plan execution after install;
-- durable hosted ProjectContext persistence;
-- automatic first ContentSignal/ContentOpportunity creation from repository bootstrap;
-- owner-facing onboarding screen for initial opportunities;
-- destination preference/calendar onboarding;
-- automatic refresh on later GitHub events;
-- production acceptance with a real connected repository.
+- production GitHub App credentials are not yet configured through the available deployment tooling;
+- no real production GitHub App installation/repository has been acceptance-tested yet;
+- the new hosted SourceArtifact schema migration must be staged/applied and verified before this slice can merge;
+- automatic first hosted ContentSignal/ContentOpportunity creation from repository bootstrap is not included here;
+- hosted ContentOpportunity/Today persistence is not implemented in this slice;
+- durable background webhook → ProjectContext → Opportunity continuation is not implemented in this slice;
+- automatic screenshot/media production is not included;
+- #161, #222 and #167 remain open until their actual end-to-end definitions are satisfied.
 
-Those must converge with #161 and #167 rather than becoming a parallel onboarding product.
+## Next integration after this slice
 
-## Next integration
-
-The next vertical integration is:
+Once repository bootstrap is merged and the evidence migration is live, the next dependency-correct vertical is:
 
 ```text
-active GitHub SourceConnection
-→ automatic bounded repository evidence plan
-→ project_context_synthesis
-→ ProjectContextSnapshot
-→ bootstrap ContentSignal(s) only when evidence warrants them
-→ existing ContentOpportunity evaluation
-→ Today / Plan judgment
+persisted ProjectContextSnapshot
+→ canonical bootstrap/editorial Signal when evidence warrants
+→ hosted ContentOpportunity persistence
+→ Opportunity evaluation with exact ProjectContext
+→ Today / Plan
+→ Start here / Something else / Not now
 ```
 
-After the owner defers or judges the initial suggestions:
+Then the same hosted application path is reused for ongoing work:
 
 ```text
 future verified GitHub event
-→ ContentSignal
-→ cheap noise gate
+→ durable ContentSignal
+→ cheap noise/grouping gate
 → latest eligible ProjectContextSnapshot
 → NarrativeMemory/repetition
 → ContentOpportunity
+→ Today
 → owner judgment only when useful
 ```
 

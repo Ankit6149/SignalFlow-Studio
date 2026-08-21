@@ -1,12 +1,18 @@
+import { createGithubRepositoryBootstrapApplication } from "../application/githubRepositoryBootstrapApplication.mjs";
 import { createGithubSourceConnectionApplication } from "../application/githubSourceConnectionApplication.mjs";
+import { createProjectContextApplication } from "../application/projectContextApplication.mjs";
 import { createSystemClock, createSystemIdService } from "../domain/ports.mjs";
 import { createPostgresSourceConnectionRepository } from "../infrastructure/postgresConnectedSourceAdapters.mjs";
+import { createPostgresProjectContextRepository } from "../infrastructure/postgresProjectContextAdapter.mjs";
+import { createPostgresSourceArtifactRepository } from "../infrastructure/postgresSourceArtifactAdapter.mjs";
+import { createServerProjectContextInferenceAdapter } from "../infrastructure/serverInferenceAdapter.mjs";
 import {
   buildGithubAppInstallationUrl,
   createGithubAppApiClient,
   githubAppConfigurationStatus,
   readGithubAppConfiguration,
 } from "../integrations/github/githubAppApi.mjs";
+import { createGithubRepositoryApiClient } from "../integrations/github/githubRepositoryApi.mjs";
 import {
   createGithubAuthorizationState,
   createGithubInstallState,
@@ -86,5 +92,46 @@ export function createProductionGithubSourceConnectionApplication({
     installationUrlBuilder: (state) => buildGithubAppInstallationUrl({ slug: config.slug, state }),
     clock,
     idService,
+  });
+}
+
+export function createProductionGithubRepositoryBootstrapApplication({
+  origin,
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  clock = createSystemClock(),
+  idService = createSystemIdService("signalflow"),
+} = {}) {
+  const config = readGithubAppConfiguration(env);
+  const workspaceId = resolveOwnerWorkspaceId(env);
+  const database = createNeonQueryExecutor({ databaseUrl: env.DATABASE_URL });
+  const sourceConnectionRepository = createPostgresSourceConnectionRepository({ database, workspaceId });
+  const sourceArtifactRepository = createPostgresSourceArtifactRepository({ database, workspaceId });
+  const projectContextRepository = createPostgresProjectContextRepository({ database, workspaceId });
+  const inferenceAdapter = createServerProjectContextInferenceAdapter({
+    origin,
+    accessKey: env.SIGNALFLOW_ACCESS_KEY,
+    fetchImpl,
+  });
+  const projectContextApplication = createProjectContextApplication({
+    workspaceId,
+    repository: projectContextRepository,
+    inferenceAdapter,
+    clock,
+    idService,
+  });
+  const githubRepositoryApi = createGithubRepositoryApiClient({
+    appId: config.appId,
+    privateKey: config.privateKey,
+    fetchImpl,
+  });
+
+  return createGithubRepositoryBootstrapApplication({
+    workspaceId,
+    sourceConnectionRepository,
+    sourceArtifactRepository,
+    projectContextApplication,
+    githubRepositoryApi,
+    clock,
   });
 }

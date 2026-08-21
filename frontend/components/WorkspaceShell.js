@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import BrandMark from "./BrandMark";
+import GithubSourceConnectionPanel from "./GithubSourceConnectionPanel";
 import styles from "./WorkspaceShell.module.css";
 
 const NAV_GROUPS = [
@@ -181,7 +182,10 @@ export default function WorkspaceShell({
         </div>
       </aside>
 
-      <div className={styles.workspaceCanvas}>{children}</div>
+      <div className={styles.workspaceCanvas}>
+        {activeItem === "connections" && <GithubSourceConnectionPanel />}
+        {children}
+      </div>
     </div>
   );
 }

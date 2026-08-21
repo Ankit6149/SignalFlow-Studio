@@ -78,10 +78,17 @@ function createHarness({ latest = null, failFirstOpportunity = false } = {}) {
   const app = createGithubRepositoryBootstrapApplication({
     workspaceId: "owner-local",
     sourceConnectionRepository: {
+      async list() { return [connection()]; },
       async get(id) { return id === "github-connection-1" ? connection() : null; },
+      async upsert(record) { return record; },
+      async remove() { return false; },
+      async findByProviderInstallation() { return connection(); },
     },
     sourceArtifactRepository: {
+      async list() { return []; },
+      async get() { return null; },
       async upsert(artifact) { calls.artifacts += 1; return artifact; },
+      async remove() { return false; },
     },
     projectContextApplication: {
       async getLatestProjectContext() { return latest; },

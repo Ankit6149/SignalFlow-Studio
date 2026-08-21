@@ -118,6 +118,24 @@ export default function GithubSourceConnectionPanel() {
       const body = await readJson(response);
       const projectName = body.context?.projectName || repositoryName || "Repository";
       const reuseText = body.reused ? " Existing project understanding was reused." : ` Project context v${body.context?.version || 1} is ready.`;
+
+      if (body.firstOpportunity?.opportunityId) {
+        setMessage({
+          tone: "ready",
+          text: `${projectName} is connected and understood from ${body.evidenceCount || 0} bounded evidence items.${reuseText} SignalFlow found the first editorial decision and is opening it now.`,
+        });
+        window.location.assign(`/plan?opportunity=${encodeURIComponent(body.firstOpportunity.opportunityId)}&from=github`);
+        return body;
+      }
+
+      if (body.firstOpportunityStatus === "retryable_error") {
+        setMessage({
+          tone: "attention",
+          text: `${projectName} is connected and project context is preserved.${reuseText} SignalFlow could not prepare the first editorial judgment yet. Refresh understanding to retry without reconnecting GitHub.`,
+        });
+        return body;
+      }
+
       setMessage({
         tone: "ready",
         text: `${projectName} is connected and understood from ${body.evidenceCount || 0} bounded evidence items.${reuseText} SignalFlow can reuse this context for future work automatically.`,

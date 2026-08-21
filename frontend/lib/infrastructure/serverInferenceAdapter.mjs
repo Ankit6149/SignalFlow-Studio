@@ -1,4 +1,5 @@
 import { assertPort } from "../domain/ports.mjs";
+import { acceptNarrativeStrategyProposal } from "../ai/narrativeStrategyPlanning.mjs";
 import { acceptOpportunityEvaluation } from "../ai/opportunityEvaluation.mjs";
 import { acceptProjectContextSynthesis } from "../ai/projectContextSynthesis.mjs";
 import { INFERENCE_TASK_TYPES, normalizeInferenceTask } from "../inference/inferenceTasks.mjs";
@@ -23,6 +24,13 @@ async function readJsonResponse(response, label, unreadableCode) {
   }
 }
 
+function requestHeaders(ownerKey) {
+  return {
+    "Content-Type": "application/json",
+    ...(ownerKey ? { "x-signalflow-access-key": ownerKey } : {}),
+  };
+}
+
 export function createServerProjectContextInferenceAdapter({
   origin,
   accessKey = "",
@@ -40,10 +48,7 @@ export function createServerProjectContextInferenceAdapter({
       }
       const response = await fetchImpl(new URL("/api/intelligence/project-context", base), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(ownerKey ? { "x-signalflow-access-key": ownerKey } : {}),
-        },
+        headers: requestHeaders(ownerKey),
         body: JSON.stringify({ task, input }),
         cache: "no-store",
       });
@@ -79,10 +84,7 @@ export function createServerOpportunityInferenceAdapter({
       }
       const response = await fetchImpl(new URL("/api/intelligence/opportunity", base), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(ownerKey ? { "x-signalflow-access-key": ownerKey } : {}),
-        },
+        headers: requestHeaders(ownerKey),
         body: JSON.stringify({ task, input }),
         cache: "no-store",
       });
@@ -95,6 +97,42 @@ export function createServerOpportunityInferenceAdapter({
       }
       return {
         output: acceptOpportunityEvaluation(data.output),
+        provenance: data.provenance || {},
+      };
+    },
+  });
+}
+
+export function createServerNarrativeStrategyInferenceAdapter({
+  origin,
+  accessKey = "",
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  if (typeof fetchImpl !== "function") throw new TypeError("Server inference adapter requires fetch().");
+  const base = normalizedOrigin(origin);
+  const ownerKey = String(accessKey || "").trim();
+
+  return assertPort("inferenceAdapter", {
+    async execute({ task: taskInput, input = {} } = {}) {
+      const task = normalizeInferenceTask(taskInput);
+      if (task.taskType !== INFERENCE_TASK_TYPES.NARRATIVE_STRATEGY) {
+        throw new TypeError("This server inference adapter only supports narrative_strategy.");
+      }
+      const response = await fetchImpl(new URL("/api/intelligence/strategy", base), {
+        method: "POST",
+        headers: requestHeaders(ownerKey),
+        body: JSON.stringify({ task, input }),
+        cache: "no-store",
+      });
+      const data = await readJsonResponse(response, "Narrative-strategy inference", "narrative_strategy_unreadable");
+      if (!response.ok || !data?.ok) {
+        const error = new Error(data?.error || `Narrative strategy failed (HTTP ${response.status}).`);
+        error.code = data?.code || "narrative_strategy_failed";
+        error.status = response.status;
+        throw error;
+      }
+      return {
+        output: acceptNarrativeStrategyProposal(data.output),
         provenance: data.provenance || {},
       };
     },

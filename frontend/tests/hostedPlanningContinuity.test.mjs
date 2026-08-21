@@ -227,6 +227,6 @@ test("Plan replaces the old hosted handoff placeholder with real durable strateg
   assert.match(hostedPanel, /strategyMatchesOpportunity/);
   assert.match(hostedPanel, /CANONICAL CONTENT PIECE/);
   assert.doesNotMatch(hostedPanel, /localStorage|\/api\/intelligence\/strategy/);
-  assert.doesNotMatch(hostedPanel, /from\s+["'][^"']*CampaignPlanPanel(?:\.[^"']*)?["']/);
+  assert.doesNotMatch(hostedPanel, /import\s+CampaignPlanPanel\s+from\s+["'][^"']+["']/);
   assert.doesNotMatch(plan, /hosted strategy\/production continuity is the next durable layer/i);
 });

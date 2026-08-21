@@ -57,16 +57,16 @@ CREATE TABLE IF NOT EXISTS sf_content_planning_records (
   CONSTRAINT sf_content_planning_records_record_object CHECK (jsonb_typeof(record) = 'object'),
   CONSTRAINT sf_content_planning_records_workspace_identity UNIQUE (workspace_id, record_id),
   CONSTRAINT sf_content_planning_records_opportunity_fk
-    FOREIGN KEY (opportunity_id)
-    REFERENCES sf_content_opportunities (opportunity_id)
+    FOREIGN KEY (workspace_id, opportunity_id)
+    REFERENCES sf_content_opportunities (workspace_id, opportunity_id)
     ON DELETE RESTRICT,
   CONSTRAINT sf_content_planning_records_strategy_fk
-    FOREIGN KEY (narrative_strategy_id)
-    REFERENCES sf_content_planning_records (record_id)
+    FOREIGN KEY (workspace_id, narrative_strategy_id)
+    REFERENCES sf_content_planning_records (workspace_id, record_id)
     ON DELETE RESTRICT,
   CONSTRAINT sf_content_planning_records_piece_fk
-    FOREIGN KEY (content_piece_id)
-    REFERENCES sf_content_planning_records (record_id)
+    FOREIGN KEY (workspace_id, content_piece_id)
+    REFERENCES sf_content_planning_records (workspace_id, record_id)
     ON DELETE RESTRICT
 );
 

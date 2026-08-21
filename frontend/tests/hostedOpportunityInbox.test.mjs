@@ -162,6 +162,8 @@ test("hosted opportunity route remains owner-only and exposes bounded editorial 
   const route = fs.readFileSync(path.join(here, "../app/api/opportunities/route.js"), "utf8");
   assert.match(route, /requireOwnerAccess/);
   assert.match(route, /MAX_BODY_BYTES/);
+  assert.match(route, /requireJsonContentType/);
+  assert.match(route, /opportunity_action_content_type_required/);
   assert.match(route, /select_recommended/);
   assert.match(route, /snooze/);
   assert.match(route, /continueToOpportunity/);

@@ -1,4 +1,5 @@
 import { createGithubRepositoryBootstrapApplication } from "../application/githubRepositoryBootstrapApplication.mjs";
+import { createGithubRepositoryFirstOpportunityApplication } from "../application/githubRepositoryFirstOpportunityApplication.mjs";
 import { createGithubSourceConnectionApplication } from "../application/githubSourceConnectionApplication.mjs";
 import { createProjectContextApplication } from "../application/projectContextApplication.mjs";
 import { createSystemClock, createSystemIdService } from "../domain/ports.mjs";
@@ -19,6 +20,7 @@ import {
   verifyGithubAuthorizationState,
   verifyGithubInstallState,
 } from "./githubInstallState.mjs";
+import { createHostedOpportunityCore } from "./hostedOpportunityCore.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
 
 function opaque(value, field) {
@@ -125,6 +127,22 @@ export function createProductionGithubRepositoryBootstrapApplication({
     privateKey: config.privateKey,
     fetchImpl,
   });
+  const opportunityCore = createHostedOpportunityCore({
+    workspaceId,
+    origin,
+    env,
+    fetchImpl,
+    clock,
+    idService,
+    database,
+  });
+  const firstOpportunityApplication = createGithubRepositoryFirstOpportunityApplication({
+    workspaceId,
+    contentSignalRepository: opportunityCore.contentSignalRepository,
+    continuationApplication: opportunityCore.continuationApplication,
+    clock,
+    idService,
+  });
 
   return createGithubRepositoryBootstrapApplication({
     workspaceId,
@@ -132,6 +150,7 @@ export function createProductionGithubRepositoryBootstrapApplication({
     sourceArtifactRepository,
     projectContextApplication,
     githubRepositoryApi,
+    firstOpportunityApplication,
     clock,
   });
 }

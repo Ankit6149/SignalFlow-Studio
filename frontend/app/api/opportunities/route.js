@@ -18,6 +18,16 @@ function json(body, status = 200) {
   });
 }
 
+function requireJsonContentType(request) {
+  const contentType = String(request?.headers?.get("content-type") || "").toLowerCase();
+  if (!contentType.startsWith("application/json")) {
+    const error = new Error("Opportunity actions require an application/json request body.");
+    error.code = "opportunity_action_content_type_required";
+    error.status = 415;
+    throw error;
+  }
+}
+
 async function readBody(request) {
   const raw = await request.text();
   if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
@@ -87,6 +97,7 @@ export async function PATCH(request) {
   const accessError = requireOwnerAccess(request);
   if (accessError) return accessError;
   try {
+    requireJsonContentType(request);
     const body = await readBody(request);
     const action = String(body.action || "").trim().toLowerCase();
     if (!ACTIONS.has(action)) {

@@ -7,6 +7,9 @@ import {
 import { normalizeProjectContextSnapshot } from "../domain/projectContexts.mjs";
 import { assertPort, createSystemClock, createSystemIdService } from "../domain/ports.mjs";
 
+const SIGNAL_SUMMARY_LIMIT = 11000;
+const SIGNAL_HEADLINE_LIMIT = 240;
+
 function requiredOpaque(value, field) {
   const normalized = String(value || "").trim();
   if (!normalized) throw new TypeError(`${field} is required.`);
@@ -26,6 +29,12 @@ function repositoryIdentity(repository = {}) {
   return { id, fullName };
 }
 
+function boundedText(value, limit) {
+  const normalized = String(value || "").trim();
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
+}
+
 function summaryFromContext(context, repository) {
   const synthesis = context.synthesis || {};
   const lines = [
@@ -35,7 +44,15 @@ function summaryFromContext(context, repository) {
     synthesis.maturityStage ? `Maturity: ${synthesis.maturityStage}` : null,
     synthesis.safeClaims?.length ? `Evidence-backed claims: ${synthesis.safeClaims.slice(0, 6).join("; ")}` : null,
   ].filter(Boolean);
-  return lines.join("\n") || `SignalFlow built bounded project understanding for ${repository.fullName}.`;
+  return boundedText(
+    lines.join("\n") || `SignalFlow built bounded project understanding for ${repository.fullName}.`,
+    SIGNAL_SUMMARY_LIMIT,
+  );
+}
+
+function headlineFromContext(context, repository) {
+  const subject = context.synthesis?.projectName || repository.fullName;
+  return boundedText(`${subject}: connected project snapshot`, SIGNAL_HEADLINE_LIMIT);
 }
 
 export function createGithubRepositoryFirstOpportunityApplication({
@@ -95,9 +112,7 @@ export function createGithubRepositoryFirstOpportunityApplication({
           eventId,
           idempotencyKey: eventId,
         },
-        headline: context.synthesis?.projectName
-          ? `${context.synthesis.projectName}: connected project snapshot`
-          : `${repo.fullName}: connected project snapshot`,
+        headline: headlineFromContext(context, repo),
         summary: summaryFromContext(context, repo),
         signalKind: CONTENT_SIGNAL_KINDS.OTHER,
         sourceArtifactIds: context.sourceArtifactIds,

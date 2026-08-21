@@ -17,6 +17,7 @@ const REQUIRED_PERMISSION_GROUPS = Object.freeze([
   ["contents:read", "contents:write", "contents:admin"],
   ["pull_requests:read", "pull_requests:write", "pull_requests:admin"],
 ]);
+const MAX_PENDING_ID_ATTEMPTS = 8;
 
 function requiredOpaque(value, field) {
   const normalized = String(value || "").trim();
@@ -137,6 +138,24 @@ export function createGithubSourceConnectionApplication({
       .filter((item) => item.workspaceId === ownerWorkspaceId && item.provider === "github");
   }
 
+  async function createPendingConnection(now) {
+    for (let attempt = 0; attempt < MAX_PENDING_ID_ATTEMPTS; attempt += 1) {
+      const sourceConnectionId = requiredOpaque(ids.create("github-connection"), "sourceConnectionId");
+      if (await connections.get(sourceConnectionId)) continue;
+      return assertOwned(await connections.upsert(createSourceConnection({
+        sourceConnectionId,
+        workspaceId: ownerWorkspaceId,
+        provider: "github",
+        capabilities: [],
+        status: SOURCE_CONNECTION_STATUSES.PENDING,
+        createdAt: now,
+      })));
+    }
+    const error = new Error("SignalFlow could not allocate a fresh GitHub SourceConnection identity.");
+    error.code = "github_connection_id_collision";
+    throw error;
+  }
+
   async function startInstallation({ returnTo = "/?workspace=connections" } = {}) {
     const existingPending = (await listConnections()).find((item) => (
       item.status === SOURCE_CONNECTION_STATUSES.PENDING
@@ -144,14 +163,7 @@ export function createGithubSourceConnectionApplication({
       && item.resourceScopes.length === 0
     ));
     const now = systemClock.now();
-    const stored = existingPending || assertOwned(await connections.upsert(createSourceConnection({
-      sourceConnectionId: ids.create("github-connection"),
-      workspaceId: ownerWorkspaceId,
-      provider: "github",
-      capabilities: [],
-      status: SOURCE_CONNECTION_STATUSES.PENDING,
-      createdAt: now,
-    })));
+    const stored = existingPending || await createPendingConnection(now);
     const state = stateCodec.createInstall({
       workspaceId: ownerWorkspaceId,
       sourceConnectionId: stored.sourceConnectionId,

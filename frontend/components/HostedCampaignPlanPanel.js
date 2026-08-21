@@ -8,6 +8,25 @@ function label(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function currentAngle(opportunity) {
+  if (!opportunity?.selectedAngleId) return null;
+  if (opportunity.selectedAngleId === "custom") return opportunity.customAngle
+    ? { angleId: "custom", title: opportunity.customAngle.title || "Something else", summary: opportunity.customAngle.summary || "", approach: opportunity.customAngle.approach || opportunity.customAngle.summary || "" }
+    : null;
+  const selected = opportunity.candidateAngles?.find((item) => item.angleId === opportunity.selectedAngleId);
+  return selected ? { angleId: selected.angleId, title: selected.title || "", summary: selected.summary || "", approach: selected.approach || selected.summary || "" } : null;
+}
+
+function strategyMatchesOpportunity(strategy, opportunity) {
+  if (!strategy) return false;
+  const angle = currentAngle(opportunity);
+  if (!angle) return false;
+  return strategy.selectedAngle?.angleId === angle.angleId
+    && String(strategy.selectedAngle?.title || "") === String(angle.title || "")
+    && String(strategy.selectedAngle?.summary || "") === String(angle.summary || "")
+    && String(strategy.selectedAngle?.approach || "") === String(angle.approach || "");
+}
+
 export default function HostedCampaignPlanPanel({ application, entry }) {
   const [plan, setPlan] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -30,7 +49,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
       setMessage(null);
       try {
         let next = await application.getHostedPlan(entry);
-        if (!next.strategy) {
+        if (!strategyMatchesOpportunity(next.strategy, entry.opportunity)) {
           setStatus("building");
           next = await application.buildHostedPlan(entry);
         }
@@ -181,3 +200,5 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
     </section>
   );
 }
+
+export { strategyMatchesOpportunity };

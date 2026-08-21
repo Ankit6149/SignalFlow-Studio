@@ -1,0 +1,127 @@
+.sourceBadge {
+  padding: .24rem .45rem;
+  border: 1px solid rgba(23, 23, 20, .1);
+  border-radius: 999px;
+  color: #756f64;
+  font-size: .5rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.inboxOrigin {
+  color: #a18b5b;
+  font-size: .48rem;
+  font-weight: 780;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.judgmentBar {
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(23, 23, 20, .11);
+  border-radius: .7rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: center;
+  background: rgba(248, 243, 232, .64);
+}
+
+.judgmentCopy span,
+.hostedHandoff span {
+  color: #8b6a28;
+  font-size: .56rem;
+  font-weight: 850;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.judgmentCopy strong,
+.hostedHandoff strong {
+  display: block;
+  margin-top: .28rem;
+  color: #302e29;
+  font-size: .8rem;
+}
+
+.judgmentCopy p,
+.hostedHandoff p {
+  max-width: 46rem;
+  margin: .3rem 0 0;
+  color: #716b61;
+  font-size: .65rem;
+  line-height: 1.5;
+}
+
+.judgmentActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .45rem;
+}
+
+.judgmentActions button {
+  min-height: 2.5rem;
+  padding: 0 .82rem;
+  border: 1px solid rgba(23, 23, 20, .15);
+  border-radius: .5rem;
+  background: transparent;
+  color: #514d45;
+  font: inherit;
+  font-size: .63rem;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.judgmentActions .primaryAction {
+  border-color: #171714;
+  background: #171714;
+  color: #fffdf8;
+}
+
+.judgmentActions button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.hostedHandoff {
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(139, 106, 40, .18);
+  border-radius: .7rem;
+  background: rgba(238, 227, 201, .28);
+}
+
+.hostedState {
+  margin: .55rem 0 0;
+  color: #8b554d;
+  font-size: .62rem;
+}
+
+.sourceBadge:focus-visible,
+.judgmentActions button:focus-visible {
+  outline: 2px solid #8b6a28;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .judgmentBar {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .judgmentActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .judgmentActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .judgmentActions button {
+    width: 100%;
+  }
+}

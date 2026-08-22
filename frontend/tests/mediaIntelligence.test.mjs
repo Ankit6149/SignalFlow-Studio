@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createDeterministicIdService } from "../lib/domain/ports.mjs";
+import { normalizeAsset } from "../lib/domain/sourceArtifacts.mjs";
 import {
   ASSET_ROLES,
   MEDIA_DECISION_KINDS,
@@ -16,6 +17,7 @@ import {
 } from "../lib/domain/mediaIntelligence.mjs";
 import { createMediaIntelligenceApplication } from "../lib/application/mediaIntelligenceApplication.mjs";
 import { createMemoryMediaIntelligenceRepository } from "../lib/infrastructure/productExecutionMemoryAdapters.mjs";
+import { createMemoryAssetRepository } from "../lib/infrastructure/transferAdapters.mjs";
 
 const NOW = "2026-08-23T00:00:00.000Z";
 
@@ -54,6 +56,26 @@ function contentPiece(overrides = {}) {
   };
 }
 
+function canonicalAsset(overrides = {}) {
+  return normalizeAsset({
+    assetId: overrides.assetId || "asset-1",
+    assetVersionId: overrides.assetVersionId || "asset-v1",
+    workspaceId: overrides.workspaceId || "workspace-1",
+    projectId: "project-1",
+    originalName: "product.png",
+    mimeType: "image/png",
+    byteSize: 120,
+    lifecycle: "original",
+    privacy: {
+      classification: overrides.privacyClass || "workspace_private",
+      exportAllowed: true,
+      processingAllowed: true,
+    },
+    createdAt: NOW,
+    updatedAt: NOW,
+  }, { workspaceId: overrides.workspaceId || "workspace-1", projectId: "project-1", now: NOW });
+}
+
 function advancingClock() {
   let tick = 0;
   return {
@@ -63,6 +85,18 @@ function advancingClock() {
       return value;
     },
   };
+}
+
+function applicationFixture({ asset = canonicalAsset() } = {}) {
+  const repository = createMemoryMediaIntelligenceRepository();
+  const assetRepository = createMemoryAssetRepository(asset ? [asset] : []);
+  const application = createMediaIntelligenceApplication({
+    mediaIntelligenceRepository: repository,
+    assetRepository,
+    clock: advancingClock(),
+    idService: createDeterministicIdService("test"),
+  });
+  return { repository, assetRepository, application };
 }
 
 test("reference and evidence roles fail closed for direct public use", () => {
@@ -182,13 +216,60 @@ test("cross-workspace media bindings are rejected", () => {
   }), (error) => error.code === "cross_workspace_media_binding");
 });
 
-test("changing an asset role invalidates downstream media decisions and requirements", async () => {
-  const repository = createMemoryMediaIntelligenceRepository();
-  const application = createMediaIntelligenceApplication({
-    mediaIntelligenceRepository: repository,
-    clock: advancingClock(),
-    idService: createDeterministicIdService("test"),
+test("intent resolution binds a real canonical asset version and inherits stricter privacy", async () => {
+  const { application } = applicationFixture({ asset: canonicalAsset({ privacyClass: "device_private" }) });
+  const result = await application.resolveIntent({
+    workspaceId: "workspace-1",
+    scopeType: "content_piece",
+    scopeId: "piece-1",
+    assets: [{
+      assetId: "asset-1",
+      assetVersionId: "asset-v1",
+      role: ASSET_ROLES.FINAL_CANDIDATE,
+      privacyClass: "public",
+      usePolicy: { publicUseAllowed: true, remoteAiInspectionAllowed: true, rightsStatus: "user_created" },
+    }],
   });
+  assert.equal(result.bindings[0].assetVersionId, "asset-v1");
+  assert.equal(result.bindings[0].privacyClass, "device_private");
+  assert.equal(result.bindings[0].usePolicy.remoteAiInspectionAllowed, false);
+});
+
+test("intent resolution rejects missing and stale canonical asset versions", async () => {
+  const missing = applicationFixture({ asset: null });
+  await assert.rejects(() => missing.application.resolveIntent({
+    workspaceId: "workspace-1",
+    scopeId: "piece-1",
+    assets: [{ assetId: "missing", role: ASSET_ROLES.REFERENCE_ONLY }],
+  }), (error) => error.code === "media_asset_not_found");
+
+  const fixture = applicationFixture();
+  await assert.rejects(() => fixture.application.resolveIntent({
+    workspaceId: "workspace-1",
+    scopeId: "piece-1",
+    assets: [{ assetId: "asset-1", assetVersionId: "old-version", role: ASSET_ROLES.REFERENCE_ONLY }],
+  }), (error) => error.code === "media_asset_version_mismatch");
+});
+
+test("owner override cannot select existing media when bound policy forbids public use", async () => {
+  const { application } = applicationFixture();
+  const intent = await application.resolveIntent({
+    workspaceId: "workspace-1",
+    scopeType: "content_piece",
+    scopeId: "piece-1",
+    assets: [{ assetId: "asset-1", role: ASSET_ROLES.REFERENCE_ONLY, usePolicy: { rightsStatus: "user_created" } }],
+  });
+  assert.equal(intent.bindings[0].usePolicy.publicUseAllowed, false);
+  const planned = await application.planContentPiece({ contentPiece: contentPiece(), destinations: ["linkedin"] });
+  await assert.rejects(() => application.overrideDecision({
+    mediaDecisionId: planned.decision.mediaDecisionId,
+    destination: "linkedin",
+    selectedKind: MEDIA_DECISION_KINDS.EXISTING_SINGLE_IMAGE,
+  }), (error) => error.code === "media_selection_policy_blocked");
+});
+
+test("changing an asset role invalidates downstream media decisions and requirements", async () => {
+  const { repository, application } = applicationFixture();
   const intent = await application.resolveIntent({
     workspaceId: "workspace-1",
     scopeType: "content_piece",

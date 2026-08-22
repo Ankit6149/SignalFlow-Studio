@@ -15,29 +15,29 @@ const repositoryUrl = "https://github.com/Ankit6149/SignalFlow-Studio";
 
 const faq = [
   {
-    question: "What can I use SignalFlow Studio for today?",
+    question: "What can I use SignalFlow for today?",
     answer:
-      "The current Studio turns manual source context such as notes, supported links, repository context, and supported text files into editable destination drafts through a real model route. Drafts stay reviewable, recoverable in the current browser, and exportable.",
+      "SignalFlow can capture manual ContentSignals, connect verified GitHub repository context into hosted Signals and Opportunities, continue connected Opportunities into durable Voice and NarrativeStrategy planning, and run the accepted exact-review path for LinkedIn and X. The legacy campaign builder remains compatibility-only while canonical Direct Create is rebuilt on the same Content OS records.",
   },
   {
-    question: "What is SignalFlow becoming?",
+    question: "What is SignalFlow?",
     answer:
-      "SignalFlow is being built as an approval-first content operating system: a layer that can turn meaningful work and source evidence into worthwhile content opportunities, production plans, reviewable content, durable publication, and narrative memory as those capabilities are implemented.",
+      "SignalFlow is an approval-first content operating system. It is designed to reduce the operational work between meaningful work and audience communication while keeping judgment, explicit boundaries, and exact approval with the user.",
   },
   {
     question: "Does SignalFlow publish without approval?",
     answer:
-      "No. Every current draft stays reviewable. Direct publishing is only offered when an official connector is configured and the platform API confirms success.",
+      "No. Approval is bound to an exact visible revision. A changed or regenerated draft requires judgment again, and publication is kept separate from preparation until the external outcome is confirmed.",
   },
   {
-    question: "Where are campaigns and account tokens stored?",
+    question: "Where is current state stored?",
     answer:
-      "Saved campaigns remain in the current browser. Social OAuth tokens are encrypted in HTTP-only cookies and are not exposed to page JavaScript.",
+      "The accepted personal owner path still uses browser-local recovery for some records, while GitHub source connections, ProjectContext, Signals, Opportunities, Identity, NarrativeStrategy, and ContentPiece continuity are being moved into the hosted relational path. SignalFlow does not describe prepared content as publicly published until an external publication is confirmed.",
   },
   {
     question: "Can I bring my own model provider?",
     answer:
-      "Yes. SignalFlow supports configured Gemini, OpenAI, Claude, OpenRouter, Groq, Ollama, LM Studio, and compatible custom endpoints where the active deployment and session can reach them. Campaign generation requires a real model route.",
+      "SignalFlow has a provider-neutral inference boundary and supports configured hosted, bring-your-own, local, and compatible custom routes where the active deployment can reach them. Privacy policy is part of routing and protected context must fail closed instead of silently falling back to a weaker route.",
   },
 ];
 
@@ -59,7 +59,7 @@ const schema = {
       name: "SignalFlow Studio",
       alternateName: "SignalFlow",
       description:
-        "An approval-first content operating system in progress, built to reduce the operational work between meaningful work and audience communication while keeping judgment with the user.",
+        "An approval-first content operating system built around Signals, narrative judgment, evidence, exact revision approval, and durable connected-source context.",
       publisher: { "@id": `${siteUrl}/#organization` },
       inLanguage: "en",
     },
@@ -69,7 +69,7 @@ const schema = {
       name: "SignalFlow Studio",
       alternateName: "SignalFlow",
       applicationCategory: "BusinessApplication",
-      applicationSubCategory: "Content operations and approval-first publishing workflow",
+      applicationSubCategory: "Content operating system and approval-first communication workflow",
       operatingSystem: "Web",
       browserRequirements: "Requires a modern browser with JavaScript enabled.",
       url: siteUrl,
@@ -79,28 +79,27 @@ const schema = {
       license: `${repositoryUrl}/blob/master/LICENSE`,
       creator: { "@id": `${siteUrl}/#organization` },
       description:
-        "The current SignalFlow Studio turns manual source context into editable destination drafts through a real model provider route, with versioned campaign records, edit-safe browser-local recovery, portable archive and export, MCP access, and confirmed-only publishing through configured official connectors. The broader content operating system direction adds signal detection, editorial opportunity ranking, media production, scheduling, and narrative memory as those capabilities are implemented.",
+        "SignalFlow captures meaningful work as Signals, evaluates whether it is worth communicating, resolves narrative direction with Voice and evidence, and returns exact review decisions to the user. Manual owner workflows and a durable GitHub-connected source and planning spine are implemented today; media production, generalized destination-by-form planning, durable publication, and confirmed-public memory continue behind the same canonical records.",
       keywords: [
         "content operating system",
         "content operations",
         "approval-first publishing",
-        "AI content workflow",
-        "developer communication",
-        "review before publish",
-        "local-first creator tools",
+        "content signals",
+        "GitHub content workflow",
+        "narrative planning",
+        "exact revision approval",
         "bring your own AI model",
       ],
       featureList: [
-        "Turn manual source context into editable destination drafts",
-        "Extract context from supported public links and GitHub repositories within current capability limits",
-        "Read supported text, Markdown, CSV, JSON, and code files in the browser",
-        "Use real configured hosted, bring-your-own, local, or compatible custom model routes",
-        "Create campaigns directly through supported SignalFlow MCP operations",
-        "Preserve versioned campaign records, edit-safe revisions, and browser-local recovery",
-        "Prepare and validate portable SignalFlow campaign archives with explicit import conflict and rollback controls",
-        "Export authoritative current drafts as Markdown and JSON",
-        "Publish through configured LinkedIn, X, and Reddit official connector paths after approval and confirmed success",
-        "Keep social OAuth sessions encrypted in HTTP-only cookies",
+        "Capture manual ContentSignals without requiring an AI call",
+        "Connect verified GitHub repositories with bounded exact-revision context",
+        "Create durable hosted ProjectContext, Signals, and Opportunities from connected repository work",
+        "Continue connected Opportunities into durable Voice, NarrativeStrategy, and ContentPiece planning",
+        "Review LinkedIn and X through immutable revisions with evidence and authenticity checks",
+        "Approve one exact visible revision and invalidate approval after later edits or regeneration",
+        "Preserve browser-local NarrativeMemory and explainable StyleMemory in the accepted owner path",
+        "Route inference through provider-neutral tasks with explicit privacy constraints",
+        "Keep silence and deliberate destination omission as valid outcomes",
       ],
       offers: {
         "@type": "Offer",
@@ -132,16 +131,16 @@ export const metadata = {
     template: "%s | SignalFlow Studio",
   },
   description:
-    "An approval-first content operating system in progress. Use the current Studio to turn real source context into reviewable drafts while broader automation is built transparently.",
+    "An approval-first content operating system that turns meaningful work into Signals, narrative opportunities, exact review decisions, and durable connected-source context while keeping judgment with you.",
   keywords: [
     "content operating system",
     "content operations",
+    "content signals",
     "approval-first publishing",
     "AI content workflow",
-    "developer communication",
-    "review before publish",
-    "local-first creator tools",
     "GitHub content workflow",
+    "narrative planning",
+    "review before publish",
   ],
   authors: [{ name: "SignalFlow Studio", url: repositoryUrl }],
   creator: "SignalFlow Studio",
@@ -161,13 +160,13 @@ export const metadata = {
     siteName: "SignalFlow Studio",
     title: "SignalFlow Studio — Content Operating System",
     description:
-      "Keep doing the work. SignalFlow is being built to handle the content operations around it while keeping judgment and approval with you.",
+      "Stay in the work. SignalFlow handles the useful middle between what happened and the judgment only you should make.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "SignalFlow Studio content operating system — built around evidence, judgment, and approval",
+        alt: "SignalFlow Studio content operating system — built around Signals, evidence, judgment, and exact approval",
       },
     ],
   },
@@ -175,7 +174,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "SignalFlow Studio — Content Operating System",
     description:
-      "An approval-first content operating system in progress, with a usable manual Studio today and broader signal, production, publishing, and memory automation as the product direction.",
+      "Signals, connected work, narrative planning, and exact review — with judgment kept in your hands.",
     images: ["/opengraph-image"],
   },
   robots: {
@@ -201,7 +200,7 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f5f5f2",
+  themeColor: "#f7f8fb",
   colorScheme: "light",
 };
 

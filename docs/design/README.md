@@ -1,1 +1,0 @@
-SignalFlow interface design notes.

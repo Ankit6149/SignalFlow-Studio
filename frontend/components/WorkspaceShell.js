@@ -71,14 +71,14 @@ export default function WorkspaceShell({ activeItem, children, onNavigate, statu
     <div className={`app-shell ${styles.shell}`} data-workspace-route={activeItem || "unknown"}>
       <a className={styles.skipLink} href="#workspace-content">Skip to workspace</a>
       <header className={styles.mobileHeader}>
-        <Link href="/" className={styles.mobileBrand}><BrandMark tone="light" /></Link>
+        <Link href="/" className={styles.mobileBrand}><BrandMark tone="dark" /></Link>
         <button type="button" className={styles.menuButton} onClick={() => setOpen((value) => !value)} aria-expanded={open}><span /><span /><b>{itemIndex[activeItem]?.label || "Menu"}</b></button>
       </header>
       {open && <button type="button" className={styles.backdrop} aria-label="Close navigation" onClick={() => setOpen(false)} />}
 
       <aside className={`${styles.rail} ${open ? styles.railOpen : ""}`}>
         <div className={styles.railTop}>
-          <Link href="/" className={styles.brandLink}><BrandMark tone="light" /></Link>
+          <Link href="/" className={styles.brandLink}><BrandMark tone="dark" /></Link>
           <div className={styles.contextBlock}><span>{contextLabel}</span><small>content operating system</small></div>
         </div>
         <nav className={styles.navigation} aria-label="SignalFlow workspace">
@@ -89,12 +89,12 @@ export default function WorkspaceShell({ activeItem, children, onNavigate, statu
 
       <div className={styles.mainColumn}>
         <div className={styles.flowBar} aria-label="SignalFlow content flow">
-          <div className={styles.flowTitle}><span>Studio flow</span><small>move one story from signal to publish</small></div>
+          <div className={styles.flowTitle}><span>Flow</span><small>from signal to publish</small></div>
           <div className={styles.flowSteps}>
             {FLOW.map((step, index) => {
               const active = activeFlow === step.id;
               const available = step.status === "available";
-              const node = <><b>{index + 1}</b><span>{step.label}</span>{step.status !== "available" && <small>{step.status === "next" ? "next" : "later"}</small>}</>;
+              const node = <><b>{String(index + 1).padStart(2, "0")}</b><span>{step.label}</span>{step.status !== "available" && <small>{step.status === "next" ? "next" : "later"}</small>}</>;
               return available ? <Link key={step.id} href={step.href} className={`${styles.flowStep} ${active ? styles.flowStepActive : ""}`}>{node}</Link> : <span key={step.id} className={`${styles.flowStep} ${styles.flowStepLocked}`}>{node}</span>;
             })}
           </div>

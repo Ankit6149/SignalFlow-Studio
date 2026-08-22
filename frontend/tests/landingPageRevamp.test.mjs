@@ -27,45 +27,43 @@ test("the landing route has one component owner and uses the shared BrandMark", 
   assert.match(page, /<LandingPage onEnter=\{enterStudio\}/);
   assert.match(landing, /import BrandMark from "\.\/BrandMark"/);
   assert.match(landing, /export default function LandingPage\(\{ onEnter \}\)/);
-  assert.match(landing, /<BrandMark tone="light" \/>/);
   assert.match(landing, /<BrandMark tone="dark" \/>/);
+  assert.doesNotMatch(landing, /Open current Studio|Open Studio/);
   assert.doesNotMatch(landing, /function SignalFlowLogo|logoMark|logoCopy|brand-mark__glyph/);
-  assert.doesNotMatch(styles, /logoMark|logoCopy|brand-mark/);
 });
 
-test("the landing leads with the real owner Golden Path rather than future automation", () => {
+test("the landing leads with the canonical owner path instead of the legacy campaign builder", () => {
   for (const anchor of ["main-content", "works-now", "how-it-flows", "trust", "final-title"]) {
     assert.ok(landing.includes(anchor), `missing landing anchor: ${anchor}`);
   }
   assert.match(landing, /Stay in the work/);
   assert.match(landing, /Let the story find you/);
   assert.match(landing, /Owner Golden Path is live through exact approval/);
-  assert.match(landing, /manual ContentSignals → persisted opportunities and angles/);
-  assert.match(landing, /evidence\/authenticity checks → exact revision approve\/reject/);
+  assert.match(landing, /Connected GitHub context/);
+  assert.match(landing, /Durable planning/);
   assert.match(landing, /SignalFlow&apos;s job is everything between the work and your judgment/);
+  assert.match(landing, /legacy campaign builder remains compatibility code/i);
   assert.doesNotMatch(landing, /Turn one product story into a campaign built for every channel|Create your posting package/);
 });
 
-test("current and future claims remain intentionally distinct", () => {
-  assert.match(landing, /Working now:/);
-  assert.match(landing, /browser-local recovery/i);
-  assert.match(landing, /real configured AI generation/i);
-  assert.match(landing, /Editable destination-specific drafts \+ export/i);
-  assert.match(landing, /browser-local NarrativeMemory \+ explainable StyleMemory/);
-  assert.match(landing, /Automatic connected-source detection, durable publishing, cross-device memory sync and media production remain product direction/);
-  assert.match(landing, /WHAT COMES AFTER THE CORE LOOP/);
-  assert.match(landing, /direction—not claims about what is already shipped/);
-  assert.match(landing, /Cross-device memory \+ confirmed-public history/);
+test("current and next claims remain intentionally distinct", () => {
+  assert.match(landing, /WHAT THE PRODUCT CAN DO TODAY/);
+  assert.match(landing, /verified repository can become bounded ProjectContext/);
+  assert.match(landing, /hosted Voice, NarrativeStrategy, exact approval, and ContentPiece state/);
+  assert.match(landing, /LinkedIn and X use immutable revisions/);
+  assert.match(landing, /THE NEXT CONNECTED LAYERS/);
+  assert.match(landing, /Automatic evidence \+ media/);
+  assert.match(landing, /Durable publication/);
   assert.match(landing, /Private Hybrid/);
   assert.match(landing, /Local Only/);
 });
 
-test("landing and workspace use the same paper night and gold design tokens", () => {
-  for (const token of ["#f5f0e5", "#11120f", "#d3b874", "#ead9a8"]) {
-    assert.ok(styles.includes(token), `landing missing shared token ${token}`);
-    assert.ok(shellStyles.includes(token), `workspace shell missing shared token ${token}`);
+test("landing and workspace use the same calm signal design tokens", () => {
+  for (const token of ["#f7f8fb", "#ffffff", "#171b24", "#5267d9", "#dfe4ec"]) {
+    assert.ok(styles.toLowerCase().includes(token), `landing missing shared token ${token}`);
+    assert.ok(shellStyles.toLowerCase().includes(token), `workspace shell missing shared token ${token}`);
   }
-  assert.doesNotMatch(styles, /#d9f36a|#a9a1ff/i);
+  assert.doesNotMatch(styles, /#d3b874|#ead9a8|#d9f36a|#a9a1ff/i);
 });
 
 test("public discovery metadata matches the content operating system positioning", () => {
@@ -88,7 +86,7 @@ test("the landing design is scoped and avoids the retired global cascade", () =>
   assert.match(styles, /\.hero\s*\{/);
   assert.match(styles, /\.currentSection\s*[,\{]/);
   assert.match(styles, /\.flowSection\s*[,\{]/);
-  assert.match(styles, /\.directionSection\s*[,\{]/);
+  assert.match(styles, /\.nextSection\s*[,\{]/);
   assert.match(styles, /\.trustSection\s*[,\{]/);
 });
 

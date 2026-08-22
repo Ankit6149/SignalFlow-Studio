@@ -7,11 +7,7 @@ export default function BrandMark({ compact = false, tone = "light", label = "Si
       className={`${styles.mark} ${compact ? styles.compact : ""} ${dark ? styles.dark : styles.light}`}
       aria-label={label}
     >
-      <span className={styles.glyph} aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
+      <img className={styles.glyph} src="/icon.svg" alt="" aria-hidden="true" />
       <span className={styles.copy}>
         <strong>SignalFlow</strong>
         {!compact && <small>STUDIO</small>}

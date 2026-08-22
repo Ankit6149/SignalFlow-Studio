@@ -11,10 +11,7 @@ export default function Loading() {
           <span />
         </div>
         <h1>Preparing your workspace</h1>
-        <p>
-          SignalFlow is loading the context builder, model adapter controls, and
-          export surface.
-        </p>
+        <p>Loading your Signals, decisions, planning context, and current workspace state.</p>
       </section>
     </main>
   );

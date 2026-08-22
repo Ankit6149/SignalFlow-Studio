@@ -18,37 +18,34 @@ test("workspace shell represents the canonical product map without faking unavai
     assert.match(shell, new RegExp(`id: "${id}", label: "[^"]+", href: "${href.replace("/", "\\/")}", status: "available"`));
   }
 
+  assert.match(shell, /id: "create", label: "Create", status: "next"/);
+  assert.match(shell, /legacy campaign Studio is compatibility-only/i);
   assert.match(shell, /id: "assets", label: "Assets", status: "planned"/);
   assert.match(shell, /id: "calendar", label: "Calendar", status: "planned"/);
-  assert.doesNotMatch(shell, /id: "today"[^\n]+status: "next"/);
   assert.match(shell, /aria-disabled="true"/);
   assert.match(shell, /not functional yet/);
+  assert.doesNotMatch(shell, /id: "create"[^\n]+href: "\/\?workspace=create"/);
 });
 
 test("real current surfaces share the canonical shell", () => {
-  const page = read("app/page.js");
   const today = read("components/TodayWorkspace.js");
   const signals = read("components/SignalsWorkspace.js");
-  assert.match(page, /import WorkspaceShell from "\.\.\/components\/WorkspaceShell"/);
-  assert.match(page, /activeItem=\{section === "studio" \? "create" : section\}/);
-  assert.match(page, /workspace === "create" \? "studio" : workspace/);
+  const plan = read("components/PlanWorkspace.js");
   assert.match(today, /<WorkspaceShell activeItem="today"/);
   assert.match(signals, /<WorkspaceShell activeItem="signals"/);
+  assert.match(plan, /<WorkspaceShell activeItem="plan"/);
   assert.doesNotMatch(today, /className=\{styles\.topbar\}/);
   assert.doesNotMatch(signals, /className=\{styles\.topbar\}/);
 });
 
-test("visual tokens align workspace with the landing while keeping light-surface contrast", () => {
+test("visual tokens align workspace with the landing using a calm light signal system", () => {
   const landing = read("components/LandingPage.module.css");
   const shell = read("components/WorkspaceShell.module.css");
-  const workspace = read("app/app-workspace.css");
-  for (const token of ["#f5f0e5", "#fffdf8", "#171714", "#11120f", "#d3b874"]) {
+  for (const token of ["#f7f8fb", "#ffffff", "#171b24", "#5267d9", "#dfe4ec"]) {
     assert.match(`${landing}\n${shell}`, new RegExp(token.replace("#", "\\#"), "i"));
   }
-  assert.match(workspace, /--app-bg: #f5f0e5/);
-  assert.match(workspace, /--app-surface: #fffdf8/);
-  assert.match(workspace, /--app-ink: #171714/);
-  assert.match(workspace, /--app-radius: 0\.5rem/);
+  assert.doesNotMatch(shell, /#d3b874|#ead9a8/i);
+  assert.match(shell, /background:\s*rgba\(255,255,255,\.92\)/);
 });
 
 test("workspace shell has an intentional mobile drawer and accessibility states", () => {

@@ -8,12 +8,9 @@ export default function NotFound() {
         <p className={styles.eyebrow}>404</p>
         <div className={styles.pathMark}>?</div>
         <h1>This route is not in the flow</h1>
-        <p>
-          SignalFlow only needs the builder, generated assets, and API routes
-          right now. Return to the main workspace and keep shipping.
-        </p>
+        <p>The surface you followed is not part of the current SignalFlow workspace. Return to Today and continue from the decisions that need you.</p>
         <div className={styles.actions}>
-          <Link href="/">Back to builder</Link>
+          <Link href="/today">Back to Today</Link>
         </div>
       </section>
     </main>

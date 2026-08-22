@@ -18,7 +18,7 @@ const NAV_GROUPS = [
   {
     label: "Make",
     items: [
-      { id: "create", label: "Create", href: "/?workspace=create", status: "available" },
+      { id: "create", label: "Create", status: "next" },
       { id: "assets", label: "Assets", status: "planned" },
       { id: "library", label: "Library", href: "/?workspace=library", status: "available" },
       { id: "calendar", label: "Calendar", status: "planned" },
@@ -47,11 +47,7 @@ function Glyph({ id }) {
     voice: "M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3ZM6 11.5a6 6 0 0 0 12 0M12 17.5v3",
     settings: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7ZM19 12l2-1-2-3-2.2.4-1.5-1.5.4-2.2-3-2-1 2-2.2-.4-1.5 1.5.4 2.2-2 1 2 3 2.2-.4 1.5 1.5-.4 2.2 3 2 1-2 2.2.4 1.5-1.5z",
   };
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d={paths[id]} />
-    </svg>
-  );
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={paths[id]} /></svg>;
 }
 
 export default function WorkspaceShell({
@@ -60,7 +56,7 @@ export default function WorkspaceShell({
   onNavigate,
   statusLabel = "Owner workspace",
   statusTone = "ready",
-  contextLabel = "Personal Alpha",
+  contextLabel = "Owner Alpha",
 }) {
   const [open, setOpen] = useState(false);
 
@@ -89,20 +85,16 @@ export default function WorkspaceShell({
       <>
         <span className={styles.navIcon}><Glyph id={item.id} /></span>
         <span className={styles.navText}>{item.label}</span>
-        {item.status !== "available" && (
-          <span className={styles.navStatus}>{item.status === "next" ? "NEXT" : "LATER"}</span>
-        )}
+        {item.status !== "available" && <span className={styles.navStatus}>{item.status === "next" ? "NEXT" : "LATER"}</span>}
       </>
     );
 
     if (item.status !== "available") {
+      const explanation = item.id === "create"
+        ? "Direct Create is being rebuilt on the canonical Content OS path. The legacy campaign Studio is compatibility-only and is no longer the primary Create experience."
+        : `${item.label} is part of the documented product direction and is not functional yet.`;
       return (
-        <span
-          key={item.id}
-          className={`${styles.navItem} ${styles.navItemUnavailable}`}
-          aria-disabled="true"
-          title={`${item.label} is part of the documented product direction and is not functional yet.`}
-        >
+        <span key={item.id} className={`${styles.navItem} ${styles.navItemUnavailable}`} aria-disabled="true" title={explanation}>
           {content}
         </span>
       );
@@ -110,26 +102,14 @@ export default function WorkspaceShell({
 
     if (onNavigate?.[item.id]) {
       return (
-        <button
-          key={item.id}
-          type="button"
-          className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
-          onClick={() => activate(item)}
-          aria-current={isActive ? "page" : undefined}
-        >
+        <button key={item.id} type="button" className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`} onClick={() => activate(item)} aria-current={isActive ? "page" : undefined}>
           {content}
         </button>
       );
     }
 
     return (
-      <Link
-        key={item.id}
-        href={item.href || "/"}
-        className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
-        aria-current={isActive ? "page" : undefined}
-        onClick={() => setOpen(false)}
-      >
+      <Link key={item.id} href={item.href || "/"} className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`} aria-current={isActive ? "page" : undefined} onClick={() => setOpen(false)}>
         {content}
       </Link>
     );
@@ -140,16 +120,9 @@ export default function WorkspaceShell({
       <a className={styles.skipLink} href="#workspace-content">Skip to workspace</a>
 
       <header className={styles.mobileHeader}>
-        <Link href="/" className={styles.mobileBrand} aria-label="SignalFlow home"><BrandMark tone="light" /></Link>
-        <button
-          type="button"
-          className={styles.menuButton}
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls="signalflow-workspace-nav"
-        >
-          <span /><span />
-          <b>{itemIndex[activeItem]?.label || "Menu"}</b>
+        <Link href="/" className={styles.mobileBrand} aria-label="SignalFlow home"><BrandMark tone="dark" /></Link>
+        <button type="button" className={styles.menuButton} onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="signalflow-workspace-nav">
+          <span /><span /><b>{itemIndex[activeItem]?.label || "Menu"}</b>
         </button>
       </header>
 
@@ -157,11 +130,8 @@ export default function WorkspaceShell({
 
       <aside className={`${styles.rail} ${open ? styles.railOpen : ""}`} id="signalflow-workspace-nav">
         <div className={styles.railTop}>
-          <Link href="/" className={styles.brandLink} aria-label="SignalFlow home"><BrandMark tone="light" /></Link>
-          <div className={styles.contextBlock}>
-            <span>{contextLabel}</span>
-            <small>local owner context</small>
-          </div>
+          <Link href="/" className={styles.brandLink} aria-label="SignalFlow home"><BrandMark tone="dark" /></Link>
+          <div className={styles.contextBlock}><span>{contextLabel}</span><small>Content operating system</small></div>
         </div>
 
         <nav className={styles.navigation} aria-label="SignalFlow workspace">
@@ -174,11 +144,8 @@ export default function WorkspaceShell({
         </nav>
 
         <div className={styles.railFooter}>
-          <div className={styles.statusLine} data-tone={statusTone}>
-            <i />
-            <span>{statusLabel}</span>
-          </div>
-          <p>Capabilities are shown truthfully. “Next” and “Later” routes are not shipped features.</p>
+          <div className={styles.statusLine} data-tone={statusTone}><i /><span>{statusLabel}</span></div>
+          <p>Only shipped capabilities are interactive. Planned surfaces stay visible as product direction, not fake features.</p>
         </div>
       </aside>
 

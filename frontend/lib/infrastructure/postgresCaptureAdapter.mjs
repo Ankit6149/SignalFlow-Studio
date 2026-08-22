@@ -124,14 +124,15 @@ WHERE sf_capture_recipes.workspace_id = EXCLUDED.workspace_id
   AND sf_capture_recipes.project_id = EXCLUDED.project_id
   AND sf_capture_recipes.target_origin = EXCLUDED.target_origin
   AND sf_capture_recipes.allowed_environment = EXCLUDED.allowed_environment
+  AND (sf_capture_recipes.record - 'status' - 'updatedAt') = (EXCLUDED.record - 'status' - 'updatedAt')
 RETURNING *`, [
       recipe.captureRecipeId, recipe.version, scope, recipe.projectId, recipe.targetOrigin,
       recipe.allowedEnvironment, recipe.status, Number(recipe.schemaVersion || recipe.captureSchemaVersion || 1),
       JSON.stringify(recipe), recipe.createdAt, recipe.updatedAt,
     ]));
     if (rows.length !== 1) {
-      const error = new Error(`Capture recipe ${recipe.captureRecipeId}@${recipe.version} could not be persisted.`);
-      error.code = "capture_recipe_persistence_failed";
+      const error = new Error(`Capture recipe ${recipe.captureRecipeId}@${recipe.version} could not be persisted without mutating its immutable version.`);
+      error.code = "capture_recipe_version_mutation_forbidden";
       throw error;
     }
     return captureRecipeFromRow(rows[0]);

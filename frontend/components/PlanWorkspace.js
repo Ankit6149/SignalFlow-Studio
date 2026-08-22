@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserPlanOpportunityApplication } from "../lib/application/browserPlanOpportunityApplication.mjs";
 import CampaignPlanPanel from "./CampaignPlanPanel";
+import HostedCampaignPlanPanel from "./HostedCampaignPlanPanel";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./PlanWorkspace.module.css";
 import judgmentStyles from "./HostedOpportunityJudgment.module.css";
@@ -88,12 +89,12 @@ export default function PlanWorkspace() {
 
   async function chooseAngle(angleId) {
     if (!activeEntry) return;
-    await run(() => application.selectAngle(activeEntry, angleId), "Narrative direction saved. SignalFlow can build from this exact owner judgment next.");
+    await run(() => application.selectAngle(activeEntry, angleId), "Narrative direction saved. SignalFlow is continuing from this exact owner judgment.");
   }
 
   async function startHere() {
     if (!activeEntry) return;
-    await run(() => application.startHere(activeEntry), "SignalFlow saved the explicit recommended direction as your current choice.");
+    await run(() => application.startHere(activeEntry), "SignalFlow saved the explicit recommended direction and is continuing into the narrative plan.");
   }
 
   async function saveCustomAngle(event) {
@@ -101,7 +102,7 @@ export default function PlanWorkspace() {
     if (!activeEntry || !customAngle.trim()) return;
     const saved = await run(
       () => application.setCustomAngle(activeEntry, { summary: customAngle.trim(), approach: customAngle.trim() }),
-      "Your custom narrative direction is now the selected angle.",
+      "Your custom narrative direction is now selected and ready for planning.",
     );
     if (saved) setCustomAngle("");
   }
@@ -269,11 +270,7 @@ export default function PlanWorkspace() {
                 {activeEntry.origin === "local" ? (
                   <CampaignPlanPanel opportunity={active} selectedAngle={selectedAngle} />
                 ) : selectedAngle ? (
-                  <section className={judgmentStyles.hostedHandoff} aria-label="Hosted planning boundary">
-                    <span>DIRECTION SAVED · CANONICAL HOSTED OPPORTUNITY</span>
-                    <strong>{selectedAngle.title || "Something else"}</strong>
-                    <p>This connected-source judgment remains on the hosted Opportunity. SignalFlow will not copy it into the browser-local campaign planner; hosted strategy/production continuity is the next durable layer.</p>
-                  </section>
+                  <HostedCampaignPlanPanel application={application} entry={activeEntry} />
                 ) : null}
 
                 <footer className={styles.detailFooter}>

@@ -8,7 +8,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const plan = fs.readFileSync(path.join(here, "../components/PlanWorkspace.js"), "utf8");
 const planApp = fs.readFileSync(path.join(here, "../lib/application/browserPlanOpportunityApplication.mjs"), "utf8");
 
- test("Plan surfaces connected-source Opportunities through the shared editorial inbox", () => {
+test("Plan surfaces connected-source Opportunities through the shared editorial inbox", () => {
   assert.match(plan, /createBrowserPlanOpportunityApplication/);
   assert.match(plan, /Connected source/);
   assert.match(plan, /Direct create/);
@@ -32,7 +32,8 @@ test("Not now is an Opportunity snooze and does not mutate retained project cont
 });
 
 test("hosted connected-source judgment never falls through to the browser-local campaign planner", () => {
-  assert.match(plan, /activeEntry\.origin === "local"/);
-  assert.match(plan, /CANONICAL HOSTED OPPORTUNITY/);
-  assert.match(plan, /will not copy it into the browser-local campaign planner/);
+  assert.match(plan, /activeEntry\.origin === "local"\s*\?\s*\([\s\S]*?<CampaignPlanPanel/);
+  assert.match(plan, /:\s*selectedAngle\s*\?\s*\([\s\S]*?<HostedCampaignPlanPanel/);
+  assert.match(plan, /application=\{application\}/);
+  assert.match(plan, /entry=\{activeEntry\}/);
 });

@@ -1,0 +1,179 @@
+.panel {
+  display: grid;
+  gap: 1.1rem;
+  padding: clamp(1rem, 2vw, 1.45rem);
+  border: 1px solid color-mix(in srgb, var(--workspace-line, #d8d1c2) 78%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--workspace-surface, #fffdf8) 94%, var(--workspace-accent, #9d7a32) 6%);
+  min-width: 0;
+}
+
+.panel h3,
+.panel p,
+.panel li,
+.panel strong,
+.panel span {
+  overflow-wrap: anywhere;
+}
+
+.panel h3 {
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  line-height: 1.2;
+}
+
+.panel p {
+  margin: 0.35rem 0 0;
+  line-height: 1.6;
+}
+
+.eyebrow,
+.sectionBlock > span,
+.summaryGrid > div > span,
+.approvedState > span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.headingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.headingRow > div {
+  min-width: 0;
+}
+
+.revision {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  opacity: 0.72;
+}
+
+.message {
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  font-size: 0.9rem;
+}
+
+.message[data-type="error"] {
+  border: 1px solid color-mix(in srgb, #8c2e2e 42%, transparent);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.summaryGrid > div,
+.sectionBlock,
+.approvedState {
+  min-width: 0;
+  padding: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+}
+
+.sectionBlock ol,
+.sectionBlock ul {
+  margin: 0.55rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.destinationRows {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.destinationRows > div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.35fr) minmax(8rem, 0.65fr) minmax(0, 1.5fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.7rem 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.destinationRows p {
+  margin: 0;
+}
+
+.approvedState {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.actions button,
+.panel > button,
+.primaryLink {
+  min-height: 2.6rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 0.7rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.primaryButton,
+.primaryLink {
+  background: var(--workspace-ink, #171511) !important;
+  color: var(--workspace-paper, #fffdf8) !important;
+  border-color: transparent !important;
+}
+
+.actions button:focus-visible,
+.panel > button:focus-visible,
+.primaryLink:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+@media (max-width: 760px) {
+  .headingRow {
+    flex-direction: column;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .destinationRows > div {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel *,
+  .panel *::before,
+  .panel *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

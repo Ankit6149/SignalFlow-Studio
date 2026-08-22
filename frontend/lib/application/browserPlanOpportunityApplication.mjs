@@ -1,5 +1,8 @@
 import { createBrowserContentOpportunityApplication } from "./browserContentOpportunityApplication.mjs";
+import { createBrowserIdentityApplication } from "./browserIdentityApplication.mjs";
 import { createBrowserHostedContentOpportunityClient } from "../infrastructure/browserHostedContentOpportunityClient.mjs";
+import { createBrowserHostedIdentityClient } from "../infrastructure/browserHostedIdentityClient.mjs";
+import { createBrowserHostedPlanningClient } from "../infrastructure/browserHostedPlanningClient.mjs";
 
 const DEFAULT_SNOOZE_DAYS = 7;
 
@@ -25,16 +28,87 @@ function errorState(error) {
   return Object.freeze({ status: "error", code: String(error?.code || "hosted_opportunity_failed") });
 }
 
+function profileInput(bundle = {}) {
+  const identity = bundle.identity || {};
+  const perception = bundle.perception || {};
+  const voice = bundle.voice || {};
+  const boundary = bundle.boundary || {};
+  const linkedin = bundle.platformExpressions?.linkedin || {};
+  const x = bundle.platformExpressions?.x || {};
+  return Object.freeze({
+    primaryTopics: identity.primaryTopics || [],
+    expertise: identity.expertise || [],
+    interests: identity.interests || [],
+    worldviewNotes: identity.worldviewNotes || "",
+    recurringThemes: identity.recurringThemes || [],
+    personalityTraits: identity.personalityTraits || [],
+    backgroundContext: identity.backgroundContext || "",
+    technicalDepth: identity.technicalDepth || "balanced",
+    vulnerabilityPreference: identity.vulnerabilityPreference || "selective",
+    humorStyle: identity.humorStyle || "",
+    confidenceStyle: identity.confidenceStyle || "",
+    approvedContextNotes: identity.approvedContextNotes || [],
+    qualitiesToSignal: perception.qualitiesToSignal || [],
+    qualitiesToAvoid: perception.qualitiesToAvoid || [],
+    desiredAudienceImpressions: perception.desiredAudienceImpressions || [],
+    longTermNarrative: perception.longTermNarrative || [],
+    currentPositioning: perception.currentPositioning || [],
+    credibilitySignals: perception.credibilitySignals || [],
+    perceptionAntiPatterns: perception.antiPatterns || [],
+    writingPrinciples: voice.writingPrinciples || [],
+    dislikes: voice.dislikes || [],
+    openingPreferences: voice.openingPreferences || [],
+    openingAntiPatterns: voice.openingAntiPatterns || [],
+    preferredVocabulary: voice.preferredVocabulary || [],
+    bannedVocabulary: voice.bannedVocabulary || [],
+    rhythm: voice.rhythm || "",
+    emojiPolicy: voice.emojiPolicy || "rare",
+    hashtagPolicy: voice.hashtagPolicy || "",
+    ctaStyle: voice.ctaStyle || "",
+    formattingPreferences: voice.formattingPreferences || [],
+    storytellingPatterns: voice.storytellingPatterns || [],
+    technicalExplanationStyle: voice.technicalExplanationStyle || "",
+    approvedExamples: voice.approvedExamples || [],
+    rejectedExamples: voice.rejectedExamples || [],
+    blockedTopics: boundary.blockedTopics || [],
+    blockedPeopleProjects: boundary.blockedPeopleProjects || [],
+    blockedPhrases: boundary.blockedPhrases || [],
+    unverifiedMetricsPolicy: boundary.unverifiedMetricsPolicy || "block",
+    fabricatedVulnerabilityPolicy: boundary.fabricatedVulnerabilityPolicy || "block",
+    exaggeratedLaunchLanguagePolicy: boundary.exaggeratedLaunchLanguagePolicy || "warn",
+    customBoundaryRules: (boundary.customRules || []).map((item) => item.rule).filter(Boolean),
+    linkedinRules: linkedin.expressionRules || [],
+    xRules: x.expressionRules || [],
+  });
+}
+
+function sameProfile(left, right) {
+  return JSON.stringify(profileInput(left)) === JSON.stringify(profileInput(right));
+}
+
 export function createBrowserPlanOpportunityApplication({
   getStorage,
   workspaceId = "local-personal",
   fetchImpl = globalThis.fetch,
   localApplication = null,
   hostedClient = null,
+  identityApplication = null,
+  hostedIdentityClient = null,
+  hostedPlanningClient = null,
   now = () => Date.now(),
 } = {}) {
   const local = localApplication || createBrowserContentOpportunityApplication({ getStorage, workspaceId, fetchImpl });
   const hosted = hostedClient || createBrowserHostedContentOpportunityClient({ fetchImpl });
+  const hostedIdentity = hostedIdentityClient || createBrowserHostedIdentityClient({ fetchImpl });
+  const hostedPlanning = hostedPlanningClient || createBrowserHostedPlanningClient({ fetchImpl });
+  let resolvedIdentity = identityApplication || null;
+
+  function getIdentityApplication() {
+    if (!resolvedIdentity) {
+      resolvedIdentity = createBrowserIdentityApplication({ getStorage, workspaceId });
+    }
+    return resolvedIdentity;
+  }
 
   async function listRankedOpportunities({ includeRejected = false } = {}) {
     const localItems = await local.listRankedOpportunities({ includeRejected: true });
@@ -60,6 +134,24 @@ export function createBrowserPlanOpportunityApplication({
       throw new TypeError("A valid Plan opportunity entry is required.");
     }
     return entry;
+  }
+
+  function requireHostedEntry(entryInput) {
+    const entry = requireEntry(entryInput);
+    if (entry.origin !== "hosted") throw new TypeError("Hosted planning requires a connected-source Opportunity.");
+    return entry;
+  }
+
+  async function ensureHostedIdentity() {
+    const localProfile = await getIdentityApplication().getMinimalProfile();
+    if (!localProfile?.identity || !localProfile?.voice || !localProfile?.boundary) {
+      const error = new Error("Set up your explicit Voice profile before SignalFlow builds the connected-source plan.");
+      error.code = "voice_profile_required";
+      throw error;
+    }
+    const current = await hostedIdentity.getMinimalProfile();
+    if (sameProfile(localProfile, current.profile)) return current;
+    return hostedIdentity.saveMinimalProfile(profileInput(localProfile));
   }
 
   async function selectAngle(entryInput, angleId) {
@@ -113,6 +205,32 @@ export function createBrowserPlanOpportunityApplication({
       : local.evaluateSignal(signalId, { refresh: true });
   }
 
+  async function getHostedPlan(entryInput) {
+    const entry = requireHostedEntry(entryInput);
+    return hostedPlanning.getPlanBundle(entry.opportunity.opportunityId);
+  }
+
+  async function buildHostedPlan(entryInput, options = {}) {
+    const entry = requireHostedEntry(entryInput);
+    if (!entry.opportunity.selectedAngleId) {
+      const error = new Error("Choose one exact narrative direction before SignalFlow builds the hosted plan.");
+      error.code = "planning_angle_required";
+      throw error;
+    }
+    await ensureHostedIdentity();
+    return hostedPlanning.buildStrategy(entry.opportunity.opportunityId, options);
+  }
+
+  async function reviseHostedPlan(entryInput, strategy, patch) {
+    const entry = requireHostedEntry(entryInput);
+    return hostedPlanning.reviseStrategy(entry.opportunity.opportunityId, strategy, patch);
+  }
+
+  async function approveHostedPlan(entryInput, strategy, decision = {}) {
+    const entry = requireHostedEntry(entryInput);
+    return hostedPlanning.approveStrategy(entry.opportunity.opportunityId, strategy, decision);
+  }
+
   return Object.freeze({
     listRankedOpportunities,
     selectAngle,
@@ -121,7 +239,12 @@ export function createBrowserPlanOpportunityApplication({
     rejectOpportunity,
     notNow,
     refresh,
+    getHostedPlan,
+    buildHostedPlan,
+    reviseHostedPlan,
+    approveHostedPlan,
+    ensureHostedIdentity,
   });
 }
 
-export { DEFAULT_SNOOZE_DAYS };
+export { DEFAULT_SNOOZE_DAYS, profileInput };

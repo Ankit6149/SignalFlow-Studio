@@ -1,0 +1,203 @@
+.heroGrid {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.03fr) minmax(28rem, .97fr);
+  gap: clamp(2.75rem, 5vw, 6.5rem);
+  align-items: center;
+}
+
+.heroGrid > * { min-width: 0; }
+
+.heroVisual {
+  position: relative;
+  margin: .5rem 0 0;
+}
+
+.heroVisual::before {
+  content: "";
+  position: absolute;
+  inset: 8% -5% -7% 10%;
+  border-radius: 2rem;
+  background: radial-gradient(circle at 60% 30%, rgba(197,167,102,.2), rgba(197,167,102,0) 68%);
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.heroVisualFrame {
+  position: relative;
+  overflow: hidden;
+  padding: .42rem;
+  border: 1px solid rgba(120,108,85,.22);
+  border-radius: 1.1rem;
+  background: rgba(255,255,255,.72);
+  box-shadow: 0 2rem 5.5rem rgba(35,31,24,.12), 0 .25rem 1rem rgba(35,31,24,.035);
+  transform: rotate(.45deg);
+}
+
+.heroVisualFrame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: .78rem;
+}
+
+.heroVisual figcaption,
+.storyImage figcaption,
+.systemImage figcaption {
+  margin-top: .8rem;
+  color: #80796e;
+  font-size: .58rem;
+  line-height: 1.5;
+}
+
+.openButtonFix.openButtonFix {
+  color: #fff;
+}
+
+.openButtonFix.openButtonFix svg,
+.openButtonFix.openButtonFix span {
+  color: inherit;
+}
+
+.statementSection.statementSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(21rem, .72fr);
+  gap: clamp(3rem, 6vw, 7rem);
+  align-items: center;
+}
+
+.statementCopy { min-width: 0; }
+
+.storyImage {
+  position: relative;
+  margin: 0;
+}
+
+.storyImage::after {
+  content: "";
+  position: absolute;
+  inset: auto -8% -10% 18%;
+  height: 38%;
+  border-radius: 999px;
+  background: rgba(201,173,107,.12);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+.storyImage img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 1rem;
+  box-shadow: 0 2rem 5rem rgba(0,0,0,.22);
+}
+
+.storyImage figcaption {
+  position: relative;
+  z-index: 1;
+  color: rgba(249,247,241,.48);
+}
+
+.theatreLead {
+  margin-top: clamp(3.5rem, 6vw, 6.5rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, .42fr);
+  gap: 3rem;
+  align-items: end;
+}
+
+.theatreLead span {
+  color: #8a713f;
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.theatreLead p {
+  margin: 0;
+  color: #716c63;
+  font-size: .72rem;
+  line-height: 1.65;
+}
+
+.theatreEmbedded.theatreEmbedded {
+  margin-top: 1.5rem;
+}
+
+.systemStack {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.systemImage {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #d8d1c4;
+  border-radius: 1rem;
+  background: #f7f3eb;
+  box-shadow: 0 1.4rem 4rem rgba(35,31,24,.055);
+}
+
+.systemImage img {
+  display: block;
+  width: 100%;
+  height: clamp(13rem, 23vw, 20rem);
+  object-fit: cover;
+}
+
+.systemImage figcaption {
+  margin: 0;
+  padding: .8rem 1rem .9rem;
+  border-top: 1px solid #e1dace;
+  background: rgba(252,251,248,.94);
+}
+
+@media (max-width: 1120px) {
+  .heroGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(24rem, .9fr);
+    gap: 2.5rem;
+  }
+  .statementSection.statementSection {
+    grid-template-columns: 1fr .72fr;
+    gap: 3rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .heroGrid,
+  .statementSection.statementSection,
+  .theatreLead {
+    grid-template-columns: 1fr;
+  }
+
+  .heroVisual {
+    width: min(100%, 48rem);
+    margin-top: 2rem;
+  }
+
+  .heroVisualFrame { transform: none; }
+
+  .storyImage {
+    width: min(100%, 44rem);
+  }
+
+  .theatreLead { gap: .75rem; }
+}
+
+@media (max-width: 640px) {
+  .heroVisual figcaption,
+  .storyImage figcaption,
+  .systemImage figcaption {
+    font-size: .54rem;
+  }
+
+  .heroVisualFrame { padding: .25rem; border-radius: .85rem; }
+  .heroVisualFrame img { border-radius: .65rem; }
+}

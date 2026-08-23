@@ -3,6 +3,7 @@
 import BrandMark from "./BrandMark";
 import PlatformIcon from "./PlatformIcon";
 import styles from "./LandingPage.module.css";
+import visual from "./LandingVisualEnhancements.module.css";
 
 const FLOW = [
   ["Capture", "Manual thoughts and connected work become Signals with their source context intact."],
@@ -22,9 +23,9 @@ function Arrow() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10h12M11 5.5 15.5 10 11 14.5" /></svg>;
 }
 
-function ProductTheatre() {
+function ProductTheatre({ className = "" }) {
   return (
-    <div className={styles.theatre} aria-label="A SignalFlow story moving from real work to exact review">
+    <div className={`${styles.theatre} ${className}`} aria-label="A SignalFlow story moving from real work to exact review">
       <div className={styles.theatreBar}>
         <div><img src="/icon.svg" alt="" aria-hidden="true" /><span>SignalFlow</span><i>Live story flow</i></div>
         <small>work → signal → story → review</small>
@@ -99,39 +100,53 @@ export default function LandingPage() {
       <header className={styles.header}>
         <a className={styles.brand} href="#top"><BrandMark tone="dark" /></a>
         <nav><a href="#why">Why SignalFlow</a><a href="#flow">How it works</a><a href="#control">Control</a></nav>
-        <a className={styles.openButton} href="/today">Open Studio <Arrow /></a>
+        <a className={`${styles.openButton} ${visual.openButtonFix}`} href="/today"><span>Open Studio</span> <Arrow /></a>
       </header>
 
       <main>
         <section className={styles.hero}>
           <div className={styles.heroGlow} aria-hidden="true"><span /><span /><span /></div>
-          <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}>CONTENT OPERATING SYSTEM</span>
-            <h1>You do the work.<br /><em>SignalFlow finds what’s worth saying.</em></h1>
-            <p>SignalFlow sits between your work and the internet. It captures what happened, finds the story, shapes platform-ready content, and brings you the exact revision to judge before anything becomes public.</p>
-            <div className={styles.heroActions}>
-              <a href="/signals">Enter the Studio <Arrow /></a>
-              <a href="#why">See what makes it different</a>
+          <div className={visual.heroGrid}>
+            <div className={styles.heroCopy}>
+              <span className={styles.eyebrow}>CONTENT OPERATING SYSTEM</span>
+              <h1>You do the work.<br /><em>SignalFlow finds what’s worth saying.</em></h1>
+              <p>SignalFlow sits between your work and the internet. It captures what happened, finds the story, shapes platform-ready content, and brings you the exact revision to judge before anything becomes public.</p>
+              <div className={styles.heroActions}>
+                <a href="/signals">Enter the Studio <Arrow /></a>
+                <a href="#why">See what makes it different</a>
+              </div>
+              <div className={styles.heroProof}>
+                <span>Manual + GitHub signals</span>
+                <span>LinkedIn + X narratives</span>
+                <span>Evidence-bound review</span>
+              </div>
             </div>
-            <div className={styles.heroProof}>
-              <span>Manual + GitHub signals</span>
-              <span>LinkedIn + X narratives</span>
-              <span>Evidence-bound review</span>
-            </div>
+
+            <figure className={visual.heroVisual}>
+              <div className={visual.heroVisualFrame}>
+                <img src="/hero-workspace.png" alt="SignalFlow workspace showing a content workflow around real work and human review" />
+              </div>
+              <figcaption>The product stays close to the work: context in, judgment out.</figcaption>
+            </figure>
           </div>
-          <ProductTheatre />
         </section>
 
-        <section className={styles.statementSection} id="why">
-          <div className={styles.statementLead}>
-            <span>THE IDEA</span>
-            <h2>Content should be a consequence of the work — <em>not another job beside it.</em></h2>
+        <section className={`${styles.statementSection} ${visual.statementSection}`} id="why">
+          <div className={visual.statementCopy}>
+            <div className={styles.statementLead}>
+              <span>THE IDEA</span>
+              <h2>Content should be a consequence of the work — <em>not another job beside it.</em></h2>
+            </div>
+            <div className={styles.statementCompare}>
+              <div><small>MOST CONTENT TOOLS START HERE</small><p>“What do you want to post today?”</p></div>
+              <div className={styles.compareArrow}><Arrow /></div>
+              <div><small>SIGNALFLOW STARTS HERE</small><p>“What happened in your work that is actually worth saying?”</p></div>
+            </div>
           </div>
-          <div className={styles.statementCompare}>
-            <div><small>MOST CONTENT TOOLS START HERE</small><p>“What do you want to post today?”</p></div>
-            <div className={styles.compareArrow}><Arrow /></div>
-            <div><small>SIGNALFLOW STARTS HERE</small><p>“What happened in your work that is actually worth saying?”</p></div>
-          </div>
+          <figure className={visual.storyImage}>
+            <img src="/creator-working.png" alt="A creator focused on their actual work rather than managing a separate content process" />
+            <figcaption>The person stays in the work. SignalFlow carries the context toward a story.</figcaption>
+          </figure>
         </section>
 
         <section className={styles.flowSection} id="flow">
@@ -148,6 +163,11 @@ export default function LandingPage() {
               </article>
             ))}
           </div>
+          <div className={visual.theatreLead}>
+            <span>THE PRODUCT IN MOTION</span>
+            <p>One story keeps its source, rationale, voice and exact revision attached as it moves through the system.</p>
+          </div>
+          <ProductTheatre className={visual.theatreEmbedded} />
         </section>
 
         <section className={styles.systemSection}>
@@ -157,10 +177,16 @@ export default function LandingPage() {
             <p>SignalFlow is being built around the part content tools usually lose: where the idea came from, why it matters, what evidence supports it, how you speak, and what exact version you approved.</p>
             <a href="/plan">See the planning workspace <Arrow /></a>
           </div>
-          <div className={styles.systemDiagram}>
-            <div className={styles.diagramOrigin}><small>YOUR WORLD</small><b>Work</b><b>Thoughts</b><b>Connected sources</b></div>
-            <div className={styles.diagramCore}><img src="/icon.svg" alt="" /><small>SIGNALFLOW</small><strong>Context becomes narrative.</strong><span>Signal</span><span>Opportunity</span><span>Voice</span><span>Evidence</span></div>
-            <div className={styles.diagramDecision}><small>YOUR DECISION</small><b>Approve</b><b>Change</b><b>Reject</b><b>Stay silent</b></div>
+          <div className={visual.systemStack}>
+            <figure className={visual.systemImage}>
+              <img src="/office-setup.png" alt="A calm work setup representing the environment SignalFlow connects to" />
+              <figcaption>SignalFlow belongs around the work you already do—not in a separate content-production ritual.</figcaption>
+            </figure>
+            <div className={styles.systemDiagram}>
+              <div className={styles.diagramOrigin}><small>YOUR WORLD</small><b>Work</b><b>Thoughts</b><b>Connected sources</b></div>
+              <div className={styles.diagramCore}><img src="/icon.svg" alt="" /><small>SIGNALFLOW</small><strong>Context becomes narrative.</strong><span>Signal</span><span>Opportunity</span><span>Voice</span><span>Evidence</span></div>
+              <div className={styles.diagramDecision}><small>YOUR DECISION</small><b>Approve</b><b>Change</b><b>Reject</b><b>Stay silent</b></div>
+            </div>
           </div>
         </section>
 

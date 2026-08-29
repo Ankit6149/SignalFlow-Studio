@@ -221,7 +221,7 @@ export function createMediaIntelligenceApplication(dependencies = {}) {
       requirement = normalizeMediaRequirement({
         ...oldRequirement,
         mediaRequirementId: requirementId,
-        kind: selectedKind,
+        mediaKind: selectedKind,
         status: selectedKind === MEDIA_DECISION_KINDS.NONE ? MEDIA_REQUIREMENT_STATUSES.SATISFIED : MEDIA_REQUIREMENT_STATUSES.PLANNED,
         productionReadiness: selectedKind === MEDIA_DECISION_KINDS.NONE ? "not_needed" : "ready",
         reason: reason || "Owner selected another media direction.",

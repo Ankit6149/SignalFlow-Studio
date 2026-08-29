@@ -116,7 +116,7 @@ test("portable transfer documentation and public AI context remain truthful", ()
   assert.equal(llmsFull, publicLlmsFull);
   assert.match(llms, /explicit `\.signalflow\.json` archive preparation/i);
   assert.match(llmsFull, /## (?:\d+\.\s+)?Portable transfer and recovery/);
-  assert.match(llmsFull, /production hosted transfer service.*(?:does not|is not)/i);
+  assert.match(llmsFull, /does not constitute a production hosted transfer service/i);
 });
 
 test("public structured metadata matches the current Content OS without false publication claims", () => {

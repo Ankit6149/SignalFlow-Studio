@@ -69,6 +69,15 @@ test("capture recipes only allow bounded action vocabulary", () => {
   }), (error) => error instanceof CaptureRecipeError && error.code === "invalid_capture_enum");
 });
 
+test("safe fixture fills are selector-bound in the canonical recipe contract", () => {
+  assert.throws(() => draftRecipe({
+    steps: [
+      { stepId: "fill", action: "fill_safe_fixture", fixtureKey: "demo-title" },
+      { stepId: "capture", action: "capture_checkpoint", checkpoint: "hero" },
+    ],
+  }), (error) => error instanceof CaptureRecipeError && error.code === "capture_selector_required");
+});
+
 test("capture navigation cannot leave the approved origin", () => {
   const recipe = activeRecipe();
   assert.equal(resolveRecipeNavigation(recipe, "/safe"), "https://preview.example.test/safe");
@@ -78,7 +87,7 @@ test("capture navigation cannot leave the approved origin", () => {
 test("runtime validation enforces environment capabilities and safe fixtures", () => {
   const recipe = activeRecipe({
     steps: [
-      { stepId: "fill", action: "fill_safe_fixture", fixtureKey: "demo-title" },
+      { stepId: "fill", action: "fill_safe_fixture", selector: "#title", fixtureKey: "demo-title" },
       { stepId: "capture", action: "capture_checkpoint", checkpoint: "hero" },
     ],
   });

@@ -136,7 +136,14 @@ function normalizeStep(item, index) {
   const action = enumValue(item.action, ACTION_VALUES, CAPTURE_ACTIONS.ASSERT_VISIBLE, `steps[${index}].action`);
   if (["evaluate", "javascript", "script", "shell", "exec"].includes(action)) throw new CaptureRecipeError("arbitrary_capture_execution_forbidden", "Capture recipes cannot contain arbitrary executable code.");
   const stepId = safeCode(item.stepId || `step-${index + 1}`, `steps[${index}].stepId`);
-  const selectorActions = new Set([CAPTURE_ACTIONS.WAIT_FOR, CAPTURE_ACTIONS.CLICK, CAPTURE_ACTIONS.FOCUS, CAPTURE_ACTIONS.SELECT, CAPTURE_ACTIONS.ASSERT_VISIBLE]);
+  const selectorActions = new Set([
+    CAPTURE_ACTIONS.WAIT_FOR,
+    CAPTURE_ACTIONS.CLICK,
+    CAPTURE_ACTIONS.FOCUS,
+    CAPTURE_ACTIONS.FILL_SAFE_FIXTURE,
+    CAPTURE_ACTIONS.SELECT,
+    CAPTURE_ACTIONS.ASSERT_VISIBLE,
+  ]);
   const selector = text(item.selector, "", 500) || null;
   if (selectorActions.has(action) && !selector) throw new CaptureRecipeError("capture_selector_required", `${action} requires a selector.`, { stepId });
   if (action === CAPTURE_ACTIONS.NAVIGATE && !text(item.path, "", 1000)) throw new CaptureRecipeError("capture_navigation_path_required", "navigate requires a path or URL relative to the approved origin.", { stepId });

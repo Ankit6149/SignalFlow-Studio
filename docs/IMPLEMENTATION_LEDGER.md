@@ -85,11 +85,13 @@ Do not use this ledger as a substitute for issue acceptance criteria or architec
 - **Verification:** normal frontend regression tests, production dependency audit/build, Python and MCP passed; post-merge `master` also passed.
 - **Capability effect:** hosted private Asset byte storage foundation is verified. Resumable/multipart uploads remain #72 Phase B.
 
-## Active slice — PR #240
+## Active slice — PR #241
 
 **Branch:** `feat/gp2-real-screenshot-capture`
 
-**PR:** #240 — `product: wire real GP2 screenshot capture into private asset storage`
+**PR:** #241 — `product: wire real GP2 screenshot capture into private asset storage`
+
+**Superseded draft:** #240 contains the same implementation history and the first fully green final-head verification. It was closed only because the connected GitHub tool's draft→ready GraphQL mutation requests the nonexistent Repository field `fullDatabaseId`. No code change was required to replace it.
 
 **Owning issues:** #163 Phase A, supporting GP2 #167; depends on merged #162/#72 foundations.
 
@@ -114,25 +116,28 @@ Do not use this ledger as a substitute for issue acceptance criteria or architec
 ### Verification history
 
 1. Initial #240 CI exposed a real application-boundary defect: `privateAssetStorage` was incorrectly validated through the domain port registry.
-2. The fix kept `privateAssetStorage` as an application service and preserved `blobStorage` as the actual external storage port; no duplicate domain port was introduced.
-3. Follow-up normal CI run `33273938719` passed:
+2. The fix kept `privateAssetStorage` as an application service and preserved `blobStorage` as the actual external storage port; no duplicate domain port was introduced and no unrelated regression test was weakened.
+3. Normal CI run `33273938719` passed after the application-boundary fix.
+4. Additional output-provenance and documentation changes were added.
+5. Normal CI run `33274203844` on head `6160b85dc85a68ceb964e68daeaf8a72509e79bd` passed:
    - frontend regression tests — **success**;
    - production dependency audit — **success**;
    - production build — **success**;
    - Python tests — **success**;
    - MCP tests — **success**.
-4. Additional provenance commits were added after that green run; a fresh normal CI result is required before this PR may become ready or merge.
+6. #240 could not be promoted from draft because of the connector GraphQL defect described above. It was closed without code changes and replaced by non-draft #241 from the same head.
+7. #241 requires a normal green CI run on its latest head before merge even when an identical head already passed in #240.
 
-### Still required before #240 can merge
+### Still required before #241 can merge
 
-- fresh normal CI after the provenance changes;
-- synchronize the canonical capture/execution documentation with the verified Phase-A boundary;
-- keep capability wording honest: branch implementation is not merged/current `master` capability yet;
-- final PR diff review for unrelated files/diagnostic workflow changes (none intentionally added).
+- normal CI on the latest #241 head;
+- final mergeability/diff check;
+- no unrelated workflow/UI changes;
+- merge only green, then verify post-merge `master` green.
 
-## GP2 remaining sequence after #240
+## GP2 remaining sequence after #241
 
-1. Merge #240 only after all normal gates pass.
+1. Merge #241 only after all normal gates pass.
 2. Verify post-merge `master` green.
 3. #163 Phase B — screenshot quality/uncertainty state and platform-safe derivative planning/lineage.
 4. #163 Phase C — bind an exact screenshot AssetVersion/derivative to an exact PlatformVariant review revision; media replacement must not rewrite unrelated text.

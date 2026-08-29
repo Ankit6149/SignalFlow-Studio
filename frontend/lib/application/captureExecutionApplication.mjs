@@ -144,13 +144,19 @@ export function createCaptureExecutionApplication({
   const time = assertPort("clock", clock);
   const ids = assertPort("idService", idService);
 
-  async function updateCaptureStatus(captureJob, status, { issueCode = null, outputAssetIds = null, completedAt = null } = {}) {
+  async function updateCaptureStatus(captureJob, status, {
+    issueCode = null,
+    outputAssetIds = null,
+    outputProvenance = null,
+    completedAt = null,
+  } = {}) {
     const now = time.now();
     return captures.upsertJob(normalizeCaptureJob({
       ...captureJob,
       status,
       issueCode,
       outputAssetIds: outputAssetIds || captureJob.outputAssetIds,
+      outputProvenance: outputProvenance || captureJob.outputProvenance,
       completedAt,
       updatedAt: now,
     }));
@@ -199,6 +205,7 @@ export function createCaptureExecutionApplication({
       privacyReview,
     });
     const provenance = [{
+      provenanceEventId: `capture-${captureJob.captureJobId}-${checkpoint || sequence}`,
       eventType: "automatic_capture",
       method: INGESTION_METHODS.API,
       occurredAt: now,
@@ -211,7 +218,6 @@ export function createCaptureExecutionApplication({
         version: String(captureProvenance.workerAdapterVersion || recipe.captureSchemaVersion || 1),
         model: `${recipe.captureRecipeId}@${recipe.version}:${captureJob.captureJobId}`,
       },
-      capture: captureProvenance,
       issueCodes: [],
     }];
     const userMetadata = {
@@ -236,7 +242,7 @@ export function createCaptureExecutionApplication({
           durationMs: output.durationMs || null,
         });
         if (!result?.asset) throw new Error("Private asset storage did not return a canonical Asset.");
-        return result.asset;
+        return { asset: result.asset, captureProvenance };
       } catch (cause) {
         if (cause?.code && cause.code !== "storage_failed") {
           const error = new Error("Capture output storage failed.");
@@ -280,7 +286,7 @@ export function createCaptureExecutionApplication({
       createdAt: now,
       updatedAt: now,
     }, { workspaceId: recipe.workspaceId, projectId: recipe.projectId, now });
-    return assets.upsert(asset);
+    return { asset: await assets.upsert(asset), captureProvenance };
   }
 
   async function executeClaimedJob(job) {
@@ -322,6 +328,7 @@ export function createCaptureExecutionApplication({
     durableJob = await heartbeat(durableJob, "launching_browser");
 
     const outputAssets = [];
+    const outputProvenance = [];
     try {
       let sequence = 0;
       for (const step of recipe.steps) {
@@ -355,14 +362,21 @@ export function createCaptureExecutionApplication({
         );
         if (shouldPersist && (!captureJob.requestedCheckpoint || step.checkpoint === captureJob.requestedCheckpoint || step.action === CAPTURE_ACTIONS.STOP_RECORDING)) {
           sequence += 1;
-          outputAssets.push(await persistCaptureOutput({
+          const persisted = await persistCaptureOutput({
             recipe,
             captureJob,
             output,
             checkpoint: step.checkpoint,
             sequence,
             privacyReview,
-          }));
+          });
+          outputAssets.push(persisted.asset);
+          outputProvenance.push({
+            ...persisted.captureProvenance,
+            assetId: persisted.asset.assetId,
+            assetVersionId: persisted.asset.assetVersionId,
+            contentHash: persisted.asset.contentHash,
+          });
         }
       }
       if (!outputAssets.length) {
@@ -370,11 +384,15 @@ export function createCaptureExecutionApplication({
         error.code = "capture_failed";
         throw error;
       }
-      currentCaptureJob = await updateCaptureStatus(currentCaptureJob, CAPTURE_JOB_STATUSES.PROCESSING_OUTPUT, { outputAssetIds: outputAssets.map((asset) => asset.assetId) });
+      currentCaptureJob = await updateCaptureStatus(currentCaptureJob, CAPTURE_JOB_STATUSES.PROCESSING_OUTPUT, {
+        outputAssetIds: outputAssets.map((asset) => asset.assetId),
+        outputProvenance,
+      });
       durableJob = await heartbeat(durableJob, "processing_output");
       const completedAt = time.now();
       currentCaptureJob = await updateCaptureStatus(currentCaptureJob, CAPTURE_JOB_STATUSES.SUCCEEDED, {
         outputAssetIds: outputAssets.map((asset) => asset.assetId),
+        outputProvenance,
         completedAt,
       });
       durableJob = succeedDurableJob(durableJob, { leaseOwner, outputRefs: outputAssets.map((asset) => asset.assetId), now: completedAt });

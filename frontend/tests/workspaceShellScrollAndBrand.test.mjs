@@ -8,18 +8,20 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(testDir, "..");
 const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "utf8");
 
-test("desktop workspace has one intentional content scroll surface", () => {
+test("desktop workspace keeps scrolling inside the workspace canvas", () => {
   const css = read("components/WorkspaceShell.module.css");
   assert.match(css, /\.shell\s*\{[\s\S]*height:\s*100dvh;[\s\S]*overflow:\s*hidden;/);
-  assert.match(css, /\.workspaceCanvas\s*\{[\s\S]*height:\s*100dvh;[\s\S]*overflow-y:\s*auto;/);
-  assert.match(css, /\.navigation\s*\{[\s\S]*overflow:\s*visible;/);
-  assert.doesNotMatch(css, /\.navigation\s*\{[^}]*overflow-y:\s*auto;/);
+  assert.match(css, /\.mainColumn\s*\{[^}]*height:\s*100dvh;/);
+  assert.match(css, /\.workspaceCanvas\s*\{[\s\S]*overflow:\s*auto;/);
+  assert.match(css, /\.rail\s*\{[\s\S]*height:\s*100dvh;[\s\S]*overflow:\s*hidden;/);
 });
 
-test("rail scroll is reserved for short-height desktop and the mobile drawer", () => {
+test("mobile releases the desktop scroll lock and turns the rail into an off-canvas drawer", () => {
   const css = read("components/WorkspaceShell.module.css");
-  assert.match(css, /@media \(max-height: 680px\) and \(min-width: 981px\)[\s\S]*\.rail\s*\{[\s\S]*overflow-y:\s*auto;/);
-  assert.match(css, /@media \(max-width: 980px\)[\s\S]*\.rail\s*\{[\s\S]*overflow-y:\s*auto;/);
+  assert.match(css, /@media \(max-width: 980px\)[\s\S]*\.shell\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*visible;/);
+  assert.match(css, /@media \(max-width: 980px\)[\s\S]*\.workspaceCanvas\s*\{\s*overflow:\s*visible;/);
+  assert.match(css, /@media \(max-width: 980px\)[\s\S]*\.rail\s*\{[\s\S]*position:\s*fixed;[\s\S]*transform:\s*translateX\(-105%\)/);
+  assert.match(css, /\.railOpen\s*\{\s*transform:\s*none;/);
 });
 
 test("workspace branding uses the shared SignalFlow brand component", () => {
@@ -28,18 +30,21 @@ test("workspace branding uses the shared SignalFlow brand component", () => {
   const brandCss = read("components/BrandMark.module.css");
 
   assert.match(shell, /import BrandMark from "\.\/BrandMark"/);
-  assert.match(shell, /<BrandMark tone="light" \/>/);
+  assert.match(shell, /<BrandMark tone="dark" \/>/);
   assert.doesNotMatch(shell, /function Brand\s*\(/);
+  assert.match(brand, /src="\/icon\.svg"/);
   assert.match(brand, /<strong>SignalFlow<\/strong>/);
   assert.match(brand, /<small>STUDIO<\/small>/);
-  assert.match(brandCss, /\.glyph\s*\{[\s\S]*width:\s*2rem;[\s\S]*height:\s*2rem;/);
-  assert.match(brandCss, /\.glyph span:nth-child\(1\)\s*\{\s*width:\s*1\.75rem;/);
-  assert.match(brandCss, /\.copy strong\s*\{[\s\S]*font-family:\s*"Manrope"/);
+  assert.match(brandCss, /\.glyph\{[^}]*width:2\.15rem;[^}]*height:2\.15rem;/);
+  assert.match(brandCss, /\.copy strong\{[^}]*font-family:"Manrope"/);
 });
 
-test("workspace shell exposes shared spacing primitives for later Studio and landing alignment", () => {
+test("workspace shell preserves the shared content-flow and focus primitives", () => {
+  const shell = read("components/WorkspaceShell.js");
   const css = read("components/WorkspaceShell.module.css");
-  for (const token of ["--sf-page-gutter", "--sf-page-gutter-wide", "--sf-section-gap", "--sf-content-max", "--sf-reading-max"]) {
-    assert.match(css, new RegExp(token.replace(/[-]/g, "\\-")));
-  }
+  assert.match(shell, /aria-label="SignalFlow content flow"/);
+  assert.match(shell, /href="#workspace-content"/);
+  assert.match(css, /\.flowSteps\s*\{[^}]*grid-template-columns:\s*repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.shell button:focus-visible, \.shell a:focus-visible/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });

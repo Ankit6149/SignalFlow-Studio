@@ -57,8 +57,9 @@ UI/public claims use the last applicable truthful state, not the most optimistic
 | Hosted account/workspace system | Not implemented | Not implemented | Not applicable | Not implemented |
 | Production cloud campaign/intelligence database | Not implemented | Not implemented | Not applicable | Not implemented |
 | Connected-source Postgres migration/repository code | Code present; no production database configured/verified | Code present; no production database configured/verified | Code present; deployment-specific configuration required | Code present; deployment-specific configuration required |
-| Private production object storage | Not implemented | Not implemented | Not applicable | Not implemented |
-| Durable background jobs (#73) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Private production object storage (#72 Phase A) | Code foundation present; no hosted object store configured/verified | Code foundation present; deployment credentials/configuration still required | Browser/local blob storage remains the local path; hosted object storage not applicable | S3-compatible private adapter present; deployment credentials/configuration required |
+| Durable background jobs (#73) | Domain/repository execution foundation present; no production worker/queue configured | Domain/repository execution foundation present; production worker/queue still requires deployment configuration | Foundation available for owner/local execution adapters; no claim of always-on background service | Foundation present; worker/queue deployment configuration required |
+| Automatic browser screenshot worker (#162/#163 Phase A) | Code present but not anonymous-session available or live-CDP verified | Bounded CDP adapter + execution path implemented; requires configured worker endpoint and end-to-end deployment verification | Code present; requires an explicitly configured reachable CDP worker endpoint | Code present; requires configured CDP worker endpoint and worker deployment |
 | Cloud autosave/cross-device sync | Not implemented | Not implemented | Not applicable | Not implemented |
 | Collaboration/team review | Not implemented | Not implemented | Not applicable | Not implemented |
 | Temporary BYOK cloud provider | Available for declared providers | Available | Available | Available |
@@ -107,37 +108,40 @@ These rows exist so clients/docs/agents do not confuse the new architecture with
 | Mobile low-attention companion | Planned | #175 |
 | Paired Desktop Edge Agent | Planned | #176 |
 | Desktop-application bounded capture | Future/planned | #177 |
-| Media intent / AssetRole / AssetUsePolicy | Planned | #179, `CREATIVE_MEDIA_DOMAIN_CONTRACTS.md` |
-| Explainable MediaDecision + expanded MediaRequirement | Planned | #180 |
+| Media intent / AssetRole / AssetUsePolicy | Core domain/application foundation implemented for role/use/privacy/lineage policy; broader request-scoped UX, invalidation, provider-routing and full end-to-end enforcement remain open | #179, `CREATIVE_MEDIA_DOMAIN_CONTRACTS.md` |
+| Explainable MediaDecision + expanded MediaRequirement | Core explainable MediaDecision/MediaRequirement foundation implemented, including `NONE`, separate `mediaKind`, existing-media preference and owner overrides; broader media planning/production integration remains open | #180 |
 | Image understanding/editing/compositing/generation pipeline | Planned | #181 |
 | Narrative-first deterministic carousel production | Planned | #182 |
 | Uploaded-footage Reel/Short editing | Planned | #183 |
 | Natural-language multimodal Direct Create | Planned | #184 |
 | Media rights/consent/face/voice/audio trust layer | Planned | #185 |
-| Automatic safe CaptureRecipe/browser worker | Planned | #162 |
-| Automatic campaign screenshot capture/derivatives | Planned | #163 |
+| Automatic safe CaptureRecipe/browser worker | Versioned bounded CaptureRecipe/CaptureJob, durable execution foundation and CDP screenshot adapter implemented; live worker endpoint/deployment and credential-backed end-to-end capture verification remain required; screencast remains unavailable | #162/#163, `CAPTURE_AND_MEDIA_PRODUCTION.md` |
+| Automatic campaign screenshot capture/derivatives | Phase A raw screenshot execution merged in #241: viewport/selector PNG, same-origin/privacy enforcement, private immutable Asset persistence and safe output provenance are implemented. Phase B quality/derivatives and Phase C exact review binding remain open; configured live end-to-end GP2 proof is not yet complete | #163/#167 |
 | Automatic deterministic raw screencast | Planned | #164 |
 | Motion composition / multi-aspect video render | Planned | #165 |
-| Exact media revision approval/publication binding | Planned | #151/#165/#168/#179–#185 |
+| Exact media revision approval/publication binding | Planned | #151/#163/#165/#168/#179–#185 |
 | Owner Golden Path 1 manual thought → authentic approval | Implemented and accepted browser-local: manual Signal → Opportunity + NarrativeMemory repetition gate → confidence gates → provenance-tagged angle/strategy decisions → ContentPiece → immutable LinkedIn/X revisions → bounded StyleMemory generation context → separate evidence/authenticity checks → Today → exact owner correction/approve/reject → browser reopen. Exact approval creates `prepared_internal` NarrativeMemory; it does not claim publication. Sanitized acceptance evidence is recorded in `docs/acceptance/GOLDEN_PATH_1_OWNER_ACCEPTANCE.md`; #166 is closed. | #154/#166/#206/#208 |
-| Owner Golden Path 2 GitHub event → opportunity + visual evidence | Implementation in progress: connected GitHub event → canonical Signal ingestion layers exist in code; production source connection, durable database configuration, background Opportunity continuation, bounded evidence and visual/media production remain open | #161/#167 |
+| Owner Golden Path 2 GitHub event → opportunity + visual evidence | Implementation in progress: connected GitHub event → canonical Signal ingestion layers exist in code and the Phase-A bounded screenshot worker/private Asset path is merged. Production GitHub source installation/verification, durable deployment configuration, background Opportunity continuation, screenshot quality/derivatives, exact media review binding, and real positive/noise end-to-end evidence remain open | #161/#163/#167 |
 | Owner Golden Path 3 approved revision → durable publish → memory | Planned; exact approval now creates truthful internal story memory, but durable publication confirmation remains unimplemented | #168/#208 |
 | Performance analytics ingestion/learning | Future; not yet scoped as production capability | product vision/editorial docs |
 | Unreviewed global autoposting | Not a Personal Alpha capability; future explicit scoped trust only | product vision |
 
 ## 5. Creative-media truth
 
-The repository now documents a broad media-intelligence/creative-production target, but none of the following should be claimed as working merely because the domain/design exists:
+The repository now contains real media-intent/use-policy, durable capture, private storage, and raw screenshot-execution foundations, but those foundations must not be confused with the complete creative-media production system.
 
-- automatic interpretation of whether an uploaded image is reference/evidence/final/edit source;
-- enforceable `AssetUsePolicy`;
+The following remain incomplete and must not be claimed as broadly working merely because related domain/design or lower-level foundation exists:
+
+- automatic interpretation of every uploaded image as reference/evidence/final/edit source across the full product;
+- complete end-to-end `AssetUsePolicy` enforcement across every future media processor/provider/publication surface;
 - image-generation or image-editing provider routing through the target Inference Fabric;
 - deterministic carousel production;
 - uploaded-footage automatic Reel/Short editing;
 - semantic `VideoEditPlan` natural-language editing;
 - rights/face/voice consent enforcement;
 - multimodal Direct Create convergence;
-- automatic media-format recommendation.
+- automatic media-format recommendation;
+- screenshot quality/derivative generation and exact media-review binding beyond the Phase-A raw-capture foundation.
 
 Current file upload/generation/media-plan fields do not prove these capabilities.
 
@@ -221,6 +225,8 @@ For the currently implemented stages, browser UI calls application services, app
 The persisted editorial records remain provider-neutral. Provider/model/route details stay in inference provenance instead of becoming provider-shaped domain fields. Exact generated/AI-revised drafts record only safe StyleMemory ID/timestamp references rather than copying private feedback history.
 
 GitHub connected-source code is present, but production automatic detection is not yet configured or verified: the GitHub App install lifecycle, dedicated durable database, deployment secrets and background Opportunity continuation remain open. Other connected-source/background triggers, confirmed publication memory, publishing, hosted StyleMemory/Identity synchronization, and broader hosted persistence remain target capabilities until their owning issues are complete. Browser-local NarrativeMemory now records exact approved internal story history without claiming publication, survives reopen, and feeds bounded repetition risk into the high-confidence autopilot gate. Explicit owner-triggered high-confidence Signal→review-ready orchestration escalates uncertain or repetitive work instead of guessing and never performs final content approval or publishing. The Today decision inbox remains a derived view over exact reviewed current revisions and does not create a second workflow state store.
+
+The media/capture foundation now includes structured media intent/use policy, explainable MediaRequirement/MediaDecision contracts, durable job primitives, private content-addressed Asset storage, versioned bounded CaptureRecipe/CaptureJob records, and a CDP-backed raw screenshot execution adapter. Those are implementation foundations rather than proof that a production browser worker is currently configured for every deployment. GP2 still requires real GitHub source verification, a configured live capture target/worker, screenshot derivative quality, exact media-review binding, and positive/noise end-to-end evidence.
 
 ## 9. Runtime truth rules
 

@@ -59,20 +59,12 @@ jobs:
         run: npm run build
 
   frontend-diagnostic:
-    name: frontend-diagnostic (${{ matrix.group }})
+    name: frontend-diagnostic (${{ matrix.initial }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - group: a-f
-            pattern: "[a-f]*.test.mjs"
-          - group: g-l
-            pattern: "[g-l]*.test.mjs"
-          - group: m-r
-            pattern: "[m-r]*.test.mjs"
-          - group: s-z
-            pattern: "[s-z]*.test.mjs"
+        initial: [a, c, d, g, h, i, l, m, n, o, p, r, s, t, u, v, w, z]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node
@@ -84,6 +76,6 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Run isolated regression group
+      - name: Run isolated regression initial
         working-directory: frontend
-        run: node --test tests/${{ matrix.pattern }}
+        run: node --test tests/${{ matrix.initial }}*.test.mjs

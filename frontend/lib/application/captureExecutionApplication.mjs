@@ -29,7 +29,15 @@ function safeCode(value, fallback = "capture_failed") {
 
 function safeFailure(error) {
   const code = safeCode(error?.code);
-  const retryableCodes = new Set(["navigation_timeout", "browser_crash", "capture_failed", "storage_failed", "worker_unavailable"]);
+  const retryableCodes = new Set([
+    "navigation_timeout",
+    "navigation_failed",
+    "browser_crash",
+    "browser_protocol_failed",
+    "capture_failed",
+    "storage_failed",
+    "worker_unavailable",
+  ]);
   return {
     code,
     retryable: retryableCodes.has(code),
@@ -61,12 +69,54 @@ function actionMethod(action) {
   }[action] || null;
 }
 
+function decodeBase64(value) {
+  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(String(value), "base64"));
+  const binary = atob(String(value));
+  const output = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) output[index] = binary.charCodeAt(index);
+  return output;
+}
+
+async function privateStoragePayload(payload) {
+  if (payload instanceof Uint8Array || payload instanceof ArrayBuffer || typeof payload === "string") return payload;
+  if (typeof Blob !== "undefined" && payload instanceof Blob) return payload;
+  if (payload && typeof payload === "object" && payload.encoding === "base64" && typeof payload.data === "string") {
+    return decodeBase64(payload.data);
+  }
+  const error = new Error("Capture output payload is not a supported private-storage byte representation.");
+  error.code = "capture_failed";
+  throw error;
+}
+
+function safeCaptureProvenance({ recipe, captureJob, output, checkpoint, capturedAt, privacyReview }) {
+  const metadata = output?.captureMetadata && typeof output.captureMetadata === "object"
+    ? output.captureMetadata
+    : {};
+  return {
+    captureRecipeId: recipe.captureRecipeId,
+    captureRecipeVersion: recipe.version,
+    captureJobId: captureJob.captureJobId,
+    checkpoint: checkpoint || metadata.checkpoint || null,
+    sourceUrl: metadata.sourceUrl || null,
+    environment: metadata.environment || recipe.allowedEnvironment,
+    viewport: metadata.viewport || null,
+    dimensions: output?.dimensions || null,
+    capturedAt,
+    privacyReviewState: privacyReview?.state || "not_checked",
+    privacyIssueCodes: Array.isArray(privacyReview?.issueCodes) ? privacyReview.issueCodes : [],
+    privacyWarningCodes: Array.isArray(privacyReview?.warningCodes) ? privacyReview.warningCodes : [],
+    workerAdapter: metadata.adapterKind || "signalflow_capture_worker",
+    workerAdapterVersion: metadata.adapterVersion || null,
+  };
+}
+
 export function createCaptureExecutionApplication({
   durableJobRepository,
   captureRepository,
   captureWorkerAdapter,
-  assetRepository,
-  blobStorage,
+  assetRepository = null,
+  blobStorage = null,
+  privateAssetStorage = null,
   clock,
   idService,
   environment = "demo",
@@ -77,8 +127,13 @@ export function createCaptureExecutionApplication({
   const jobs = assertPort("durableJobRepository", durableJobRepository);
   const captures = assertPort("captureRepository", captureRepository);
   const worker = assertPort("captureWorkerAdapter", captureWorkerAdapter);
-  const assets = assertPort("assetRepository", assetRepository);
-  const blobs = assertPort("blobStorage", blobStorage);
+  const hostedAssets = privateAssetStorage ? assertPort("privateAssetStorage", privateAssetStorage) : null;
+  const assets = assetRepository ? assertPort("assetRepository", assetRepository) : null;
+  const blobs = blobStorage ? assertPort("blobStorage", blobStorage) : null;
+  if (!hostedAssets) {
+    assertPort("assetRepository", assets);
+    assertPort("blobStorage", blobs);
+  }
   const time = assertPort("clock", clock);
   const ids = assertPort("idService", idService);
 
@@ -113,12 +168,81 @@ export function createCaptureExecutionApplication({
     return jobs.upsert(next);
   }
 
-  async function persistCaptureOutput({ recipe, captureJob, output, checkpoint = null, sequence = 0 }) {
+  async function persistCaptureOutput({ recipe, captureJob, output, checkpoint = null, sequence = 0, privacyReview = null }) {
     if (!output || output.payload === undefined || output.payload === null) {
       const error = new Error("Capture adapter returned no output payload.");
       error.code = "capture_failed";
       throw error;
     }
+
+    const now = time.now();
+    const originalName = output.originalName || `${captureJob.captureKind}-${checkpoint || sequence}.${captureJob.captureKind === "screenshot" ? "png" : "webm"}`;
+    const mimeType = output.mimeType || (captureJob.captureKind === "screenshot" ? "image/png" : "video/webm");
+    const privacy = {
+      classification: output.privacyClass || PRIVACY_CLASSES.WORKSPACE_PRIVATE,
+      exportAllowed: output.exportAllowed !== false,
+      processingAllowed: output.processingAllowed !== false,
+    };
+    const captureProvenance = safeCaptureProvenance({
+      recipe,
+      captureJob,
+      output,
+      checkpoint,
+      capturedAt: now,
+      privacyReview,
+    });
+    const provenance = [{
+      eventType: "automatic_capture",
+      method: INGESTION_METHODS.API,
+      occurredAt: now,
+      actorType: "worker",
+      actorId: null,
+      parentSourceArtifactIds: [],
+      parentAssetIds: [],
+      processor: {
+        name: captureProvenance.workerAdapter,
+        version: String(captureProvenance.workerAdapterVersion || recipe.captureSchemaVersion || 1),
+        model: `${recipe.captureRecipeId}@${recipe.version}:${captureJob.captureJobId}`,
+      },
+      capture: captureProvenance,
+      issueCodes: [],
+    }];
+    const userMetadata = {
+      description: `Automatic ${captureJob.captureKind} from ${recipe.name}${checkpoint ? ` at ${checkpoint}` : ""}.`,
+      tags: ["automatic-capture", captureJob.captureKind, checkpoint].filter(Boolean),
+      intendedUse: ["capture_output"],
+    };
+
+    if (hostedAssets) {
+      try {
+        const result = await hostedAssets.storeAsset({
+          workspaceId: recipe.workspaceId,
+          projectId: recipe.projectId,
+          bytes: await privateStoragePayload(output.payload),
+          originalName,
+          mimeType,
+          privacy,
+          lifecycle: "original",
+          provenance,
+          userMetadata,
+          dimensions: output.dimensions || null,
+          durationMs: output.durationMs || null,
+        });
+        if (!result?.asset) throw new Error("Private asset storage did not return a canonical Asset.");
+        return result.asset;
+      } catch (cause) {
+        if (cause?.code && cause.code !== "storage_failed") {
+          const error = new Error("Capture output storage failed.");
+          error.code = "storage_failed";
+          error.causeCode = safeCode(cause.code, "storage_failed");
+          throw error;
+        }
+        const error = cause instanceof Error ? cause : new Error("Capture output storage failed.");
+        error.code = "storage_failed";
+        throw error;
+      }
+    }
+
     const blobId = ids.create("capture-blob");
     try {
       await blobs.put(blobId, output.payload);
@@ -127,7 +251,6 @@ export function createCaptureExecutionApplication({
       error.code = "storage_failed";
       throw error;
     }
-    const now = time.now();
     const assetId = ids.create("capture-asset");
     const asset = normalizeAsset({
       assetId,
@@ -135,40 +258,18 @@ export function createCaptureExecutionApplication({
       workspaceId: recipe.workspaceId,
       projectId: recipe.projectId,
       lifecycle: "original",
-      originalName: output.originalName || `${captureJob.captureKind}-${checkpoint || sequence}.${captureJob.captureKind === "screenshot" ? "png" : "webm"}`,
-      mimeType: output.mimeType || (captureJob.captureKind === "screenshot" ? "image/png" : "video/webm"),
+      originalName,
+      mimeType,
       byteSize: Number(output.byteSize || 0),
       dimensions: output.dimensions || null,
       durationMs: output.durationMs || null,
       contentHash: output.contentHash || null,
       storageRef: { provider: "application", blobId },
       uploadState: UPLOAD_STATES.COMPLETE,
-      privacy: {
-        classification: output.privacyClass || PRIVACY_CLASSES.WORKSPACE_PRIVATE,
-        exportAllowed: output.exportAllowed !== false,
-        processingAllowed: output.processingAllowed !== false,
-      },
-      userMetadata: {
-        description: `Automatic ${captureJob.captureKind} from ${recipe.name}${checkpoint ? ` at ${checkpoint}` : ""}.`,
-        tags: ["automatic-capture", captureJob.captureKind, checkpoint].filter(Boolean),
-        intendedUse: ["capture_output"],
-      },
+      privacy,
+      userMetadata,
       ingestionMethod: INGESTION_METHODS.API,
-      provenance: [{
-        eventType: "automatic_capture",
-        method: INGESTION_METHODS.API,
-        occurredAt: now,
-        actorType: "worker",
-        actorId: null,
-        parentSourceArtifactIds: [],
-        parentAssetIds: [],
-        processor: {
-          name: "signalflow-capture-worker",
-          version: String(recipe.captureSchemaVersion || 1),
-          model: `${recipe.captureRecipeId}@${recipe.version}:${captureJob.captureJobId}`,
-        },
-        issueCodes: [],
-      }],
+      provenance,
       createdAt: now,
       updatedAt: now,
     }, { workspaceId: recipe.workspaceId, projectId: recipe.projectId, now });
@@ -220,6 +321,7 @@ export function createCaptureExecutionApplication({
         durableJob = await heartbeat(durableJob, stageForAction(step.action), step.stepId);
         currentCaptureJob = await updateCaptureStatus(currentCaptureJob, stageForAction(step.action));
         let output = null;
+        let privacyReview = null;
         if (step.action === CAPTURE_ACTIONS.NAVIGATE) {
           const target = resolveRecipeNavigation(recipe, step.path);
           await worker.navigate(session, target);
@@ -229,6 +331,11 @@ export function createCaptureExecutionApplication({
           if ([CAPTURE_ACTIONS.CAPTURE_CHECKPOINT, CAPTURE_ACTIONS.START_RECORDING].includes(step.action)) {
             const privacy = await worker.evaluatePrivacy(session, recipe.privacyRules);
             if (privacy?.blocked) throw new CaptureRecipeError("privacy_rule_triggered", "Capture privacy policy blocked this checkpoint.", { issueCodes: privacy.issueCodes || [] });
+            privacyReview = {
+              state: Array.isArray(privacy?.warningCodes) && privacy.warningCodes.length ? "needs_review" : "passed",
+              issueCodes: Array.isArray(privacy?.issueCodes) ? privacy.issueCodes : [],
+              warningCodes: Array.isArray(privacy?.warningCodes) ? privacy.warningCodes : [],
+            };
           }
           const args = step.action === CAPTURE_ACTIONS.FILL_SAFE_FIXTURE
             ? { ...step, value: fixtureValues[step.fixtureKey] }
@@ -241,7 +348,14 @@ export function createCaptureExecutionApplication({
         );
         if (shouldPersist && (!captureJob.requestedCheckpoint || step.checkpoint === captureJob.requestedCheckpoint || step.action === CAPTURE_ACTIONS.STOP_RECORDING)) {
           sequence += 1;
-          outputAssets.push(await persistCaptureOutput({ recipe, captureJob, output, checkpoint: step.checkpoint, sequence }));
+          outputAssets.push(await persistCaptureOutput({
+            recipe,
+            captureJob,
+            output,
+            checkpoint: step.checkpoint,
+            sequence,
+            privacyReview,
+          }));
         }
       }
       if (!outputAssets.length) {

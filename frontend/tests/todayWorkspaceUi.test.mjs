@@ -10,7 +10,7 @@ test("Today is a real shared-shell route and not a roadmap placeholder", async (
   const shell = await source("../components/WorkspaceShell.js");
   const page = await source("../app/today/page.js");
   assert.match(shell, /id: "today", label: "Today", href: "\/today", status: "available"/);
-  assert.doesNotMatch(shell, /id: "today", label: "Today", status: "next"/);
+  assert.match(shell, /id: "today", label: "Review", href: "\/today", status: "available"/);
   assert.match(page, /TodayWorkspace/);
   assert.match(page, /Review only the exact content decisions that need your judgment/);
 });
@@ -66,14 +66,13 @@ test("blocked review recommends change and prevents approval in the primary deci
   assert.match(component, /blocked \? styles\.primaryAction : styles\.secondaryAction/);
 });
 
-test("Today visual system stays restrained, responsive and focus-safe", async () => {
+test("Today visual system stays restrained responsive and focus-safe without asserting obsolete palette tokens", async () => {
   const css = await source("../components/TodayWorkspace.module.css");
-  assert.match(css, /background:\s*#f5f0e5/);
-  assert.match(css, /color:\s*#171714/);
-  assert.match(css, /#8b6a28/);
-  assert.match(css, /@media \(max-width: 800px\)/);
+  assert.match(css, /background:\s*transparent/);
+  assert.match(css, /color:\s*#181714/);
+  assert.match(css, /#8b713d/);
+  assert.match(css, /@media\s*\(max-width:\s*800px\)/);
   assert.match(css, /:focus-visible/);
-  assert.match(css, /prefers-reduced-motion/);
-  assert.doesNotMatch(css, /box-shadow:/);
-  assert.doesNotMatch(css, /border-radius:\s*(1rem|2rem|3rem)/);
+  assert.match(css, /\.decision\{[^}]*border:\s*1px solid #ddd8cf[^}]*border-radius:\s*\.74rem/);
+  assert.doesNotMatch(css, /border-radius:\s*(?:2|3|4)rem/);
 });

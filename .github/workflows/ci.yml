@@ -57,3 +57,33 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+  frontend-diagnostic:
+    name: frontend-diagnostic (${{ matrix.group }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: a-f
+            pattern: "[a-f]*.test.mjs"
+          - group: g-l
+            pattern: "[g-l]*.test.mjs"
+          - group: m-r
+            pattern: "[m-r]*.test.mjs"
+          - group: s-z
+            pattern: "[s-z]*.test.mjs"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run isolated regression group
+        working-directory: frontend
+        run: node --test tests/${{ matrix.pattern }}

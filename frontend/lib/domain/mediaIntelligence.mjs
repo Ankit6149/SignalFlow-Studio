@@ -349,13 +349,15 @@ function destinationCandidates({ destination, contentPiece, bindings, explicitKi
 export function normalizeMediaRequirement(input = {}) {
   const parsed = input?.kind === "MediaRequirement" && input?.schemaVersion ? parseDomainRecord(input, "MediaRequirement") : input;
   const createdAt = timestamp(parsed.createdAt, null, "MediaRequirement.createdAt");
+  const legacyMediaKind = parsed.kind && parsed.kind !== "MediaRequirement" ? parsed.kind : null;
+  const mediaKind = enumValue(parsed.mediaKind ?? legacyMediaKind, DECISION_VALUES, MEDIA_DECISION_KINDS.NONE, "MediaRequirement.mediaKind");
   return createDomainRecord("MediaRequirement", {
     mediaSchemaVersion: MEDIA_SCHEMA_VERSION,
     mediaRequirementId: opaqueId(parsed.mediaRequirementId, "MediaRequirement.mediaRequirementId"),
     workspaceId: opaqueId(parsed.workspaceId, "MediaRequirement.workspaceId"),
     contentPieceId: opaqueId(parsed.contentPieceId, "MediaRequirement.contentPieceId"),
     destination: enumValue(parsed.destination, DESTINATIONS, "generic", "MediaRequirement.destination"),
-    kind: enumValue(parsed.kind, DECISION_VALUES, MEDIA_DECISION_KINDS.NONE, "MediaRequirement.kind"),
+    mediaKind,
     purpose: text(parsed.purpose, "Support the content piece without weakening authenticity.", 1600),
     subject: optionalText(parsed.subject, 1200),
     mustShow: uniqueText(parsed.mustShow, 20, 600),
@@ -364,8 +366,8 @@ export function normalizeMediaRequirement(input = {}) {
     captionIntent: optionalText(parsed.captionIntent, 800),
     priority: enumValue(parsed.priority, new Set(["required", "preferred", "optional"]), "preferred", "MediaRequirement.priority"),
     sourceBindingIds: uniqueIds(parsed.sourceBindingIds, "MediaRequirement.sourceBindingIds"),
-    productionReadiness: enumValue(parsed.productionReadiness, new Set(["ready", "needs_capture", "needs_processing", "blocked", "not_needed"]), parsed.kind === MEDIA_DECISION_KINDS.NONE ? "not_needed" : "ready", "MediaRequirement.productionReadiness"),
-    status: enumValue(parsed.status, REQUIREMENT_STATUS_VALUES, parsed.kind === MEDIA_DECISION_KINDS.NONE ? MEDIA_REQUIREMENT_STATUSES.SATISFIED : MEDIA_REQUIREMENT_STATUSES.PLANNED, "MediaRequirement.status"),
+    productionReadiness: enumValue(parsed.productionReadiness, new Set(["ready", "needs_capture", "needs_processing", "blocked", "not_needed"]), mediaKind === MEDIA_DECISION_KINDS.NONE ? "not_needed" : "ready", "MediaRequirement.productionReadiness"),
+    status: enumValue(parsed.status, REQUIREMENT_STATUS_VALUES, mediaKind === MEDIA_DECISION_KINDS.NONE ? MEDIA_REQUIREMENT_STATUSES.SATISFIED : MEDIA_REQUIREMENT_STATUSES.PLANNED, "MediaRequirement.status"),
     reason: optionalText(parsed.reason, 1600),
     createdAt,
     updatedAt: timestamp(parsed.updatedAt, createdAt, "MediaRequirement.updatedAt"),
@@ -436,7 +438,7 @@ export function planMediaForContentPiece({
       workspaceId: contentPiece.workspaceId,
       contentPieceId: contentPiece.contentPieceId,
       destination,
-      kind: selected.kind,
+      mediaKind: selected.kind,
       purpose: contentPiece.purpose || contentPiece.canonicalIntent,
       subject: contentPiece.canonicalIntent,
       mustShow: productEvidence ? ["The real product state that supports the claim"] : [],

@@ -50,6 +50,7 @@ const ENVIRONMENT_VALUES = new Set(Object.values(CAPTURE_ENVIRONMENTS));
 const RECIPE_STATUS_VALUES = new Set(Object.values(CAPTURE_RECIPE_STATUSES));
 const CAPTURE_JOB_STATUS_VALUES = new Set(Object.values(CAPTURE_JOB_STATUSES));
 const ACTION_VALUES = new Set(Object.values(CAPTURE_ACTIONS));
+const PRIVACY_REVIEW_VALUES = new Set(["not_checked", "passed", "needs_review", "blocked"]);
 const SAFE_CODE = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
 export class CaptureRecipeError extends TypeError {
@@ -115,6 +116,75 @@ function safeCode(value, field) {
 function uniqueCodes(values, field, max = 50) {
   if (!Array.isArray(values)) return [];
   return [...new Set(values.map((value) => safeCode(value, field)))].slice(0, max);
+}
+
+function positiveInteger(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
+}
+
+function normalizeCaptureUrl(value) {
+  const raw = text(value, "", 1200);
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new CaptureRecipeError("unsafe_capture_provenance", "Capture output provenance contains an invalid source URL.");
+  }
+  if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new CaptureRecipeError("unsafe_capture_provenance", "Capture output provenance must use an uncredentialed HTTP(S) source URL.");
+  }
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString();
+}
+
+function normalizeViewport(value = {}) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const width = positiveInteger(value.width);
+  const height = positiveInteger(value.height);
+  const deviceScaleFactor = Number(value.deviceScaleFactor);
+  if (!width || !height) return null;
+  return portableClone({
+    width,
+    height,
+    deviceScaleFactor: Number.isFinite(deviceScaleFactor) && deviceScaleFactor > 0
+      ? Math.min(4, Math.max(0.5, Number(deviceScaleFactor.toFixed(3))))
+      : 1,
+  });
+}
+
+function normalizeOutputDimensions(value = {}) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const width = positiveInteger(value.width);
+  const height = positiveInteger(value.height);
+  return width && height ? { width, height } : null;
+}
+
+function normalizeCaptureOutputProvenance(values) {
+  if (!Array.isArray(values)) return [];
+  return values.slice(0, 50).map((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new CaptureRecipeError("invalid_capture_output_provenance", `Capture output provenance ${index + 1} must be an object.`);
+    }
+    return portableClone({
+      assetId: opaqueId(item.assetId, `CaptureJob.outputProvenance[${index}].assetId`),
+      assetVersionId: opaqueId(item.assetVersionId, `CaptureJob.outputProvenance[${index}].assetVersionId`, false),
+      checkpoint: item.checkpoint ? safeCode(item.checkpoint, `CaptureJob.outputProvenance[${index}].checkpoint`) : null,
+      sourceUrl: normalizeCaptureUrl(item.sourceUrl),
+      environment: enumValue(item.environment, ENVIRONMENT_VALUES, CAPTURE_ENVIRONMENTS.DEMO, `CaptureJob.outputProvenance[${index}].environment`),
+      viewport: normalizeViewport(item.viewport),
+      dimensions: normalizeOutputDimensions(item.dimensions),
+      capturedAt: timestamp(item.capturedAt, null, `CaptureJob.outputProvenance[${index}].capturedAt`),
+      contentHash: text(item.contentHash, "", 200) || null,
+      privacyReviewState: enumValue(item.privacyReviewState, PRIVACY_REVIEW_VALUES, "not_checked", `CaptureJob.outputProvenance[${index}].privacyReviewState`),
+      privacyIssueCodes: uniqueCodes(item.privacyIssueCodes, `CaptureJob.outputProvenance[${index}].privacyIssueCodes`, 50),
+      privacyWarningCodes: uniqueCodes(item.privacyWarningCodes, `CaptureJob.outputProvenance[${index}].privacyWarningCodes`, 50),
+      workerAdapter: item.workerAdapter ? safeCode(item.workerAdapter, `CaptureJob.outputProvenance[${index}].workerAdapter`) : null,
+      workerAdapterVersion: text(item.workerAdapterVersion, "", 100) || null,
+    });
+  });
 }
 
 function normalizePrivacyRules(values) {
@@ -238,6 +308,7 @@ export function normalizeCaptureJob(input = {}) {
     status: enumValue(parsed.status, CAPTURE_JOB_STATUS_VALUES, CAPTURE_JOB_STATUSES.QUEUED, "CaptureJob.status"),
     issueCode: parsed.issueCode ? safeCode(parsed.issueCode, "CaptureJob.issueCode") : null,
     outputAssetIds: Array.isArray(parsed.outputAssetIds) ? [...new Set(parsed.outputAssetIds.map((item) => opaqueId(item, "CaptureJob.outputAssetIds")))].slice(0, 50) : [],
+    outputProvenance: normalizeCaptureOutputProvenance(parsed.outputProvenance),
     createdAt,
     updatedAt: timestamp(parsed.updatedAt, createdAt, "CaptureJob.updatedAt"),
     completedAt: timestamp(parsed.completedAt, null, "CaptureJob.completedAt"),
@@ -258,6 +329,7 @@ export function createCaptureJob({ captureJobId, jobId, recipe, captureKind = "s
     captureKind,
     requestedCheckpoint,
     status: CAPTURE_JOB_STATUSES.QUEUED,
+    outputProvenance: [],
     createdAt,
     updatedAt: createdAt,
   });

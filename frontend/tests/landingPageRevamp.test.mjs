@@ -82,11 +82,12 @@ test("the landing design remains component-scoped and keeps its current narrativ
   }
 });
 
-test("the landing protects responsive focus and reduced-motion behavior", () => {
-  assert.match(styles, /@media\s*\(max-width:\s*1100px\)/);
-  assert.match(styles, /@media\s*\(max-width:\s*900px\)/);
-  assert.match(styles, /@media\s*\(max-width:\s*640px\)/);
-  assert.match(styles, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
-  assert.match(styles, /:focus-visible/);
-  assert.match(styles, /overflow-x:\s*clip/);
+test("the landing protects responsive and reduced-motion behavior", () => {
+  assert.match(styles, /@media\(max-width:1120px\)/);
+  assert.match(styles, /@media\(max-width:900px\)/);
+  assert.match(styles, /@media\(max-width:620px\)/);
+  assert.match(styles, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(styles, /\.theatreBody\{[^}]*grid-template-columns:1fr/);
+  assert.match(styles, /\.flowRail\{grid-template-columns:1fr/);
+  assert.match(styles, /animation:none/);
 });

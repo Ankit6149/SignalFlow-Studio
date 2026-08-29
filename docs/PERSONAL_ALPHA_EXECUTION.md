@@ -1,6 +1,10 @@
 # SignalFlow Studio — Personal Alpha Execution Strategy
 
-> **Status:** canonical execution strategy for proving the product before broad SaaS expansion. This document deliberately prioritizes complete vertical slices over infrastructure breadth.
+> **Status:** canonical execution strategy for proving the owner product before broad SaaS expansion.
+>
+> **Operational state:** see `IMPLEMENTATION_LEDGER.md` for verified PR/commit/test history. This document defines execution order and exit conditions; the ledger records what has actually landed.
+>
+> **Capability truth:** a target described here is not automatically available in the current product. `CAPABILITY_MATRIX.md`, merged code, and verification evidence define what may be claimed as working.
 
 ## 1. Why Personal Alpha comes first
 
@@ -9,137 +13,85 @@ SignalFlow has a large possible surface:
 - source integrations;
 - AI providers;
 - content strategy;
-- identity memory;
+- identity and narrative memory;
 - browser capture;
-- media rendering;
+- image/video production;
 - calendar planning;
-- social connectors;
+- destination connectors;
 - cloud persistence;
 - teams;
 - billing;
 - analytics.
 
-Trying to productionize all of these simultaneously creates a high risk of building a sophisticated system that still does not remove the user's daily content burden.
+Building these horizontally would recreate the failure mode where the repository contains many foundations but the owner still has to think of the post, gather the evidence, record the product, format every destination, and publish manually.
 
-The first goal is therefore:
+The execution rule is therefore:
 
-> **Make SignalFlow genuinely useful for one demanding owner workflow, while keeping domain boundaries compatible with later multi-user SaaS.**
+> **Prove one complete owner journey, add only the infrastructure needed to make it real, verify it end to end, then expand the next vertical slice.**
 
-## 2. Personal Alpha product test
+## 2. Product test
 
-Personal Alpha is successful when the owner can spend several days working and then open SignalFlow to find useful, production-ready communication work waiting for judgment.
+Personal Alpha succeeds when ordinary meaningful work can become reviewable communication with minimal deliberate content operations from the owner.
 
-A successful experience looks like:
+Target loop:
 
 ```text
-SignalFlow found 7 developments.
-3 look worth discussing.
-
-1. Capture workflow completed
-   Strong opportunity · demo can be generated automatically
-
-2. Editor-state bug resolved
-   Good technical lesson · X/Reddit candidate
-
-3. Durable job architecture reworked
-   Strong behind-the-scenes engineering story
+REAL WORK / MANUAL THOUGHT
+        ↓
+ContentSignal
+        ↓
+ContentOpportunity
+        ↓
+angle selection / Something else
+        ↓
+NarrativeStrategy / Campaign
+        ↓
+ContentPiece(s)
+        ↓
+Evidence + media production
+        ↓
+PlatformVariant(s)
+        ↓
+exact text/media review + approval
+        ↓
+EditorialCalendar / PublicationRequest
+        ↓
+durable publication
+        ↓
+NarrativeMemory + feedback learning
 ```
 
-The user chooses one opportunity, one angle, reviews the generated media/content, approves, and returns to work.
+The user's job is judgment. SignalFlow should remove as much repeatable work between the original event and that judgment as possible without inventing noise or weakening safety.
 
-## 3. Personal Alpha scope
+## 3. Cross-cutting product invariants
 
-### Identity
+These rules apply to every gate:
 
-- one owner/user;
-- one default workspace;
-- multiple projects/topics;
-- one primary personal IdentityProfile;
-- per-project product guidance;
-- explicit boundaries;
-- learned review preferences.
-
-### Inputs/signals
-
-Required:
-
-- manual thought/topic;
-- GitHub source events/context;
-- product/deployed URL;
-- file/text/image inputs;
-- existing browser capture path where available.
-
-Later:
-
-- broader work/document integrations;
-- Slack/Notion/Linear/Jira/design integrations;
-- desktop/local application signals.
-
-### Editorial intelligence
-
-Required:
-
-- ContentSignal records;
-- opportunity scoring;
-- shortlist of worthwhile ideas;
-- 3–5 narrative-angle options;
-- `Something else…` free-form override;
-- destination recommendations/exclusions;
-- repetition check against publication/narrative history.
-
-### Production
-
-Required:
-
-- text generation through staged contracts;
-- screenshots through safe automated browser capture;
-- one deterministic short demo/screencast path;
-- simple branded motion composition;
-- 16:9 and 9:16 media variants;
-- final media review.
-
-### Destinations
-
-Initial direct-publish target:
-
-- LinkedIn;
-- X;
-- one visual/video destination only after media production is stable.
-
-For every other destination, maintain a truthful manual export/open workflow until the direct connector passes real credential-backed acceptance.
-
-### Review/approval
-
-Required:
-
-- exact current draft revision;
-- exact media revision;
-- user edit;
-- free-form change request;
-- approve;
-- reject;
-- remove destination;
-- change schedule;
-- approval invalidation on relevant edits.
-
-### Calendar/publication
-
-Required:
-
-- simple cadence policies;
-- recommended time/window;
-- post now;
-- schedule;
-- durable job;
-- cancellation/reschedule;
-- confirmed/unknown/failure outcome;
-- publication history.
+- `ContentSignal` is not a `ContentOpportunity`.
+- `ContentOpportunity` is not a `ContentPiece`.
+- `StyleMemory` is not `NarrativeMemory`.
+- media role is not media permission.
+- `MediaRequirement` is not a `MediaPlan`.
+- canonical `MediaRequirement.kind` remains `MediaRequirement`; selected media type belongs in `mediaKind`.
+- original Assets are immutable; derivatives have explicit lineage.
+- GitHub App/webhooks are source-event ingestion; MCP is an agent-control/query interface.
+- GitHub is one source, not the definition of SignalFlow.
+- `DO_NOT_POST` is a valid recommendation.
+- media `NONE` is a valid requirement.
+- `Something else` is a valid owner override.
+- an empty editorial slot is valid; cadence must never manufacture filler.
+- exact approval binds exact immutable text/media revisions.
+- approval is not publication.
+- publication is confirmed only after the destination confirms the external side effect.
+- unknown external outcomes remain unknown until reconciled safely.
+- privacy and authorization fail closed.
+- consumer AI subscriptions are not API-credit guarantees.
 
 ## 4. Architecture rule: owner-first does not mean throwaway
 
-Use stable IDs and workspace ownership from the beginning even if there is only one owner.
+Even Personal Alpha uses stable IDs, workspace ownership, versioned records, and application/adapter boundaries.
 
-Minimum identity set:
+Representative identity set:
 
 ```text
 workspaceId
@@ -156,6 +108,7 @@ draftId
 revisionId
 assetId
 captureRecipeId
+captureJobId
 mediaCompositionId
 approvalId
 calendarEntryId
@@ -164,411 +117,457 @@ publicationId
 jobId
 ```
 
-This prevents a future SaaS migration from becoming a complete domain rewrite.
+Application services own use cases. Provider/storage/browser/connector implementations stay behind their adapters. React components and route handlers do not become hidden domain models.
 
-## 5. Execution gate philosophy
+## 5. Gate 0 — product truth and documentation reset
 
-Do not complete broad layers horizontally.
+### Goal
 
-Wrong pattern:
+A contributor or coding agent must not be able to read an old file and conclude that SignalFlow is permanently a `Source → Destinations → Generate posting package` wizard.
+
+### Required outcome
+
+- canonical product, identity, media, editorial, information-architecture, execution, and capability docs;
+- README/AGENTS/roadmap aligned to the content operating system lifecycle;
+- old integration/product assumptions marked superseded or removed;
+- target architecture clearly separated from current capability truth.
+
+### Exit condition
+
+Documentation and issues describe the same lifecycle and contributors can locate a change through:
 
 ```text
-build all database tables
-build all UI
-build all connectors
-build all capture
-build all analytics
-then try the product
+domain record
+→ application service
+→ port/adapter
+→ UI / API / webhook / worker / MCP
 ```
 
-Preferred pattern:
+## 6. Gate 1 — Golden Path 1: manual thought → authentic approval
+
+**Owner issue:** #166
+
+### Goal
+
+Prove the intelligence, identity, narrative, generation, review, and exact-approval loop before automatic work detection.
+
+### Vertical slice
 
 ```text
-one user journey
+manual thought/topic
     ↓
-add only the infrastructure required to make it real
-    ↓
-verify end to end
-    ↓
-expand the next vertical slice
-```
-
-## 6. Gate 0 — Documentation and domain reset
-
-Goal:
-
-- canonical product vision documented;
-- old package-generator framing removed from contributor guidance;
-- Signals/Opportunities/Campaign/Memory model defined;
-- issue roadmap updated;
-- no implementation started from contradictory docs.
-
-Exit criteria:
-
-- README links to canonical product docs;
-- AGENTS.md uses new lifecycle;
-- roadmap prioritizes vertical slices;
-- relevant epics reference the new content-intelligence layer;
-- no issue tells contributors that Source → Destinations → Generate is the permanent product architecture.
-
-## 7. Gate 1 — Owner memory and manual opportunity loop
-
-Goal:
-
-Prove the intelligence/review loop before automation from GitHub.
-
-Vertical slice:
-
-```text
-Manual thought
-   ↓
 ContentSignal
-   ↓
-ContentOpportunity
-   ↓
-3–5 angles
-   ↓
-user selection
-   ↓
+    ↓
+ContentOpportunity + explanation
+    ↓
+3–5 materially different angles + Something else
+    ↓
 NarrativeStrategy
-   ↓
-LinkedIn + X content pieces
-   ↓
-review/edit/approve
-   ↓
-NarrativeMemory updated
+    ↓
+ContentPiece
+    ↓
+LinkedIn / X PlatformVariants
+    ↓
+staged generation + authenticity/evidence/repetition checks
+    ↓
+user edit / targeted change / reject / approve
+    ↓
+exact approved revisions + persistent history
 ```
 
-Required implementation areas:
+### Supporting areas
 
-- canonical records;
-- local/store-backed repositories;
-- identity profile v1;
-- opportunity scoring v1;
-- narrative planner;
-- staged generation;
-- authenticity critic v1;
-- Today/Plan minimal surfaces;
-- publication-memory record even if posting remains manual initially.
+- #152 ContentSignal/manual intake;
+- #153 identity/perception/voice/boundaries;
+- #155 narrative/publication memory foundation;
+- #156 explainable opportunity scoring and angles;
+- #157 NarrativeStrategy/ContentPiece/PlatformVariant contracts;
+- #158 staged generation and quality critics;
+- #159 Today/Signals/Plan decision surfaces;
+- existing draft/version/approval invariants under #60.
 
-Why first:
+### Exit condition
 
-If SignalFlow cannot produce low-edit authentic content from an explicit user thought, automatic work detection will only automate bad content.
+The owner can type one real thought, make a small number of useful decisions, receive authentic LinkedIn/X variants, make surgical edits/changes, approve exact revisions, refresh/reopen, and lose nothing.
 
-## 8. Gate 2 — GitHub work-signal vertical slice
+### Current execution state
 
-Goal:
+GP1 #166 is accepted as the first complete owner proof. Broader parent issues may remain open where their full reusable product-wide acceptance exceeds the GP1 slice.
 
-Make real work create candidate content without manual campaign setup.
+## 7. Gate 2 — Golden Path 2: GitHub work → worthwhile opportunity → automatic evidence
 
-Vertical slice:
+**Owner issue:** #167
+
+This gate intentionally combines the earlier separate “GitHub signal” and “automatic screenshot” milestones. GP2 is not complete merely because a webhook arrives; for a visual product story the owner must also avoid doing the manual screenshot work.
+
+### Goal
+
+Meaningful real work becomes a worthwhile, evidence-backed content opportunity without manual campaign creation, and a visual story receives automatically captured reviewable proof.
+
+### Vertical slice
 
 ```text
 meaningful GitHub event
-   ↓
-webhook/event ingestion
-   ↓
-ContentSignal
-   ↓
-repository/source evidence
-   ↓
-opportunity score
-   ↓
-Today recommendation
-   ↓
-angle selection
-   ↓
-existing Gate 1 campaign/review path
+    ↓
+verified GitHub App / webhook boundary
+    ↓
+canonical ContentSignal
+    ↓
+cheap deterministic noise filtering
+    ↓
+ContentOpportunity ranking / why-now / repetition context
+    ↓
+Today: Worth considering
+    ↓
+angle selection / Something else
+    ↓
+NarrativeStrategy / Campaign
+    ↓
+bounded repository/source evidence snapshot
+    ↓
+MediaRequirement when visual proof is useful
+    ↓
+versioned CaptureRecipe + durable CaptureJob
+    ↓
+real bounded browser screenshot capture
+    ↓
+private immutable canonical Asset
+    ↓
+quality/privacy state + platform derivative
+    ↓
+exact screenshot revision in LinkedIn/X review
 ```
 
-Required:
+### Required areas
 
-- GitHub App/webhook boundary;
-- event normalization;
-- workspace/project mapping;
-- idempotency;
-- signal classification;
-- repository evidence references;
-- noise filtering so every commit does not become an opportunity.
+- #161 GitHub App/webhook → ContentSignal;
+- #127/#129 source boundary/evidence versioning where required;
+- #156 opportunity scoring/noise separation;
+- #158 generation and critics;
+- #162 versioned bounded capture/job foundation;
+- #163 real screenshot execution, derivatives, exact review binding;
+- #72 private object storage foundation where hosted;
+- #73 durable execution foundation.
 
-MCP remains an agent-control path, not a replacement for webhook/event ingestion.
+### Required positive proof
 
-## 9. Gate 3 — Automatic screenshot production
+Use a real meaningful GitHub event class such as:
 
-Goal:
+- merged PR with a clear product/engineering outcome; or
+- published release.
 
-The user does not manually capture product screenshots for a suitable campaign.
+Do not hand-author a signal and call GitHub integration complete.
 
-Vertical slice:
+### Required negative/noise proof
+
+Use at least one low-value event such as a dependency-only/routine change. SignalFlow may preserve the raw signal, but it must not manufacture a high-priority opportunity merely because an event arrived.
+
+### Screenshot proof
+
+For the visual fixture:
+
+- capture executes through bounded recipe actions, not arbitrary recipe code;
+- same-origin policy exists at both domain and worker boundaries;
+- privacy is revalidated immediately before capture;
+- raw bytes are stored privately with immutable content identity;
+- capture provenance links the exact Asset to recipe version, job, checkpoint, safe final URL, viewport/dimensions, capture time, privacy outcome, worker version, and content hash;
+- social derivatives preserve lineage;
+- exact media revision is visible in review and independently replaceable from text.
+
+### Exit condition
+
+The owner does real GitHub work and later finds a genuinely useful opportunity waiting in SignalFlow, including automatically produced visual evidence when appropriate. A noisy event does not become manufactured content. Duplicate/retried event and capture delivery remain idempotent and recoverable.
+
+### Current execution state
+
+This is the active gate. See #167, #163, #161 and `IMPLEMENTATION_LEDGER.md` for verified implementation state.
+
+## 8. Gate 3 — automatic product-demo production
+
+**Primary issues:** #151, #164, #165 plus shared asset/job/storage work.
+
+### Goal
+
+A campaign that genuinely benefits from a short product demo can receive one without manual screen recording and repetitive editing.
+
+### Vertical slice
 
 ```text
-NarrativeStrategy
-   ↓
-MediaRequirement: screenshot
-   ↓
+MediaRequirement: screencast/demo
+    ↓
 CaptureRecipe
-   ↓
-background capture job
-   ↓
-canonical screenshot Asset
-   ↓
-platform crop/derivative
-   ↓
-review together with text
-```
-
-Required:
-
-- safe demo/preview capture environment;
-- bounded capture recipes;
-- browser worker;
-- object storage or compatible owner storage;
-- provenance;
-- privacy checks;
-- basic crop/resize derivatives.
-
-## 10. Gate 4 — Automatic short demo production
-
-Goal:
-
-Produce a polished launch/demo clip without manual screen recording/editing.
-
-Vertical slice:
-
-```text
-Campaign needs demo
-   ↓
-CaptureRecipe
-   ↓
-screencast
-   ↓
+    ↓
+deterministic raw screencast
+    ↓
+immutable raw video Asset
+    ↓
 MediaCompositionPlan
-   ↓
-brand intro + browser demo + callout + outro
-   ↓
-16:9 + 9:16 render
-   ↓
-review/approve exact media revision
+    ↓
+semantic scenes / callouts / captions / brand treatment
+    ↓
+durable render
+    ↓
+16:9 + 9:16 outputs
+    ↓
+quality/privacy review
+    ↓
+exact media revision approval
 ```
 
-Required:
+### Boundaries
 
-- recording worker;
-- deterministic motion composition;
-- captions/callouts;
-- render job;
-- output storage;
-- media approval and revision binding.
+- no unrestricted browser agent;
+- no hidden desktop/user recording;
+- no Premiere/After Effects replacement;
+- no requirement for stochastic generative video when deterministic product capture/composition is sufficient;
+- raw capture remains immutable when trims/compositions are produced.
 
-Do not build a general-purpose video editor in this gate.
+### Exit condition
 
-## 11. Gate 5 — Durable publication and simple editorial calendar
+At least one real product-demo fixture can be captured, composed, rendered in 16:9 and 9:16, and reviewed as exact media revisions without manual recording/editing.
 
-Goal:
+This gate is deliberately parked until GP2 screenshot evidence is solid.
 
-After approval, the owner no longer manually posts routine content.
+## 9. Gate 4 — Golden Path 3: approve once → durable publication → memory
 
-Vertical slice:
+**Owner issue:** #168
+
+### Goal
+
+After approving exact text/media and schedule, the owner should no longer manually copy, upload, reopen a platform, or supervise browser timers.
+
+### Vertical slice
 
 ```text
-approved exact revision
-   ↓
-recommended schedule
-   ↓
-user approves schedule
-   ↓
-PublicationRequest
-   ↓
+exact text revision approved
++ exact media revision approved
+    ↓
+editorial time/window recommendation
+    ↓
+user approves schedule / post now / changes time
+    ↓
+immutable PublicationRequest
+    ↓
 durable job
-   ↓
-LinkedIn/X connector
-   ↓
-confirmed result
-   ↓
-publication + narrative memory
+    ↓
+verified target connection + capability
+    ↓
+published | failed | rejected | unknown
+    ↓
+confirmed Publication
+    ↓
+NarrativeMemory
+    ↓
+Today surfaces only actionable exceptions
 ```
 
-Required:
+### Required areas
 
-- durable job queue/worker adapter;
-- exact revision freezing;
-- verified target identity;
-- real connector capability;
-- idempotency;
-- timezones;
-- cancel/reschedule;
-- unknown outcome handling;
-- Today exception reporting.
+- #160 cadence/editorial planning;
+- #102 verified connector identity/scopes/capabilities;
+- #103 immediate/scheduled publication jobs;
+- #73 durable jobs;
+- #155 NarrativeMemory;
+- exact media binding from #163/#165 where applicable.
 
-## 12. Gate 6 — Editorial continuity
+### Required reliability proof
 
-Goal:
+- browser closure after scheduling;
+- worker/deploy restart;
+- duplicate queue delivery;
+- connector timeout/unknown outcome;
+- token expiry/revocation/rate limit;
+- stale or edited revision before run;
+- cancel/reschedule race.
 
-SignalFlow begins deciding what should happen across a week/month rather than treating campaigns independently.
+At most one external publication may exist for one publication intent.
 
-Required:
+### Exit condition
 
-- CadencePolicy;
-- calendar entries;
-- campaign sequencing;
-- empty-slot behavior;
-- opportunity aging;
-- repetition detection;
-- pending/publication-aware planning;
-- `what should come next?` recommendation.
+The owner approves once and stops thinking about the operational posting step. Normal success becomes history; only exceptions return to Today. Only confirmed publication becomes strong public-story memory.
 
-Personal Alpha should now feel like an ongoing operating system rather than a campaign tool.
+## 10. Gate 5 — learn repeated corrections
 
-## 13. Gate 7 — Feedback learning
+**Primary issue:** #154, supported by #153/#155/#158.
 
-Goal:
+### Goal
 
 Repeated user corrections stop recurring.
 
-Required:
+### Required outcome
 
-- FeedbackEvent;
-- revision delta analysis;
-- StyleMemoryHypothesis;
+- FeedbackEvent evidence from review actions;
+- revision-delta analysis;
+- explainable StyleMemory hypotheses;
 - confidence/evidence accumulation;
-- Voice UI for inspect/confirm/edit/forget;
-- use learned memory in generation;
-- tests proving explicit boundaries outrank learned engagement signals.
+- scope-aware learned preferences;
+- inspect/confirm/edit/forget controls;
+- generation/quality integration;
+- explicit boundaries always outrank learned preferences or engagement signals.
 
-## 14. Gate 8 — Visual destination expansion
+### Exit condition
 
-Only after capture/media and text quality are reliable:
+A repeated correction becomes an explainable user-controlled preference and future generation stops making the same mistake without silently rewriting identity/boundary rules.
 
-- add the first visual/video direct publication path;
-- validate media upload/processing requirements;
-- expand aspect ratio/composition variants;
-- keep unsupported destinations manual-only.
+## 11. Gate 6 — source, asset, and extension completeness
 
-## 15. Gate 9 — Hosted SaaS foundation
+### Goal
 
-Only after Personal Alpha demonstrates repeated value should broad hosted product infrastructure become the dominant priority.
+Expand the evidence layer after the owner golden paths prove the architecture.
+
+Includes, as justified by real workflows:
+
+- canonical Asset/SourceArtifact follow-through;
+- hardened remote URL/source ingestion;
+- immutable evidence versions and freshness;
+- repository discovery/planning;
+- trusted local repository mode;
+- source-health diagnostics;
+- browser extension pairing;
+- page context/screenshot/user-initiated recording;
+- capture review/redaction;
+- offline queue;
+- asset inbox/library;
+- OCR/transcription/analysis processors;
+- hashing/duplicate/retention/deletion lifecycle.
+
+### Boundary
+
+Extension capture is user-initiated browsing-context capture.
+
+Automatic campaign capture (#162–#165) is a separate worker pathway.
+
+Both produce canonical Assets but solve different user burdens.
+
+## 12. Gate 7 — hosted owner reliability / cloud foundation
+
+### Goal
+
+Make the proven owner loop durable across services/devices without turning infrastructure into a separate product.
 
 Includes:
 
-- authentication;
-- workspaces/memberships;
-- production cloud database;
-- object storage;
-- tenant authorization;
-- cross-device autosave;
-- secrets;
-- quotas;
-- backups/restore;
-- account/data controls;
-- onboarding;
-- managed generation route.
+- hosted auth/workspace selection;
+- multi-tenant repository/database layer;
+- object storage/resumable uploads;
+- autosave/cross-device conflict recovery;
+- centralized authorization;
+- secret/privacy/retention/redacted observability;
+- migrations/backups/restore;
+- usage/quota ledger;
+- guided onboarding and data controls.
 
-Existing cloud epics remain relevant, but their priority is gated by proven product demand from the owner-first loop.
+Some foundations may be implemented earlier when a Golden Path requires them, as happened with durable jobs and private object storage for GP2. Their broader issues remain open until their complete scope is proven.
 
-## 16. Gate 10 — Broader integrations and teams
+## 13. Gate 8 — complete product UI system
 
-Potential expansions:
+### Goal
 
-- Linear/Jira;
-- Notion/docs;
-- Slack/Teams;
-- design systems;
-- additional git providers;
-- more social/owned destinations;
-- collaboration/review roles;
-- notifications;
-- performance analytics;
-- multi-brand workflows.
+Finish route/system quality around the proven lifecycle rather than repeatedly redesigning isolated pages.
 
-Do not implement these because they are possible. Implement them because a validated user workflow needs them.
+Target information architecture:
 
-## 17. First release metrics
+```text
+Today
+Signals
+Plan
+Calendar
+Create
+Assets
+Library
+Connections
+Voice
+Settings
+```
 
-Personal Alpha success should focus on user burden, not vanity metrics.
+Current/manual Create remains available until replacement paths are proven.
 
-Useful measurements:
+Required quality includes:
 
-### Attention
+- one coherent shell/navigation model;
+- responsive/mobile decision surfaces;
+- 200%/400% reflow;
+- keyboard/screen-reader acceptance;
+- long-content/error/loading/offline fixtures;
+- visual regression coverage;
+- exact text/media review surfaces;
+- truthful unavailable states rather than fake capability screens.
 
-- number of manual fields required before first useful recommendation;
-- time/steps from opportunity to approval;
-- number of times the user must leave SignalFlow to prepare media;
-- number of manual publication operations after approval.
+Do not use this gate as justification for another broad visual redesign while GP2/GP3 are incomplete.
 
-### Quality
+## 14. Gate 9 — broader destinations, integrations, collaboration, and SaaS breadth
 
-- approval-without-edit rate;
-- average revision count;
-- repeated correction rate;
-- rejected generic-language rate;
-- destination-removal rate after recommendation;
-- unsupported-claim rate.
+Only after Personal Alpha is repeatedly useful:
 
-### Reliability
+- broaden destination generation/publishing one connector at a time;
+- add source integrations such as Linear/Jira/Notion only through ContentSignal/source contracts;
+- add members/roles/comments/review workflows;
+- add managed plans/billing after metering is trustworthy;
+- add performance analytics only where official APIs and product value justify it.
 
-- capture success rate;
-- render success rate;
-- publication confirmed/unknown/failure rate;
-- duplicate-publication incidents (target: zero);
-- job recovery after restart.
+Generation capability and publication capability remain separate truths. A destination can have a reviewable Content Pack while direct publishing remains unsupported/manual-only.
 
-### Editorial usefulness
+## 15. Gate 10 — release proof and operations
 
-- recommended opportunities accepted;
-- ignored/noise recommendations;
-- repeated-topic detections;
-- intentionally empty slots accepted by user.
+### Goal
 
-## 18. Cost boundaries
+Every advertised capability has reproducible, sanitized evidence and safe rollback/recovery behavior.
 
-Personal Alpha should avoid unnecessary managed cost.
+Required layers include:
 
-Principles:
+- domain/unit tests;
+- adapter/contract tests;
+- integration tests;
+- web/worker E2E;
+- accessibility and visual regression;
+- credential-backed model/source/connector acceptance where necessary;
+- correlation IDs and redacted operational diagnostics;
+- migration/backup/restore/rollback drills;
+- Golden Path closing evidence.
 
-- use one strong reasoning/writing model initially rather than integrating every provider into every stage;
-- use structured local relational data before adding specialized vector infrastructure;
-- use deterministic capture/render before generative video;
-- use bounded vision calls only when they provide real value;
-- avoid processing every GitHub event with an expensive model;
-- pre-filter obvious low-value events with deterministic rules;
-- cache/version extracted evidence;
-- use durable jobs so retries do not duplicate expensive work.
+Normal CI passing is necessary but not sufficient for a Golden Path that depends on real external credentials/side effects.
 
-## 19. Owner data safety
+## 16. Personal Alpha cost boundaries
 
-The first user being the repository owner is not permission to skip security.
+- prefer one strong configured writing/reasoning route before provider breadth;
+- deterministic pre-filtering before expensive model calls;
+- bounded evidence retrieval instead of dumping entire source archives;
+- structured relational records before specialized vector infrastructure is justified;
+- deterministic capture/render before generative video;
+- bounded vision/media calls only when they add real value;
+- durable jobs/idempotency so retries do not duplicate expensive or external work;
+- cloud infrastructure should be introduced to support a proven owner slice, not because every SaaS system usually has it.
 
-Personal Alpha may process:
+## 17. Owner data safety
 
-- private product plans;
-- unpublished features;
-- screenshots;
-- repository context;
-- social credentials;
-- identity preferences.
+Personal Alpha may process private plans, unpublished features, screenshots, repository context, destination credentials, and identity preferences.
 
-Required from early gates:
+Required throughout the execution plan:
 
-- secret references, not raw credentials in campaign records;
-- redacted logs;
-- target-scoped capture;
-- explicit source/privacy state;
-- no unapproved publish;
-- safe deletion/export path for identity/memory data;
-- truthful capability labels.
+- secret references rather than raw credentials in canonical records;
+- no authorization headers/tokens/cookies in logs or release evidence;
+- source- and workspace-scoped authorization;
+- short-lived private media previews;
+- no signed URLs as canonical Asset metadata;
+- bounded capture targets and privacy checks;
+- explicit source/privacy/rights state;
+- no unapproved publication;
+- truthful unknown/failure states;
+- deletion/export paths appropriate to the data class;
+- capability labels never outrun verified implementation.
 
-## 20. Definition of "ready for me"
+## 18. Definition of “ready for me”
 
-SignalFlow is ready for serious owner use when this loop works repeatedly:
+SignalFlow is ready for serious owner use only when this loop works repeatedly:
 
 ```text
 I work
   ↓
 SignalFlow finds or receives a worthwhile signal
   ↓
-I select a direction with minimal thought
+I choose a direction with minimal thought
   ↓
-SignalFlow builds the required content and simple media itself
+SignalFlow gathers the required evidence and produces the content/media itself
   ↓
 I review one coherent campaign
   ↓
@@ -576,11 +575,27 @@ I approve exact revisions
   ↓
 SignalFlow schedules/publishes them reliably
   ↓
-It remembers what happened and improves future recommendations
+It remembers only what actually happened and improves future recommendations
 ```
 
-If the owner still routinely needs to record, edit, format, schedule, and manually publish after SignalFlow generates copy, the Personal Alpha has not achieved the product promise.
+If the owner still routinely has to remember the post, gather the proof, screen-record, crop, format, schedule, and manually publish after SignalFlow generates copy, the product promise has not been achieved.
 
-## 21. Execution rule
+## 19. Per-slice completion rule
 
-> **Do not close an issue because its isolated code exists. Close it when the vertical user journey it owns works truthfully end to end, with evidence and recovery states.**
+Do not close a product issue merely because isolated code exists.
+
+A slice is complete only when, as applicable:
+
+- issue acceptance criteria pass;
+- required deterministic tests pass;
+- existing relevant regressions remain green;
+- production build/audit passes;
+- the actual user flow is exercised;
+- responsive/accessibility requirements are verified;
+- secrets/private content are absent from logs/evidence;
+- migration/recovery/idempotency behavior is handled;
+- capability/public docs remain truthful;
+- sanitized evidence is attached;
+- `IMPLEMENTATION_LEDGER.md` records the verified result.
+
+> **Primary execution rule:** finish the active Golden Path before expanding horizontally into attractive but non-blocking breadth.

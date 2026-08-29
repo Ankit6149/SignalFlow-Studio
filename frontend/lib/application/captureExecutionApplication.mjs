@@ -69,6 +69,13 @@ function actionMethod(action) {
   }[action] || null;
 }
 
+function assertPrivateAssetStorage(service) {
+  if (!service || typeof service !== "object" || typeof service.storeAsset !== "function") {
+    throw new TypeError("privateAssetStorage.storeAsset must be a function.");
+  }
+  return service;
+}
+
 function decodeBase64(value) {
   if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(String(value), "base64"));
   const binary = atob(String(value));
@@ -127,7 +134,7 @@ export function createCaptureExecutionApplication({
   const jobs = assertPort("durableJobRepository", durableJobRepository);
   const captures = assertPort("captureRepository", captureRepository);
   const worker = assertPort("captureWorkerAdapter", captureWorkerAdapter);
-  const hostedAssets = privateAssetStorage ? assertPort("privateAssetStorage", privateAssetStorage) : null;
+  const hostedAssets = privateAssetStorage ? assertPrivateAssetStorage(privateAssetStorage) : null;
   const assets = assetRepository ? assertPort("assetRepository", assetRepository) : null;
   const blobs = blobStorage ? assertPort("blobStorage", blobStorage) : null;
   if (!hostedAssets) {
@@ -329,12 +336,12 @@ export function createCaptureExecutionApplication({
           const method = actionMethod(step.action);
           if (!method) throw new CaptureRecipeError("recipe_step_invalid", `Unsupported capture action ${step.action}.`);
           if ([CAPTURE_ACTIONS.CAPTURE_CHECKPOINT, CAPTURE_ACTIONS.START_RECORDING].includes(step.action)) {
-            const privacy = await worker.evaluatePrivacy(session, recipe.privacyRules);
-            if (privacy?.blocked) throw new CaptureRecipeError("privacy_rule_triggered", "Capture privacy policy blocked this checkpoint.", { issueCodes: privacy.issueCodes || [] });
+            const privacyResult = await worker.evaluatePrivacy(session, recipe.privacyRules);
+            if (privacyResult?.blocked) throw new CaptureRecipeError("privacy_rule_triggered", "Capture privacy policy blocked this checkpoint.", { issueCodes: privacyResult.issueCodes || [] });
             privacyReview = {
-              state: Array.isArray(privacy?.warningCodes) && privacy.warningCodes.length ? "needs_review" : "passed",
-              issueCodes: Array.isArray(privacy?.issueCodes) ? privacy.issueCodes : [],
-              warningCodes: Array.isArray(privacy?.warningCodes) ? privacy.warningCodes : [],
+              state: Array.isArray(privacyResult?.warningCodes) && privacyResult.warningCodes.length ? "needs_review" : "passed",
+              issueCodes: Array.isArray(privacyResult?.issueCodes) ? privacyResult.issueCodes : [],
+              warningCodes: Array.isArray(privacyResult?.warningCodes) ? privacyResult.warningCodes : [],
             };
           }
           const args = step.action === CAPTURE_ACTIONS.FILL_SAFE_FIXTURE

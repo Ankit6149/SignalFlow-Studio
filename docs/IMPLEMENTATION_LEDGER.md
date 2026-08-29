@@ -32,12 +32,14 @@ Do not use this ledger as a substitute for issue acceptance criteria or architec
 
 **Active product gate:** Golden Path 2 — real GitHub work → worthwhile opportunity → bounded evidence/media → LinkedIn/X review.
 
+**Current engineering slice:** #163 Phase B — screenshot quality/uncertainty + platform-safe derivative planning and lineage.
+
 **Golden Path status**
 
 | Path | Issue | Status | Proof boundary |
 | --- | --- | --- | --- |
 | GP1 — manual thought → authentic approval | #166 | complete | End-to-end owner intelligence/review slice accepted. |
-| GP2 — GitHub work → opportunity → automatic screenshot evidence | #167 | active | Must still prove real GitHub event ingestion/noise filtering plus exact automatic screenshot review. |
+| GP2 — GitHub work → opportunity → automatic screenshot evidence | #167 | active | Raw screenshot Phase A is merged; real GitHub ingestion/noise proof, derivative quality, exact media binding, and final end-to-end evidence remain. |
 | GP3 — exact approval → schedule/publish → NarrativeMemory | #168 | waiting | Starts only after GP2 closes. |
 
 ## Verified merged foundation
@@ -85,68 +87,50 @@ Do not use this ledger as a substitute for issue acceptance criteria or architec
 - **Verification:** normal frontend regression tests, production dependency audit/build, Python and MCP passed; post-merge `master` also passed.
 - **Capability effect:** hosted private Asset byte storage foundation is verified. Resumable/multipart uploads remain #72 Phase B.
 
-## Active slice — PR #241
+### 2026-08-29 — GP2 screenshot Phase A raw execution
 
-**Branch:** `feat/gp2-real-screenshot-capture`
+- **Issues:** #163 Phase A, supporting GP2 #167; builds on #162/#72/#73.
+- **PR:** #241 — `product: wire real GP2 screenshot capture into private asset storage`.
+- **Superseded draft:** #240 contained the same implementation history and was closed only because the connected GitHub tool could not transition draft→ready due its GraphQL query requesting the nonexistent Repository field `fullDatabaseId`. No code defect caused the replacement.
+- **Merge commit:** `ffd5fdecb2112f5e66a5e6f0423273d5829bece2`.
+- **What changed:**
+  - real Chrome DevTools Protocol screenshot worker adapter;
+  - isolated target/page execution;
+  - bounded recipe action surface;
+  - worker-layer same-origin enforcement in addition to recipe-domain navigation enforcement;
+  - explicit viewport + device-scale configuration;
+  - viewport PNG capture;
+  - selector/region PNG capture using semantic element bounds rather than blind center cropping;
+  - privacy selector evaluation immediately before screenshot capture;
+  - `fill_safe_fixture` requires an explicit selector;
+  - hosted capture bytes flow through the private immutable Asset storage application;
+  - deterministic/local blob path remains a compatibility fallback;
+  - durable CaptureJob completion returns canonical Asset IDs;
+  - structured capture-output provenance links exact Asset/version to recipe/version, CaptureJob, checkpoint, safe final URL, environment, viewport/dimensions, capture time, content hash, privacy outcome, and worker version;
+  - provenance URLs remove query strings/fragments and reject credential-bearing URLs;
+  - screencast remains deliberately unavailable.
+- **Verification history:**
+  1. Initial #240 CI exposed a real application-boundary defect: `privateAssetStorage` was incorrectly validated through the domain port registry.
+  2. The fix kept `privateAssetStorage` as an application service and preserved `blobStorage` as the actual external storage port; no fake/duplicate domain port was introduced and no unrelated regression was weakened.
+  3. Normal CI run `33273938719` passed after that fix.
+  4. Output-provenance and documentation changes were added.
+  5. Normal CI run `33274203844` passed on the final implementation/docs head used by #240.
+  6. Non-draft replacement #241 ran normal CI again on latest head `0ac7080310d21e4c6f04b1f682d3dae6459d6160`; run `33274325933` passed frontend regressions, dependency audit, production build, Python and MCP.
+  7. #241 merged at `ffd5fdecb2112f5e66a5e6f0423273d5829bece2`.
+  8. Post-merge `master` push run `33274380066` passed frontend regressions, production dependency audit, production build, Python and MCP.
+- **Capability effect:** production-capable bounded raw screenshot code is now on `master`; this is **not** a claim that every deployment currently has a configured/live CDP worker. Credential-backed/live worker acceptance remains part of final GP2 evidence.
+- **Not complete:** #163 remains open for Phase B quality/derivatives and Phase C exact media review binding. #167 remains open for real GitHub event/noise and complete owner-journey proof.
 
-**PR:** #241 — `product: wire real GP2 screenshot capture into private asset storage`
+## GP2 remaining sequence
 
-**Superseded draft:** #240 contains the same implementation history and the first fully green final-head verification. It was closed only because the connected GitHub tool's draft→ready GraphQL mutation requests the nonexistent Repository field `fullDatabaseId`. No code change was required to replace it.
-
-**Owning issues:** #163 Phase A, supporting GP2 #167; depends on merged #162/#72 foundations.
-
-### Implemented on the branch
-
-- real Chrome DevTools Protocol screenshot worker adapter;
-- isolated target/page execution;
-- bounded recipe action surface;
-- worker-layer same-origin enforcement in addition to recipe-domain navigation enforcement;
-- explicit viewport + device-scale configuration;
-- viewport PNG capture;
-- selector/region PNG capture using semantic element bounds rather than blind center cropping;
-- privacy selector evaluation immediately before screenshot capture;
-- screencast deliberately unavailable;
-- `fill_safe_fixture` now requires an explicit selector;
-- CaptureExecutionApplication routes hosted capture bytes through the private immutable Asset storage application;
-- deterministic/local blob path remains a compatibility fallback;
-- durable CaptureJob completion returns canonical Asset IDs;
-- safe structured capture-output provenance links exact Asset/version to recipe/version, CaptureJob, checkpoint, safe final URL, environment, viewport/dimensions, capture time, content hash, privacy result, and worker version;
-- source URL provenance drops query strings/fragments and rejects credential-bearing URLs.
-
-### Verification history
-
-1. Initial #240 CI exposed a real application-boundary defect: `privateAssetStorage` was incorrectly validated through the domain port registry.
-2. The fix kept `privateAssetStorage` as an application service and preserved `blobStorage` as the actual external storage port; no duplicate domain port was introduced and no unrelated regression test was weakened.
-3. Normal CI run `33273938719` passed after the application-boundary fix.
-4. Additional output-provenance and documentation changes were added.
-5. Normal CI run `33274203844` on head `6160b85dc85a68ceb964e68daeaf8a72509e79bd` passed:
-   - frontend regression tests — **success**;
-   - production dependency audit — **success**;
-   - production build — **success**;
-   - Python tests — **success**;
-   - MCP tests — **success**.
-6. #240 could not be promoted from draft because of the connector GraphQL defect described above. It was closed without code changes and replaced by non-draft #241 from the same head.
-7. #241 requires a normal green CI run on its latest head before merge even when an identical head already passed in #240.
-
-### Still required before #241 can merge
-
-- normal CI on the latest #241 head;
-- final mergeability/diff check;
-- no unrelated workflow/UI changes;
-- merge only green, then verify post-merge `master` green.
-
-## GP2 remaining sequence after #241
-
-1. Merge #241 only after all normal gates pass.
-2. Verify post-merge `master` green.
-3. #163 Phase B — screenshot quality/uncertainty state and platform-safe derivative planning/lineage.
-4. #163 Phase C — bind an exact screenshot AssetVersion/derivative to an exact PlatformVariant review revision; media replacement must not rewrite unrelated text.
-5. Finish/verify #161 official GitHub App/webhook event ingestion.
-6. Prove a meaningful real GitHub event end to end through #167.
-7. Prove a low-value/noise event is preserved or ignored appropriately but not promoted into manufactured content.
-8. Prove duplicate delivery, capture retry, partial generation, and refresh/reopen recovery.
-9. Close #163/#167 only with sanitized end-to-end evidence.
-10. Start GP3 #168.
+1. #163 Phase B — screenshot quality/uncertainty state and platform-safe derivative planning/lineage.
+2. #163 Phase C — bind an exact screenshot AssetVersion/derivative to an exact PlatformVariant review revision; media replacement must not rewrite unrelated text.
+3. Finish/verify #161 official GitHub App/webhook event ingestion and deployment boundary.
+4. Prove a meaningful real GitHub event end to end through #167.
+5. Prove a low-value/noise event is preserved or ignored appropriately but not promoted into manufactured content.
+6. Prove duplicate delivery, capture retry, partial generation, and refresh/reopen recovery.
+7. Attach sanitized end-to-end evidence and close #163/#167 only when their user outcomes truly pass.
+8. Start GP3 #168.
 
 ## Deliberately parked work
 

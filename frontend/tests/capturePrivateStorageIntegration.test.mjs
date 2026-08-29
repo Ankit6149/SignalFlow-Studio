@@ -170,6 +170,25 @@ test("CaptureJob screenshot bytes flow through private immutable storage into on
   assert.deepEqual(result.captureJob.outputAssetIds, [asset.assetId]);
   assert.equal(fixture.blobStorage.calls.put, 1);
 
+  assert.equal(result.captureJob.outputProvenance.length, 1);
+  assert.deepEqual(result.captureJob.outputProvenance[0], {
+    assetId: asset.assetId,
+    assetVersionId: asset.assetVersionId,
+    checkpoint: "hero",
+    sourceUrl: null,
+    environment: "demo",
+    viewport: null,
+    dimensions: { width: 1, height: 1 },
+    capturedAt: result.captureJob.outputProvenance[0].capturedAt,
+    contentHash: asset.contentHash,
+    privacyReviewState: "passed",
+    privacyIssueCodes: [],
+    privacyWarningCodes: [],
+    workerAdapter: "signalflow_capture_worker",
+    workerAdapterVersion: null,
+  });
+  assert.match(result.captureJob.outputProvenance[0].capturedAt, /^2026-08-30T12:00:\d{2}\.000Z$/);
+
   const stored = fixture.blobStorage.records.get(asset.storageRef.blobId);
   assert.ok(stored);
   assert.deepEqual(Array.from(stored.bytes.slice(0, 8)), [137, 80, 78, 71, 13, 10, 26, 10]);
@@ -177,8 +196,9 @@ test("CaptureJob screenshot bytes flow through private immutable storage into on
   const persisted = await fixture.assetRepository.get(asset.assetId);
   assert.equal(persisted.assetVersionId, asset.assetVersionId);
   assert.equal(persisted.provenance[0].eventType, "automatic_capture");
+  assert.equal(persisted.provenance[0].provenanceEventId, "capture-capture-job-private-proof-hero");
   assert.equal(persisted.provenance[0].processor.model, "recipe-private-proof@1:capture-job-private-proof");
-  assert.doesNotMatch(JSON.stringify(persisted), /signed[_-]?url|authorization|cookie|secret-ref|devtools\/browser/i);
+  assert.doesNotMatch(JSON.stringify({ asset: persisted, captureJob: result.captureJob }), /signed[_-]?url|authorization|cookie|secret-ref|devtools\/browser/i);
 });
 
 test("privacy blocking happens before the private object store receives screenshot bytes", async () => {

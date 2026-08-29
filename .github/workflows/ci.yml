@@ -59,27 +59,50 @@ jobs:
         run: npm run build
 
   frontend-diagnostic:
-    name: frontend-diagnostic (${{ matrix.test }})
+    name: frontend-diagnostic (${{ matrix.group }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        test:
-          - captureRecipes.test.mjs
-          - durableJobs.test.mjs
-          - mediaIntelligence.test.mjs
-          - githubFirstOpportunityUi.test.mjs
-          - githubSourceConnectionUiIntegration.test.mjs
-          - goldenPathOwnerAcceptance.test.mjs
-          - landingPageRevamp.test.mjs
-          - publicTruth.test.mjs
-          - productionCleanup.test.mjs
-          - platformReviewUi.test.mjs
-          - todayWorkspaceUi.test.mjs
-          - voiceIdentityIntegration.test.mjs
-          - workspaceAccessibility.test.mjs
-          - workspaceShellProductIntegration.test.mjs
-          - workspaceShellScrollAndBrand.test.mjs
+        include:
+          - group: media-policy-basics
+            command: 'node --test --test-name-pattern="reference|final candidate|device-private|derived lineage|NONE|real product evidence|already-permitted|explicit owner media override|cross-workspace" tests/mediaIntelligence.test.mjs'
+          - group: media-intent
+            command: 'node --test --test-name-pattern="intent resolution" tests/mediaIntelligence.test.mjs'
+          - group: media-override-policy
+            command: 'node --test --test-name-pattern="owner override cannot" tests/mediaIntelligence.test.mjs'
+          - group: media-invalidation
+            command: 'node --test --test-name-pattern="changing an asset role" tests/mediaIntelligence.test.mjs'
+          - group: campaigns
+            command: 'node --test tests/campaign*.test.mjs'
+          - group: capability
+            command: 'node --test tests/capability*.test.mjs'
+          - group: content
+            command: 'node --test tests/content*.test.mjs'
+          - group: c-other
+            command: 'node --test tests/channel*.test.mjs tests/client*.test.mjs tests/clipboard*.test.mjs tests/complete*.test.mjs'
+          - group: domain-destinations
+            command: 'node --test tests/domain*.test.mjs tests/destinations*.test.mjs'
+          - group: generation
+            command: 'node --test tests/generation*.test.mjs'
+          - group: github
+            command: 'node --test tests/github*.test.mjs'
+          - group: golden
+            command: 'node --test tests/golden*.test.mjs'
+          - group: planning
+            command: 'node --test tests/planning*.test.mjs'
+          - group: platform
+            command: 'node --test tests/platform*.test.mjs'
+          - group: portable
+            command: 'node --test tests/portable*.test.mjs'
+          - group: postgres
+            command: 'node --test tests/postgres*.test.mjs'
+          - group: project
+            command: 'node --test tests/project*.test.mjs'
+          - group: provider-public-production
+            command: 'node --test tests/provider*.test.mjs tests/public*.test.mjs tests/production*.test.mjs'
+          - group: repaired-ui
+            command: 'node --test tests/landingPageRevamp.test.mjs tests/todayWorkspaceUi.test.mjs tests/voiceIdentityIntegration.test.mjs tests/workspaceShellProductIntegration.test.mjs tests/workspaceShellScrollAndBrand.test.mjs'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node
@@ -91,6 +114,6 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Run isolated regression file
+      - name: Run isolated regression group
         working-directory: frontend
-        run: node --test tests/${{ matrix.test }}
+        run: ${{ matrix.command }}

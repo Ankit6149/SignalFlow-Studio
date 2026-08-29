@@ -116,14 +116,26 @@ test("portable transfer documentation and public AI context remain truthful", ()
   assert.equal(llmsFull, publicLlmsFull);
   assert.match(llms, /explicit `\.signalflow\.json` archive preparation/i);
   assert.match(llmsFull, /## (?:\d+\.\s+)?Portable transfer and recovery/);
-  assert.match(llmsFull, /production hosted transfer service.*does not/is);
+  assert.match(llmsFull, /does not constitute a production hosted transfer service/i);
 });
 
-test("public structured metadata includes portable transfer without cloud claims", () => {
+test("public structured metadata matches the current Content OS without false publication claims", () => {
   const layout = readFrontend("app/layout.js");
   const structuredData = JSON.parse(readFrontend("public/schema.jsonld"));
   const serialized = JSON.stringify(structuredData);
-  assert.match(layout, /Prepare and validate portable SignalFlow campaign archives/);
-  assert.match(serialized, /Prepare and validate portable SignalFlow campaign archives/);
-  assert.doesNotMatch(serialized, /cloud sync available|hosted transfer available/i);
+
+  for (const claim of [
+    "Capture manual ContentSignals without requiring an AI call",
+    "Connect verified GitHub repositories with bounded exact-revision context",
+    "Approve one exact visible revision and invalidate approval after later edits or regeneration",
+  ]) {
+    assert.ok(layout.includes(claim), `layout metadata should include current claim: ${claim}`);
+    assert.ok(serialized.includes(claim), `static structured data should include current claim: ${claim}`);
+  }
+
+  assert.match(serialized, /publication is kept separate from preparation until the external outcome is confirmed/i);
+  assert.doesNotMatch(
+    serialized,
+    /Publish through configured LinkedIn, X, and Reddit|current SignalFlow Studio turns manual source context into editable destination drafts/i,
+  );
 });

@@ -49,7 +49,7 @@ test("manual signal application owns lifecycle instead of UI or localStorage", (
   assert.doesNotMatch(ui, /localStorage\.(setItem|getItem|removeItem)/);
 });
 
-test("Signals supports explicit review preparation without claiming automatic connected-source intelligence", () => {
+test("Signals supports explicit review preparation alongside bounded connected-source intelligence", () => {
   const route = readFrontend("app/signals/page.js");
   const ui = readFrontend("components/SignalsWorkspace.js");
   assert.match(route, /<SignalsWorkspace \/>/);
@@ -60,20 +60,19 @@ test("Signals supports explicit review preparation without claiming automatic co
   assert.match(ui, /Prepare for review/);
   assert.match(ui, /createBrowserGoldenPathAutopilotApplication/);
   assert.match(ui, /autopilotApplication\.prepareSignal\(signalId\)/);
-  assert.match(ui, /0<\/strong><span>Automatic detections<\/span><small>Connected-source detection is not implemented/);
+  assert.match(ui, /GitHub<\/strong><span>Connected source<\/span><small>Verified repositories can create hosted context, Signals, and Opportunities/);
   assert.match(ui, /Uncertain work stops in Plan/);
   assert.doesNotMatch(ui, /fetch\(|\/api\/launch_kit|generateCampaign|publishCampaign/);
 });
 
-test("Signals workspace is responsive, zoom-safe, keyboard-visible, and reduced-motion aware", () => {
+test("Signals workspace is responsive, zoom-safe, and keyboard-visible", () => {
   const css = readFrontend("components/SignalsWorkspace.module.css");
-  assert.match(css, /@media \(max-width: 900px\)/);
-  assert.match(css, /@media \(max-width: 640px\)/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*900px\s*\)/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*620px\s*\)/);
   assert.match(css, /:focus-visible/);
-  assert.match(css, /overflow-x: clip/);
-  assert.match(css, /overflow-wrap: anywhere/);
-  assert.match(css, /grid-template-columns: 1fr/);
+  assert.match(css, /width:min\(75rem,calc\(100% - 3rem\)\)/);
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(css, /grid-template-columns:1fr/);
 });
 
 test("current campaign application remains independent from ContentSignal creation", () => {

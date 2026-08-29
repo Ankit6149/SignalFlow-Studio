@@ -50,12 +50,16 @@ test("root and deployed AI-context files remain identical", () => {
   assert.equal(read("llms-full.txt"), read("frontend/public/llms-full.txt"));
 });
 
-test("structured data is valid JSON and states real-model canonical storage behavior", () => {
+test("structured data is valid JSON and states current approval-first provider and publication boundaries", () => {
   const schema = JSON.parse(read("frontend/public/schema.jsonld"));
   const serialized = JSON.stringify(schema);
-  assert.match(serialized, /real model provider route/i);
-  assert.match(serialized, /versioned campaign records/i);
+  assert.match(serialized, /approval-first content operating system/i);
+  assert.match(serialized, /provider-neutral inference boundary/i);
+  assert.match(serialized, /exact visible revision/i);
+  assert.match(serialized, /external outcome is confirmed/i);
+  assert.match(serialized, /GitHub source connections, ProjectContext, Signals, Opportunities/i);
   assert.doesNotMatch(serialized, /deterministic local template/i);
+  assert.doesNotMatch(serialized, /Publish through configured LinkedIn, X, and Reddit/i);
 });
 
 test("README states current provider, persistence, extension, export, and verification boundaries", () => {

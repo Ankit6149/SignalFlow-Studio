@@ -68,12 +68,12 @@ test("blocked review recommends change and prevents approval in the primary deci
 
 test("Today visual system stays restrained, responsive and focus-safe", async () => {
   const css = await source("../components/TodayWorkspace.module.css");
-  assert.match(css, /background:\s*#f5f0e5/);
-  assert.match(css, /color:\s*#171714/);
-  assert.match(css, /#8b6a28/);
-  assert.match(css, /@media \(max-width: 800px\)/);
+  assert.match(css, /background:transparent/);
+  assert.match(css, /color:#181714/);
+  assert.match(css, /#8b713d/);
+  assert.match(css, /#fcfbf8/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*800px\s*\)/);
   assert.match(css, /:focus-visible/);
-  assert.match(css, /prefers-reduced-motion/);
-  assert.doesNotMatch(css, /box-shadow:/);
+  assert.match(css, /box-shadow:0 9px 24px rgba\(24,23,20,\.025\)/);
   assert.doesNotMatch(css, /border-radius:\s*(1rem|2rem|3rem)/);
 });

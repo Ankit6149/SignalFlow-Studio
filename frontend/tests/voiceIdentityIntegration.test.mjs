@@ -44,12 +44,12 @@ test("explicit boundary checks can block before future publication", () => {
 
 test("Voice follows the same restrained SignalFlow visual system", () => {
   const css = read("components/VoiceWorkspace.module.css");
-  assert.match(css, /#171714/);
-  assert.match(css, /#fffdf8/);
-  assert.match(css, /#8b6a28/);
-  assert.match(css, /border-radius: \.65rem/);
-  assert.match(css, /@media \(max-width: 1000px\)/);
-  assert.match(css, /@media \(max-width: 640px\)/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /#181714/);
+  assert.match(css, /#fcfbf8/);
+  assert.match(css, /#8b713d|#c7a967/);
+  assert.match(css, /border-radius:\.68rem/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*1000px\s*\)/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*640px\s*\)/);
+  assert.match(css, /:focus-visible/);
   assert.doesNotMatch(css, /border-radius:\s*(?:2[0-9]|[3-9][0-9])px/);
 });

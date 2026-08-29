@@ -98,11 +98,11 @@ export default function LandingPage() {
     <div className={styles.page} id="top">
       <header className={styles.header}>
         <a className={styles.brand} href="#top"><BrandMark tone="dark" /></a>
-        <nav><a href="#why">Why SignalFlow</a><a href="#flow">How it works</a><a href="#control">Control</a></nav>
+        <nav aria-label="Public navigation"><a href="#why">Why SignalFlow</a><a href="#flow">How it works</a><a href="#control">Control</a></nav>
         <a className={styles.openButton} href="/today">Open Studio <Arrow /></a>
       </header>
 
-      <main>
+      <main id="main-content">
         <section className={styles.hero}>
           <div className={styles.heroGlow} aria-hidden="true"><span /><span /><span /></div>
           <div className={styles.heroCopy}>

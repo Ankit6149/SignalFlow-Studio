@@ -55,10 +55,14 @@ test("opportunity inference is task-scoped, minimized, and privacy checked serve
 
 test("Golden Path opportunity UI follows the shared restrained design system", () => {
   const css = read("components/PlanWorkspace.module.css");
-  assert.match(css, /#f5f0e5|rgba\(255,253,248/);
-  assert.match(css, /border-radius: \.7rem/);
-  assert.match(css, /@media \(max-width: 900px\)/);
-  assert.match(css, /@media \(max-width: 620px\)/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /#181714/);
+  assert.match(css, /#fcfbf8/);
+  assert.match(css, /#8b713d|#c7a967/);
+  assert.match(css, /border-radius:\.7[26]rem/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*900px\s*\)/);
+  assert.match(css, /@media\s*\(\s*max-width:\s*620px\s*\)/);
+  assert.match(css, /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/);
+  assert.match(css, /\.angleCard\{[^}]*transition:/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.angleCard\{transition:none\}/);
   assert.doesNotMatch(css, /border-radius:\s*(?:2[0-9]|[3-9][0-9])px/);
 });

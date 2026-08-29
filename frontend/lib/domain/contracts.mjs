@@ -76,7 +76,7 @@ export const DOMAIN_CONTRACTS = Object.freeze({
   AssetRoleBinding: { idField: "assetRoleBindingId", owner: "workspace", required: ["assetRoleBindingId", "workspaceId", "scopeType", "scopeId", "assetId", "role", "usePolicy", "status", "createdAt", "updatedAt"] },
   AssetLineage: { idField: "assetLineageId", owner: "workspace", required: ["assetLineageId", "workspaceId", "assetId", "assetVersionId", "parentAssetVersionIds", "transformation", "createdAt"] },
   MediaDecision: { idField: "mediaDecisionId", owner: "workspace", required: ["mediaDecisionId", "workspaceId", "contentPieceId", "revision", "status", "destinationDecisions", "createdAt", "updatedAt"] },
-  MediaRequirement: { idField: "mediaRequirementId", owner: "workspace", required: ["mediaRequirementId", "workspaceId", "contentPieceId", "destination", "kind", "purpose", "status", "createdAt", "updatedAt"] },
+  MediaRequirement: { idField: "mediaRequirementId", owner: "workspace", required: ["mediaRequirementId", "workspaceId", "contentPieceId", "destination", "mediaKind", "purpose", "status", "createdAt", "updatedAt"] },
   DurableJob: { idField: "jobId", owner: "workspace", required: ["jobId", "workspaceId", "jobType", "resourceType", "resourceId", "idempotencyKey", "status", "createdAt", "updatedAt"] },
   CaptureRecipe: { idField: "captureRecipeId", owner: "workspace", required: ["captureRecipeId", "workspaceId", "projectId", "version", "targetOrigin", "allowedEnvironment", "steps", "status", "createdAt", "updatedAt"] },
   CaptureJob: { idField: "captureJobId", owner: "workspace", required: ["captureJobId", "workspaceId", "captureRecipeId", "captureRecipeVersion", "jobId", "status", "createdAt", "updatedAt"] },
@@ -180,7 +180,7 @@ export function assertDomainRecord(record, expectedKind = "") {
 
 export function createDomainRecord(kind, values = {}) {
   if (!DOMAIN_CONTRACTS[kind]) throw new TypeError(`Unknown domain record kind: ${kind}.`);
-  const record = clonePortable({ schemaVersion: DOMAIN_SCHEMA_VERSION, kind, ...values }, kind);
+  const record = clonePortable({ ...values, schemaVersion: DOMAIN_SCHEMA_VERSION, kind }, kind);
   return assertDomainRecord(record, kind);
 }
 

@@ -23,6 +23,14 @@ export const DOMAIN_KINDS = Object.freeze({
   NARRATIVE_MEMORY: "NarrativeMemory",
   FEEDBACK_EVENT: "FeedbackEvent",
   STYLE_MEMORY_HYPOTHESIS: "StyleMemoryHypothesis",
+  MEDIA_INTENT_RESOLUTION: "MediaIntentResolution",
+  ASSET_ROLE_BINDING: "AssetRoleBinding",
+  ASSET_LINEAGE: "AssetLineage",
+  MEDIA_DECISION: "MediaDecision",
+  MEDIA_REQUIREMENT: "MediaRequirement",
+  DURABLE_JOB: "DurableJob",
+  CAPTURE_RECIPE: "CaptureRecipe",
+  CAPTURE_JOB: "CaptureJob",
   CAMPAIGN: "Campaign",
   SOURCE_SNAPSHOT: "SourceSnapshot",
   SOURCE_ARTIFACT: "SourceArtifact",
@@ -64,6 +72,14 @@ export const DOMAIN_CONTRACTS = Object.freeze({
   NarrativeMemory: { idField: "narrativeMemoryId", owner: "workspace", required: ["narrativeMemoryId", "workspaceId", "opportunityId", "narrativeStrategyId", "contentPieceId", "platformVariantId", "platformVariantRevisionId", "platformVariantApprovalId", "platform", "historyStrength", "topic", "angle", "coreIdea", "semanticFingerprint", "approvedAt", "createdAt"] },
   FeedbackEvent: { idField: "feedbackEventId", owner: "workspace", required: ["feedbackEventId", "workspaceId", "userId", "targetType", "targetId", "feedbackKind", "learningEligibility", "createdAt"] },
   StyleMemoryHypothesis: { idField: "styleMemoryId", owner: "workspace", required: ["styleMemoryId", "workspaceId", "userId", "hypothesisKey", "hypothesis", "category", "scope", "confidence", "evidenceCount", "status", "lastEvaluatedAt", "createdAt", "updatedAt"] },
+  MediaIntentResolution: { idField: "mediaIntentResolutionId", owner: "workspace", required: ["mediaIntentResolutionId", "workspaceId", "scopeType", "scopeId", "status", "bindingIds", "createdAt", "updatedAt"] },
+  AssetRoleBinding: { idField: "assetRoleBindingId", owner: "workspace", required: ["assetRoleBindingId", "workspaceId", "scopeType", "scopeId", "assetId", "role", "usePolicy", "status", "createdAt", "updatedAt"] },
+  AssetLineage: { idField: "assetLineageId", owner: "workspace", required: ["assetLineageId", "workspaceId", "assetId", "assetVersionId", "parentAssetVersionIds", "transformation", "createdAt"] },
+  MediaDecision: { idField: "mediaDecisionId", owner: "workspace", required: ["mediaDecisionId", "workspaceId", "contentPieceId", "revision", "status", "destinationDecisions", "createdAt", "updatedAt"] },
+  MediaRequirement: { idField: "mediaRequirementId", owner: "workspace", required: ["mediaRequirementId", "workspaceId", "contentPieceId", "destination", "mediaKind", "purpose", "status", "createdAt", "updatedAt"] },
+  DurableJob: { idField: "jobId", owner: "workspace", required: ["jobId", "workspaceId", "jobType", "resourceType", "resourceId", "idempotencyKey", "status", "createdAt", "updatedAt"] },
+  CaptureRecipe: { idField: "captureRecipeId", owner: "workspace", required: ["captureRecipeId", "workspaceId", "projectId", "version", "targetOrigin", "allowedEnvironment", "steps", "status", "createdAt", "updatedAt"] },
+  CaptureJob: { idField: "captureJobId", owner: "workspace", required: ["captureJobId", "workspaceId", "captureRecipeId", "captureRecipeVersion", "jobId", "status", "createdAt", "updatedAt"] },
   Campaign: { idField: "campaignId", owner: "project", required: ["campaignId", "title", "drafts"] },
   SourceSnapshot: { idField: "sourceSnapshotId", owner: "campaign", required: ["sourceSnapshotId", "fingerprint"] },
   SourceArtifact: { idField: "sourceArtifactId", owner: "campaign", required: ["sourceArtifactId", "artifactType"] },
@@ -164,7 +180,7 @@ export function assertDomainRecord(record, expectedKind = "") {
 
 export function createDomainRecord(kind, values = {}) {
   if (!DOMAIN_CONTRACTS[kind]) throw new TypeError(`Unknown domain record kind: ${kind}.`);
-  const record = clonePortable({ schemaVersion: DOMAIN_SCHEMA_VERSION, kind, ...values }, kind);
+  const record = clonePortable({ ...values, schemaVersion: DOMAIN_SCHEMA_VERSION, kind }, kind);
   return assertDomainRecord(record, kind);
 }
 

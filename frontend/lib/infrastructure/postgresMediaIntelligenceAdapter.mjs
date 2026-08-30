@@ -6,8 +6,20 @@ import {
   normalizeMediaIntentResolution,
   normalizeMediaRequirement,
 } from "../domain/mediaIntelligence.mjs";
+import {
+  normalizeImageDerivativePlan,
+  normalizeScreenshotQualityReview,
+} from "../domain/screenshotProduction.mjs";
 
-const SUPPORTED = new Set(["MediaIntentResolution", "AssetRoleBinding", "AssetLineage", "MediaDecision", "MediaRequirement"]);
+const SUPPORTED = new Set([
+  "MediaIntentResolution",
+  "AssetRoleBinding",
+  "AssetLineage",
+  "MediaDecision",
+  "MediaRequirement",
+  "ScreenshotQualityReview",
+  "ImageDerivativePlan",
+]);
 
 function requireDatabase(database) {
   if (!database || typeof database.query !== "function") throw new TypeError("Postgres media intelligence repository requires a database query executor.");
@@ -31,7 +43,9 @@ function normalize(input) {
   if (input.kind === "AssetRoleBinding") return normalizeAssetRoleBinding(input);
   if (input.kind === "AssetLineage") return normalizeAssetLineage(input);
   if (input.kind === "MediaDecision") return normalizeMediaDecision(input);
-  return normalizeMediaRequirement(input);
+  if (input.kind === "MediaRequirement") return normalizeMediaRequirement(input);
+  if (input.kind === "ScreenshotQualityReview") return normalizeScreenshotQualityReview(input);
+  return normalizeImageDerivativePlan(input);
 }
 
 function recordId(record) {
@@ -40,6 +54,8 @@ function recordId(record) {
   if (record.kind === "AssetLineage") return record.assetLineageId;
   if (record.kind === "MediaDecision") return record.mediaDecisionId;
   if (record.kind === "MediaRequirement") return record.mediaRequirementId;
+  if (record.kind === "ScreenshotQualityReview") return record.screenshotQualityReviewId;
+  if (record.kind === "ImageDerivativePlan") return record.imageDerivativePlanId;
   throw new TypeError(`Unsupported media intelligence record: ${record.kind || "missing"}.`);
 }
 
@@ -48,7 +64,7 @@ function metadata(record) {
     scopeType: record.scopeType || null,
     scopeId: record.scopeId || null,
     contentPieceId: record.contentPieceId || (record.scopeType === "content_piece" ? record.scopeId : null),
-    assetId: record.assetId || null,
+    assetId: record.assetId || record.sourceAssetId || null,
     destination: record.destination || null,
     status: record.status || "ready",
     revision: Number(record.revision || record.dependencyVersion || 1),

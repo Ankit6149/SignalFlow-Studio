@@ -25,6 +25,7 @@ export const PORT_CONTRACTS = Object.freeze({
   inferenceAdapter: ["execute"],
   connectorAdapter: ["status", "publish"],
   captureWorkerAdapter: ["describe", "open", "navigate", "waitFor", "click", "focus", "fillSafeFixture", "select", "scroll", "pause", "assertVisible", "captureCheckpoint", "startRecording", "stopRecording", "evaluatePrivacy", "close"],
+  imageProcessorAdapter: ["describe", "analyze", "render"],
   notificationAdapter: ["send"],
   clock: ["now"],
   idService: ["create"],

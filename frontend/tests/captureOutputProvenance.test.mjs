@@ -35,6 +35,13 @@ test("capture output provenance is structured, bounded, and strips query/hash da
       privacyReviewState: "passed",
       privacyIssueCodes: [],
       privacyWarningCodes: ["manual-layout-review"],
+      qualitySignals: {
+        documentReady: true,
+        errorDetected: false,
+        loadingDetected: false,
+        subjectVisible: true,
+        issueCodes: [],
+      },
       workerAdapter: "cdp_remote_browser",
       workerAdapterVersion: "1",
     }],
@@ -53,6 +60,13 @@ test("capture output provenance is structured, bounded, and strips query/hash da
     privacyReviewState: "passed",
     privacyIssueCodes: [],
     privacyWarningCodes: ["manual-layout-review"],
+    qualitySignals: {
+      documentReady: true,
+      errorDetected: false,
+      loadingDetected: false,
+      subjectVisible: true,
+      issueCodes: [],
+    },
     workerAdapter: "cdp_remote_browser",
     workerAdapterVersion: "1",
   });

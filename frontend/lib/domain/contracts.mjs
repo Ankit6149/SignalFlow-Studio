@@ -28,6 +28,8 @@ export const DOMAIN_KINDS = Object.freeze({
   ASSET_LINEAGE: "AssetLineage",
   MEDIA_DECISION: "MediaDecision",
   MEDIA_REQUIREMENT: "MediaRequirement",
+  SCREENSHOT_QUALITY_REVIEW: "ScreenshotQualityReview",
+  IMAGE_DERIVATIVE_PLAN: "ImageDerivativePlan",
   DURABLE_JOB: "DurableJob",
   CAPTURE_RECIPE: "CaptureRecipe",
   CAPTURE_JOB: "CaptureJob",
@@ -77,6 +79,8 @@ export const DOMAIN_CONTRACTS = Object.freeze({
   AssetLineage: { idField: "assetLineageId", owner: "workspace", required: ["assetLineageId", "workspaceId", "assetId", "assetVersionId", "parentAssetVersionIds", "transformation", "createdAt"] },
   MediaDecision: { idField: "mediaDecisionId", owner: "workspace", required: ["mediaDecisionId", "workspaceId", "contentPieceId", "revision", "status", "destinationDecisions", "createdAt", "updatedAt"] },
   MediaRequirement: { idField: "mediaRequirementId", owner: "workspace", required: ["mediaRequirementId", "workspaceId", "contentPieceId", "destination", "mediaKind", "purpose", "status", "createdAt", "updatedAt"] },
+  ScreenshotQualityReview: { idField: "screenshotQualityReviewId", owner: "workspace", required: ["screenshotQualityReviewId", "workspaceId", "assetId", "assetVersionId", "status", "checks", "createdAt", "updatedAt"] },
+  ImageDerivativePlan: { idField: "imageDerivativePlanId", owner: "workspace", required: ["imageDerivativePlanId", "workspaceId", "sourceAssetId", "sourceAssetVersionId", "screenshotQualityReviewId", "variants", "status", "createdAt", "updatedAt"] },
   DurableJob: { idField: "jobId", owner: "workspace", required: ["jobId", "workspaceId", "jobType", "resourceType", "resourceId", "idempotencyKey", "status", "createdAt", "updatedAt"] },
   CaptureRecipe: { idField: "captureRecipeId", owner: "workspace", required: ["captureRecipeId", "workspaceId", "projectId", "version", "targetOrigin", "allowedEnvironment", "steps", "status", "createdAt", "updatedAt"] },
   CaptureJob: { idField: "captureJobId", owner: "workspace", required: ["captureJobId", "workspaceId", "captureRecipeId", "captureRecipeVersion", "jobId", "status", "createdAt", "updatedAt"] },
@@ -179,19 +183,26 @@ export function assertDomainRecord(record, expectedKind = "") {
 }
 
 export function createDomainRecord(kind, values = {}) {
-  if (!DOMAIN_CONTRACTS[kind]) throw new TypeError(`Unknown domain record kind: ${kind}.`);
-  const record = clonePortable({ ...values, schemaVersion: DOMAIN_SCHEMA_VERSION, kind }, kind);
-  return assertDomainRecord(record, kind);
+  const contract = DOMAIN_CONTRACTS[kind];
+  if (!contract) throw new TypeError(`Unknown domain record kind: ${kind}.`);
+  const record = {
+    ...values,
+    schemaVersion: DOMAIN_SCHEMA_VERSION,
+    kind,
+  };
+  assertDomainRecord(record, kind);
+  return portableClone(record);
 }
 
-export function serializeDomainRecord(record, space = 0) {
+export function serializeDomainRecord(record) {
   assertDomainRecord(record);
-  return stableStringify(record, space);
+  return stableStringify(record);
 }
 
-export function parseDomainRecord(input, expectedKind = "") {
-  const parsed = typeof input === "string" ? JSON.parse(input) : clonePortable(input);
-  return assertDomainRecord(parsed, expectedKind);
+export function parseDomainRecord(serialized, expectedKind = "") {
+  const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
+  assertDomainRecord(parsed, expectedKind);
+  return portableClone(parsed);
 }
 
 export function portableClone(value) {

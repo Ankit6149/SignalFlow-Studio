@@ -118,9 +118,20 @@ function uniqueCodes(values, field, max = 50) {
   return [...new Set(values.map((value) => safeCode(value, field)))].slice(0, max);
 }
 
+function uniqueSelectors(values, field, max = 20) {
+  if (!Array.isArray(values)) return [];
+  const selectors = values.map((value, index) => text(value, "", 500));
+  if (selectors.some((selector) => !selector)) throw new CaptureRecipeError("capture_selector_required", `${field} cannot contain empty selectors.`);
+  return [...new Set(selectors)].slice(0, max);
+}
+
 function positiveInteger(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
+}
+
+function booleanOrNull(value) {
+  return typeof value === "boolean" ? value : null;
 }
 
 function normalizeCaptureUrl(value) {
@@ -162,6 +173,17 @@ function normalizeOutputDimensions(value = {}) {
   return width && height ? { width, height } : null;
 }
 
+function normalizeQualitySignals(value = {}, field = "CaptureJob.outputProvenance.qualitySignals") {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return portableClone({
+    documentReady: booleanOrNull(input.documentReady),
+    errorDetected: booleanOrNull(input.errorDetected),
+    loadingDetected: booleanOrNull(input.loadingDetected),
+    subjectVisible: booleanOrNull(input.subjectVisible),
+    issueCodes: uniqueCodes(input.issueCodes, `${field}.issueCodes`, 50),
+  });
+}
+
 function normalizeCaptureOutputProvenance(values) {
   if (!Array.isArray(values)) return [];
   return values.slice(0, 50).map((item, index) => {
@@ -181,6 +203,7 @@ function normalizeCaptureOutputProvenance(values) {
       privacyReviewState: enumValue(item.privacyReviewState, PRIVACY_REVIEW_VALUES, "not_checked", `CaptureJob.outputProvenance[${index}].privacyReviewState`),
       privacyIssueCodes: uniqueCodes(item.privacyIssueCodes, `CaptureJob.outputProvenance[${index}].privacyIssueCodes`, 50),
       privacyWarningCodes: uniqueCodes(item.privacyWarningCodes, `CaptureJob.outputProvenance[${index}].privacyWarningCodes`, 50),
+      qualitySignals: normalizeQualitySignals(item.qualitySignals, `CaptureJob.outputProvenance[${index}].qualitySignals`),
       workerAdapter: item.workerAdapter ? safeCode(item.workerAdapter, `CaptureJob.outputProvenance[${index}].workerAdapter`) : null,
       workerAdapterVersion: text(item.workerAdapterVersion, "", 100) || null,
     });
@@ -219,6 +242,13 @@ function normalizeStep(item, index) {
   if (action === CAPTURE_ACTIONS.NAVIGATE && !text(item.path, "", 1000)) throw new CaptureRecipeError("capture_navigation_path_required", "navigate requires a path or URL relative to the approved origin.", { stepId });
   if (action === CAPTURE_ACTIONS.FILL_SAFE_FIXTURE && !safeCode(item.fixtureKey, `steps[${index}].fixtureKey`)) throw new CaptureRecipeError("capture_fixture_required", "fill_safe_fixture requires a fixtureKey.", { stepId });
   if (action === CAPTURE_ACTIONS.CAPTURE_CHECKPOINT && !safeCode(item.checkpoint, `steps[${index}].checkpoint`)) throw new CaptureRecipeError("capture_checkpoint_required", "capture_checkpoint requires a checkpoint name.", { stepId });
+  const qualitySelectors = action === CAPTURE_ACTIONS.CAPTURE_CHECKPOINT
+    ? portableClone({
+        error: uniqueSelectors(item.qualitySelectors?.error, `steps[${index}].qualitySelectors.error`),
+        loading: uniqueSelectors(item.qualitySelectors?.loading, `steps[${index}].qualitySelectors.loading`),
+        requiredSubject: uniqueSelectors(item.qualitySelectors?.requiredSubject, `steps[${index}].qualitySelectors.requiredSubject`),
+      })
+    : portableClone({ error: [], loading: [], requiredSubject: [] });
   return portableClone({
     stepId,
     action,
@@ -229,6 +259,7 @@ function normalizeStep(item, index) {
     scrollY: Number.isFinite(Number(item.scrollY)) ? Math.round(Number(item.scrollY)) : null,
     pauseMs: Number.isFinite(Number(item.pauseMs)) ? Math.max(0, Math.min(15000, Math.round(Number(item.pauseMs)))) : null,
     checkpoint: item.checkpoint ? safeCode(item.checkpoint, `steps[${index}].checkpoint`) : null,
+    qualitySelectors,
     optional: item.optional === true,
   });
 }

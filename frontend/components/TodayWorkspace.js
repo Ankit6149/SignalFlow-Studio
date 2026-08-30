@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
+import ExactMediaRevisionPreview from "./ExactMediaRevisionPreview";
 import RevisionHistoryPanel from "./RevisionHistoryPanel";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./TodayWorkspace.module.css";
@@ -23,6 +24,7 @@ function destinationLabel(value) {
 function originLabel(item) {
   if (item.revisionOrigin === "edited") return "Owner edited";
   if (item.revisionOrigin === "ai_revised") return "AI revised";
+  if (item.revisionOrigin === "media_rebound") return "Media updated";
   return "Generated";
 }
 
@@ -48,6 +50,11 @@ function RevisionPreview({ item }) {
   return <p className={styles.revisionCopy}>{item.content}</p>;
 }
 
+function TodayExactMediaPreview({ item, onState }) {
+  const handleState = useCallback((next) => onState(item.decisionId, next), [item.decisionId, onState]);
+  return <ExactMediaRevisionPreview mediaBindings={item.mediaBindings || []} onPreviewState={handleState} />;
+}
+
 export default function TodayWorkspace() {
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +64,7 @@ export default function TodayWorkspace() {
   const [changeRequest, setChangeRequest] = useState("");
   const [rejectingId, setRejectingId] = useState("");
   const [rejectNote, setRejectNote] = useState("");
+  const [mediaPreviewStates, setMediaPreviewStates] = useState({});
 
   const todayApplication = useMemo(() => createBrowserTodayDecisionApplication({
     getStorage: () => window.localStorage,
@@ -70,6 +78,10 @@ export default function TodayWorkspace() {
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
+
+  const handleMediaPreviewState = useCallback((decisionId, next) => {
+    setMediaPreviewStates((current) => ({ ...current, [decisionId]: next }));
+  }, []);
 
   const reload = useCallback(async () => {
     try {
@@ -106,12 +118,19 @@ export default function TodayWorkspace() {
   }
 
   async function approve(item) {
+    const mediaState = mediaPreviewStates[item.decisionId];
+    if (item.mediaBindings?.length && !mediaState?.ready) {
+      setMessage({ type: "error", text: "SignalFlow cannot approve this media-bound revision until Today visibly resolves the exact AssetVersion attached to it." });
+      return;
+    }
     await decide(
       item,
       () => reviewApplication.approveRevision(item.platformVariantId, item.platformVariantRevisionId, {
         expectedCurrentRevisionId: item.platformVariantRevisionId,
       }),
-      `${destinationLabel(item.destination)} revision ${item.revisionNumber} is approved exactly.`,
+      item.mediaBindings?.length
+        ? `${destinationLabel(item.destination)} revision ${item.revisionNumber} is approved as this exact text + media combination.`
+        : `${destinationLabel(item.destination)} revision ${item.revisionNumber} is approved exactly.`,
     );
   }
 
@@ -123,7 +142,7 @@ export default function TodayWorkspace() {
         expectedCurrentRevisionId: item.platformVariantRevisionId,
         note: rejectNote.trim(),
       }),
-      `${destinationLabel(item.destination)} revision ${item.revisionNumber} is rejected. Its history is preserved.`,
+      `${destinationLabel(item.destination)} revision ${item.revisionNumber} is rejected. Its text/media history is preserved.`,
     );
     if (saved) {
       setRejectingId("");
@@ -151,7 +170,7 @@ export default function TodayWorkspace() {
       await reload();
       setRequestingId("");
       setChangeRequest("");
-      setMessage({ type: "success", text: "SignalFlow revised the exact draft and re-ran evidence/authenticity checks. The new revision is ready for your judgment." });
+      setMessage({ type: "success", text: "SignalFlow revised the exact draft, preserved its exact media binding, and re-ran evidence/authenticity checks. The new revision is ready for your judgment." });
     } catch (error) {
       await reload();
       setMessage({
@@ -198,6 +217,7 @@ export default function TodayWorkspace() {
               const blocked = item.reviewVerdict === "block";
               const isRequesting = requestingId === item.decisionId;
               const isRejecting = rejectingId === item.decisionId;
+              const mediaApprovalBlocked = Boolean(item.mediaBindings?.length && !mediaPreviewStates[item.decisionId]?.ready);
               return (
                 <article className={styles.decision} key={item.decisionId} data-recommended={item.recommendedAction}>
                   <div className={styles.decisionMeta}>
@@ -217,11 +237,12 @@ export default function TodayWorkspace() {
                   </div>
 
                   <RevisionPreview item={item} />
+                  <TodayExactMediaPreview item={item} onState={handleMediaPreviewState} />
 
                   {isRequesting ? (
                     <form className={styles.inlineForm} onSubmit={(event) => requestChange(event, item)}>
                       <label><span>WHAT SHOULD CHANGE?</span><textarea rows={3} maxLength={MAX_CHANGE_REQUEST_LENGTH} value={changeRequest} onChange={(event) => setChangeRequest(event.target.value)} placeholder="Make the opening less promotional, keep the architecture point, and shorten the ending." autoFocus /></label>
-                      <div className={styles.formMeta}><small>SignalFlow will keep the destination, approved story plan, Voice snapshot and revision history, then re-run checks.</small><span>{changeRequest.length}/{MAX_CHANGE_REQUEST_LENGTH}</span></div>
+                      <div className={styles.formMeta}><small>SignalFlow will keep the destination, approved story plan, Voice snapshot, exact media binding and revision history, then re-run checks.</small><span>{changeRequest.length}/{MAX_CHANGE_REQUEST_LENGTH}</span></div>
                       <div className={styles.formActions}><button type="button" onClick={() => { setRequestingId(""); setChangeRequest(""); }} disabled={busy}>Cancel</button><button type="submit" className={styles.primaryAction} disabled={busy || !changeRequest.trim()}>{busy ? "Revising + checking…" : "Request change"}</button></div>
                     </form>
                   ) : isRejecting ? (
@@ -232,7 +253,7 @@ export default function TodayWorkspace() {
                   ) : (
                     <div className={styles.actions}>
                       <div className={styles.mainActions}>
-                        <button type="button" className={blocked ? styles.secondaryAction : styles.primaryAction} onClick={() => approve(item)} disabled={busy || blocked}>{blocked ? "Resolve blockers first" : busy ? "Saving…" : "Approve"}</button>
+                        <button type="button" className={blocked ? styles.secondaryAction : styles.primaryAction} onClick={() => approve(item)} disabled={busy || blocked || mediaApprovalBlocked}>{blocked ? "Resolve blockers first" : mediaApprovalBlocked ? "Resolve exact media preview" : busy ? "Saving…" : item.mediaBindings?.length ? "Approve text + media" : "Approve"}</button>
                         <button type="button" className={blocked ? styles.primaryAction : styles.secondaryAction} onClick={() => { setRequestingId(item.decisionId); setChangeRequest(""); }} disabled={busy}>Request change</button>
                         <button type="button" className={styles.quietAction} onClick={() => { setRejectingId(item.decisionId); setRejectNote(""); }} disabled={busy}>Reject</button>
                       </div>
@@ -246,7 +267,7 @@ export default function TodayWorkspace() {
                       {item.opportunity && <section><span>OPPORTUNITY</span><strong>{item.opportunity.title} · {item.opportunity.score}/100</strong><p>{item.opportunity.whyNow}</p></section>}
                       <section><span>SELECTED ANGLE</span><strong>{item.strategy.selectedAngle.title}</strong><p>{item.strategy.selectedAngle.summary}</p></section>
                       <section><span>STRATEGY</span><strong>{item.strategy.coreIdea}</strong><p>{item.strategy.audienceTakeaway}</p></section>
-                      <section><span>REVISION BINDING</span><strong>Strategy revision {item.strategy.strategyRevision}</strong><p>Voice snapshot {item.identityContextSnapshotId} · {originLabel(item)}</p></section>
+                      <section><span>REVISION BINDING</span><strong>Strategy revision {item.strategy.strategyRevision}</strong><p>Voice snapshot {item.identityContextSnapshotId} · {originLabel(item)}{item.mediaBindings?.length ? ` · ${item.mediaBindings.length} exact media binding${item.mediaBindings.length === 1 ? "" : "s"}` : ""}</p></section>
                       <section><span>REVIEW</span><strong>{titleCase(item.reviewVerdict)}</strong><p>{item.evidenceSummary} {item.authenticitySummary}</p></section>
                     </div>
                     {item.findings.length > 0 && <div className={styles.findings}><span>FINDINGS</span>{item.findings.map((finding, index) => <p key={`${finding.code}-${index}`} data-severity={finding.severity}><strong>{titleCase(finding.severity)}</strong>{finding.message}</p>)}</div>}

@@ -5,13 +5,14 @@ import { createBrowserExactMediaPreviewAdapter } from "../lib/infrastructure/bro
 import styles from "./ExactMediaRevisionPreview.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
+const EMPTY_MEDIA_BINDINGS = Object.freeze([]);
 
 function shortId(value) {
   const text = String(value || "");
   return text.length > 18 ? `…${text.slice(-16)}` : text;
 }
 
-export default function ExactMediaRevisionPreview({ mediaBindings = [], onPreviewState = null }) {
+export default function ExactMediaRevisionPreview({ mediaBindings = EMPTY_MEDIA_BINDINGS, onPreviewState = null }) {
   const [state, setState] = useState({ status: mediaBindings.length ? "loading" : "not_required", items: [], message: "" });
   const adapter = useMemo(() => createBrowserExactMediaPreviewAdapter({
     getStorage: () => window.localStorage,

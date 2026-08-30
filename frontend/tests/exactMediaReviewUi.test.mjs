@@ -67,6 +67,15 @@ test("Plan exact review renders bound media and blocks approval when exact previ
   assert.match(source, /revision\.mediaBindings/);
 });
 
+test("text-only Plan review keeps the empty media input referentially stable", () => {
+  const preview = fs.readFileSync(path.join(ROOT, "components", "ExactMediaRevisionPreview.js"), "utf8");
+  const plan = fs.readFileSync(path.join(ROOT, "components", "PlatformReviewPanel.js"), "utf8");
+  assert.match(preview, /const EMPTY_MEDIA_BINDINGS = Object\.freeze\(\[\]\)/);
+  assert.match(preview, /mediaBindings = EMPTY_MEDIA_BINDINGS/);
+  assert.match(plan, /<ExactMediaRevisionPreview mediaBindings=\{revision\.mediaBindings\}/);
+  assert.doesNotMatch(plan, /mediaBindings=\{revision\.mediaBindings \|\| \[\]\}/);
+});
+
 test("Today carries exact media into the owner decision and cannot approve unseen media", () => {
   const today = fs.readFileSync(path.join(ROOT, "components", "TodayWorkspace.js"), "utf8");
   const projection = fs.readFileSync(path.join(ROOT, "lib", "application", "todayDecisionApplication.mjs"), "utf8");

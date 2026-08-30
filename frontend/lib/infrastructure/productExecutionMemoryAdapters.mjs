@@ -12,6 +12,10 @@ import {
   normalizeMediaIntentResolution,
   normalizeMediaRequirement,
 } from "../domain/mediaIntelligence.mjs";
+import {
+  normalizeImageDerivativePlan,
+  normalizeScreenshotQualityReview,
+} from "../domain/screenshotProduction.mjs";
 import { normalizeCaptureJob, normalizeCaptureRecipe } from "../domain/captureRecipes.mjs";
 
 function clone(value) {
@@ -24,6 +28,8 @@ function mediaRecordId(record) {
   if (record.kind === "AssetLineage") return record.assetLineageId;
   if (record.kind === "MediaDecision") return record.mediaDecisionId;
   if (record.kind === "MediaRequirement") return record.mediaRequirementId;
+  if (record.kind === "ScreenshotQualityReview") return record.screenshotQualityReviewId;
+  if (record.kind === "ImageDerivativePlan") return record.imageDerivativePlanId;
   throw new TypeError(`Unsupported media record ${record.kind || "missing"}.`);
 }
 
@@ -33,6 +39,8 @@ function normalizeMedia(input) {
   if (input?.kind === "AssetLineage") return normalizeAssetLineage(input);
   if (input?.kind === "MediaDecision") return normalizeMediaDecision(input);
   if (input?.kind === "MediaRequirement") return normalizeMediaRequirement(input);
+  if (input?.kind === "ScreenshotQualityReview") return normalizeScreenshotQualityReview(input);
+  if (input?.kind === "ImageDerivativePlan") return normalizeImageDerivativePlan(input);
   throw new TypeError(`Unsupported media record ${input?.kind || "missing"}.`);
 }
 

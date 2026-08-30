@@ -19,7 +19,7 @@ test("Today keeps the primary owner interaction to judgment rather than workflow
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /Only the decisions that need you/);
   assert.match(component, /Nothing needs your judgment/);
-  assert.match(component, /blocked \? "Resolve blockers first" : busy \? "Saving…" : "Approve"/);
+  assert.match(component, /blocked \? "Resolve blockers first" : mediaApprovalBlocked \? "Resolve exact media preview" : busy \? "Saving…" : item\.mediaBindings\?\.length \? "Approve text \+ media" : "Approve"/);
   assert.match(component, />Request change<\/button>/);
   assert.match(component, />Reject<\/button>/);
   assert.match(component, /<summary>Details<\/summary>/);
@@ -58,11 +58,13 @@ test("Today composes requested revision plus exact critics so the owner returns 
   assert.match(component, /It will not appear as approval-ready until checks complete/i);
 });
 
-test("blocked review recommends change and prevents approval in the primary decision row", async () => {
+test("blocked review or unresolved exact media prevents approval in the primary decision row", async () => {
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /const blocked = item\.reviewVerdict === "block"/);
-  assert.match(component, /disabled=\{busy \|\| blocked\}/);
+  assert.match(component, /const mediaApprovalBlocked = Boolean\(item\.mediaBindings\?\.length && !mediaPreviewStates\[item\.decisionId\]\?\.ready\)/);
+  assert.match(component, /disabled=\{busy \|\| blocked \|\| mediaApprovalBlocked\}/);
   assert.match(component, /blocked \? "Resolve blockers first"/);
+  assert.match(component, /mediaApprovalBlocked \? "Resolve exact media preview"/);
   assert.match(component, /blocked \? styles\.primaryAction : styles\.secondaryAction/);
 });
 

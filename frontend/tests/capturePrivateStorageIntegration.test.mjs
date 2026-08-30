@@ -184,6 +184,13 @@ test("CaptureJob screenshot bytes flow through private immutable storage into on
     privacyReviewState: "passed",
     privacyIssueCodes: [],
     privacyWarningCodes: [],
+    qualitySignals: {
+      documentReady: null,
+      errorDetected: null,
+      loadingDetected: null,
+      subjectVisible: null,
+      issueCodes: [],
+    },
     workerAdapter: "signalflow_capture_worker",
     workerAdapterVersion: null,
   });

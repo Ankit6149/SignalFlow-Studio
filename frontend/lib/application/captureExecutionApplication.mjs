@@ -95,6 +95,43 @@ async function privateStoragePayload(payload) {
   throw error;
 }
 
+async function selectorVisible(worker, session, selector) {
+  try {
+    await worker.assertVisible(session, { selector });
+    return true;
+  } catch (error) {
+    if (error?.code === "selector_checkpoint_missing") return false;
+    throw error;
+  }
+}
+
+async function evaluateCaptureQuality(worker, session, step) {
+  const selectors = step?.qualitySelectors && typeof step.qualitySelectors === "object"
+    ? step.qualitySelectors
+    : {};
+  const errorSelectors = Array.isArray(selectors.error) ? selectors.error : [];
+  const loadingSelectors = Array.isArray(selectors.loading) ? selectors.loading : [];
+  const subjectSelectors = Array.isArray(selectors.requiredSubject) ? selectors.requiredSubject : [];
+
+  const errorStates = await Promise.all(errorSelectors.map((selector) => selectorVisible(worker, session, selector)));
+  const loadingStates = await Promise.all(loadingSelectors.map((selector) => selectorVisible(worker, session, selector)));
+  const subjectStates = await Promise.all(subjectSelectors.map((selector) => selectorVisible(worker, session, selector)));
+  const errorDetected = errorSelectors.length ? errorStates.some(Boolean) : null;
+  const loadingDetected = loadingSelectors.length ? loadingStates.some(Boolean) : null;
+  const subjectVisible = subjectSelectors.length ? subjectStates.every(Boolean) : null;
+  const issueCodes = [];
+  if (errorDetected === true) issueCodes.push("quality_error_state_visible");
+  if (loadingDetected === true) issueCodes.push("quality_loading_state_visible");
+  if (subjectVisible === false) issueCodes.push("quality_required_subject_missing");
+  return {
+    documentReady: null,
+    errorDetected,
+    loadingDetected,
+    subjectVisible,
+    issueCodes,
+  };
+}
+
 function safeCaptureProvenance({ recipe, captureJob, output, checkpoint, capturedAt, privacyReview }) {
   const metadata = output?.captureMetadata && typeof output.captureMetadata === "object"
     ? output.captureMetadata
@@ -112,6 +149,7 @@ function safeCaptureProvenance({ recipe, captureJob, output, checkpoint, capture
     privacyReviewState: privacyReview?.state || "not_checked",
     privacyIssueCodes: Array.isArray(privacyReview?.issueCodes) ? privacyReview.issueCodes : [],
     privacyWarningCodes: Array.isArray(privacyReview?.warningCodes) ? privacyReview.warningCodes : [],
+    qualitySignals: metadata.qualitySignals || null,
     workerAdapter: metadata.adapterKind || "signalflow_capture_worker",
     workerAdapterVersion: metadata.adapterVersion || null,
   };
@@ -336,6 +374,7 @@ export function createCaptureExecutionApplication({
         currentCaptureJob = await updateCaptureStatus(currentCaptureJob, stageForAction(step.action));
         let output = null;
         let privacyReview = null;
+        let qualitySignals = null;
         if (step.action === CAPTURE_ACTIONS.NAVIGATE) {
           const target = resolveRecipeNavigation(recipe, step.path);
           await worker.navigate(session, target);
@@ -351,10 +390,22 @@ export function createCaptureExecutionApplication({
               warningCodes: Array.isArray(privacyResult?.warningCodes) ? privacyResult.warningCodes : [],
             };
           }
+          if (step.action === CAPTURE_ACTIONS.CAPTURE_CHECKPOINT) {
+            qualitySignals = await evaluateCaptureQuality(worker, session, step);
+          }
           const args = step.action === CAPTURE_ACTIONS.FILL_SAFE_FIXTURE
             ? { ...step, value: fixtureValues[step.fixtureKey] }
             : step;
           output = await worker[method](session, args);
+          if (step.action === CAPTURE_ACTIONS.CAPTURE_CHECKPOINT && output) {
+            output = {
+              ...output,
+              captureMetadata: {
+                ...(output.captureMetadata && typeof output.captureMetadata === "object" ? output.captureMetadata : {}),
+                qualitySignals,
+              },
+            };
+          }
         }
         const shouldPersist = output && (
           step.action === CAPTURE_ACTIONS.CAPTURE_CHECKPOINT

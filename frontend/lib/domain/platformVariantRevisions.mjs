@@ -7,11 +7,26 @@ export const PLATFORM_VARIANT_REVISION_ORIGINS = Object.freeze({
   GENERATED: "generated",
   EDITED: "edited",
   AI_REVISED: "ai_revised",
+  MEDIA_REBOUND: "media_rebound",
+});
+
+export const PLATFORM_VARIANT_MEDIA_ROLES = Object.freeze({
+  PRIMARY_VISUAL: "primary_visual",
+  SECONDARY_VISUAL: "secondary_visual",
+  EVIDENCE_VISUAL: "evidence_visual",
+  THUMBNAIL: "thumbnail",
+});
+
+export const PLATFORM_VARIANT_MEDIA_SOURCES = Object.freeze({
+  ASSET: "asset",
+  SCREENSHOT_DERIVATIVE: "screenshot_derivative",
 });
 
 const DESTINATIONS = new Set(["linkedin", "x"]);
 const ROUTE_KINDS = new Set(["remote", "local"]);
 const ORIGIN_VALUES = new Set(Object.values(PLATFORM_VARIANT_REVISION_ORIGINS));
+const MEDIA_ROLE_VALUES = new Set(Object.values(PLATFORM_VARIANT_MEDIA_ROLES));
+const MEDIA_SOURCE_VALUES = new Set(Object.values(PLATFORM_VARIANT_MEDIA_SOURCES));
 
 function text(value, fallback = "", maxLength = 12000) {
   const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
@@ -108,6 +123,54 @@ function normalizeEditProvenance(value = null) {
   });
 }
 
+function normalizeMediaChangeProvenance(value = null) {
+  if (!value) return null;
+  if (typeof value !== "object" || Array.isArray(value)) throw new TypeError("PlatformVariantRevision.mediaChangeProvenance must be an object.");
+  return portableClone({
+    changedBy: id(value.changedBy, "PlatformVariantRevision.mediaChangeProvenance.changedBy"),
+    changedAt: timestamp(value.changedAt, "PlatformVariantRevision.mediaChangeProvenance.changedAt"),
+    reason: optionalText(value.reason, 1000),
+  });
+}
+
+function normalizeMediaBinding(value, index) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError(`PlatformVariantRevision.mediaBindings[${index}] must be an object.`);
+  }
+  const role = text(value.role, PLATFORM_VARIANT_MEDIA_ROLES.PRIMARY_VISUAL, 80).toLowerCase();
+  if (!MEDIA_ROLE_VALUES.has(role)) throw new TypeError(`Unsupported PlatformVariantRevision media role: ${role}.`);
+  const source = text(value.source, PLATFORM_VARIANT_MEDIA_SOURCES.ASSET, 80).toLowerCase();
+  if (!MEDIA_SOURCE_VALUES.has(source)) throw new TypeError(`Unsupported PlatformVariantRevision media source: ${source}.`);
+  const screenshotQualityReviewId = id(value.screenshotQualityReviewId, `PlatformVariantRevision.mediaBindings[${index}].screenshotQualityReviewId`, false);
+  const imageDerivativePlanId = id(value.imageDerivativePlanId, `PlatformVariantRevision.mediaBindings[${index}].imageDerivativePlanId`, false);
+  const imageDerivativeVariantId = id(value.imageDerivativeVariantId, `PlatformVariantRevision.mediaBindings[${index}].imageDerivativeVariantId`, false);
+  if (source === PLATFORM_VARIANT_MEDIA_SOURCES.SCREENSHOT_DERIVATIVE
+    && (!screenshotQualityReviewId || !imageDerivativePlanId || !imageDerivativeVariantId)) {
+    throw new TypeError("Screenshot derivative media bindings require exact quality-review, derivative-plan, and derivative-variant IDs.");
+  }
+  return {
+    role,
+    source,
+    assetId: id(value.assetId, `PlatformVariantRevision.mediaBindings[${index}].assetId`),
+    assetVersionId: id(value.assetVersionId, `PlatformVariantRevision.mediaBindings[${index}].assetVersionId`),
+    screenshotQualityReviewId,
+    imageDerivativePlanId,
+    imageDerivativeVariantId,
+  };
+}
+
+export function normalizePlatformVariantMediaBindings(value = []) {
+  const items = Array.isArray(value) ? value.slice(0, 4) : [];
+  const normalized = items.map(normalizeMediaBinding);
+  const roles = new Set();
+  for (const binding of normalized) {
+    if (roles.has(binding.role)) throw new TypeError(`PlatformVariantRevision media role ${binding.role} may be bound only once.`);
+    roles.add(binding.role);
+  }
+  normalized.sort((left, right) => left.role.localeCompare(right.role) || left.assetId.localeCompare(right.assetId));
+  return portableClone(normalized);
+}
+
 export function normalizePlatformVariantRevision(input = {}) {
   const parsed = input?.kind === "PlatformVariantRevision" && input?.schemaVersion
     ? parseDomainRecord(input, "PlatformVariantRevision")
@@ -125,8 +188,10 @@ export function normalizePlatformVariantRevision(input = {}) {
   if (!ORIGIN_VALUES.has(origin)) throw new TypeError(`Unsupported PlatformVariantRevision origin: ${origin}.`);
   const generationProvenance = normalizeGenerationProvenance(parsed.generationProvenance);
   const editProvenance = normalizeEditProvenance(parsed.editProvenance);
+  const mediaChangeProvenance = normalizeMediaChangeProvenance(parsed.mediaChangeProvenance);
   const parentRevisionId = id(parsed.parentRevisionId, "PlatformVariantRevision.parentRevisionId", false);
   const changeRequest = optionalText(parsed.changeRequest, 2000);
+  const mediaBindings = normalizePlatformVariantMediaBindings(parsed.mediaBindings);
   if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.GENERATED && !generationProvenance) {
     throw new TypeError("Generated PlatformVariantRevision requires generationProvenance.");
   }
@@ -135,6 +200,9 @@ export function normalizePlatformVariantRevision(input = {}) {
   }
   if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.AI_REVISED && (!generationProvenance || !parentRevisionId || !changeRequest)) {
     throw new TypeError("AI-revised PlatformVariantRevision requires parentRevisionId, changeRequest, and generationProvenance.");
+  }
+  if (origin === PLATFORM_VARIANT_REVISION_ORIGINS.MEDIA_REBOUND && (!mediaChangeProvenance || !parentRevisionId)) {
+    throw new TypeError("Media-rebound PlatformVariantRevision requires parentRevisionId and mediaChangeProvenance.");
   }
   const createdAt = timestamp(parsed.createdAt, "PlatformVariantRevision.createdAt");
   return createDomainRecord("PlatformVariantRevision", {
@@ -154,11 +222,13 @@ export function normalizePlatformVariantRevision(input = {}) {
     format,
     content,
     segments,
+    mediaBindings,
     inputFingerprint: text(parsed.inputFingerprint, "", 6000),
     identityContextSnapshotId: id(parsed.identityContextSnapshotId, "PlatformVariantRevision.identityContextSnapshotId"),
     styleMemoryRefs: normalizeStyleMemoryRefs(parsed.styleMemoryRefs),
     generationProvenance,
     editProvenance,
+    mediaChangeProvenance,
     createdAt,
   });
 }
@@ -176,6 +246,7 @@ export function createPlatformVariantRevision({
   inputFingerprint,
   identityContextSnapshotId,
   styleMemoryRefs = [],
+  mediaBindings = [],
   generationProvenance,
   createdAt,
 } = {}) {
@@ -193,6 +264,7 @@ export function createPlatformVariantRevision({
     format: output?.format,
     content: output?.content,
     segments: output?.segments,
+    mediaBindings,
     inputFingerprint,
     identityContextSnapshotId,
     styleMemoryRefs,
@@ -228,6 +300,7 @@ export function createEditedPlatformVariantRevision({
     format: format || parent.format,
     content,
     segments: segments || [],
+    mediaBindings: parent.mediaBindings,
     inputFingerprint: restoredFromRevisionId
       ? `restore:${restoredFromRevisionId}:${parent.platformVariantRevisionId}:${revisionNumber}`
       : `user-edit:${parent.platformVariantRevisionId}:${revisionNumber}`,
@@ -271,6 +344,7 @@ export function createRestoredPlatformVariantRevision({
     format: source.format,
     content: source.content,
     segments: source.segments,
+    mediaBindings: source.mediaBindings,
     inputFingerprint: `restore:${source.platformVariantRevisionId}:${current.platformVariantRevisionId}:${revisionNumber}`,
     identityContextSnapshotId: source.identityContextSnapshotId,
     styleMemoryRefs: source.styleMemoryRefs,
@@ -310,10 +384,49 @@ export function createRequestedPlatformVariantRevision({
     format: output?.format || parent.format,
     content: output?.content,
     segments: output?.segments,
+    mediaBindings: parent.mediaBindings,
     inputFingerprint: `change-request:${parent.platformVariantRevisionId}:${revisionNumber}`,
     identityContextSnapshotId: parent.identityContextSnapshotId,
     styleMemoryRefs: styleMemoryRefs || parent.styleMemoryRefs,
     generationProvenance,
+    createdAt,
+  });
+}
+
+export function createMediaReboundPlatformVariantRevision({
+  platformVariantRevisionId,
+  parentRevision,
+  revisionNumber,
+  mediaBindings,
+  changedBy,
+  reason = null,
+  createdAt,
+} = {}) {
+  const parent = normalizePlatformVariantRevision(parentRevision);
+  return normalizePlatformVariantRevision({
+    platformVariantRevisionId,
+    workspaceId: parent.workspaceId,
+    platformVariantId: parent.platformVariantId,
+    contentPieceId: parent.contentPieceId,
+    narrativeStrategyId: parent.narrativeStrategyId,
+    destination: parent.destination,
+    revisionNumber,
+    strategyRevision: parent.strategyRevision,
+    status: PLATFORM_VARIANT_REVISION_STATUS,
+    origin: PLATFORM_VARIANT_REVISION_ORIGINS.MEDIA_REBOUND,
+    parentRevisionId: parent.platformVariantRevisionId,
+    format: parent.format,
+    content: parent.content,
+    segments: parent.segments,
+    mediaBindings,
+    inputFingerprint: `media-rebind:${parent.platformVariantRevisionId}:${revisionNumber}`,
+    identityContextSnapshotId: parent.identityContextSnapshotId,
+    styleMemoryRefs: parent.styleMemoryRefs,
+    mediaChangeProvenance: {
+      changedBy,
+      changedAt: createdAt,
+      reason,
+    },
     createdAt,
   });
 }

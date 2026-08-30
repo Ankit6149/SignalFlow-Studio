@@ -50,7 +50,9 @@ jobs:
         run: npm ci
       - name: Run frontend regression tests
         working-directory: frontend
-        run: npm test 2>&1 | tee frontend-test-output.log
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee frontend-test-output.log
       - name: Preserve frontend test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

@@ -205,7 +205,7 @@ export default function PlatformReviewPanel({ variant, revision, onChanged }) {
     <div className={styles.reviewPanel}>
       {message && <div className={`${styles.message} ${styles[`message_${message.type}`] || ""}`} role="status">{message.text}</div>}
 
-      <ExactMediaRevisionPreview mediaBindings={revision.mediaBindings || []} onPreviewState={handleMediaPreviewState} />
+      <ExactMediaRevisionPreview mediaBindings={revision.mediaBindings} onPreviewState={handleMediaPreviewState} />
 
       {!review ? (
         <div className={styles.reviewGate}>

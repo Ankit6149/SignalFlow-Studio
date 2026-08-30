@@ -1,6 +1,7 @@
 import { assertPort, createSystemClock, createSystemIdService } from "../domain/ports.mjs";
 import { normalizePlatformVariant } from "../domain/contentPlanning.mjs";
 import {
+  PLATFORM_VARIANT_MEDIA_ROLES,
   PLATFORM_VARIANT_MEDIA_SOURCES,
   attachPlatformVariantRevision,
   createMediaReboundPlatformVariantRevision,
@@ -77,6 +78,13 @@ export function createPlatformMediaBindingApplication({
     }
   }
 
+  function requireMediaRepository() {
+    if (!media) {
+      throw new PlatformMediaBindingError("media_lineage_unavailable", "Screenshot derivative binding requires the media-intelligence repository so exact lineage can be verified.");
+    }
+    return media;
+  }
+
   async function requireExactAsset(binding) {
     const stored = await assets.get(binding.assetId);
     if (!stored || stored.kind !== "Asset") throw new PlatformMediaBindingError("media_asset_not_found", "The selected media Asset does not exist.", { assetId: binding.assetId });
@@ -102,11 +110,14 @@ export function createPlatformMediaBindingApplication({
   }
 
   async function requireScreenshotDerivative(binding, asset) {
-    if (binding.source !== PLATFORM_VARIANT_MEDIA_SOURCES.SCREENSHOT_DERIVATIVE) return null;
-    if (!media) {
-      throw new PlatformMediaBindingError("media_lineage_unavailable", "Screenshot derivative binding requires the media-intelligence repository so exact lineage can be verified.");
+    if (binding.source !== PLATFORM_VARIANT_MEDIA_SOURCES.SCREENSHOT_DERIVATIVE) {
+      throw new PlatformMediaBindingError(
+        "unsupported_review_media_source",
+        "GP2 exact review binding only accepts verified screenshot derivatives. Broader owner-selected media remains a separate media-policy slice.",
+      );
     }
-    const storedPlan = await media.get(binding.imageDerivativePlanId);
+    const repository = requireMediaRepository();
+    const storedPlan = await repository.get(binding.imageDerivativePlanId);
     if (!storedPlan || storedPlan.kind !== "ImageDerivativePlan") {
       throw new PlatformMediaBindingError("derivative_plan_not_found", "The screenshot derivative plan does not exist.");
     }
@@ -124,7 +135,7 @@ export function createPlatformMediaBindingApplication({
       throw new PlatformMediaBindingError("stale_screenshot_lineage", "Derivative plan output does not match the exact bound Asset version.");
     }
 
-    const storedQuality = await media.get(binding.screenshotQualityReviewId);
+    const storedQuality = await repository.get(binding.screenshotQualityReviewId);
     if (!storedQuality || storedQuality.kind !== "ScreenshotQualityReview") {
       throw new PlatformMediaBindingError("screenshot_quality_review_not_found", "The exact screenshot quality review does not exist.");
     }
@@ -184,6 +195,40 @@ export function createPlatformMediaBindingApplication({
     return persisted;
   }
 
+  async function bindRenderedScreenshot(platformVariantId, {
+    imageDerivativePlanId,
+    imageDerivativeVariantId,
+    expectedCurrentRevisionId,
+    role = PLATFORM_VARIANT_MEDIA_ROLES.PRIMARY_VISUAL,
+    reason = "Bind the exact verified screenshot derivative for platform review.",
+  } = {}) {
+    const repository = requireMediaRepository();
+    const storedPlan = await repository.get(required(imageDerivativePlanId, "imageDerivativePlanId"));
+    if (!storedPlan || storedPlan.kind !== "ImageDerivativePlan") {
+      throw new PlatformMediaBindingError("derivative_plan_not_found", "The screenshot derivative plan does not exist.");
+    }
+    const plan = normalizeImageDerivativePlan(storedPlan);
+    if (plan.workspaceId !== ownerWorkspaceId) throw new PlatformMediaBindingError("cross_workspace_media_binding", "Screenshot derivative plan belongs to another workspace.");
+    const derivative = plan.variants.find((item) => item.variantId === required(imageDerivativeVariantId, "imageDerivativeVariantId"));
+    if (!derivative) throw new PlatformMediaBindingError("derivative_variant_not_found", "The exact screenshot derivative variant does not exist.");
+    if (derivative.status !== DERIVATIVE_VARIANT_STATES.RENDERED || !derivative.outputAssetId || !derivative.outputAssetVersionId) {
+      throw new PlatformMediaBindingError("derivative_not_rendered", "The selected screenshot derivative has not produced an immutable Asset yet.");
+    }
+    return bindCurrentMedia(platformVariantId, {
+      expectedCurrentRevisionId,
+      reason,
+      mediaBindings: [{
+        role,
+        source: PLATFORM_VARIANT_MEDIA_SOURCES.SCREENSHOT_DERIVATIVE,
+        assetId: derivative.outputAssetId,
+        assetVersionId: derivative.outputAssetVersionId,
+        screenshotQualityReviewId: plan.screenshotQualityReviewId,
+        imageDerivativePlanId: plan.imageDerivativePlanId,
+        imageDerivativeVariantId: derivative.variantId,
+      }],
+    });
+  }
+
   async function getRevisionMedia(platformVariantRevisionId) {
     const revision = await requireRevision(platformVariantRevisionId);
     const { resolved } = await validateBindings(revision.mediaBindings);
@@ -192,18 +237,19 @@ export function createPlatformMediaBindingApplication({
       items: resolved.map(({ binding, asset, screenshot }) => ({
         binding,
         asset,
-        screenshot: screenshot ? {
+        screenshot: {
           screenshotQualityReviewId: screenshot.quality.screenshotQualityReviewId,
           imageDerivativePlanId: screenshot.plan.imageDerivativePlanId,
           imageDerivativeVariantId: screenshot.derivativeVariant.variantId,
           aspectRatio: screenshot.derivativeVariant.aspectRatio,
-        } : null,
+        },
       })),
     };
   }
 
   return {
     bindCurrentMedia,
+    bindRenderedScreenshot,
     getRevisionMedia,
     validateBindings,
   };

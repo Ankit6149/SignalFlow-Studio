@@ -89,7 +89,10 @@ function recipe() {
   }), "2026-08-30T03:00:01.000Z");
 }
 
-async function executeCapture({ visibleSelectors = ["#app"] } = {}) {
+async function executeCapture({
+  visibleSelectors = ["#app"],
+  screenshotDimensions = { width: 1, height: 1 },
+} = {}) {
   const captureRecipe = recipe();
   assert.deepEqual(captureRecipe.steps[1].qualitySelectors, {
     error: ["[data-error-state]"],
@@ -119,7 +122,10 @@ async function executeCapture({ visibleSelectors = ["#app"] } = {}) {
   const application = createCaptureExecutionApplication({
     durableJobRepository: jobs,
     captureRepository,
-    captureWorkerAdapter: createDeterministicCaptureWorkerAdapter({ visibleSelectors }),
+    captureWorkerAdapter: createDeterministicCaptureWorkerAdapter({
+      visibleSelectors,
+      screenshotDimensions,
+    }),
     privateAssetStorage: storage,
     clock: time,
     idService: createDeterministicIdService("capture-quality"),
@@ -224,7 +230,10 @@ test("all verified capture signals can make the exact screenshot quality review 
 });
 
 test("derivative rendering is retry-idempotent after a variant is already rendered", async () => {
-  const result = await executeCapture({ visibleSelectors: ["#app"] });
+  const result = await executeCapture({
+    visibleSelectors: ["#app"],
+    screenshotDimensions: { width: 1600, height: 900 },
+  });
   const mediaRepository = createMemoryMediaIntelligenceRepository();
   const processor = deterministicImageProcessor();
   const application = createScreenshotDerivativeApplication({
@@ -240,6 +249,9 @@ test("derivative rendering is retry-idempotent after a variant is already render
     captureJob: result.captureJob,
     aspectRatios: ["16:9"],
   });
+  assert.equal(planned.plan.status, "ready");
+  assert.equal(planned.plan.variants[0].status, "ready_for_render");
+
   const first = await application.renderPlan({ workspaceId: "workspace-1", imageDerivativePlanId: planned.plan.imageDerivativePlanId });
   const callsAfterFirst = processor.renderCalls;
   const second = await application.renderPlan({ workspaceId: "workspace-1", imageDerivativePlanId: planned.plan.imageDerivativePlanId });

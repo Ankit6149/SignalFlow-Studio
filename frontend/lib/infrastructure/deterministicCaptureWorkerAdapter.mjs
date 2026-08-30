@@ -20,9 +20,14 @@ export function createDeterministicCaptureWorkerAdapter({
   visibleSelectors = [],
   blockedPrivacyCodes = [],
   screenshotPayloadBase64 = TRANSPARENT_PNG_BASE64,
+  screenshotDimensions = { width: 1, height: 1 },
 } = {}) {
   const visible = new Set(visibleSelectors.map(String));
   const privacyBlocks = new Set(blockedPrivacyCodes.map(String));
+  const dimensions = {
+    width: Math.max(1, Math.round(Number(screenshotDimensions?.width) || 1)),
+    height: Math.max(1, Math.round(Number(screenshotDimensions?.height) || 1)),
+  };
 
   const adapter = {
     async describe() {
@@ -154,7 +159,7 @@ export function createDeterministicCaptureWorkerAdapter({
         originalName: `${step.checkpoint || "checkpoint"}.png`,
         mimeType: "image/png",
         byteSize: Math.floor(screenshotPayloadBase64.length * 0.75),
-        dimensions: { width: 1, height: 1 },
+        dimensions: clone(dimensions),
         privacyClass: "workspace_private",
       };
     },

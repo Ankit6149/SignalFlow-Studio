@@ -50,7 +50,17 @@ jobs:
         run: npm ci
       - name: Run frontend regression tests
         working-directory: frontend
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee frontend-test-output.log
+      - name: Preserve frontend test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-diagnostics
+          path: frontend/frontend-test-output.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Audit production dependencies
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high

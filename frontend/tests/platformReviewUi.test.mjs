@@ -33,7 +33,7 @@ test("natural-language change request is bounded and explicitly invalidates old 
   assert.match(component, /MAX_CHANGE_REQUEST_LENGTH = 2000/);
   assert.match(component, /REQUEST A CHANGE TO THIS EXACT REVISION/);
   assert.match(component, /maxLength=\{MAX_CHANGE_REQUEST_LENGTH\}/);
-  assert.match(component, /preserve the destination, approved story plan, Voice snapshot and revision history/i);
+  assert.match(component, /preserve the destination, approved story plan, Voice snapshot, exact media binding and revision history/i);
   assert.match(component, /previous review\/approval is historical; run checks again before approval/i);
   assert.match(component, /A later edit, requested change, or regeneration will require a new review and approval/i);
 });
@@ -46,11 +46,13 @@ test("stale Plan judgment refreshes instead of acting on a newer unseen revision
   assert.match(component, /await onChanged\?\.\(\)/);
 });
 
-test("blocking review prevents approval while an unreviewed revision cannot be approved from the UI", async () => {
+test("blocking review or unresolved exact media prevents approval while an unreviewed revision cannot be approved from the UI", async () => {
   const component = await source("../components/PlatformReviewPanel.js");
   assert.match(component, /const blocked = review\?\.overallVerdict === "block"/);
-  assert.match(component, /disabled=\{Boolean\(busy\) \|\| !review \|\| blocked\}/);
-  assert.match(component, /blocked \? "Resolve blockers first" : "Approve exact revision"/);
+  assert.match(component, /const mediaApprovalBlocked = Boolean\(revision\.mediaBindings\?\.length && !mediaPreviewState\.ready\)/);
+  assert.match(component, /if \(mediaPreviewState\.required && !mediaPreviewState\.ready\)/);
+  assert.match(component, /disabled=\{Boolean\(busy\) \|\| !review \|\| blocked \|\| mediaApprovalBlocked\}/);
+  assert.match(component, /mediaApprovalBlocked \? "Resolve exact media preview" : blocked \? "Resolve blockers first" : revision\.mediaBindings\?\.length \? "Approve exact text \+ media" : "Approve exact revision"/);
 });
 
 test("approved revision may still be edited, requested to change, or regenerated so a newer revision can invalidate approval", async () => {

@@ -38,6 +38,36 @@ function assertDerivativePermission(asset, assetRoleBinding = null) {
   return true;
 }
 
+function captureContext(captureJob, asset) {
+  if (!captureJob) return {};
+  if (captureJob.kind !== "CaptureJob") throw new ScreenshotProductionError("invalid_capture_job", "Screenshot quality provenance requires a canonical CaptureJob.");
+  if (captureJob.workspaceId !== asset.workspaceId) throw new ScreenshotProductionError("cross_workspace_screenshot", "CaptureJob belongs to another workspace.");
+  const records = Array.isArray(captureJob.outputProvenance) ? captureJob.outputProvenance : [];
+  const provenance = records.find((item) => item.assetId === asset.assetId && (!item.assetVersionId || item.assetVersionId === asset.assetVersionId));
+  if (!provenance) throw new ScreenshotProductionError("capture_provenance_missing", "CaptureJob does not contain provenance for the exact screenshot Asset.");
+  const signals = provenance.qualitySignals && typeof provenance.qualitySignals === "object" ? provenance.qualitySignals : {};
+  return {
+    errorDetected: typeof signals.errorDetected === "boolean" ? signals.errorDetected : undefined,
+    loadingDetected: typeof signals.loadingDetected === "boolean" ? signals.loadingDetected : undefined,
+    subjectVisible: typeof signals.subjectVisible === "boolean" ? signals.subjectVisible : undefined,
+    privacyState: provenance.privacyReviewState === "blocked"
+      ? "blocked"
+      : provenance.privacyReviewState === "passed" ? "passed" : undefined,
+  };
+}
+
+function authoritativeContext(capture = {}, supplemental = {}) {
+  return {
+    errorDetected: typeof capture.errorDetected === "boolean" ? capture.errorDetected : supplemental.errorDetected,
+    errorConfidence: typeof capture.errorDetected === "boolean" ? 1 : supplemental.errorConfidence,
+    loadingDetected: typeof capture.loadingDetected === "boolean" ? capture.loadingDetected : supplemental.loadingDetected,
+    loadingConfidence: typeof capture.loadingDetected === "boolean" ? 1 : supplemental.loadingConfidence,
+    subjectVisible: typeof capture.subjectVisible === "boolean" ? capture.subjectVisible : supplemental.subjectVisible,
+    subjectConfidence: typeof capture.subjectVisible === "boolean" ? 1 : supplemental.subjectConfidence,
+    privacyState: capture.privacyState || supplemental.privacyState,
+  };
+}
+
 function mergeObservations(analysis = {}, context = {}) {
   return {
     decodeOk: analysis.decodeOk,
@@ -80,6 +110,7 @@ export function createScreenshotDerivativeApplication({
     aspectRatios = ["16:9", "9:16", "1:1", "4:5"],
     focalRegion = null,
     evidenceRegions = [],
+    captureJob = null,
     qualityContext = {},
     assetRoleBinding = null,
   } = {}) {
@@ -90,12 +121,13 @@ export function createScreenshotDerivativeApplication({
     const description = await processor.describe();
     if (!description?.available) throw new ScreenshotProductionError("image_processor_unavailable", "Configured screenshot image processor is unavailable.");
     const analysis = await processor.analyze({ bytes, mimeType: asset.mimeType, expectedDimensions: asset.dimensions });
+    const context = authoritativeContext(captureContext(captureJob, asset), qualityContext);
     const now = time.now();
     const review = createScreenshotQualityReview({
       screenshotQualityReviewId: ids.create("screenshot-quality-review"),
       workspaceId,
       asset,
-      observations: mergeObservations(analysis, qualityContext),
+      observations: mergeObservations(analysis, context),
       evaluator: {
         name: safeProcessorRef(description).name,
         version: safeProcessorRef(description).version,

@@ -133,6 +133,8 @@ test("connected-source Plan uses durable hosted review clients and protected exa
   assert.match(revision, /createBrowserHostedExactMediaPreviewAdapter/);
   assert.match(revision, /previewAdapter=\{previewAdapter\}/);
   assert.match(revision, /mediaPreviewState\.visibleMedia/);
+  assert.match(revision, /previewBelongsToRevision = mediaPreviewState\.revisionId === revisionId/);
+  assert.match(revision, /!previewBelongsToRevision/);
   assert.match(revision, /expectedCurrentRevisionId: revisionId/);
   assert.match(revision, /editCurrentVariant/);
   assert.match(revision, /regenerateVariant/);

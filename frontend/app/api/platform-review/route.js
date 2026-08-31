@@ -1,4 +1,5 @@
 import { requireOwnerAccess } from "../_auth";
+import { createHostedMediaPreviewReceiptService } from "../../../lib/server/hostedMediaPreviewReceipt.mjs";
 import { createProductionHostedPlatformReviewApplications } from "../../../lib/server/hostedPlatformReviewDependencies.mjs";
 
 export const runtime = "nodejs";
@@ -27,9 +28,9 @@ function json(body, status = 200) {
   });
 }
 
-function opaque(value, field) {
+function opaque(value, field, maxLength = 320) {
   const normalized = String(value || "").trim();
-  if (!normalized || normalized.length > 320 || /[/\\]|^[a-zA-Z]:/.test(normalized)) {
+  if (!normalized || normalized.length > maxLength || /[/\\]|^[a-zA-Z]:/.test(normalized)) {
     const error = new Error(`${field} must be an opaque identifier.`);
     error.code = "platform_review_invalid_request";
     error.status = 400;
@@ -71,9 +72,19 @@ async function readBody(request) {
 function statusFor(error) {
   if (Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599) return error.status;
   const code = String(error?.code || "");
-  if (["stale_revision_context", "stale_planning_contract", "review_required", "review_blocked", "strategy_approval_required", "hosted_media_preview_confirmation_required"].includes(code)) return 409;
-  if (["platform_review_invalid_request", "platform_variant_omitted", "revision_already_current"].includes(code)) return 400;
-  if (code === "voice_profile_required") return 409;
+  if ([
+    "stale_revision_context",
+    "stale_planning_contract",
+    "review_required",
+    "review_blocked",
+    "strategy_approval_required",
+    "hosted_media_preview_confirmation_required",
+    "preview_receipt_expired",
+    "preview_receipt_identity_mismatch",
+  ].includes(code)) return 409;
+  if (["platform_review_invalid_request", "platform_variant_omitted", "revision_already_current", "preview_receipt_invalid"].includes(code)) return 400;
+  if (["voice_profile_required"].includes(code)) return 409;
+  if (["preview_receipt_secret_unconfigured"].includes(code)) return 503;
   if (error instanceof TypeError) return 400;
   return 500;
 }
@@ -107,13 +118,68 @@ async function responseBundle(apps, contentPieceId) {
   return { contentPiece: generation.contentPiece, variants };
 }
 
-async function requireMediaSafeApproval(apps, platformVariantId, platformVariantRevisionId) {
+function mediaConfirmationError(message) {
+  const error = new Error(message);
+  error.code = "hosted_media_preview_confirmation_required";
+  error.status = 409;
+  return error;
+}
+
+function expectedVisibleMedia(mediaBindings = []) {
+  return mediaBindings.map((binding) => ({
+    role: opaque(binding.role, "mediaBinding.role", 80),
+    assetId: opaque(binding.assetId, "mediaBinding.assetId"),
+    assetVersionId: opaque(binding.assetVersionId, "mediaBinding.assetVersionId"),
+  })).sort((left, right) => `${left.role}:${left.assetId}:${left.assetVersionId}`.localeCompare(`${right.role}:${right.assetId}:${right.assetVersionId}`));
+}
+
+function confirmedVisibleMedia(input) {
+  if (!Array.isArray(input) || input.length > 4) {
+    throw mediaConfirmationError("Hosted media approval requires the exact visible media confirmations for this revision.");
+  }
+  const confirmations = input.map((item, index) => ({
+    role: opaque(item?.role, `visibleMedia[${index}].role`, 80),
+    assetId: opaque(item?.assetId, `visibleMedia[${index}].assetId`),
+    assetVersionId: opaque(item?.assetVersionId, `visibleMedia[${index}].assetVersionId`),
+    previewReceipt: opaque(item?.previewReceipt, `visibleMedia[${index}].previewReceipt`, 4096),
+  })).sort((left, right) => `${left.role}:${left.assetId}:${left.assetVersionId}`.localeCompare(`${right.role}:${right.assetId}:${right.assetVersionId}`));
+  const identities = confirmations.map((item) => `${item.role}:${item.assetId}:${item.assetVersionId}`);
+  if (new Set(identities).size !== identities.length) {
+    throw mediaConfirmationError("Duplicate exact-media visibility confirmations are not valid.");
+  }
+  return confirmations;
+}
+
+async function requireMediaSafeApproval(apps, platformVariantId, platformVariantRevisionId, visibleMediaInput) {
   const bundle = await apps.reviewApplication.getReviewBundleForRevision(platformVariantId, platformVariantRevisionId);
-  if (bundle.revision.mediaBindings?.length) {
-    const error = new Error("Hosted approval of a media-bound revision remains blocked until the owner-facing exact-media preview supplies an explicit visible-version confirmation.");
-    error.code = "hosted_media_preview_confirmation_required";
-    error.status = 409;
-    throw error;
+  const expected = expectedVisibleMedia(bundle.revision.mediaBindings || []);
+  if (!expected.length) return bundle;
+
+  const visible = confirmedVisibleMedia(visibleMediaInput);
+  if (visible.length !== expected.length) {
+    throw mediaConfirmationError("Every exact media binding on this revision must be visibly resolved before approval.");
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    const target = expected[index];
+    const confirmation = visible[index];
+    if (
+      target.role !== confirmation.role
+      || target.assetId !== confirmation.assetId
+      || target.assetVersionId !== confirmation.assetVersionId
+    ) {
+      throw mediaConfirmationError("Visible media confirmation does not match the exact media bound to this revision.");
+    }
+  }
+
+  const receipts = createHostedMediaPreviewReceiptService({
+    signingSecret: process.env.SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET,
+  });
+  for (const confirmation of visible) {
+    receipts.verify(confirmation.previewReceipt, {
+      workspaceId: apps.workspaceId,
+      assetId: confirmation.assetId,
+      assetVersionId: confirmation.assetVersionId,
+    });
   }
   return bundle;
 }
@@ -180,7 +246,7 @@ export async function POST(request) {
     }
 
     if (action === "approve_revision") {
-      await requireMediaSafeApproval(apps, platformVariantId, platformVariantRevisionId);
+      await requireMediaSafeApproval(apps, platformVariantId, platformVariantRevisionId, body.visibleMedia);
       const approval = await apps.reviewApplication.approveRevision(platformVariantId, platformVariantRevisionId, {
         expectedCurrentRevisionId,
         note: String(body.note || "").trim(),

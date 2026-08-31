@@ -1,5 +1,6 @@
 import { requireOwnerAccess } from "../../_auth";
 import { createProductionHostedExactAssetPreviewApplication } from "../../../../lib/server/hostedAssetPreviewDependencies.mjs";
+import { createHostedMediaPreviewReceiptService } from "../../../../lib/server/hostedMediaPreviewReceipt.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ function statusFor(error) {
     unsupported_preview_media: 415,
     hosted_asset_preview_invalid: 400,
     hosted_asset_storage_unconfigured: 503,
+    preview_receipt_secret_unconfigured: 503,
     signalflow_database_unconfigured: 503,
     signalflow_database_invalid: 503,
     blob_not_found: 503,
@@ -64,6 +66,14 @@ export async function GET(request) {
       assetId: url.searchParams.get("assetId"),
       assetVersionId: url.searchParams.get("assetVersionId"),
     });
+    const receiptService = createHostedMediaPreviewReceiptService({
+      signingSecret: process.env.SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET,
+    });
+    const previewReceipt = receiptService.issue({
+      workspaceId: result.workspaceId,
+      assetId: result.asset.assetId,
+      assetVersionId: result.asset.assetVersionId,
+    });
 
     return new Response(result.bytes, {
       status: 200,
@@ -76,6 +86,7 @@ export async function GET(request) {
         "referrer-policy": "no-referrer",
         "x-signalflow-asset-id": result.asset.assetId,
         "x-signalflow-asset-version": result.asset.assetVersionId,
+        "x-signalflow-preview-receipt": previewReceipt,
       },
     });
   } catch (error) {

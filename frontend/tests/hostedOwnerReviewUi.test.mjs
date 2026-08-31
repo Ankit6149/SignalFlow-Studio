@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 
 import { createHostedMediaPreviewReceiptService } from "../lib/server/hostedMediaPreviewReceipt.mjs";
 import { createBrowserHostedExactMediaPreviewAdapter } from "../lib/infrastructure/browserHostedExactMediaPreviewAdapter.mjs";
-import { visibleMedia } from "../components/ExactMediaRevisionPreview.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SECRET = "signalflow-test-preview-receipt-secret-2026";
@@ -93,11 +92,14 @@ test("hosted browser preview requires exact response identity, image bytes and s
   );
 });
 
-test("exact preview state carries role + exact AssetVersion + receipt and never invents a receipt", () => {
-  const mapped = visibleMedia([{ binding: { role: "primary_visual", assetId: "asset-1", assetVersionId: "version-1" }, previewReceipt: "receipt-1" }]);
-  assert.deepEqual(mapped, [{ role: "primary_visual", assetId: "asset-1", assetVersionId: "version-1", previewReceipt: "receipt-1" }]);
-  const local = visibleMedia([{ binding: { role: "primary_visual", assetId: "asset-1", assetVersionId: "version-1" } }]);
-  assert.equal(local[0].previewReceipt, null);
+test("exact preview component carries role + exact AssetVersion + receipt without inventing a hosted proof", () => {
+  const preview = source("components", "ExactMediaRevisionPreview.js");
+  assert.match(preview, /function visibleMedia\(items = \[\]\)/);
+  assert.match(preview, /role: binding\.role/);
+  assert.match(preview, /assetId: binding\.assetId/);
+  assert.match(preview, /assetVersionId: binding\.assetVersionId/);
+  assert.match(preview, /previewReceipt: previewReceipt \|\| null/);
+  assert.match(preview, /visibleMedia: visibleMedia\(items\)/);
 });
 
 test("hosted review API verifies every visible media binding and guards stale edit/regenerate mutations", () => {

@@ -11,6 +11,7 @@ const ACTIONS = new Set([
   "generate_ready",
   "generate_variant",
   "regenerate_variant",
+  "edit_revision",
   "review_revision",
   "approve_revision",
   "reject_revision",
@@ -116,6 +117,22 @@ async function responseBundle(apps, contentPieceId) {
     });
   }
   return { contentPiece: generation.contentPiece, variants };
+}
+
+function staleRevisionError() {
+  const error = new Error("This hosted review surface is stale because a newer current revision exists. Reload before changing it.");
+  error.code = "stale_revision_context";
+  error.status = 409;
+  return error;
+}
+
+async function assertExpectedCurrent(apps, platformVariantId, expectedCurrentRevisionId) {
+  const expected = opaque(expectedCurrentRevisionId, "expectedCurrentRevisionId");
+  const bundle = await apps.reviewApplication.getReviewBundle(platformVariantId);
+  if (!bundle.revision || bundle.revision.platformVariantRevisionId !== expected || !bundle.isCurrent) {
+    throw staleRevisionError();
+  }
+  return bundle;
 }
 
 function mediaConfirmationError(message) {
@@ -229,8 +246,20 @@ export async function POST(request) {
       const revision = await apps.generationApplication.generateVariant(platformVariantId, { refresh: false });
       return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
     }
+
     if (action === "regenerate_variant") {
+      await assertExpectedCurrent(apps, platformVariantId, body.expectedCurrentRevisionId);
       const revision = await apps.generationApplication.regenerateVariant(platformVariantId);
+      return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
+    }
+
+    if (action === "edit_revision") {
+      await assertExpectedCurrent(apps, platformVariantId, body.expectedCurrentRevisionId);
+      const revision = await apps.reviewApplication.editCurrentVariant(platformVariantId, {
+        content: body.content,
+        segments: Array.isArray(body.segments) ? body.segments : [],
+        format: body.format || null,
+      });
       return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
     }
 

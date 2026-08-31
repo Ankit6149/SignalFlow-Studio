@@ -67,6 +67,15 @@ test("Plan exact review renders bound media and blocks approval when exact previ
   assert.match(source, /revision\.mediaBindings/);
 });
 
+test("exact media preview accepts an injected runtime adapter while preserving the local fallback", () => {
+  const preview = fs.readFileSync(path.join(ROOT, "components", "ExactMediaRevisionPreview.js"), "utf8");
+  assert.match(preview, /previewAdapter = null/);
+  assert.match(preview, /const localAdapter = useMemo\(\(\) => createBrowserExactMediaPreviewAdapter/);
+  assert.match(preview, /const adapter = previewAdapter \? assertPreviewAdapter\(previewAdapter\) : localAdapter/);
+  assert.match(preview, /typeof adapter\.readExact !== "function"/);
+  assert.doesNotMatch(preview, /SIGNALFLOW_PUBLIC_HOSTED|NEXT_PUBLIC_/);
+});
+
 test("text-only Plan review keeps the empty media input referentially stable", () => {
   const preview = fs.readFileSync(path.join(ROOT, "components", "ExactMediaRevisionPreview.js"), "utf8");
   const plan = fs.readFileSync(path.join(ROOT, "components", "PlatformReviewPanel.js"), "utf8");

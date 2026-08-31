@@ -12,12 +12,24 @@ function shortId(value) {
   return text.length > 18 ? `…${text.slice(-16)}` : text;
 }
 
-export default function ExactMediaRevisionPreview({ mediaBindings = EMPTY_MEDIA_BINDINGS, onPreviewState = null }) {
+function assertPreviewAdapter(adapter) {
+  if (!adapter || typeof adapter.readExact !== "function") {
+    throw new TypeError("Exact media preview requires an adapter with readExact().");
+  }
+  return adapter;
+}
+
+export default function ExactMediaRevisionPreview({
+  mediaBindings = EMPTY_MEDIA_BINDINGS,
+  onPreviewState = null,
+  previewAdapter = null,
+}) {
   const [state, setState] = useState({ status: mediaBindings.length ? "loading" : "not_required", items: [], message: "" });
-  const adapter = useMemo(() => createBrowserExactMediaPreviewAdapter({
+  const localAdapter = useMemo(() => createBrowserExactMediaPreviewAdapter({
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
+  const adapter = previewAdapter ? assertPreviewAdapter(previewAdapter) : localAdapter;
 
   useEffect(() => {
     let active = true;
@@ -114,3 +126,5 @@ export default function ExactMediaRevisionPreview({ mediaBindings = EMPTY_MEDIA_
     </section>
   );
 }
+
+export { assertPreviewAdapter };

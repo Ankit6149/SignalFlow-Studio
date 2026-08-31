@@ -27,6 +27,15 @@ function iso(value, fallback = null) {
   return new Date(parsed).toISOString();
 }
 
+function claimInputs({ leaseOwner, leaseSeconds = 60, now = new Date().toISOString(), jobTypes = [] } = {}) {
+  const owner = String(leaseOwner || "").trim();
+  if (!owner) throw new TypeError("Durable job claim requires a leaseOwner.");
+  const claimedAt = iso(now);
+  const expiresAt = new Date(Date.parse(claimedAt) + Math.max(5, Math.min(3600, Math.round(Number(leaseSeconds) || 60))) * 1000).toISOString();
+  const normalizedTypes = Array.isArray(jobTypes) ? [...new Set(jobTypes.map((item) => String(item || "").trim()).filter(Boolean))] : [];
+  return { owner, claimedAt, expiresAt, normalizedTypes };
+}
+
 export function durableJobFromRow(row = {}) {
   const job = normalizeDurableJob(jsonValue(row.record, {}));
   if (
@@ -169,12 +178,42 @@ RETURNING *`, [
     return durableJobFromRow(rows[0]);
   }
 
-  async function claimNext({ leaseOwner, leaseSeconds = 60, now = new Date().toISOString(), jobTypes = [] } = {}) {
-    const owner = String(leaseOwner || "").trim();
-    if (!owner) throw new TypeError("claimNext requires a leaseOwner.");
-    const claimedAt = iso(now);
-    const expiresAt = new Date(Date.parse(claimedAt) + Math.max(5, Math.min(3600, Math.round(Number(leaseSeconds) || 60))) * 1000).toISOString();
-    const normalizedTypes = Array.isArray(jobTypes) ? [...new Set(jobTypes.map((item) => String(item || "").trim()).filter(Boolean))] : [];
+  async function claimById(jobId, options = {}) {
+    const normalizedId = String(jobId || "").trim();
+    if (!normalizedId) throw new TypeError("claimById requires jobId.");
+    const { owner, claimedAt, expiresAt, normalizedTypes } = claimInputs(options);
+    const rows = resultRows(await db.query(`
+UPDATE sf_durable_jobs AS jobs
+SET status = 'running',
+    attempt_count = jobs.attempt_count + 1,
+    lease_owner = $3,
+    lease_expires_at = $4::timestamptz,
+    heartbeat_at = $2::timestamptz,
+    next_attempt_at = NULL,
+    updated_at = $2::timestamptz,
+    record = jobs.record || jsonb_build_object(
+      'status', 'running',
+      'attemptCount', jobs.attempt_count + 1,
+      'leaseOwner', $3,
+      'leaseExpiresAt', $4,
+      'heartbeatAt', $2,
+      'nextAttemptAt', NULL,
+      'updatedAt', $2,
+      'startedAt', COALESCE(jobs.record->>'startedAt', $2),
+      'progress', COALESCE(jobs.record->'progress', '{}'::jsonb) || jsonb_build_object('stage', 'running')
+    )
+WHERE jobs.workspace_id = $1
+  AND jobs.job_id = $6
+  AND jobs.status IN ('queued', 'scheduled', 'retrying')
+  AND jobs.cancellation_requested_at IS NULL
+  AND COALESCE(jobs.next_attempt_at, jobs.scheduled_at, jobs.created_at) <= $2::timestamptz
+  AND (cardinality($5::text[]) = 0 OR jobs.job_type = ANY($5::text[]))
+RETURNING jobs.*`, [scope, claimedAt, owner, expiresAt, normalizedTypes, normalizedId]));
+    return rows[0] ? durableJobFromRow(rows[0]) : null;
+  }
+
+  async function claimNext(options = {}) {
+    const { owner, claimedAt, expiresAt, normalizedTypes } = claimInputs(options);
     const rows = resultRows(await db.query(`
 WITH candidate AS (
   SELECT job_id
@@ -221,5 +260,5 @@ RETURNING jobs.*`, [scope, claimedAt, owner, expiresAt, normalizedTypes]));
     return rows.length === 1;
   }
 
-  return assertPort("durableJobRepository", { list, get, upsert, remove, findByIdempotency, claimNext });
+  return assertPort("durableJobRepository", { list, get, upsert, remove, findByIdempotency, claimById, claimNext });
 }

@@ -87,6 +87,19 @@ export function createMemoryDurableJobPort(initial = []) {
       const job = [...records.values()].find((item) => item.workspaceId === workspaceId && item.jobType === jobType && item.idempotencyKey === idempotencyKey);
       return job ? clone(job) : null;
     },
+    async claimById(jobId, { leaseOwner, leaseSeconds = 60, now, jobTypes = [] } = {}) {
+      const job = records.get(jobId);
+      if (!job) return null;
+      const allowed = new Set(jobTypes);
+      if (allowed.size && !allowed.has(job.jobType)) return null;
+      if (![JOB_STATUSES.QUEUED, JOB_STATUSES.SCHEDULED, JOB_STATUSES.RETRYING].includes(job.status)) return null;
+      if (job.cancellationRequestedAt) return null;
+      if (job.nextAttemptAt && Date.parse(job.nextAttemptAt) > Date.parse(now)) return null;
+      if (job.scheduledAt && Date.parse(job.scheduledAt) > Date.parse(now)) return null;
+      const claimed = claimDurableJob(job, { leaseOwner, leaseSeconds, now });
+      records.set(claimed.jobId, claimed);
+      return clone(claimed);
+    },
     async claimNext({ leaseOwner, leaseSeconds = 60, now, jobTypes = [] } = {}) {
       const allowed = new Set(jobTypes);
       const due = [...records.values()]

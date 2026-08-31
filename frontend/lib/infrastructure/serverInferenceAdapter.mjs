@@ -2,6 +2,9 @@ import { assertPort } from "../domain/ports.mjs";
 import { acceptNarrativeStrategyProposal } from "../ai/narrativeStrategyPlanning.mjs";
 import { acceptOpportunityEvaluation } from "../ai/opportunityEvaluation.mjs";
 import { acceptProjectContextSynthesis } from "../ai/projectContextSynthesis.mjs";
+import { normalizePlatformVariantDraft } from "../ai/platformVariantWriting.mjs";
+import { acceptPlatformRevisionRequest } from "../ai/platformVariantRevisionRequest.mjs";
+import { normalizeCriticResult } from "../domain/platformVariantReviews.mjs";
 import { INFERENCE_TASK_TYPES, normalizeInferenceTask } from "../inference/inferenceTasks.mjs";
 
 function normalizedOrigin(value) {
@@ -133,6 +136,76 @@ export function createServerNarrativeStrategyInferenceAdapter({
       }
       return {
         output: acceptNarrativeStrategyProposal(data.output),
+        provenance: data.provenance || {},
+      };
+    },
+  });
+}
+
+const PLATFORM_WORKFLOW_ROUTES = Object.freeze({
+  [INFERENCE_TASK_TYPES.PLATFORM_VARIANT]: {
+    endpoint: "/api/intelligence/platform-variant",
+    label: "Platform draft generation",
+    unreadableCode: "platform_variant_generation_unreadable",
+    fallbackCode: "platform_variant_generation_failed",
+    normalize: (output, input) => normalizePlatformVariantDraft(output, input?.variant?.destination),
+  },
+  [INFERENCE_TASK_TYPES.PLATFORM_VARIANT_REVISION]: {
+    endpoint: "/api/intelligence/platform-revision",
+    label: "Platform change request",
+    unreadableCode: "platform_variant_revision_unreadable",
+    fallbackCode: "platform_variant_revision_failed",
+    normalize: (output, input) => acceptPlatformRevisionRequest(
+      output,
+      input?.parentRevision?.destination,
+      input?.parentRevision?.format,
+    ),
+  },
+  [INFERENCE_TASK_TYPES.EVIDENCE_CRITIQUE]: {
+    endpoint: "/api/intelligence/critic",
+    label: "Evidence review",
+    unreadableCode: "evidence_critique_unreadable",
+    fallbackCode: "evidence_critique_failed",
+    normalize: (output) => normalizeCriticResult(output, "evidence"),
+  },
+  [INFERENCE_TASK_TYPES.AUTHENTICITY_CRITIQUE]: {
+    endpoint: "/api/intelligence/critic",
+    label: "Authenticity review",
+    unreadableCode: "authenticity_critique_unreadable",
+    fallbackCode: "authenticity_critique_failed",
+    normalize: (output) => normalizeCriticResult(output, "authenticity"),
+  },
+});
+
+export function createServerPlatformWorkflowInferenceAdapter({
+  origin,
+  accessKey = "",
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  if (typeof fetchImpl !== "function") throw new TypeError("Server inference adapter requires fetch().");
+  const base = normalizedOrigin(origin);
+  const ownerKey = String(accessKey || "").trim();
+
+  return assertPort("inferenceAdapter", {
+    async execute({ task: taskInput, input = {} } = {}) {
+      const task = normalizeInferenceTask(taskInput);
+      const route = PLATFORM_WORKFLOW_ROUTES[task.taskType];
+      if (!route) throw new TypeError(`This server inference adapter does not support ${task.taskType}.`);
+      const response = await fetchImpl(new URL(route.endpoint, base), {
+        method: "POST",
+        headers: requestHeaders(ownerKey),
+        body: JSON.stringify({ task, input }),
+        cache: "no-store",
+      });
+      const data = await readJsonResponse(response, route.label, route.unreadableCode);
+      if (!response.ok || !data?.ok) {
+        const error = new Error(data?.error || `${route.label} failed (HTTP ${response.status}).`);
+        error.code = data?.code || route.fallbackCode;
+        error.status = response.status;
+        throw error;
+      }
+      return {
+        output: route.normalize(data.output, input),
         provenance: data.provenance || {},
       };
     },

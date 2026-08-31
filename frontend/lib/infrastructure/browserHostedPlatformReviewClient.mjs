@@ -106,8 +106,24 @@ export function createBrowserHostedPlatformReviewClient({ fetchImpl = globalThis
     return normalizePlatformVariantRevision(data.revision);
   }
 
-  async function regenerateVariant(platformVariantId) {
-    const data = await request("POST", { action: "regenerate_variant", platformVariantId: required(platformVariantId, "platformVariantId") });
+  async function regenerateVariant(platformVariantId, { expectedCurrentRevisionId } = {}) {
+    const data = await request("POST", {
+      action: "regenerate_variant",
+      platformVariantId: required(platformVariantId, "platformVariantId"),
+      expectedCurrentRevisionId: required(expectedCurrentRevisionId, "expectedCurrentRevisionId"),
+    });
+    return normalizePlatformVariantRevision(data.revision);
+  }
+
+  async function editCurrentVariant(platformVariantId, { expectedCurrentRevisionId, content = "", segments = [], format = null } = {}) {
+    const data = await request("POST", {
+      action: "edit_revision",
+      platformVariantId: required(platformVariantId, "platformVariantId"),
+      expectedCurrentRevisionId: required(expectedCurrentRevisionId, "expectedCurrentRevisionId"),
+      content: String(content ?? ""),
+      segments: Array.isArray(segments) ? segments.map((item) => String(item ?? "")) : [],
+      format: format ? String(format) : null,
+    });
     return normalizePlatformVariantRevision(data.revision);
   }
 
@@ -160,6 +176,7 @@ export function createBrowserHostedPlatformReviewClient({ fetchImpl = globalThis
     generateReady,
     generateVariant,
     regenerateVariant,
+    editCurrentVariant,
     reviewRevision,
     approveRevision,
     rejectRevision,

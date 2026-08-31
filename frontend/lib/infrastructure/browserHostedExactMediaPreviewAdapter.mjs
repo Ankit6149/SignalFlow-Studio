@@ -69,6 +69,14 @@ export function createBrowserHostedExactMediaPreviewAdapter({
       );
     }
 
+    const previewReceipt = String(response.headers?.get?.("x-signalflow-preview-receipt") || "").trim();
+    if (!previewReceipt) {
+      throw new HostedExactMediaPreviewError(
+        "hosted_preview_receipt_missing",
+        "Hosted exact review media did not include a signed visibility receipt.",
+      );
+    }
+
     const mimeType = String(response.headers?.get?.("content-type") || "").split(";")[0].trim().toLowerCase();
     if (!mimeType.startsWith("image/")) {
       throw new HostedExactMediaPreviewError("unsupported_preview_media", "Hosted exact review preview returned non-image media.");
@@ -90,6 +98,7 @@ export function createBrowserHostedExactMediaPreviewAdapter({
       },
       bytes,
       mimeType,
+      previewReceipt,
     };
   }
 

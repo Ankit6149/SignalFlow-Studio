@@ -69,6 +69,11 @@ export function createBrowserHostedExactMediaPreviewAdapter({
       );
     }
 
+    const mimeType = String(response.headers?.get?.("content-type") || "").split(";")[0].trim().toLowerCase();
+    if (!mimeType.startsWith("image/")) {
+      throw new HostedExactMediaPreviewError("unsupported_preview_media", "Hosted exact review preview returned non-image media.");
+    }
+
     const previewReceipt = String(response.headers?.get?.("x-signalflow-preview-receipt") || "").trim();
     if (!previewReceipt) {
       throw new HostedExactMediaPreviewError(
@@ -77,10 +82,6 @@ export function createBrowserHostedExactMediaPreviewAdapter({
       );
     }
 
-    const mimeType = String(response.headers?.get?.("content-type") || "").split(";")[0].trim().toLowerCase();
-    if (!mimeType.startsWith("image/")) {
-      throw new HostedExactMediaPreviewError("unsupported_preview_media", "Hosted exact review preview returned non-image media.");
-    }
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.byteLength) {
       throw new HostedExactMediaPreviewError("preview_blob_missing", "Hosted exact review media returned no bytes.");

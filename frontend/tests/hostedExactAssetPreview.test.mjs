@@ -152,6 +152,7 @@ test("hosted browser preview client preserves exact identity and never requests 
           "content-type": "image/png",
           "x-signalflow-asset-id": "asset-1",
           "x-signalflow-asset-version": "version-1",
+          "x-signalflow-preview-receipt": "signed-visible-version-receipt",
         },
       });
     },
@@ -161,6 +162,7 @@ test("hosted browser preview client preserves exact identity and never requests 
 
   assert.deepEqual([...result.bytes], [9, 8, 7]);
   assert.equal(result.mimeType, "image/png");
+  assert.equal(result.previewReceipt, "signed-visible-version-receipt");
   assert.match(calls[0].url, /^\/api\/assets\/preview\?/);
   assert.match(calls[0].url, /assetId=asset-1/);
   assert.match(calls[0].url, /assetVersionId=version-1/);
@@ -211,5 +213,6 @@ test("hosted exact preview route is owner-authenticated and explicitly non-cache
   assert.match(route, /private, no-store, max-age=0/);
   assert.match(route, /x-content-type-options/);
   assert.match(route, /cross-origin-resource-policy/);
+  assert.match(route, /x-signalflow-preview-receipt/);
   assert.doesNotMatch(route, /createReadUrl|presign|signedUrl|storageRef|objectKey/);
 });

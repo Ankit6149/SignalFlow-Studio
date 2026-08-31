@@ -104,14 +104,17 @@ test("hosted platform review composition uses durable Postgres planning, identit
   assert.doesNotMatch(dependencies, /createBrowser|localStorage|signalflow_content_reviews_v1/);
 });
 
-test("hosted platform review API is owner-only, exact-revision scoped and blocks media approval until visible-version confirmation exists", () => {
+test("hosted platform review API is owner-only, exact-revision scoped and requires signed exact-media visibility for media approval", () => {
   const route = fs.readFileSync(path.join(ROOT, "app", "api", "platform-review", "route.js"), "utf8");
   assert.match(route, /requireOwnerAccess\(request\)/);
   assert.match(route, /expectedCurrentRevisionId/);
   assert.match(route, /reviewRevision\(platformVariantId, platformVariantRevisionId/);
   assert.match(route, /approveRevision\(platformVariantId, platformVariantRevisionId/);
   assert.match(route, /requireMediaSafeApproval/);
-  assert.match(route, /revision\.mediaBindings\?\.length/);
+  assert.match(route, /expectedVisibleMedia\(bundle\.revision\.mediaBindings \|\| \[\]\)/);
+  assert.match(route, /visible\.length !== expected\.length/);
+  assert.match(route, /createHostedMediaPreviewReceiptService/);
+  assert.match(route, /receipts\.verify\(confirmation\.previewReceipt/);
   assert.match(route, /hosted_media_preview_confirmation_required/);
   assert.match(route, /private, no-store, max-age=0/);
   assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import HostedPlatformDraftsPanel from "./HostedPlatformDraftsPanel";
 import styles from "./HostedCampaignPlanPanel.module.css";
 
 function label(value) {
@@ -94,7 +95,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
       });
       setPlan(next);
       setStatus("ready");
-      setMessage({ type: "success", text: "Exact strategy approved. The canonical ContentPiece is ready for production planning." });
+      setMessage({ type: "success", text: "Exact strategy approved. The canonical ContentPiece is ready for durable platform generation and review." });
     } catch (error) {
       setStatus("error");
       setMessage({ type: "error", text: error?.message || "SignalFlow could not approve this narrative plan.", code: error?.code });
@@ -184,11 +185,14 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
       </div>
 
       {approved && plan.contentPiece ? (
-        <div className={styles.approvedState}>
-          <span>CANONICAL CONTENT PIECE</span>
-          <strong>{plan.contentPiece.canonicalIntent}</strong>
-          <p>The exact approved strategy is now durable. Current compatibility variants are {plan.variants.map((item) => item.destination === "x" ? "X" : label(item.destination)).join(" + ") || "not yet planned"}; broader destination and content-form planning remains a separate capability layer.</p>
-        </div>
+        <>
+          <div className={styles.approvedState}>
+            <span>CANONICAL CONTENT PIECE</span>
+            <strong>{plan.contentPiece.canonicalIntent}</strong>
+            <p>The exact approved strategy is durable. Representative LinkedIn/X variants now continue through server-persisted immutable revisions, exact critics and exact owner judgment; broader destination planning remains capability-driven rather than hard-coded into this UI.</p>
+          </div>
+          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} />
+        </>
       ) : (
         <div className={styles.actions}>
           <button type="button" className={styles.primaryButton} onClick={approve} disabled={status === "approving" || status === "building"}>

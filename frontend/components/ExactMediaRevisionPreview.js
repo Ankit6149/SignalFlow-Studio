@@ -19,6 +19,15 @@ function assertPreviewAdapter(adapter) {
   return adapter;
 }
 
+function visibleMedia(items = []) {
+  return items.map(({ binding, previewReceipt }) => ({
+    role: binding.role,
+    assetId: binding.assetId,
+    assetVersionId: binding.assetVersionId,
+    previewReceipt: previewReceipt || null,
+  }));
+}
+
 export default function ExactMediaRevisionPreview({
   mediaBindings = EMPTY_MEDIA_BINDINGS,
   onPreviewState = null,
@@ -38,23 +47,23 @@ export default function ExactMediaRevisionPreview({
       if (!mediaBindings.length) {
         if (active) {
           setState({ status: "not_required", items: [], message: "" });
-          onPreviewState?.({ required: false, ready: true, status: "not_required" });
+          onPreviewState?.({ required: false, ready: true, status: "not_required", visibleMedia: [] });
         }
         return;
       }
       setState({ status: "loading", items: [], message: "" });
-      onPreviewState?.({ required: true, ready: false, status: "loading" });
+      onPreviewState?.({ required: true, ready: false, status: "loading", visibleMedia: [] });
       try {
         const items = [];
         for (const binding of mediaBindings) {
           const resolved = await adapter.readExact({ assetId: binding.assetId, assetVersionId: binding.assetVersionId });
           const url = URL.createObjectURL(new Blob([resolved.bytes], { type: resolved.mimeType }));
           urls.push(url);
-          items.push({ binding, asset: resolved.asset, url });
+          items.push({ binding, asset: resolved.asset, url, previewReceipt: resolved.previewReceipt || null });
         }
         if (!active) return;
         setState({ status: "ready", items, message: "" });
-        onPreviewState?.({ required: true, ready: true, status: "ready" });
+        onPreviewState?.({ required: true, ready: true, status: "ready", visibleMedia: visibleMedia(items) });
       } catch (error) {
         if (!active) return;
         setState({
@@ -62,7 +71,7 @@ export default function ExactMediaRevisionPreview({
           items: [],
           message: error?.message || "The exact bound media cannot be previewed in this runtime.",
         });
-        onPreviewState?.({ required: true, ready: false, status: "unavailable", code: error?.code || "preview_unavailable" });
+        onPreviewState?.({ required: true, ready: false, status: "unavailable", code: error?.code || "preview_unavailable", visibleMedia: [] });
       }
     }
     void load();
@@ -127,4 +136,4 @@ export default function ExactMediaRevisionPreview({
   );
 }
 
-export { assertPreviewAdapter };
+export { assertPreviewAdapter, visibleMedia };

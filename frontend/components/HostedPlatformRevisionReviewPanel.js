@@ -41,17 +41,18 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
   const review = reviewBundle?.review || null;
   const decision = reviewBundle?.decision || null;
   const approved = Boolean(reviewBundle?.approvalValid);
-  const rejected = decision?.decision === "rejected" && decision?.platformVariantRevisionId === revision?.platformVariantRevisionId;
+  const revisionId = revision?.platformVariantRevisionId || "";
+  const rejected = decision?.decision === "rejected" && decision?.platformVariantRevisionId === revisionId;
 
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(revisionText(revision));
   const [previewGeneration, setPreviewGeneration] = useState(0);
-  const [mediaPreviewState, setMediaPreviewState] = useState({ required: false, ready: true, status: "not_required", visibleMedia: [] });
+  const [mediaPreviewState, setMediaPreviewState] = useState({ revisionId, required: false, ready: true, status: "not_required", visibleMedia: [] });
 
   const previewAdapter = useMemo(() => createBrowserHostedExactMediaPreviewAdapter(), []);
-  const handlePreviewState = useCallback((next) => setMediaPreviewState(next), []);
+  const handlePreviewState = useCallback((next) => setMediaPreviewState({ ...next, revisionId }), [revisionId]);
 
   async function run(key, action, successText) {
     setBusy(key);
@@ -83,8 +84,12 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
 
   if (!variant || !revision) return null;
 
-  const revisionId = revision.platformVariantRevisionId;
-  const mediaApprovalBlocked = Boolean(revision.mediaBindings?.length && (!mediaPreviewState.ready || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length));
+  const previewBelongsToRevision = mediaPreviewState.revisionId === revisionId;
+  const mediaApprovalBlocked = Boolean(revision.mediaBindings?.length && (
+    !previewBelongsToRevision
+    || !mediaPreviewState.ready
+    || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
+  ));
   const blocked = review?.overallVerdict === "block";
   const precheckFindings = review ? [...(review.boundaryPrecheck?.blocked || []), ...(review.boundaryPrecheck?.warnings || [])] : [];
 

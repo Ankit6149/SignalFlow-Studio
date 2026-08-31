@@ -10,7 +10,7 @@ export const PORT_CONTRACTS = Object.freeze({
   styleMemoryRepository: ["list", "get", "upsert", "remove"],
   identityRepository: ["list", "get", "upsert", "remove"],
   mediaIntelligenceRepository: ["list", "get", "upsert", "remove", "listByScope", "listByContentPiece"],
-  durableJobRepository: ["list", "get", "upsert", "remove", "findByIdempotency", "claimNext"],
+  durableJobRepository: ["list", "get", "upsert", "remove", "findByIdempotency", "claimById", "claimNext"],
   captureRepository: ["listRecipes", "getRecipe", "upsertRecipe", "listJobs", "getJob", "upsertJob"],
   assetRepository: ["list", "get", "upsert", "remove"],
   sourceArtifactRepository: ["list", "get", "upsert", "remove"],

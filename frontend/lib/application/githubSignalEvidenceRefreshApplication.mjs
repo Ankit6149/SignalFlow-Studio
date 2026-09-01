@@ -20,13 +20,23 @@ export function createGithubSignalEvidenceRefreshApplication({
   workspaceId,
   contentSignalRepository,
   sourceConnectionRepository,
-  githubRepositoryBootstrapApplication,
+  githubRepositoryBootstrapApplication = null,
+  createGithubRepositoryBootstrapApplication = null,
 } = {}) {
   const ownerWorkspaceId = required(workspaceId, "workspaceId");
   const signals = assertPort("contentSignalRepository", contentSignalRepository);
   const connections = assertPort("sourceConnectionRepository", sourceConnectionRepository);
-  if (!githubRepositoryBootstrapApplication || typeof githubRepositoryBootstrapApplication.bootstrapRepository !== "function") {
-    throw new TypeError("GitHub signal evidence refresh requires bootstrapRepository().");
+  if (!githubRepositoryBootstrapApplication && typeof createGithubRepositoryBootstrapApplication !== "function") {
+    throw new TypeError("GitHub signal evidence refresh requires a bootstrap application or lazy factory.");
+  }
+
+  async function bootstrapApplication() {
+    const application = githubRepositoryBootstrapApplication
+      || await createGithubRepositoryBootstrapApplication(ownerWorkspaceId);
+    if (!application || typeof application.bootstrapRepository !== "function") {
+      throw new TypeError("GitHub signal evidence refresh requires bootstrapRepository().");
+    }
+    return application;
   }
 
   async function refreshForSignal(signalId) {
@@ -66,7 +76,8 @@ export function createGithubSignalEvidenceRefreshApplication({
       );
     }
 
-    const result = await githubRepositoryBootstrapApplication.bootstrapRepository({
+    const bootstrap = await bootstrapApplication();
+    const result = await bootstrap.bootstrapRepository({
       sourceConnectionId: connection.sourceConnectionId,
       repositoryId: matching[0].resourceRef,
       revision: signal.sourceRevision,

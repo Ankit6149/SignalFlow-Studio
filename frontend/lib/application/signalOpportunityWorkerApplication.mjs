@@ -13,6 +13,7 @@ function safeErrorCode(error) {
 export function createSignalOpportunityWorkerApplication({
   opportunityJobRepository,
   createContinuationApplication,
+  createEvidenceRefreshApplication = null,
   clock = createSystemClock(),
 } = {}) {
   const jobs = opportunityJobRepository;
@@ -22,6 +23,9 @@ export function createSignalOpportunityWorkerApplication({
   if (typeof createContinuationApplication !== "function") {
     throw new TypeError("Signal opportunity worker requires createContinuationApplication().");
   }
+  if (createEvidenceRefreshApplication !== null && typeof createEvidenceRefreshApplication !== "function") {
+    throw new TypeError("Signal opportunity worker createEvidenceRefreshApplication must be a function when provided.");
+  }
   const systemClock = assertPort("clock", clock);
 
   async function processNext() {
@@ -29,6 +33,11 @@ export function createSignalOpportunityWorkerApplication({
     if (!job) return Object.freeze({ status: "idle" });
 
     try {
+      if (createEvidenceRefreshApplication) {
+        const evidence = await createEvidenceRefreshApplication(job.workspaceId);
+        requireMethod(evidence, "refreshForSignal", "Signal evidence refresh application");
+        await evidence.refreshForSignal(job.signalId);
+      }
       const continuation = await createContinuationApplication(job.workspaceId);
       requireMethod(continuation, "continueToOpportunity", "Signal opportunity continuation application");
       const result = await continuation.continueToOpportunity(job.signalId);

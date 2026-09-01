@@ -2,32 +2,51 @@ import {
   clearSessionCookie,
   createSessionCookie,
   createSessionToken,
+  getOwnerAccessConfiguration,
   requireOwnerAccess,
+  verifyOwnerAccessKey,
 } from "../_auth";
 
+function json(body, status = 200, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "private, no-store, max-age=0",
+      ...headers,
+    },
+  });
+}
+
 export async function GET(request) {
-  const locked = Boolean(process.env.SIGNALFLOW_ACCESS_KEY);
-  return new Response(
-    JSON.stringify({
-      authenticated: requireOwnerAccess(request) === null,
-      locked,
-    }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
-  );
+  const configuration = getOwnerAccessConfiguration();
+  return json({
+    authenticated: requireOwnerAccess(request) === null,
+    locked: configuration.locked,
+    owner_access_configured: configuration.configured,
+    misconfigured: configuration.publicHosted && !configuration.configured,
+  });
 }
 
 export async function POST(request) {
-  const expected = process.env.SIGNALFLOW_ACCESS_KEY;
+  const configuration = getOwnerAccessConfiguration();
 
-  if (!expected) {
-    return new Response(
-      JSON.stringify({
-        authenticated: true,
-        locked: false,
-        message: "Access lock is disabled for this deployment.",
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    );
+  if (!configuration.configured) {
+    if (configuration.publicHosted) {
+      return json({
+        authenticated: false,
+        locked: true,
+        owner_access_configured: false,
+        code: "owner_access_unconfigured",
+        error: "Owner access is unavailable because this public hosted deployment has no owner access lock configured.",
+      }, 503);
+    }
+    return json({
+      authenticated: true,
+      locked: false,
+      owner_access_configured: false,
+      message: "Access lock is disabled for this local or self-hosted deployment.",
+    });
   }
 
   let body = {};
@@ -37,40 +56,26 @@ export async function POST(request) {
     body = {};
   }
 
-  const accessKeyAccepted = body?.access_key === expected;
-  if (!accessKeyAccepted) {
+  if (!verifyOwnerAccessKey(body?.access_key)) {
     const accessError = requireOwnerAccess(request);
     if (accessError) {
-      return new Response(JSON.stringify({ error: "Invalid or expired owner session." }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return json({ error: "Invalid or expired owner session." }, 401);
     }
   }
 
   const token = createSessionToken();
-  return new Response(
-    JSON.stringify({
-      authenticated: true,
-      locked: true,
-      expires_in_days: 30,
-    }),
-    {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Set-Cookie": createSessionCookie(token),
-      },
-    },
-  );
+  return json({
+    authenticated: true,
+    locked: true,
+    owner_access_configured: true,
+    expires_in_days: 30,
+  }, 200, {
+    "Set-Cookie": createSessionCookie(token),
+  });
 }
 
 export async function DELETE() {
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Set-Cookie": clearSessionCookie(),
-    },
+  return json({ ok: true }, 200, {
+    "Set-Cookie": clearSessionCookie(),
   });
 }

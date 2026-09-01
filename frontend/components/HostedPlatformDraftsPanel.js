@@ -22,12 +22,35 @@ function revisionProvenance(revision) {
   return `${provider} · ${model}`;
 }
 
-export default function HostedPlatformDraftsPanel({ contentPiece }) {
+function screenshotRequirement(strategy) {
+  return (Array.isArray(strategy?.mediaRequirements) ? strategy.mediaRequirements : [])
+    .find((item) => String(item?.type || "").trim().toLowerCase() === "screenshot") || null;
+}
+
+function screenshotAspectRatio(destination) {
+  if (destination === "linkedin") return "4:5";
+  if (destination === "x") return "16:9";
+  return "1:1";
+}
+
+function screenshotMessage(result, destination) {
+  const label = destinationLabel(destination);
+  if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };
+  if (result.status === "quality_needs_review") return { type: "warning", text: `${label} screenshot was captured, but its quality needs review before it can become approval media.` };
+  if (result.status === "quality_blocked") return { type: "error", text: `${label} screenshot was blocked by the quality/privacy gate and was not attached to the draft.` };
+  if (result.status === "derivative_needs_review") return { type: "warning", text: `${label} screenshot derivative needs review before it can be attached.` };
+  if (result.status === "derivative_blocked") return { type: "error", text: `${label} screenshot derivative was blocked and no media revision was created.` };
+  if (result.status === "capture_retrying") return { type: "warning", text: `${label} capture is retrying from durable state; the current text revision remains unchanged.` };
+  return { type: "warning", text: `${label} capture is still pending; the current text revision remains unchanged.` };
+}
+
+export default function HostedPlatformDraftsPanel({ contentPiece, strategy = null }) {
   const [bundle, setBundle] = useState(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
   const client = useMemo(() => createBrowserHostedPlatformReviewClient(), []);
   const contentPieceId = contentPiece?.contentPieceId || "";
+  const requiredScreenshot = screenshotRequirement(strategy);
 
   const reload = useCallback(async () => {
     if (!contentPieceId) {
@@ -70,6 +93,31 @@ export default function HostedPlatformDraftsPanel({ contentPiece }) {
     }
   }
 
+  async function produceScreenshot(entry) {
+    const { variant, currentRevision } = entry;
+    if (!currentRevision) return;
+    const busyKey = `screenshot:${variant.platformVariantId}`;
+    setBusy(busyKey);
+    setMessage(null);
+    try {
+      const result = await client.produceScreenshot(variant.platformVariantId, {
+        expectedCurrentRevisionId: currentRevision.platformVariantRevisionId,
+        aspectRatio: screenshotAspectRatio(variant.destination),
+      });
+      setMessage(screenshotMessage(result, variant.destination));
+      await reload();
+    } catch (error) {
+      if (error?.code === "stale_revision_context") await reload();
+      setMessage({
+        type: "error",
+        code: error?.code || "",
+        text: error?.message || `SignalFlow could not prepare the ${destinationLabel(variant.destination)} screenshot evidence.`,
+      });
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (!contentPieceId) return null;
 
   const rows = bundle?.variants || [];
@@ -83,6 +131,7 @@ export default function HostedPlatformDraftsPanel({ contentPiece }) {
           <span>HOSTED CONTENT PIECE · DURABLE</span>
           <strong>{loading ? "Loading canonical platform state…" : pending ? `${pending} destination draft${pending === 1 ? "" : "s"} still need generation.` : "Current hosted drafts are available for exact review."}</strong>
           <p>Connected-source drafts, revisions, critic results and owner judgments are persisted on the server. Browser refresh does not become a new source of truth.</p>
+          {requiredScreenshot && <p>Strategy media requirement: screenshot · {requiredScreenshot.reason || "Visible product proof is useful for this story."}</p>}
         </div>
         {!loading && pending > 0 && <button type="button" className={styles.generateButton} onClick={generateReady} disabled={Boolean(busy)}>{busy === "generate" ? "Generating…" : `Generate ${pending} draft${pending === 1 ? "" : "s"}`}</button>}
       </div>
@@ -94,6 +143,8 @@ export default function HostedPlatformDraftsPanel({ contentPiece }) {
           <div className={styles.subhead}><span>CONNECTED-SOURCE REVIEW · EXACT REVISIONS</span><p>Every judgment is pinned to the visible immutable revision. Media-bound approvals additionally require a signed proof that every exact private AssetVersion was actually rendered.</p></div>
           {rows.map((entry) => {
             const { variant, currentRevision, history } = entry;
+            const screenshotBusy = busy === `screenshot:${variant.platformVariantId}`;
+            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);
             return (
               <article className={styles.draftRow} key={variant.platformVariantId} data-status={variant.status}>
                 <div className={styles.draftMeta}>
@@ -110,6 +161,16 @@ export default function HostedPlatformDraftsPanel({ contentPiece }) {
                       <ol>{currentRevision.segments.map((segment, index) => <li key={`${currentRevision.platformVariantRevisionId}-${index}`}><b>{index + 1}</b><p>{segment}</p></li>)}</ol>
                     ) : <p>{currentRevision.content}</p>}
                     <small>{revisionProvenance(currentRevision)} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
+                    {needsScreenshot && (
+                      <button
+                        type="button"
+                        className={styles.generateButton}
+                        onClick={() => produceScreenshot(entry)}
+                        disabled={Boolean(busy)}
+                      >
+                        {screenshotBusy ? "Preparing visual proof…" : "Prepare visual proof"}
+                      </button>
+                    )}
                     <HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} />
                   </div>
                 ) : (
@@ -126,3 +187,5 @@ export default function HostedPlatformDraftsPanel({ contentPiece }) {
     </div>
   );
 }
+
+export { screenshotAspectRatio, screenshotRequirement };

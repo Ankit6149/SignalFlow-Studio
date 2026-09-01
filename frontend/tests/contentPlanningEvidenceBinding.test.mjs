@@ -138,7 +138,7 @@ async function fixture() {
   return { signal, projectContext, projectContextRepository, opportunity };
 }
 
-test("NarrativeStrategy inference consumes the exact pinned ProjectContext through bounded synthesis and provenance refs", async () => {
+test("NarrativeStrategy inference consumes the exact pinned ProjectContext through the canonical minimized evidence boundary", async () => {
   const data = await fixture();
   const calls = [];
   const planning = createContentPlanningApplication({
@@ -166,8 +166,9 @@ test("NarrativeStrategy inference consumes the exact pinned ProjectContext throu
   const call = calls[0];
   assert.equal(call.input.projectContext.projectContextSnapshotId, data.projectContext.projectContextSnapshotId);
   assert.equal(call.input.projectContext.fingerprint, data.projectContext.fingerprint);
-  assert.equal(call.input.projectContext.synthesis.projectName, "SignalFlow Studio");
-  assert.deepEqual(call.input.projectContext.synthesis.safeClaims, ["Hosted screenshot production is revision-scoped and fail-closed."]);
+  assert.equal(call.input.projectContext.projectName, "SignalFlow Studio");
+  assert.deepEqual(call.input.projectContext.safeClaims, ["Hosted screenshot production is revision-scoped and fail-closed."]);
+  assert.deepEqual(call.input.projectContext.uncertainties, ["Automatic publication remains outside GP2."]);
   assert.equal("repositoryRef" in call.input.projectContext, false, "private repository identity stays out of model input");
   assert.equal("sourceArtifactIds" in call.input.projectContext, false, "opaque evidence identities stay in task provenance rather than model input");
   assert.ok(call.task.inputRefs.includes(data.projectContext.projectContextSnapshotId));

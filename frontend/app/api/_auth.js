@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { isAccessLocked } from "../../lib/hostedMode.js";
+import { isPublicHostedMode } from "../../lib/hostedMode.js";
 
 const ACCESS_HEADER = "x-signalflow-access-key";
 const AUTH_HEADER = "authorization";
@@ -15,14 +15,45 @@ function sign(value, secret) {
 }
 
 function safeEqual(left, right) {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
+  const leftBuffer = Buffer.from(String(left ?? ""));
+  const rightBuffer = Buffer.from(String(right ?? ""));
 
   if (leftBuffer.length !== rightBuffer.length) {
     return false;
   }
 
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function ownerAccessUnavailableResponse() {
+  return new Response(
+    JSON.stringify({
+      code: "owner_access_unconfigured",
+      error: "Owner access is unavailable because this public hosted deployment has no owner access lock configured.",
+    }),
+    {
+      status: 503,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    },
+  );
+}
+
+export function getOwnerAccessConfiguration() {
+  const publicHosted = isPublicHostedMode();
+  const configured = Boolean(process.env.SIGNALFLOW_ACCESS_KEY);
+  return Object.freeze({
+    publicHosted,
+    configured,
+    locked: publicHosted || configured,
+  });
+}
+
+export function verifyOwnerAccessKey(value) {
+  const expected = process.env.SIGNALFLOW_ACCESS_KEY || "";
+  return Boolean(expected) && safeEqual(value, expected);
 }
 
 export function getRequestCookie(request, name) {
@@ -100,10 +131,9 @@ function verifySessionToken(token) {
 }
 
 export function requireOwnerAccess(request) {
-  const expected = process.env.SIGNALFLOW_ACCESS_KEY;
-
-  if (!expected) {
-    return null;
+  const configuration = getOwnerAccessConfiguration();
+  if (!configuration.configured) {
+    return configuration.publicHosted ? ownerAccessUnavailableResponse() : null;
   }
 
   const provided = request.headers.get(ACCESS_HEADER) || "";
@@ -111,7 +141,7 @@ export function requireOwnerAccess(request) {
   const bearerToken = bearer.startsWith("Bearer ") ? bearer.slice("Bearer ".length) : "";
   const cookieToken = getRequestCookie(request, SESSION_COOKIE_NAME);
 
-  if (provided === expected || verifySessionToken(bearerToken) || verifySessionToken(cookieToken)) {
+  if (verifyOwnerAccessKey(provided) || verifySessionToken(bearerToken) || verifySessionToken(cookieToken)) {
     return null;
   }
 
@@ -121,7 +151,10 @@ export function requireOwnerAccess(request) {
     }),
     {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, no-store, max-age=0",
+      },
     },
   );
 }

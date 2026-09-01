@@ -66,6 +66,24 @@ test("GP2 readiness data is safe to render because secret values never leave the
   }
 });
 
+test("Vercel GP2 readiness remains blocked when the owner lock is missing even without the explicit hosted flag", () => {
+  const env = {
+    ...readyEnv(),
+    SIGNALFLOW_PUBLIC_HOSTED: "",
+    SIGNALFLOW_ACCESS_KEY: "",
+    VERCEL: "1",
+  };
+  const status = gp2ReadinessStatus(env);
+  const ownerLock = status.checks.find((item) => item.id === "owner_lock");
+  const githubApp = status.checks.find((item) => item.id === "github_app");
+
+  assert.equal(status.ready, false);
+  assert.equal(ownerLock?.configured, false);
+  assert.deepEqual(ownerLock?.missing, ["SIGNALFLOW_ACCESS_KEY"]);
+  assert.equal(githubApp?.configured, false);
+  assert.ok(githubApp?.missing.includes("SIGNALFLOW_ACCESS_KEY"));
+});
+
 test("Connections workspace renders readiness before GitHub installation controls", () => {
   const shell = read("components/WorkspaceShell.js");
   assert.match(shell, /import Gp2ReadinessPanel from "\.\/Gp2ReadinessPanel"/);

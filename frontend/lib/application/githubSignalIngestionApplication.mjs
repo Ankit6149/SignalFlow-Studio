@@ -95,7 +95,7 @@ export function createGithubSignalIngestionApplication({
       status: result.created ? "created" : "duplicate",
       signal: result.signal,
       noiseDecision: event.noiseDecision,
-      shouldEvaluateOpportunity: !event.noiseDecision.deprioritize,
+      shouldEvaluateOpportunity: !event.noiseDecision.deprioritize && Boolean(event.sourceRevision),
       eventFamily: event.eventFamily,
       providerResourceRef: event.providerResourceRef,
     });

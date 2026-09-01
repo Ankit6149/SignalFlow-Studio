@@ -159,6 +159,7 @@ export function normalizeContentSignal(input = {}) {
     projectId: opaqueId(parsed.projectId, "projectId"),
     sourceType,
     sourceConnectionId: opaqueId(parsed.sourceConnectionId, "sourceConnectionId"),
+    sourceRevision: optionalText(parsed.sourceRevision, 240),
     sourceArtifactIds: uniqueIds(parsed.sourceArtifactIds, "sourceArtifactIds"),
     assetIds: uniqueIds(parsed.assetIds, "assetIds"),
     externalEventRef: normalizeExternalEventRef(parsed.externalEventRef),
@@ -202,6 +203,7 @@ export function createManualContentSignal({
     workspaceId,
     projectId,
     sourceType: CONTENT_SIGNAL_SOURCE_TYPES.MANUAL,
+    sourceRevision: null,
     sourceArtifactIds,
     assetIds,
     occurredAt,
@@ -231,6 +233,7 @@ export function createConnectedContentSignal({
   projectId = null,
   sourceType,
   sourceConnectionId,
+  sourceRevision = null,
   externalEventRef,
   headline,
   summary = "",
@@ -262,6 +265,7 @@ export function createConnectedContentSignal({
     projectId,
     sourceType: normalizedSourceType,
     sourceConnectionId: normalizedConnectionId,
+    sourceRevision,
     sourceArtifactIds,
     assetIds,
     externalEventRef: normalizedEventRef,
@@ -288,7 +292,7 @@ export function createConnectedContentSignal({
 
 export function updateContentSignalMetadata(signal, patch = {}, now) {
   const current = normalizeContentSignal(signal);
-  const disallowed = ["signalId", "workspaceId", "sourceType", "externalEventRef", "provenance", "createdAt", "observedAt"];
+  const disallowed = ["signalId", "workspaceId", "sourceType", "sourceRevision", "externalEventRef", "provenance", "createdAt", "observedAt"];
   for (const field of disallowed) {
     if (Object.prototype.hasOwnProperty.call(patch, field)) {
       throw new TypeError(`ContentSignal.${field} is immutable metadata.`);

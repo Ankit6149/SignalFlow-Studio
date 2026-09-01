@@ -2,6 +2,7 @@ import { CONTENT_SIGNAL_KINDS, CONTENT_SIGNAL_SOURCE_TYPES } from "../../domain/
 
 const MAX_TITLE = 240;
 const DEPENDENCY_ACTORS = new Set(["dependabot[bot]", "dependabot-preview[bot]", "renovate[bot]"]);
+const GIT_SHA = /^[a-f0-9]{40,64}$/i;
 
 function text(value, maxLength = 4000) {
   const normalized = String(value ?? "").replace(/\r\n?/g, "\n").trim();
@@ -13,6 +14,11 @@ function requiredOpaque(value, field) {
   if (!normalized) throw new TypeError(`GitHub event requires ${field}.`);
   if (/[/\\]|^[a-zA-Z]:/.test(normalized)) throw new TypeError(`GitHub ${field} must be an opaque identifier.`);
   return normalized;
+}
+
+function sourceRevision(value) {
+  const normalized = text(value, 80).toLowerCase();
+  return GIT_SHA.test(normalized) ? normalized : null;
 }
 
 function iso(value, field) {
@@ -67,6 +73,7 @@ function pullRequestEvent({ deliveryId, payload }) {
     installationRef: requiredOpaque(payload?.installation?.id, "installation.id"),
     resourceRef: requiredOpaque(payload?.repository?.id, "repository.id"),
     providerResourceRef: requiredOpaque(pullRequest.id, "pull_request.id"),
+    sourceRevision: sourceRevision(pullRequest.merge_commit_sha),
     occurredAt: iso(pullRequest.merged_at, "pull_request.merged_at"),
     headline: title,
     summary: `Merged pull request #${number}. Change footprint: ${changedFiles} files, ${additions} additions, ${deletions} deletions.`,
@@ -95,6 +102,7 @@ function releaseEvent({ deliveryId, payload }) {
     installationRef: requiredOpaque(payload?.installation?.id, "installation.id"),
     resourceRef: requiredOpaque(payload?.repository?.id, "repository.id"),
     providerResourceRef: requiredOpaque(release?.id, "release.id"),
+    sourceRevision: sourceRevision(release?.target_commitish),
     occurredAt: iso(release?.published_at || release?.created_at, "release.published_at"),
     headline,
     summary: tag ? `Published release ${tag}.` : "Published a repository release.",

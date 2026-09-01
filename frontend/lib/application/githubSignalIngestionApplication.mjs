@@ -78,6 +78,7 @@ export function createGithubSignalIngestionApplication({
       projectId: authorized.resource.projectId,
       sourceType: event.sourceType,
       sourceConnectionId: authorized.connection.sourceConnectionId,
+      sourceRevision: event.sourceRevision || null,
       externalEventRef: event.externalEventRef,
       occurredAt: event.occurredAt,
       headline: event.headline,
@@ -94,7 +95,7 @@ export function createGithubSignalIngestionApplication({
       status: result.created ? "created" : "duplicate",
       signal: result.signal,
       noiseDecision: event.noiseDecision,
-      shouldEvaluateOpportunity: !event.noiseDecision.deprioritize,
+      shouldEvaluateOpportunity: !event.noiseDecision.deprioritize && Boolean(event.sourceRevision),
       eventFamily: event.eventFamily,
       providerResourceRef: event.providerResourceRef,
     });

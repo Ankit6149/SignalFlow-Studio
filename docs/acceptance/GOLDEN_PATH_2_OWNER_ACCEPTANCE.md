@@ -9,7 +9,8 @@
 ```text
 real meaningful GitHub work event
   → verified GitHub App/source scope
-  → one canonical ContentSignal
+  → one canonical ContentSignal with immutable source revision
+  → exact repository evidence refresh at that revision
   → cheap noise gate / durable opportunity dispatch
   → ranked ContentOpportunity in Today
   → owner angle decision
@@ -53,10 +54,12 @@ Evidence:
 
 ### Meaningful event
 
-- [ ] Use a real merged pull request with a clear product/engineering outcome, or a published release.
+- [ ] Use a real merged pull request with an exact GitHub `merge_commit_sha`, or a published release whose `target_commitish` is already an immutable Git SHA.
+- [ ] A release whose target is only a mutable branch/ref remains an auditable signal but is not promoted until exact-ref resolution support exists; do not treat that case as GP2 acceptance evidence.
 - [ ] GitHub delivery signature is accepted by the hosted webhook.
 - [ ] Delivery ID/event family is normalized safely.
 - [ ] Exactly one canonical ContentSignal is persisted.
+- [ ] The canonical signal retains the exact immutable source revision used for evidence freshness.
 - [ ] A duplicate delivery resolves to the same signal / does not create a second editorial chain.
 - [ ] No raw private payload or credential material appears in logs/evidence.
 
@@ -64,6 +67,7 @@ Safe evidence:
 
 - Delivery/event safe reference: `TBD`
 - ContentSignal ID: `TBD`
+- Exact source revision SHA: `TBD`
 - Duplicate result: `TBD`
 
 ### Noise event
@@ -79,12 +83,12 @@ Safe evidence:
 
 ## C. Opportunity and exact evidence
 
-- [ ] Meaningful signal produces/reuses one durable opportunity job.
+- [ ] Meaningful signal produces/reuses one durable opportunity job only when an exact source revision is available.
+- [ ] Before opportunity inference, SignalFlow refreshes/reuses bounded repository evidence at the exact signal revision; failure blocks/retries the job instead of evaluating against unrelated latest context.
 - [ ] Browser close/refresh does not destroy pending or completed continuation state.
 - [ ] Opportunity explains what changed, why now, evidence readiness, narrative fit, and repetition risk.
 - [ ] Opportunity pins the exact `projectContextSnapshotId` used during evaluation.
-- [ ] The pinned ProjectContextSnapshot resolves to immutable SourceArtifact IDs and an exact GitHub repository revision.
-- [ ] Before strategy production, the pinned evidence is still authorized and freshness policy is satisfied; otherwise the path fails/refreshes instead of silently using unrelated latest context.
+- [ ] The pinned ProjectContextSnapshot resolves to immutable SourceArtifact IDs and the exact GitHub repository revision.
 - [ ] Owner can choose an offered angle or `Something else`.
 
 Safe evidence:
@@ -98,6 +102,8 @@ Safe evidence:
 ## D. Evidence-backed planning
 
 - [ ] NarrativeStrategy production is bound to the selected opportunity and its exact evidence context, not only free-form signal text.
+- [ ] Exact snapshot/revision/artifact identities participate in task provenance and strategy identity without exposing repository identity or opaque SourceArtifact IDs in model prompt input.
+- [ ] Strategy receives only the canonical minimized project synthesis, including safe claims, constraints/architecture context, and uncertainties allowed by the active privacy route.
 - [ ] Strategy preserves factual/boundary constraints from the evidence-backed planning input.
 - [ ] Strategy media requirement is meaningful for the chosen story; do not force a screenshot for a genuinely non-visual event.
 - [ ] Approved strategy creates canonical ContentPiece + LinkedIn/X planned variants.
@@ -149,8 +155,10 @@ Safe evidence:
 ## G. Recovery matrix
 
 - [ ] duplicate webhook delivery
+- [ ] unresolved/missing GitHub source revision remains non-promotional
 - [ ] opportunity inference failure + retry
 - [ ] source/project enrichment failure without connection loss
+- [ ] exact evidence refresh/revision mismatch blocks before opportunity inference
 - [ ] capture worker retry
 - [ ] privacy block
 - [ ] quality `needs_review`
@@ -159,7 +167,7 @@ Safe evidence:
 - [ ] stale browser tab / stale current revision
 - [ ] browser refresh/reopen during processing and after review
 
-For every case, record whether state was `retryable`, `blocked`, `failed`, or safely resumed, plus the stable safe error code. Do not paste raw exception payloads if they could contain private source data.
+For every case, record whether state was `retryable`, `blocked`, `failed`, `non_promotional`, or safely resumed, plus the stable safe error code. Do not paste raw exception payloads if they could contain private source data.
 
 ## H. Release gates
 
@@ -175,4 +183,4 @@ For every case, record whether state was `retryable`, `blocked`, `failed`, or sa
 
 ## Closing rule
 
-Close #161, #163, and #167 only to the extent their individual Definitions of Done are actually evidenced above. GP2 is accepted only when the real hosted journey works from a real authorized GitHub event through exact owner judgment with no manual campaign manufacture and no manual screenshot/cropping step for the visual proof case.
+Close #161, #163, and #167 only to the extent their individual Definitions of Done are actually evidenced above. GP2 is accepted only when the real hosted journey works from a real authorized GitHub event with an immutable source revision through exact owner judgment with no manual campaign manufacture and no manual screenshot/cropping step for the visual proof case.

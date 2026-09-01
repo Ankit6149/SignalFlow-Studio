@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
-
-const ENABLED_FLAGS = new Set(["1", "true", "yes", "on"]);
+import {
+  isOwnerAccessConfigured,
+  isPublicHostedMode,
+} from "../hostedMode.js";
 
 function accessKey(env = process.env) {
   return String(env?.SIGNALFLOW_ACCESS_KEY || "").trim();
@@ -14,10 +16,8 @@ function constantTimeEqual(left, right) {
 }
 
 export function ownerAccessConfigurationStatus(env = process.env) {
-  const explicitHosted = ENABLED_FLAGS.has(String(env?.SIGNALFLOW_PUBLIC_HOSTED || "").trim().toLowerCase());
-  const vercelHosted = Boolean(String(env?.VERCEL || "").trim());
-  const publicHosted = explicitHosted || vercelHosted;
-  const configured = Boolean(accessKey(env));
+  const publicHosted = isPublicHostedMode(env);
+  const configured = isOwnerAccessConfigured(env);
   return Object.freeze({
     publicHosted,
     configured,

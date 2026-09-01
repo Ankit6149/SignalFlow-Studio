@@ -11,6 +11,8 @@ import { verifyGithubWebhookSignature } from "../lib/server/githubWebhookSecurit
 
 const WORKSPACE_ID = "workspace-owner";
 const NOW = "2026-08-18T18:10:00.000Z";
+const PR_REVISION = "a".repeat(40);
+const RELEASE_REVISION = "b".repeat(40);
 const clock = { now: () => NOW };
 
 function mergedPullRequestPayload({
@@ -21,6 +23,8 @@ function mergedPullRequestPayload({
   title = "feat: add approval history",
   author = "owner",
   sender = "owner",
+  mergeCommitSha = PR_REVISION,
+  headSha = "c".repeat(40),
 } = {}) {
   return {
     action: "closed",
@@ -38,6 +42,8 @@ function mergedPullRequestPayload({
       title,
       body: "PRIVATE BODY THAT MUST NOT BE COPIED INTO THE SIGNAL",
       merged: true,
+      merge_commit_sha: mergeCommitSha,
+      head: { sha: headSha },
       merged_at: "2026-08-18T17:55:00.000Z",
       changed_files: 8,
       additions: 120,
@@ -50,7 +56,11 @@ function mergedPullRequestPayload({
   };
 }
 
-function publishedReleasePayload({ repositoryId = 3001, installationId = 9001 } = {}) {
+function publishedReleasePayload({
+  repositoryId = 3001,
+  installationId = 9001,
+  targetCommitish = RELEASE_REVISION,
+} = {}) {
   return {
     action: "published",
     installation: { id: installationId },
@@ -59,6 +69,7 @@ function publishedReleasePayload({ repositoryId = 3001, installationId = 9001 } 
       id: 8101,
       name: "Revision judgment",
       tag_name: "v0.3.0",
+      target_commitish: targetCommitish,
       body: "PRIVATE RELEASE BODY THAT MUST NOT BE COPIED",
       published_at: "2026-08-18T18:00:00.000Z",
     },
@@ -126,6 +137,7 @@ test("verified merged PR creates one canonical GitHub ContentSignal and duplicat
   assert.equal(first.signal.signalId, duplicate.signal.signalId);
   assert.equal(first.signal.sourceType, "github");
   assert.equal(first.signal.sourceConnectionId, connection.sourceConnectionId);
+  assert.equal(first.signal.sourceRevision, PR_REVISION);
   assert.equal(first.signal.projectId, "project-signalflow");
   assert.equal(first.signal.externalEventRef.provider, "github");
   assert.equal(first.signal.externalEventRef.eventId, "delivery-pr-42");
@@ -142,6 +154,19 @@ test("verified merged PR creates one canonical GitHub ContentSignal and duplicat
 
   const updatedConnection = await connectionApplication.readConnection(connection.sourceConnectionId);
   assert.equal(updatedConnection.lastEventAt, "2026-08-18T17:55:00.000Z");
+});
+
+test("merged PR never substitutes feature-branch head SHA for missing merge commit evidence", async () => {
+  const { ingestion } = await setupConnection();
+  const result = await ingestion.ingest({
+    eventName: "pull_request",
+    deliveryId: "delivery-pr-no-merge-revision",
+    payload: mergedPullRequestPayload({ mergeCommitSha: null, headSha: "d".repeat(40) }),
+  });
+
+  assert.equal(result.status, "created");
+  assert.equal(result.signal.sourceRevision, null);
+  assert.equal(result.shouldEvaluateOpportunity, false, "unresolved merged state is auditable but cannot become an evidence-backed Opportunity");
 });
 
 test("dependency-only PR is preserved as a signal but skipped by the cheap opportunity gate", async () => {
@@ -163,7 +188,7 @@ test("dependency-only PR is preserved as a signal but skipped by the cheap oppor
   assert.equal((await contentSignalRepository.list()).length, 1, "noise remains auditable without becoming an expensive content opportunity");
 });
 
-test("published release uses the same provider-neutral connection and canonical signal path", async () => {
+test("published release with an exact commit uses the same provider-neutral connection and canonical signal path", async () => {
   const { ingestion } = await setupConnection();
   const result = await ingestion.ingest({
     eventName: "release",
@@ -175,7 +200,21 @@ test("published release uses the same provider-neutral connection and canonical 
   assert.equal(result.eventFamily, "release_published");
   assert.equal(result.signal.signalKind, "release");
   assert.equal(result.signal.headline, "Revision judgment");
+  assert.equal(result.signal.sourceRevision, RELEASE_REVISION);
   assert.equal(result.shouldEvaluateOpportunity, true);
+});
+
+test("release branch names remain auditable signals but are not promoted until an exact revision is available", async () => {
+  const { ingestion } = await setupConnection();
+  const result = await ingestion.ingest({
+    eventName: "release",
+    deliveryId: "delivery-release-unresolved",
+    payload: publishedReleasePayload({ targetCommitish: "master" }),
+  });
+
+  assert.equal(result.status, "created");
+  assert.equal(result.signal.sourceRevision, null);
+  assert.equal(result.shouldEvaluateOpportunity, false);
 });
 
 test("unmapped, disabled, paused and revoked repository scopes fail closed", async () => {

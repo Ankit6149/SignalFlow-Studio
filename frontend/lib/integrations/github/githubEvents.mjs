@@ -73,7 +73,7 @@ function pullRequestEvent({ deliveryId, payload }) {
     installationRef: requiredOpaque(payload?.installation?.id, "installation.id"),
     resourceRef: requiredOpaque(payload?.repository?.id, "repository.id"),
     providerResourceRef: requiredOpaque(pullRequest.id, "pull_request.id"),
-    sourceRevision: sourceRevision(pullRequest.merge_commit_sha || pullRequest?.head?.sha),
+    sourceRevision: sourceRevision(pullRequest.merge_commit_sha),
     occurredAt: iso(pullRequest.merged_at, "pull_request.merged_at"),
     headline: title,
     summary: `Merged pull request #${number}. Change footprint: ${changedFiles} files, ${additions} additions, ${deletions} deletions.`,

@@ -303,6 +303,7 @@ export function opportunityInputFingerprint(signalInput, projectContextInput = n
   const canonical = {
     signalId: signal.signalId,
     projectId: signal.projectId,
+    sourceRevision: signal.sourceRevision || null,
     headline: signal.headline,
     summary: signal.summary,
     signalKind: signal.signalKind,

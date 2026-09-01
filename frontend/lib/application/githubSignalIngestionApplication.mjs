@@ -78,6 +78,7 @@ export function createGithubSignalIngestionApplication({
       projectId: authorized.resource.projectId,
       sourceType: event.sourceType,
       sourceConnectionId: authorized.connection.sourceConnectionId,
+      sourceRevision: event.sourceRevision || null,
       externalEventRef: event.externalEventRef,
       occurredAt: event.occurredAt,
       headline: event.headline,

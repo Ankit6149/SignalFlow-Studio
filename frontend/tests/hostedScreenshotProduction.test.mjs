@@ -16,7 +16,7 @@ import {
   createCaptureRecipe,
   normalizeCaptureJob,
 } from "../lib/domain/captureRecipes.mjs";
-import { JOB_STATUSES, JOB_TYPES, succeedDurableJob } from "../lib/domain/durableJobs.mjs";
+import { JOB_STATUSES, JOB_TYPES, normalizeDurableJob, succeedDurableJob } from "../lib/domain/durableJobs.mjs";
 import { attachPlatformVariantRevision, createPlatformVariantRevision } from "../lib/domain/platformVariantRevisions.mjs";
 import { normalizeAsset } from "../lib/domain/sourceArtifacts.mjs";
 import { createMemoryContentPlanningRepository } from "../lib/infrastructure/contentPlanningAdapters.mjs";
@@ -158,7 +158,7 @@ function capturedAsset() {
   }, { workspaceId: WORKSPACE, projectId: PROJECT, now: T2 });
 }
 
-function orchestrationFixture({ qualityStatus = "ready", derivativeStatus = "rendered" } = {}) {
+function orchestrationFixture({ qualityStatus = "ready", derivativeStatus = "rendered", captureOutcome = "succeeded" } = {}) {
   const planning = planningFixture();
   const activeRecipe = recipe();
   const jobs = createMemoryDurableJobPort();
@@ -170,6 +170,23 @@ function orchestrationFixture({ qualityStatus = "ready", derivativeStatus = "ren
   const exactCaptureExecutionApplication = {
     async runJob(jobId) {
       calls.exact.push(jobId);
+      const current = await jobs.get(jobId);
+      if (captureOutcome === "retrying") {
+        const retrying = await jobs.upsert(normalizeDurableJob({
+          ...current,
+          status: JOB_STATUSES.RETRYING,
+          attemptCount: 1,
+          nextAttemptAt: "2026-08-31T06:05:00.000Z",
+          lastError: { code: "worker_unavailable", retryable: true, externalOutcomeUnknown: false, message: "worker unavailable" },
+          updatedAt: T2,
+        }));
+        return { executed: false, durableJob: retrying, captureJob: await captures.getJob(retrying.resourceId), assets: [] };
+      }
+      if (captureOutcome === "privacy_failed") {
+        const error = new Error("Capture privacy policy blocked this checkpoint.");
+        error.code = "privacy_rule_triggered";
+        throw error;
+      }
       const claimed = await jobs.claimById(jobId, {
         leaseOwner: "test-hosted-request",
         leaseSeconds: 90,
@@ -243,7 +260,7 @@ function orchestrationFixture({ qualityStatus = "ready", derivativeStatus = "ren
     variants: [{
       variantId: "derivative-hosted-16x9",
       aspectRatio: "16:9",
-      status: qualityStatus === "ready" ? "ready_for_render" : "blocked",
+      status: qualityStatus === "ready" ? "ready_for_render" : qualityStatus === "needs_review" ? "needs_review" : "blocked",
     }],
   };
   const renderedDerivative = {
@@ -412,6 +429,20 @@ test("hosted screenshot production fails stale review context before creating ca
   assert.equal(fixture.calls.exact.length, 0);
 });
 
+test("quality needs-review stops before rendering or binding", async () => {
+  const fixture = orchestrationFixture({ qualityStatus: "needs_review" });
+  const result = await fixture.application.produceScreenshot({
+    platformVariantId: fixture.variant.platformVariantId,
+    expectedCurrentRevisionId: fixture.revision.platformVariantRevisionId,
+    aspectRatio: "16:9",
+    checkpoint: "review",
+  });
+  assert.equal(result.status, "quality_needs_review");
+  assert.equal(fixture.calls.inspect, 1);
+  assert.equal(fixture.calls.render, 0);
+  assert.equal(fixture.calls.bind, 0);
+});
+
 test("blocked screenshot quality stops before derivative rendering and exact media binding", async () => {
   const fixture = orchestrationFixture({ qualityStatus: "blocked" });
   const result = await fixture.application.produceScreenshot({
@@ -423,6 +454,37 @@ test("blocked screenshot quality stops before derivative rendering and exact med
   assert.equal(result.status, "quality_blocked");
   assert.equal(fixture.calls.exact.length, 1);
   assert.equal(fixture.calls.inspect, 1);
+  assert.equal(fixture.calls.render, 0);
+  assert.equal(fixture.calls.bind, 0);
+});
+
+test("durable capture retry remains retrying and cannot leak into derivative or review binding", async () => {
+  const fixture = orchestrationFixture({ captureOutcome: "retrying" });
+  const result = await fixture.application.produceScreenshot({
+    platformVariantId: fixture.variant.platformVariantId,
+    expectedCurrentRevisionId: fixture.revision.platformVariantRevisionId,
+    aspectRatio: "16:9",
+    checkpoint: "review",
+  });
+  assert.equal(result.status, "capture_retrying");
+  assert.equal(result.durableJob.status, JOB_STATUSES.RETRYING);
+  assert.equal(fixture.calls.inspect, 0);
+  assert.equal(fixture.calls.render, 0);
+  assert.equal(fixture.calls.bind, 0);
+});
+
+test("privacy capture failure propagates closed and cannot become review media", async () => {
+  const fixture = orchestrationFixture({ captureOutcome: "privacy_failed" });
+  await assert.rejects(
+    () => fixture.application.produceScreenshot({
+      platformVariantId: fixture.variant.platformVariantId,
+      expectedCurrentRevisionId: fixture.revision.platformVariantRevisionId,
+      aspectRatio: "16:9",
+      checkpoint: "review",
+    }),
+    (error) => error.code === "privacy_rule_triggered",
+  );
+  assert.equal(fixture.calls.inspect, 0);
   assert.equal(fixture.calls.render, 0);
   assert.equal(fixture.calls.bind, 0);
 });

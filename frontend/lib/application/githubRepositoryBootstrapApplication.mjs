@@ -16,6 +16,13 @@ function requiredOpaque(value, field) {
   return normalized;
 }
 
+function optionalRevision(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (!/^[a-f0-9]{40,64}$/.test(normalized)) throw new TypeError("revision must be an exact Git object SHA.");
+  return normalized;
+}
+
 function requiredMethod(target, method, label) {
   if (!target || typeof target[method] !== "function") throw new TypeError(`${label} requires ${method}().`);
   return target;
@@ -153,12 +160,18 @@ export function createGithubRepositoryBootstrapApplication({
     }
   }
 
-  async function bootstrapRepository({ sourceConnectionId, repositoryId } = {}) {
+  async function bootstrapRepository({ sourceConnectionId, repositoryId, revision = null } = {}) {
+    const exactRevision = optionalRevision(revision);
     const { connection, resource, repositoryId: repoId } = await requireActiveRepository(sourceConnectionId, repositoryId);
-    const snapshot = await github.getRepositorySnapshot(connection.installationRef, repoId);
+    const snapshot = await github.getRepositorySnapshot(connection.installationRef, repoId, exactRevision);
     if (String(snapshot.repository?.id || "") !== repoId) {
       const error = new Error("GitHub repository identity does not match the selected SourceConnection resource.");
       error.code = "github_repository_identity_mismatch";
+      throw error;
+    }
+    if (exactRevision && snapshot.revision !== exactRevision) {
+      const error = new Error("Repository evidence did not resolve the exact work-event revision.");
+      error.code = "github_repository_revision_mismatch";
       throw error;
     }
     if (resource.displayName && snapshot.repository.fullName !== resource.displayName) {

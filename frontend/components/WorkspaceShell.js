@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import BrandMark from "./BrandMark";
 import GithubSourceConnectionPanel from "./GithubSourceConnectionPanel";
+import Gp2ReadinessPanel from "./Gp2ReadinessPanel";
 import styles from "./WorkspaceShell.module.css";
 
 const FLOW = [
@@ -106,7 +107,7 @@ export default function WorkspaceShell({ activeItem, children, onNavigate, statu
           </div>
         </div>
         <main id="workspace-content" tabIndex={-1} className={styles.workspaceCanvas}>
-          {activeItem === "connections" && <GithubSourceConnectionPanel />}
+          {activeItem === "connections" && <><Gp2ReadinessPanel /><GithubSourceConnectionPanel /></>}
           {children}
         </main>
       </div>

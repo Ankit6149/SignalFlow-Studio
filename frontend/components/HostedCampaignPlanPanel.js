@@ -191,7 +191,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
             <strong>{plan.contentPiece.canonicalIntent}</strong>
             <p>The exact approved strategy is durable. Representative LinkedIn/X variants now continue through server-persisted immutable revisions, exact critics and exact owner judgment; broader destination planning remains capability-driven rather than hard-coded into this UI.</p>
           </div>
-          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} />
+          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} strategy={strategy} />
         </>
       ) : (
         <div className={styles.actions}>

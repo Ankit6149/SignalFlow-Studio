@@ -115,18 +115,28 @@ test("hosted review API verifies every visible media binding and guards stale ed
   assert.match(route, /action === "edit_revision"/);
   assert.match(route, /editCurrentVariant/);
   assert.match(route, /action === "regenerate_variant"/);
+  assert.match(route, /action === "produce_screenshot"/);
+  assert.match(route, /createProductionHostedScreenshotProductionApplication/);
+  assert.match(route, /safeScreenshotResult/);
+  assert.match(route, /safeAssetIdentity/);
   assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);
 });
 
-test("connected-source Plan uses durable hosted review clients and protected exact-media preview only", () => {
+test("connected-source Plan uses durable hosted review clients, automatic screenshot production and protected exact-media preview only", () => {
   const plan = source("components", "HostedCampaignPlanPanel.js");
   const drafts = source("components", "HostedPlatformDraftsPanel.js");
   const revision = source("components", "HostedPlatformRevisionReviewPanel.js");
   const client = source("lib", "infrastructure", "browserHostedPlatformReviewClient.mjs");
 
   assert.match(plan, /HostedPlatformDraftsPanel/);
+  assert.match(plan, /strategy=\{strategy\}/);
   assert.match(drafts, /createBrowserHostedPlatformReviewClient/);
   assert.match(drafts, /client\.getBundle\(contentPieceId\)/);
+  assert.match(drafts, /screenshotRequirement\(strategy\)/);
+  assert.match(drafts, /client\.produceScreenshot\(variant\.platformVariantId/);
+  assert.match(drafts, /expectedCurrentRevisionId: currentRevision\.platformVariantRevisionId/);
+  assert.match(drafts, /!currentRevision\.mediaBindings\?\.length/);
+  assert.match(drafts, /Prepare visual proof/);
   assert.match(drafts, /HostedPlatformRevisionReviewPanel/);
   assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);
 
@@ -147,10 +157,14 @@ test("connected-source Plan uses durable hosted review clients and protected exa
   assert.match(client, /visibleMedia: normalizeVisibleMedia\(visibleMedia\)/);
   assert.match(client, /action: "edit_revision"/);
   assert.match(client, /action: "regenerate_variant"/);
+  assert.match(client, /action: "produce_screenshot"/);
 });
 
-test("hosted preview receipt secret is documented as server-only configuration", () => {
+test("hosted preview and screenshot worker configuration remain server-only", () => {
   const env = source(".env.example");
   assert.match(env, /SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET=/);
+  assert.match(env, /SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT=/);
+  assert.match(env, /SIGNALFLOW_CAPTURE_ENVIRONMENT=preview/);
   assert.doesNotMatch(env, /NEXT_PUBLIC_SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET/);
+  assert.doesNotMatch(env, /NEXT_PUBLIC_SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT/);
 });

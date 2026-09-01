@@ -1,6 +1,7 @@
 import { requireOwnerAccess } from "../_auth";
 import { createHostedMediaPreviewReceiptService } from "../../../lib/server/hostedMediaPreviewReceipt.mjs";
 import { createProductionHostedPlatformReviewApplications } from "../../../lib/server/hostedPlatformReviewDependencies.mjs";
+import { createProductionHostedScreenshotProductionApplication } from "../../../lib/server/hostedScreenshotProductionDependencies.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ const ACTIONS = new Set([
   "generate_variant",
   "regenerate_variant",
   "edit_revision",
+  "produce_screenshot",
   "review_revision",
   "approve_revision",
   "reject_revision",
@@ -201,6 +203,38 @@ async function requireMediaSafeApproval(apps, platformVariantId, platformVariant
   return bundle;
 }
 
+function safeAssetIdentity(asset) {
+  if (!asset) return null;
+  return {
+    assetId: asset.assetId,
+    assetVersionId: asset.assetVersionId,
+    assetType: asset.assetType,
+    mimeType: asset.mimeType,
+    dimensions: asset.dimensions || null,
+    privacyClass: asset.privacy?.classification || null,
+  };
+}
+
+function safeScreenshotResult(result) {
+  return {
+    status: result.status,
+    platformVariantId: result.platformVariantId,
+    platformVariantRevisionId: result.platformVariantRevisionId || null,
+    sourceRevisionId: result.sourceRevisionId || null,
+    boundRevision: result.boundRevision || null,
+    captureRecipeId: result.captureRecipeId || null,
+    captureRecipeVersion: result.captureRecipeVersion || null,
+    checkpoint: result.checkpoint || null,
+    captureJobId: result.captureJob?.captureJobId || null,
+    durableJobId: result.durableJob?.jobId || null,
+    durableJobStatus: result.durableJob?.status || null,
+    sourceAsset: safeAssetIdentity(result.sourceAsset),
+    qualityReview: result.qualityReview || null,
+    derivativePlan: result.derivativePlan || null,
+    derivative: result.derivative || null,
+  };
+}
+
 export async function GET(request) {
   const accessError = requireOwnerAccess(request);
   if (accessError) return accessError;
@@ -261,6 +295,24 @@ export async function POST(request) {
         format: body.format || null,
       });
       return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
+    }
+
+    if (action === "produce_screenshot") {
+      const expectedCurrentRevisionId = opaque(body.expectedCurrentRevisionId, "expectedCurrentRevisionId");
+      const screenshot = createProductionHostedScreenshotProductionApplication({
+        database: apps.database,
+        contentPlanningRepository: apps.contentPlanningRepository,
+      });
+      const result = await screenshot.productionApplication.produceScreenshot({
+        platformVariantId,
+        expectedCurrentRevisionId,
+        aspectRatio: String(body.aspectRatio || "").trim(),
+        role: body.role ? opaque(body.role, "role", 80) : "primary_visual",
+        captureRecipeId: body.captureRecipeId ? opaque(body.captureRecipeId, "captureRecipeId") : null,
+        captureRecipeVersion: body.captureRecipeVersion ?? null,
+        checkpoint: body.checkpoint ? opaque(body.checkpoint, "checkpoint", 160) : null,
+      });
+      return json({ ok: true, workspaceId: apps.workspaceId, action, result: safeScreenshotResult(result) });
     }
 
     const platformVariantRevisionId = opaque(body.platformVariantRevisionId, "platformVariantRevisionId");

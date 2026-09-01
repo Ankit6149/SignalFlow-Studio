@@ -80,7 +80,7 @@ function createConfiguredBlobStorage({ env, fetchImpl, clock }) {
   });
 }
 
-export function createProductionHostedExactAssetPreviewApplication({
+export function createProductionHostedPrivateAssetStorage({
   env = process.env,
   fetchImpl = globalThis.fetch,
   clock = { now: () => new Date().toISOString() },
@@ -97,12 +97,23 @@ export function createProductionHostedExactAssetPreviewApplication({
     assetRepository: assets,
     clock,
   });
+  return Object.freeze({
+    workspaceId,
+    database: db,
+    assetRepository: assets,
+    blobStorage: blobs,
+    privateStorage,
+  });
+}
+
+export function createProductionHostedExactAssetPreviewApplication(options = {}) {
+  const storage = createProductionHostedPrivateAssetStorage(options);
 
   async function readExactImage({ assetId, assetVersionId } = {}) {
     const requestedAssetId = requiredOpaque(assetId, "assetId");
     const requestedVersionId = requiredOpaque(assetVersionId, "assetVersionId");
-    const { asset, bytes: storedBytes } = await privateStorage.readAsset({
-      workspaceId,
+    const { asset, bytes: storedBytes } = await storage.privateStorage.readAsset({
+      workspaceId: storage.workspaceId,
       assetId: requestedAssetId,
     });
 
@@ -129,12 +140,12 @@ export function createProductionHostedExactAssetPreviewApplication({
     }
 
     return Object.freeze({
-      workspaceId,
+      workspaceId: storage.workspaceId,
       asset,
       bytes,
       mimeType: asset.mimeType || "image/png",
     });
   }
 
-  return Object.freeze({ workspaceId, readExactImage });
+  return Object.freeze({ workspaceId: storage.workspaceId, readExactImage });
 }

@@ -72,6 +72,26 @@ function normalizeVisibleMedia(input = []) {
   }));
 }
 
+function normalizeScreenshotResult(input = {}) {
+  return Object.freeze({
+    status: String(input.status || "").trim(),
+    platformVariantId: input.platformVariantId ? String(input.platformVariantId) : null,
+    platformVariantRevisionId: input.platformVariantRevisionId ? String(input.platformVariantRevisionId) : null,
+    sourceRevisionId: input.sourceRevisionId ? String(input.sourceRevisionId) : null,
+    boundRevision: input.boundRevision ? normalizePlatformVariantRevision(input.boundRevision) : null,
+    captureRecipeId: input.captureRecipeId ? String(input.captureRecipeId) : null,
+    captureRecipeVersion: Number.isInteger(input.captureRecipeVersion) ? input.captureRecipeVersion : null,
+    checkpoint: input.checkpoint ? String(input.checkpoint) : null,
+    captureJobId: input.captureJobId ? String(input.captureJobId) : null,
+    durableJobId: input.durableJobId ? String(input.durableJobId) : null,
+    durableJobStatus: input.durableJobStatus ? String(input.durableJobStatus) : null,
+    sourceAsset: input.sourceAsset ? Object.freeze({ ...input.sourceAsset }) : null,
+    qualityReview: input.qualityReview ? Object.freeze({ ...input.qualityReview }) : null,
+    derivativePlan: input.derivativePlan ? Object.freeze({ ...input.derivativePlan }) : null,
+    derivative: input.derivative ? Object.freeze({ ...input.derivative }) : null,
+  });
+}
+
 export function createBrowserHostedPlatformReviewClient({ fetchImpl = globalThis.fetch } = {}) {
   const fetcher = requireFetch(fetchImpl);
 
@@ -127,6 +147,27 @@ export function createBrowserHostedPlatformReviewClient({ fetchImpl = globalThis
     return normalizePlatformVariantRevision(data.revision);
   }
 
+  async function produceScreenshot(platformVariantId, {
+    expectedCurrentRevisionId,
+    aspectRatio,
+    role = "primary_visual",
+    captureRecipeId = null,
+    captureRecipeVersion = null,
+    checkpoint = null,
+  } = {}) {
+    const data = await request("POST", {
+      action: "produce_screenshot",
+      platformVariantId: required(platformVariantId, "platformVariantId"),
+      expectedCurrentRevisionId: required(expectedCurrentRevisionId, "expectedCurrentRevisionId"),
+      aspectRatio: required(aspectRatio, "aspectRatio"),
+      role: required(role, "role"),
+      captureRecipeId: captureRecipeId ? required(captureRecipeId, "captureRecipeId") : null,
+      captureRecipeVersion: Number.isInteger(captureRecipeVersion) ? captureRecipeVersion : null,
+      checkpoint: checkpoint ? required(checkpoint, "checkpoint") : null,
+    });
+    return normalizeScreenshotResult(data.result || {});
+  }
+
   async function reviewRevision(platformVariantId, platformVariantRevisionId, { expectedCurrentRevisionId, refresh = false } = {}) {
     const data = await request("POST", {
       action: "review_revision",
@@ -177,6 +218,7 @@ export function createBrowserHostedPlatformReviewClient({ fetchImpl = globalThis
     generateVariant,
     regenerateVariant,
     editCurrentVariant,
+    produceScreenshot,
     reviewRevision,
     approveRevision,
     rejectRevision,

@@ -25,6 +25,11 @@ function gitSha(value, field) {
   return normalized.toLowerCase();
 }
 
+function optionalGitSha(value, field) {
+  const normalized = String(value || "").trim();
+  return normalized ? gitSha(normalized, field) : null;
+}
+
 function safePath(value) {
   const normalized = required(value, "repository path", 1600).replace(/^\/+/, "");
   if (!normalized || normalized.includes("\\") || /(^|\/)\.\.(\/|$)/.test(normalized) || /^[a-zA-Z]:/.test(normalized)) {
@@ -120,7 +125,8 @@ export function createGithubRepositoryApiClient({
     }));
   }
 
-  async function getRepositorySnapshot(installationId, repositoryId) {
+  async function getRepositorySnapshot(installationId, repositoryId, revisionInput = null) {
+    const requestedRevision = optionalGitSha(revisionInput, "requested repository revision");
     const token = await installationToken(installationId);
     const repository = await repositoryWithToken(repositoryId, token);
     if (repository.archived || repository.disabled) {
@@ -128,17 +134,23 @@ export function createGithubRepositoryApiClient({
       error.code = "github_repository_not_observable";
       throw error;
     }
-    if (!repository.defaultBranch) {
+    if (!requestedRevision && !repository.defaultBranch) {
       const error = new Error("GitHub repository does not expose a default branch.");
       error.code = "github_repository_default_branch_missing";
       throw error;
     }
     const parts = repoParts(repository.fullName);
+    const commitRef = requestedRevision || repository.defaultBranch;
     const commit = await requestJson(
-      `/repos/${parts.owner}/${parts.repository}/commits/${encodeURIComponent(repository.defaultBranch)}`,
+      `/repos/${parts.owner}/${parts.repository}/commits/${encodeURIComponent(commitRef)}`,
       { authorization: `Bearer ${token}` },
     );
     const revision = gitSha(commit?.sha, "repository revision");
+    if (requestedRevision && revision !== requestedRevision) {
+      const error = new Error("GitHub repository did not resolve the exact requested evidence revision.");
+      error.code = "github_repository_revision_mismatch";
+      throw error;
+    }
     const treeSha = gitSha(commit?.commit?.tree?.sha, "repository tree sha");
     const payload = await requestJson(
       `/repos/${parts.owner}/${parts.repository}/git/trees/${treeSha}?recursive=1`,

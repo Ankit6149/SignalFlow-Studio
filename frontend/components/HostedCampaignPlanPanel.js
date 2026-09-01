@@ -25,7 +25,7 @@ function strategyMatchesOpportunity(strategy, opportunity) {
   return strategy.selectedAngle?.angleId === angle.angleId
     && String(strategy.selectedAngle?.title || "") === String(angle.title || "")
     && String(strategy.selectedAngle?.summary || "") === String(angle.summary || "")
-    && String(strategy.selectedAngle?.approach || "") === String(angle.approach || angle.summary || "");
+    && String(strategy.selectedAngle?.approach || "") === String(angle.approach || "");
 }
 
 export default function HostedCampaignPlanPanel({ application, entry }) {

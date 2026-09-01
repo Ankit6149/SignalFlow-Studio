@@ -127,6 +127,11 @@ export default function Gp2ReadinessPanel() {
           <p>Unlock the private workspace in Settings, then return here and recheck readiness.</p>
           <a href="/?workspace=settings">Open Settings</a>
         </div>
+      ) : state.error?.code === "owner_access_unconfigured" ? (
+        <div className={styles.statusBox} data-tone="attention">
+          <strong>Owner lock configuration required</strong>
+          <p>This public hosted deployment must configure its private owner access lock before protected GP2 readiness can be inspected.</p>
+        </div>
       ) : state.error ? (
         <div className={styles.statusBox} data-tone="attention">
           <strong>Readiness check unavailable</strong>

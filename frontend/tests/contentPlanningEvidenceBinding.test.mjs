@@ -138,7 +138,7 @@ async function fixture() {
   return { signal, projectContext, projectContextRepository, opportunity };
 }
 
-test("NarrativeStrategy inference consumes the exact ProjectContextSnapshot pinned by the Opportunity", async () => {
+test("NarrativeStrategy inference consumes the exact pinned ProjectContext through bounded synthesis and provenance refs", async () => {
   const data = await fixture();
   const calls = [];
   const planning = createContentPlanningApplication({
@@ -166,14 +166,17 @@ test("NarrativeStrategy inference consumes the exact ProjectContextSnapshot pinn
   const call = calls[0];
   assert.equal(call.input.projectContext.projectContextSnapshotId, data.projectContext.projectContextSnapshotId);
   assert.equal(call.input.projectContext.fingerprint, data.projectContext.fingerprint);
-  assert.equal(call.input.projectContext.repositoryRef.revision, "abc123exactrevision");
-  assert.deepEqual(call.input.projectContext.sourceArtifactIds, ["artifact-architecture", "artifact-readme"]);
+  assert.equal(call.input.projectContext.synthesis.projectName, "SignalFlow Studio");
+  assert.deepEqual(call.input.projectContext.synthesis.safeClaims, ["Hosted screenshot production is revision-scoped and fail-closed."]);
+  assert.equal("repositoryRef" in call.input.projectContext, false, "private repository identity stays out of model input");
+  assert.equal("sourceArtifactIds" in call.input.projectContext, false, "opaque evidence identities stay in task provenance rather than model input");
   assert.ok(call.task.inputRefs.includes(data.projectContext.projectContextSnapshotId));
   assert.ok(call.task.inputRefs.includes("artifact-readme"));
   assert.ok(call.task.requirements.includes("exact_evidence_snapshot"));
   assert.equal(call.task.dataClassification, "device_private", "more restrictive pinned evidence privacy controls strategy inference");
   assert.ok(strategy.inputFingerprint.includes(data.projectContext.projectContextSnapshotId));
   assert.ok(strategy.inputFingerprint.includes(data.projectContext.fingerprint));
+  assert.ok(strategy.inputFingerprint.includes("abc123exactrevision"), "exact repository revision remains part of strategy identity without entering model input");
 });
 
 test("planning fails closed when a connected-source Opportunity's pinned evidence snapshot is unavailable", async () => {

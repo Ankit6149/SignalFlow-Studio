@@ -25,7 +25,7 @@ function strategyMatchesOpportunity(strategy, opportunity) {
   return strategy.selectedAngle?.angleId === angle.angleId
     && String(strategy.selectedAngle?.title || "") === String(angle.title || "")
     && String(strategy.selectedAngle?.summary || "") === String(angle.summary || "")
-    && String(strategy.selectedAngle?.approach || "") === String(angle.approach || "");
+    && String(strategy.selectedAngle?.approach || "") === String(angle.approach || angle.summary || "");
 }
 
 export default function HostedCampaignPlanPanel({ application, entry }) {
@@ -191,7 +191,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
             <strong>{plan.contentPiece.canonicalIntent}</strong>
             <p>The exact approved strategy is durable. Representative LinkedIn/X variants now continue through server-persisted immutable revisions, exact critics and exact owner judgment; broader destination planning remains capability-driven rather than hard-coded into this UI.</p>
           </div>
-          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} />
+          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} strategy={strategy} />
         </>
       ) : (
         <div className={styles.actions}>

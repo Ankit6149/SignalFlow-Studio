@@ -21,6 +21,7 @@ import {
 import {
   createInferenceTask,
   INFERENCE_TASK_TYPES,
+  minimizeProjectContextForOpportunity,
   mostRestrictivePrivacyClassification,
 } from "../inference/inferenceTasks.mjs";
 
@@ -117,27 +118,6 @@ function minimizeOpportunity(opportunity, angle) {
     candidateDestinations: opportunity.candidateDestinations,
     recommendedMediaTypes: opportunity.recommendedMediaTypes,
     freshnessState: opportunity.freshnessState,
-  };
-}
-
-function minimizeProjectContext(projectContext) {
-  if (!projectContext) return null;
-  const synthesis = projectContext.synthesis || {};
-  return {
-    projectContextSnapshotId: projectContext.projectContextSnapshotId,
-    projectId: projectContext.projectId,
-    version: projectContext.version,
-    fingerprint: projectContext.fingerprint,
-    privacyClass: projectContext.privacyClass,
-    synthesis: {
-      projectName: synthesis.projectName || null,
-      purpose: synthesis.purpose || null,
-      problem: synthesis.problem || null,
-      capabilities: Array.isArray(synthesis.capabilities) ? synthesis.capabilities.slice(0, 12) : [],
-      maturityStage: synthesis.maturityStage || null,
-      safeClaims: Array.isArray(synthesis.safeClaims) ? synthesis.safeClaims.slice(0, 12) : [],
-      boundaries: Array.isArray(synthesis.boundaries) ? synthesis.boundaries.slice(0, 12) : [],
-    },
   };
 }
 
@@ -302,7 +282,7 @@ export function createContentPlanningApplication({
       task,
       input: {
         opportunity: minimizeOpportunity(opportunity, angle),
-        projectContext: minimizeProjectContext(projectContext),
+        projectContext: projectContext ? minimizeProjectContextForOpportunity(projectContext) : null,
         identityContext: snapshot,
         dataClassification,
       },

@@ -21,6 +21,8 @@ test("public hosted deployments fail closed when the owner access key is missing
     assert.equal(status.locked, true);
   }
 
+  const vercel = ownerAccessConfigurationStatus({ VERCEL: "1" });
+  assert.deepEqual(vercel, { publicHosted: true, configured: false, locked: true });
   assert.equal(verifyConfiguredOwnerAccessKey("anything", { SIGNALFLOW_PUBLIC_HOSTED: "true" }), false);
 });
 
@@ -64,4 +66,12 @@ test("owner session route reports hosted lock misconfiguration instead of authen
   assert.match(session, /verifyOwnerAccessKey\(body\?\.access_key\)/);
   assert.match(session, /local or self-hosted deployment/);
   assert.doesNotMatch(session, /body\?\.access_key\s*===/);
+});
+
+test("GP2 and GitHub readiness reuse the same owner access policy", () => {
+  const gp2 = read("lib/server/gp2Readiness.mjs");
+  const github = read("lib/server/githubConnectionDependencies.mjs");
+  assert.match(gp2, /ownerAccessConfigurationStatus\(env\)/);
+  assert.match(github, /ownerAccessConfigurationStatus\(env\)/);
+  assert.doesNotMatch(github, /enabledFlag\(env\.SIGNALFLOW_PUBLIC_HOSTED\)/);
 });

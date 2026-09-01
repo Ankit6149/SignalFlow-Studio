@@ -135,7 +135,7 @@ function assertSignalSchema(input) {
   }
   if (input.signalSchemaVersion > CONTENT_SIGNAL_SCHEMA_VERSION) {
     throw new TypeError(
-      `ContentSignal schema ${input.signalSchemaVersion} is newer than supported schema ${CONTENT_SIGNAL_SCHEMA_VERSION}. Upgrade SignalFlow before importing it.`,
+      `ContentSignal schema ${input.signalSchemaVersion} is newer than supported schema ${CONTENT_SIGNAL_SCHEMA_VERSION}.`,
     );
   }
 }

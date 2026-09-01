@@ -5,7 +5,7 @@ import {
 } from "./contracts.mjs";
 import { PRIVACY_CLASSES } from "./sourceArtifacts.mjs";
 
-export const CONTENT_SIGNAL_SCHEMA_VERSION = 2;
+export const CONTENT_SIGNAL_SCHEMA_VERSION = 1;
 
 export const CONTENT_SIGNAL_STATUSES = Object.freeze({
   NEW: "new",
@@ -135,7 +135,7 @@ function assertSignalSchema(input) {
   }
   if (input.signalSchemaVersion > CONTENT_SIGNAL_SCHEMA_VERSION) {
     throw new TypeError(
-      `ContentSignal schema ${input.signalSchemaVersion} is newer than supported schema ${CONTENT_SIGNAL_SCHEMA_VERSION}.`,
+      `ContentSignal schema ${input.signalSchemaVersion} is newer than supported schema ${CONTENT_SIGNAL_SCHEMA_VERSION}. Upgrade SignalFlow before importing it.`,
     );
   }
 }

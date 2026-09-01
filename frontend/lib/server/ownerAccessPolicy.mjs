@@ -14,7 +14,9 @@ function constantTimeEqual(left, right) {
 }
 
 export function ownerAccessConfigurationStatus(env = process.env) {
-  const publicHosted = ENABLED_FLAGS.has(String(env?.SIGNALFLOW_PUBLIC_HOSTED || "").trim().toLowerCase());
+  const explicitHosted = ENABLED_FLAGS.has(String(env?.SIGNALFLOW_PUBLIC_HOSTED || "").trim().toLowerCase());
+  const vercelHosted = Boolean(String(env?.VERCEL || "").trim());
+  const publicHosted = explicitHosted || vercelHosted;
   const configured = Boolean(accessKey(env));
   return Object.freeze({
     publicHosted,

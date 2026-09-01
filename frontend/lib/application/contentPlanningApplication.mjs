@@ -6,6 +6,7 @@ import {
 import { stableStringify } from "../domain/contracts.mjs";
 import { normalizeContentOpportunity } from "../domain/contentOpportunities.mjs";
 import { normalizeContentSignal } from "../domain/contentSignals.mjs";
+import { normalizeProjectContextSnapshot } from "../domain/projectContexts.mjs";
 import {
   approveNarrativeStrategy,
   createNarrativeStrategy,
@@ -20,6 +21,7 @@ import {
 import {
   createInferenceTask,
   INFERENCE_TASK_TYPES,
+  mostRestrictivePrivacyClassification,
 } from "../inference/inferenceTasks.mjs";
 
 function required(value, field) {
@@ -77,7 +79,7 @@ function selectedAngle(opportunity, decision = null) {
   };
 }
 
-function strategyFingerprint(opportunity, angle, identitySnapshot) {
+function strategyFingerprint(opportunity, angle, identitySnapshot, projectContext = null) {
   return stableStringify({
     opportunityId: opportunity.opportunityId,
     opportunityFingerprint: opportunity.inputFingerprint,
@@ -91,6 +93,12 @@ function strategyFingerprint(opportunity, angle, identitySnapshot) {
     },
     identityProfileRefs: identitySnapshot.profileRefs || {},
     projectId: opportunity.projectId || null,
+    projectContext: projectContext ? {
+      projectContextSnapshotId: projectContext.projectContextSnapshotId,
+      fingerprint: projectContext.fingerprint,
+      repositoryRevision: projectContext.repositoryRef?.revision || null,
+      sourceArtifactIds: projectContext.sourceArtifactIds || [],
+    } : null,
   });
 }
 
@@ -98,6 +106,7 @@ function minimizeOpportunity(opportunity, angle) {
   return {
     opportunityId: opportunity.opportunityId,
     projectId: opportunity.projectId,
+    projectContextSnapshotId: opportunity.projectContextSnapshotId || null,
     title: opportunity.title,
     summary: opportunity.summary,
     whyNow: opportunity.whyNow,
@@ -111,10 +120,45 @@ function minimizeOpportunity(opportunity, angle) {
   };
 }
 
+function minimizeProjectContext(projectContext) {
+  if (!projectContext) return null;
+  const synthesis = projectContext.synthesis || {};
+  return {
+    projectContextSnapshotId: projectContext.projectContextSnapshotId,
+    projectId: projectContext.projectId,
+    version: projectContext.version,
+    fingerprint: projectContext.fingerprint,
+    repositoryRef: projectContext.repositoryRef ? {
+      provider: projectContext.repositoryRef.provider,
+      owner: projectContext.repositoryRef.owner,
+      repository: projectContext.repositoryRef.repository,
+      revision: projectContext.repositoryRef.revision,
+    } : null,
+    sourceArtifactIds: [...(projectContext.sourceArtifactIds || [])],
+    privacyClass: projectContext.privacyClass,
+    synthesis: {
+      projectName: synthesis.projectName || null,
+      purpose: synthesis.purpose || null,
+      problem: synthesis.problem || null,
+      capabilities: Array.isArray(synthesis.capabilities) ? synthesis.capabilities.slice(0, 12) : [],
+      maturityStage: synthesis.maturityStage || null,
+      safeClaims: Array.isArray(synthesis.safeClaims) ? synthesis.safeClaims.slice(0, 12) : [],
+      boundaries: Array.isArray(synthesis.boundaries) ? synthesis.boundaries.slice(0, 12) : [],
+    },
+  };
+}
+
+function planningError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
 export function createContentPlanningApplication({
   contentPlanningRepository,
   contentOpportunityRepository,
   contentSignalRepository,
+  projectContextRepository = null,
   identityApplication,
   inferenceAdapter,
   workspaceId = "local-personal",
@@ -124,6 +168,7 @@ export function createContentPlanningApplication({
   const plans = assertPort("contentPlanningRepository", contentPlanningRepository);
   const opportunities = assertPort("contentOpportunityRepository", contentOpportunityRepository);
   const signals = assertPort("contentSignalRepository", contentSignalRepository);
+  const projectContexts = projectContextRepository ? assertPort("projectContextRepository", projectContextRepository) : null;
   const inference = assertPort("inferenceAdapter", inferenceAdapter);
   const appClock = assertPort("clock", clock);
   const appIds = assertPort("idService", idService);
@@ -157,6 +202,37 @@ export function createContentPlanningApplication({
     return assertOwned(normalizeContentSignal(stored));
   }
 
+  async function requirePinnedProjectContext(opportunity) {
+    if (!opportunity.projectContextSnapshotId) return null;
+    if (!projectContexts) {
+      throw planningError(
+        "planning_project_context_unavailable",
+        "This connected-source opportunity requires its exact ProjectContextSnapshot before strategy production.",
+      );
+    }
+    const stored = await projectContexts.get(opportunity.projectContextSnapshotId);
+    if (!stored) {
+      throw planningError(
+        "planning_project_context_missing",
+        "The exact ProjectContextSnapshot used for this opportunity is no longer available.",
+      );
+    }
+    const context = normalizeProjectContextSnapshot(stored);
+    if (context.workspaceId !== ownerWorkspaceId || context.projectId !== opportunity.projectId) {
+      throw planningError(
+        "planning_project_context_mismatch",
+        "The pinned ProjectContextSnapshot does not belong to this opportunity workspace/project.",
+      );
+    }
+    if (context.projectContextSnapshotId !== opportunity.projectContextSnapshotId) {
+      throw planningError(
+        "planning_project_context_mismatch",
+        "Strategy production must use the exact ProjectContextSnapshot pinned by the opportunity.",
+      );
+    }
+    return context;
+  }
+
   async function listRecordsForOpportunity(opportunityId) {
     const all = await plans.list();
     return all.filter((record) => record.workspaceId === ownerWorkspaceId && record.opportunityId === opportunityId);
@@ -174,6 +250,7 @@ export function createContentPlanningApplication({
     const opportunity = await requireOpportunity(opportunityId);
     if (opportunity.recommendation !== "post") throw new Error("SignalFlow is not currently recommending content from this opportunity.");
     const angle = selectedAngle(opportunity, angleDecision);
+    const projectContext = await requirePinnedProjectContext(opportunity);
     const identity = await identityApplication.getMinimalProfile();
     if (!identity?.identity || !identity?.voice || !identity?.boundary) {
       const error = new Error("Set up your explicit Voice profile before SignalFlow builds an authentic campaign plan.");
@@ -189,7 +266,7 @@ export function createContentPlanningApplication({
       });
       const preflightFingerprint = strategyFingerprint(opportunity, angle, {
         profileRefs: activeIdentityRefs(activeBundle),
-      });
+      }, projectContext);
       if (existing.inputFingerprint === preflightFingerprint) return existing;
     }
 
@@ -199,25 +276,42 @@ export function createContentPlanningApplication({
       projectId: opportunity.projectId || null,
       campaignInstructions: [],
     });
-    const fingerprint = strategyFingerprint(opportunity, angle, snapshot);
+    const fingerprint = strategyFingerprint(opportunity, angle, snapshot, projectContext);
     if (!refresh && existing?.inputFingerprint === fingerprint) return existing;
 
     const now = appClock.now();
+    const dataClassification = mostRestrictivePrivacyClassification(
+      sourceSignal.privacyClassification,
+      projectContext?.privacyClass,
+    );
+    const evidenceRefs = projectContext?.sourceArtifactIds?.slice(0, 40) || [];
     const task = createInferenceTask({
       taskId: appIds.create("task"),
       workspaceId: ownerWorkspaceId,
       taskType: INFERENCE_TASK_TYPES.NARRATIVE_STRATEGY,
-      dataClassification: sourceSignal.privacyClassification,
-      inputRefs: [opportunity.opportunityId, sourceSignal.signalId, snapshot.identityContextSnapshotId],
-      requirements: ["structured_output", "editorial_reasoning", "identity_context"],
+      dataClassification,
+      inputRefs: [
+        opportunity.opportunityId,
+        sourceSignal.signalId,
+        projectContext?.projectContextSnapshotId,
+        ...evidenceRefs,
+        snapshot.identityContextSnapshotId,
+      ].filter(Boolean),
+      requirements: [
+        "structured_output",
+        "editorial_reasoning",
+        "identity_context",
+        ...(projectContext ? ["project_context", "bounded_evidence", "exact_evidence_snapshot"] : []),
+      ],
       createdAt: now,
     });
     const result = await inference.execute({
       task,
       input: {
         opportunity: minimizeOpportunity(opportunity, angle),
+        projectContext: minimizeProjectContext(projectContext),
         identityContext: snapshot,
-        dataClassification: sourceSignal.privacyClassification,
+        dataClassification,
       },
     });
     const strategy = createNarrativeStrategy({

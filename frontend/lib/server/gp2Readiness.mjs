@@ -1,6 +1,7 @@
 import { githubSourceConnectionConfigurationStatus } from "./githubConnectionDependencies.mjs";
 import { hostedAssetStorageConfigurationStatus } from "./hostedAssetPreviewDependencies.mjs";
 import { hostedScreenshotConfigurationStatus } from "./hostedScreenshotProductionDependencies.mjs";
+import { ownerAccessConfigurationStatus } from "./ownerAccessPolicy.mjs";
 
 const INFERENCE_ENV_GROUPS = Object.freeze([
   ["OPENAI_API_KEY"],
@@ -32,6 +33,7 @@ function check(id, label, configured, missing = [], details = {}) {
 export function gp2ReadinessStatus(env = process.env) {
   const github = githubSourceConnectionConfigurationStatus(env);
   const storage = hostedAssetStorageConfigurationStatus(env);
+  const ownerAccess = ownerAccessConfigurationStatus(env);
   let capture;
   try {
     capture = hostedScreenshotConfigurationStatus(env);
@@ -40,12 +42,12 @@ export function gp2ReadinessStatus(env = process.env) {
   }
 
   const database = check("database", "Durable database", present(env, "DATABASE_URL"), present(env, "DATABASE_URL") ? [] : ["DATABASE_URL"]);
-  const ownerLockRequired = ["1", "true", "yes", "on"].includes(String(env?.SIGNALFLOW_PUBLIC_HOSTED || "").trim().toLowerCase());
+  const ownerLockReady = !ownerAccess.publicHosted || ownerAccess.configured;
   const ownerLock = check(
     "owner_lock",
     "Owner access lock",
-    !ownerLockRequired || present(env, "SIGNALFLOW_ACCESS_KEY"),
-    ownerLockRequired && !present(env, "SIGNALFLOW_ACCESS_KEY") ? ["SIGNALFLOW_ACCESS_KEY"] : [],
+    ownerLockReady,
+    ownerLockReady ? [] : ["SIGNALFLOW_ACCESS_KEY"],
   );
   const githubApp = check("github_app", "GitHub App connection", github.configured, github.missing);
   const webhook = check("github_webhook", "GitHub webhook verification", present(env, "GITHUB_WEBHOOK_SECRET"), present(env, "GITHUB_WEBHOOK_SECRET") ? [] : ["GITHUB_WEBHOOK_SECRET"]);

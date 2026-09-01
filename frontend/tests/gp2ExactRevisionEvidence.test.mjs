@@ -5,7 +5,11 @@ import { createGithubRepositoryBootstrapApplication } from "../lib/application/g
 import { createGithubSignalEvidenceRefreshApplication } from "../lib/application/githubSignalEvidenceRefreshApplication.mjs";
 import { createProjectContextApplication } from "../lib/application/projectContextApplication.mjs";
 import { createSignalOpportunityWorkerApplication } from "../lib/application/signalOpportunityWorkerApplication.mjs";
-import { createConnectedContentSignal, createManualContentSignal } from "../lib/domain/contentSignals.mjs";
+import {
+  createConnectedContentSignal,
+  createManualContentSignal,
+  updateContentSignalMetadata,
+} from "../lib/domain/contentSignals.mjs";
 import { opportunityInputFingerprint } from "../lib/domain/contentOpportunities.mjs";
 import { createDeterministicIdService } from "../lib/domain/ports.mjs";
 import { createSourceConnection, SOURCE_CONNECTION_STATUSES } from "../lib/domain/sourceConnections.mjs";
@@ -104,14 +108,10 @@ test("merged PR merge_commit_sha becomes immutable canonical sourceRevision and 
   const second = githubSignal({ revision: OTHER_SHA });
   assert.notEqual(opportunityInputFingerprint(first), opportunityInputFingerprint(second));
   assert.throws(
-    () => first && (awaitImportImpossible()),
-    /unreachable/,
+    () => updateContentSignalMetadata(first, { sourceRevision: OTHER_SHA }, NOW),
+    /sourceRevision is immutable metadata/,
   );
 });
-
-function awaitImportImpossible() {
-  throw new Error("unreachable");
-}
 
 test("GitHub evidence refresh is lazy, exact-revision scoped, and skipped for non-GitHub signals", async () => {
   const signal = githubSignal();

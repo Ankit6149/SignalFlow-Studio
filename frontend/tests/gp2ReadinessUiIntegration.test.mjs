@@ -37,6 +37,10 @@ function readyEnv() {
   };
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test("GP2 readiness data is safe to render because secret values never leave the server contract", () => {
   const env = readyEnv();
   const status = gp2ReadinessStatus(env);
@@ -58,7 +62,7 @@ test("GP2 readiness data is safe to render because secret values never leave the
     env.SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT,
     env.OPENAI_API_KEY,
   ]) {
-    assert.doesNotMatch(serialized, new RegExp(secretValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.doesNotMatch(serialized, new RegExp(escapeRegExp(secretValue)));
   }
 });
 
@@ -69,13 +73,17 @@ test("Connections workspace renders readiness before GitHub installation control
   assert.ok(shell.indexOf("<Gp2ReadinessPanel />") < shell.indexOf("<GithubSourceConnectionPanel />"));
 });
 
-test("browser readiness panel uses only the protected owner-safe API surface", () => {
+test("browser readiness panel uses only the protected owner-safe API surface and fails closed on contract drift", () => {
   const panel = read("components/Gp2ReadinessPanel.js");
   assert.match(panel, /fetch\("\/api\/gp2\/readiness"/);
   assert.match(panel, /credentials: "same-origin"/);
   assert.match(panel, /state\.error\?\.status === 401/);
   assert.match(panel, /credential values never leave the server/i);
-  assert.match(panel, /safeMissing/);
+  assert.match(panel, /const CHECK_LABELS = Object\.freeze/);
+  assert.match(panel, /const CONFIGURATION_NAME = \/\^\[A-Z0-9_\+\|\.\-\]/);
+  assert.match(panel, /filter\(\(value\) => CONFIGURATION_NAME\.test\(value\)\)/);
+  assert.match(panel, /raw\.checks\.length !== CHECK_IDS\.length/);
+  assert.match(panel, /gp2_readiness_contract_invalid/);
   assert.doesNotMatch(panel, /process\.env/);
   assert.doesNotMatch(panel, /GITHUB_APP_PRIVATE_KEY|GITHUB_APP_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|SIGNALFLOW_S3_SECRET_ACCESS_KEY|OPENAI_API_KEY/);
 });

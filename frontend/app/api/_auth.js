@@ -1,5 +1,8 @@
 import crypto from "crypto";
-import { isPublicHostedMode } from "../../lib/hostedMode.js";
+import {
+  ownerAccessConfigurationStatus,
+  verifyConfiguredOwnerAccessKey,
+} from "../../lib/server/ownerAccessPolicy.mjs";
 
 const ACCESS_HEADER = "x-signalflow-access-key";
 const AUTH_HEADER = "authorization";
@@ -42,18 +45,11 @@ function ownerAccessUnavailableResponse() {
 }
 
 export function getOwnerAccessConfiguration() {
-  const publicHosted = isPublicHostedMode();
-  const configured = Boolean(process.env.SIGNALFLOW_ACCESS_KEY);
-  return Object.freeze({
-    publicHosted,
-    configured,
-    locked: publicHosted || configured,
-  });
+  return ownerAccessConfigurationStatus(process.env);
 }
 
 export function verifyOwnerAccessKey(value) {
-  const expected = process.env.SIGNALFLOW_ACCESS_KEY || "";
-  return Boolean(expected) && safeEqual(value, expected);
+  return verifyConfiguredOwnerAccessKey(value, process.env);
 }
 
 export function getRequestCookie(request, name) {

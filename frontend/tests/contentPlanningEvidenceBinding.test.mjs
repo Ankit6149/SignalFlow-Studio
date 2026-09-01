@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { createContentPlanningApplication } from "../lib/application/contentPlanningApplication.mjs";
 import { createIdentityApplication } from "../lib/application/identityApplication.mjs";
@@ -16,6 +19,7 @@ import { createMemoryProjectContextRepository } from "../lib/infrastructure/proj
 const NOW = "2026-09-01T16:00:00.000Z";
 const WORKSPACE = "local-personal";
 const PROJECT = "project-gp2";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function strategyProposal() {
   return {
@@ -92,7 +96,7 @@ async function fixture() {
       problem: "Content should emerge from real work without losing provenance.",
       capabilities: ["connected signals", "exact review", "private screenshot production"],
       safeClaims: ["Hosted screenshot production is revision-scoped and fail-closed."],
-      boundaries: ["Private source content must not be exposed."],
+      uncertainties: ["Automatic publication remains outside GP2."],
     },
     synthesisProvenance: { mode: "deterministic" },
   })).context;
@@ -193,21 +197,6 @@ test("planning fails closed when a connected-source Opportunity's pinned evidenc
 });
 
 test("hosted planning composition wires the durable ProjectContext repository into strategy production", () => {
-  const source = fsRead("lib/server/hostedPlanningDependencies.mjs");
+  const source = fs.readFileSync(path.join(ROOT, "lib", "server", "hostedPlanningDependencies.mjs"), "utf8");
   assert.match(source, /projectContextRepository: opportunityCore\.projectContextRepository/);
 });
-
-function fsRead(relativePath) {
-  const fs = requireFs();
-  return fs.readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
-}
-
-function requireFs() {
-  // Keep the production module ESM-only while using Node's built-in module in this test.
-  return globalThis.__signalflowFs || (globalThis.__signalflowFs = awaitImportFs());
-}
-
-function awaitImportFs() {
-  // node:test executes this synchronously only after module initialization; createRequire keeps the helper simple.
-  throw new Error("unreachable");
-}

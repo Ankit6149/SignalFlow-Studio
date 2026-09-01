@@ -55,6 +55,7 @@ export function createProductionHostedPlanningApplications({
     contentPlanningRepository,
     contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
     contentSignalRepository: opportunityCore.contentSignalRepository,
+    projectContextRepository: opportunityCore.projectContextRepository,
     identityApplication,
     inferenceAdapter,
     workspaceId,

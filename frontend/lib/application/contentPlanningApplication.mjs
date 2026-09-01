@@ -128,13 +128,6 @@ function minimizeProjectContext(projectContext) {
     projectId: projectContext.projectId,
     version: projectContext.version,
     fingerprint: projectContext.fingerprint,
-    repositoryRef: projectContext.repositoryRef ? {
-      provider: projectContext.repositoryRef.provider,
-      owner: projectContext.repositoryRef.owner,
-      repository: projectContext.repositoryRef.repository,
-      revision: projectContext.repositoryRef.revision,
-    } : null,
-    sourceArtifactIds: [...(projectContext.sourceArtifactIds || [])],
     privacyClass: projectContext.privacyClass,
     synthesis: {
       projectName: synthesis.projectName || null,

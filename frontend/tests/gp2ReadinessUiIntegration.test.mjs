@@ -78,6 +78,8 @@ test("browser readiness panel uses only the protected owner-safe API surface and
   assert.match(panel, /fetch\("\/api\/gp2\/readiness"/);
   assert.match(panel, /credentials: "same-origin"/);
   assert.match(panel, /state\.error\?\.status === 401/);
+  assert.match(panel, /state\.error\?\.code === "owner_access_unconfigured"/);
+  assert.match(panel, /Owner lock configuration required/);
   assert.match(panel, /credential values never leave the server/i);
   assert.match(panel, /const CHECK_LABELS = Object\.freeze/);
   assert.match(panel, /const CONFIGURATION_NAME = \/\^\[A-Z0-9_\+\|\.\-\]/);

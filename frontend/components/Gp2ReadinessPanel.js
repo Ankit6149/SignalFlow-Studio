@@ -1,7 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./Gp2ReadinessPanel.module.css";
+
+const CHECK_LABELS = Object.freeze({
+  database: "Durable database",
+  owner_lock: "Owner access lock",
+  github_app: "GitHub App connection",
+  github_webhook: "GitHub webhook verification",
+  private_asset_storage: "Private Asset storage",
+  capture_worker: "Bounded screenshot worker",
+  exact_media_preview: "Exact media visibility receipts",
+  inference: "Hosted inference route",
+});
+const CHECK_IDS = Object.freeze(Object.keys(CHECK_LABELS));
+const CONFIGURATION_NAME = /^[A-Z0-9_+|.-]{1,240}$/;
+const CAPTURE_ENVIRONMENT = /^[a-z0-9_-]{2,40}$/;
 
 async function readJson(response) {
   const text = await response.text();
@@ -18,8 +32,50 @@ async function readJson(response) {
 
 function safeMissing(values) {
   return Array.isArray(values)
-    ? values.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 16)
+    ? values
+      .map((value) => String(value || "").trim())
+      .filter((value) => CONFIGURATION_NAME.test(value))
+      .slice(0, 16)
     : [];
+}
+
+function normalizeReadiness(body) {
+  const raw = body?.gp2;
+  if (!raw || typeof raw.ready !== "boolean" || !Array.isArray(raw.checks)) {
+    const error = new Error("gp2_readiness_contract_invalid");
+    error.code = "gp2_readiness_contract_invalid";
+    throw error;
+  }
+
+  const byId = new Map();
+  for (const item of raw.checks) {
+    const id = String(item?.id || "").trim();
+    if (!CHECK_LABELS[id] || typeof item?.configured !== "boolean" || byId.has(id)) {
+      const error = new Error("gp2_readiness_contract_invalid");
+      error.code = "gp2_readiness_contract_invalid";
+      throw error;
+    }
+    const environmentValue = String(item?.environment || "").trim().toLowerCase();
+    byId.set(id, Object.freeze({
+      id,
+      label: CHECK_LABELS[id],
+      configured: item.configured === true,
+      missing: safeMissing(item.missing),
+      environment: environmentValue && CAPTURE_ENVIRONMENT.test(environmentValue) ? environmentValue : null,
+    }));
+  }
+
+  if (raw.checks.length !== CHECK_IDS.length || CHECK_IDS.some((id) => !byId.has(id))) {
+    const error = new Error("gp2_readiness_contract_invalid");
+    error.code = "gp2_readiness_contract_invalid";
+    throw error;
+  }
+
+  const checks = CHECK_IDS.map((id) => byId.get(id));
+  return Object.freeze({
+    ready: raw.ready === true && checks.every((item) => item.configured),
+    checks,
+  });
 }
 
 export default function Gp2ReadinessPanel() {
@@ -33,7 +89,7 @@ export default function Gp2ReadinessPanel() {
         credentials: "same-origin",
       });
       const body = await readJson(response);
-      setState({ loading: false, readiness: body?.gp2 || null, error: null });
+      setState({ loading: false, readiness: normalizeReadiness(body), error: null });
     } catch (error) {
       setState({ loading: false, readiness: null, error });
     }
@@ -43,11 +99,8 @@ export default function Gp2ReadinessPanel() {
     void refresh();
   }, []);
 
-  const checks = useMemo(
-    () => Array.isArray(state.readiness?.checks) ? state.readiness.checks : [],
-    [state.readiness],
-  );
-  const readyCount = checks.filter((item) => item?.configured === true).length;
+  const checks = state.readiness?.checks || [];
+  const readyCount = checks.filter((item) => item.configured).length;
   const totalCount = checks.length;
 
   return (
@@ -81,30 +134,27 @@ export default function Gp2ReadinessPanel() {
         </div>
       ) : (
         <>
-          <div className={styles.overall} data-ready={state.readiness?.ready === true}>
-            <strong>{state.readiness?.ready ? "GP2 infrastructure ready" : "GP2 infrastructure needs configuration"}</strong>
-            <span>{state.readiness?.ready ? "The required production dependency classes are configured." : "Resolve the named deployment settings below before live owner acceptance."}</span>
+          <div className={styles.overall} data-ready={state.readiness.ready}>
+            <strong>{state.readiness.ready ? "GP2 infrastructure ready" : "GP2 infrastructure needs configuration"}</strong>
+            <span>{state.readiness.ready ? "The required production dependency classes are configured." : "Resolve the named deployment settings below before live owner acceptance."}</span>
           </div>
 
           <div className={styles.grid}>
-            {checks.map((item) => {
-              const missing = safeMissing(item?.missing);
-              return (
-                <article className={styles.check} key={item.id || item.label} data-ready={item?.configured === true}>
-                  <div className={styles.checkHeading}>
-                    <span className={styles.dot} aria-hidden="true" />
-                    <strong>{item.label || item.id || "Readiness check"}</strong>
-                    <small>{item?.configured === true ? "Ready" : "Missing"}</small>
+            {checks.map((item) => (
+              <article className={styles.check} key={item.id} data-ready={item.configured}>
+                <div className={styles.checkHeading}>
+                  <span className={styles.dot} aria-hidden="true" />
+                  <strong>{item.label}</strong>
+                  <small>{item.configured ? "Ready" : "Missing"}</small>
+                </div>
+                {item.environment && <p>Capture environment: <code>{item.environment}</code></p>}
+                {item.missing.length > 0 && (
+                  <div className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
+                    {item.missing.map((name) => <code key={name}>{name}</code>)}
                   </div>
-                  {item?.environment && <p>Capture environment: <code>{String(item.environment)}</code></p>}
-                  {missing.length > 0 && (
-                    <div className={styles.missing} aria-label={`Missing settings for ${item.label || item.id}`}>
-                      {missing.map((name) => <code key={name}>{name}</code>)}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+                )}
+              </article>
+            ))}
           </div>
         </>
       )}

@@ -95,13 +95,17 @@ test("Today opportunity cards expose canonical why-now, evidence, repetition, de
   assert.match(queue, /originLabel\(entry\.origin\)/);
 });
 
-test("Today queue reports loading/count truth and keeps local opportunities usable when hosted refresh is unavailable", () => {
+test("Today queue reports loading/count truth and never claims all-clear when connected opportunities are unknown", () => {
   const queue = read("components/TodayOpportunityQueue.js");
-  assert.match(queue, /onCountChange\(actionable\.length\)/);
-  assert.match(queue, /onCountChange\(0\)/);
+  assert.match(queue, /onCountChange\(actionable\.length \|\| \(result\.hostedState\.status === "ready" \? 0 : -1\)\)/);
+  assert.match(queue, /onCountChange\(-1\)/);
   assert.match(queue, /hostedState\.status !== "ready"/);
   assert.match(queue, /any visible direct-create opportunities remain actionable/i);
   assert.match(queue, /Checking for work worth your attention/);
+
+  const today = read("components/TodayWorkspace.js");
+  assert.match(today, /opportunityCount === 0/);
+  assert.doesNotMatch(today, /opportunityCount <= 0/);
 });
 
 test("Today opportunity queue remains responsive", () => {

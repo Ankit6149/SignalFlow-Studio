@@ -26,7 +26,7 @@ test("callback recovery copy is applied after initial refresh so refresh cannot 
   assert.ok(start >= 0 && end > start);
   const initialize = panel.slice(start, end);
   const cleanupIndex = initialize.indexOf("clearCallbackParams();");
-  const refreshIndex = initialize.indexOf("await refresh();");
+  const refreshIndex = initialize.indexOf("await refresh();", cleanupIndex);
   const installedIndex = initialize.indexOf('callbackStatus === "installed"');
   const errorIndex = initialize.indexOf('callbackStatus === "error"');
   assert.ok(cleanupIndex >= 0 && cleanupIndex < refreshIndex);

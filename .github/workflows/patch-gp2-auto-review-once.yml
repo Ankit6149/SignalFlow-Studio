@@ -24,6 +24,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           def replace1(path, old, new):
               p = Path(path)
@@ -31,6 +32,14 @@ jobs:
               if old not in text:
                   raise SystemExit(f"expected patch anchor missing: {path}: {old[:100]!r}")
               p.write_text(text.replace(old, new, 1))
+
+          def sub1(path, pattern, replacement):
+              p = Path(path)
+              text = p.read_text()
+              next_text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f"expected regex patch once: {path}: {pattern[:100]!r}; got {count}")
+              p.write_text(next_text)
 
           route = "frontend/app/api/platform-review/route.js"
           replace1(route,
@@ -81,19 +90,8 @@ jobs:
             if (result.status === "bound" && result.autoReview?.status === "review_failed") return { type: "warning", text: `${label} now has the exact screenshot derivative bound, but automatic exact checks need a retry before owner judgment.` };
             if (result.status === "bound" && result.autoReview?.status === "deferred_required_media") return { type: "warning", text: `${label} media was bound, but another required media dependency still prevents exact review.` };
             if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };''')
-          replace1(drafts,
-              '''      if (result.failed.length && result.generated.length) {
-                setMessage({
-                  type: "warning",
-                  text: `${result.generated.length} hosted draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without invalidating the successful revision.`,
-                });
-              } else if (result.failed.length) {
-                setMessage({ type: "error", text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" ") });
-              } else if (result.generated.length) {
-                setMessage({ type: "success", text: "Hosted platform drafts are now durable immutable revisions. Review each exact revision independently." });
-              } else {
-                setMessage({ type: "success", text: "Every non-omitted hosted destination already has a current durable revision." });
-              }''',
+          sub1(drafts,
+              r'      if \(result\.failed\.length && result\.generated\.length\) \{.*?      \}\n      await reload\(\);',
               '''      const reviewPreparation = result.reviewPreparation;
               const reviewFailures = reviewPreparation?.failed || [];
               if (result.failed.length && result.generated.length) {
@@ -111,7 +109,8 @@ jobs:
                 setMessage({ type: "success", text: "Hosted drafts are durable and automatic exact checks are complete. Reviewed revisions are ready in Today." });
               } else {
                 setMessage({ type: "success", text: "Every non-omitted hosted destination already has a current durable revision and exact review is up to date." });
-              }''')
+              }
+              await reload();''')
           replace1(drafts,
               '            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);',
               '            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);\n            const requiredMediaPending = Boolean(requiredScreenshot?.required === true && needsScreenshot);')
@@ -126,24 +125,15 @@ jobs:
           replace1(panel,
               'export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged }) {',
               'export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged, requiredMediaPending = false }) {')
-          replace1(panel,
-              '''  const mediaApprovalBlocked = Boolean(revision.mediaBindings?.length && (
-                !previewBelongsToRevision
-                || !mediaPreviewState.ready
-                || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
-              ));''',
+          sub1(panel,
+              r'  const mediaApprovalBlocked = Boolean\(revision\.mediaBindings\?\.length && \(\n.*?  \)\);',
               '''  const mediaApprovalBlocked = Boolean(requiredMediaPending || (revision.mediaBindings?.length && (
                 !previewBelongsToRevision
                 || !mediaPreviewState.ready
                 || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
               )));''')
-          replace1(panel,
-              '''      {!review ? (
-                <div className={styles.reviewGate}>
-                  <div><span>HOSTED QUALITY GATE</span><p>Run evidence and authenticity checks on immutable revision {revision.revisionNumber} before approval.</p></div>
-                  <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Checking…" : "Run exact checks"}</button>
-                </div>
-              ) : (''',
+          sub1(panel,
+              r'      \{!review \? \(\n.*?      \) : \(\n        <div className=\{styles\.reviewResults\}>',
               '''      {requiredMediaPending && (
                 <div className={styles.reviewGate}>
                   <div><span>REQUIRED MEDIA · PREPARING</span><p>SignalFlow will run the final exact evidence/authenticity checks automatically after the required visual proof is bound to this revision.</p></div>
@@ -157,7 +147,8 @@ jobs:
                     <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Checking…" : "Retry exact checks"}</button>
                   </div>
                 )
-              ) : (''')
+              ) : (
+                <div className={styles.reviewResults}>''')
 
           test_path = "frontend/tests/hostedOwnerReviewUi.test.mjs"
           replace1(test_path,

@@ -7,6 +7,7 @@ import { createBrowserPlatformReviewApplication } from "../lib/application/brows
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
 import ExactMediaRevisionPreview from "./ExactMediaRevisionPreview";
 import RevisionHistoryPanel from "./RevisionHistoryPanel";
+import TodayOpportunityQueue from "./TodayOpportunityQueue";
 import WorkspaceShell from "./WorkspaceShell";
 import styles from "./TodayWorkspace.module.css";
 
@@ -199,6 +200,7 @@ export default function TodayWorkspace() {
         </header>
 
         {message && <div className={`${styles.message} ${styles[`message_${message.type}`] || ""}`} role="status">{message.text}</div>}
+        <TodayOpportunityQueue onStatus={setMessage} />
 
         {loading ? (
           <section className={styles.loading} aria-live="polite">Reconstructing what needs your judgment…</section>

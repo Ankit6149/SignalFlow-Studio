@@ -100,6 +100,7 @@ export function createProductionHostedPlatformReviewApplications({
     workspaceId,
   });
   const preparationReviewApplication = createExactReviewPreparationApplication({
+    contentPlanningRepository,
     generationApplication,
     reviewApplication,
   });

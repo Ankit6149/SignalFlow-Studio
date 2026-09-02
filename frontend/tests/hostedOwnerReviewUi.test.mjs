@@ -128,6 +128,23 @@ test("hosted review API verifies every visible media binding and guards stale ed
   assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);
 });
 
+test("hosted review GET reconstructs canonical review state while generation keeps its persisted success bundle", () => {
+  const route = source("app", "api", "platform-review", "route.js");
+  const getStart = route.indexOf("export async function GET");
+  const postStart = route.indexOf("export async function POST");
+  assert.ok(getStart >= 0 && postStart > getStart);
+  const getSection = route.slice(getStart, postStart);
+  assert.match(getSection, /bundle: await responseBundle\(apps, contentPieceId\)/);
+  assert.doesNotMatch(getSection, /bundle: result\.bundle/);
+
+  const generationStart = route.indexOf('if (action === "generate_ready")', postStart);
+  const generationEnd = route.indexOf("const platformVariantId = opaque", generationStart);
+  assert.ok(generationStart >= 0 && generationEnd > generationStart);
+  const generationSection = route.slice(generationStart, generationEnd);
+  assert.match(generationSection, /bundle: result\.bundle/);
+  assert.doesNotMatch(generationSection, /bundle: await responseBundle/);
+});
+
 test("connected-source Plan uses durable hosted review clients, automatic screenshot production and protected exact-media preview only", () => {
   const plan = source("components", "HostedCampaignPlanPanel.js");
   const drafts = source("components", "HostedPlatformDraftsPanel.js");

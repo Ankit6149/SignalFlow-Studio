@@ -34,7 +34,7 @@ function FindingList({ title, result }) {
   );
 }
 
-export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged }) {
+export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged, requiredMediaPending = false }) {
   const variant = entry?.variant;
   const revision = entry?.currentRevision;
   const reviewBundle = entry?.review || null;
@@ -85,11 +85,11 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
   if (!variant || !revision) return null;
 
   const previewBelongsToRevision = mediaPreviewState.revisionId === revisionId;
-  const mediaApprovalBlocked = Boolean(revision.mediaBindings?.length && (
-    !previewBelongsToRevision
-    || !mediaPreviewState.ready
-    || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
-  ));
+  const mediaApprovalBlocked = Boolean(requiredMediaPending || (revision.mediaBindings?.length && (
+      !previewBelongsToRevision
+      || !mediaPreviewState.ready
+      || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
+    )));
   const blocked = review?.overallVerdict === "block";
   const precheckFindings = review ? [...(review.boundaryPrecheck?.blocked || []), ...(review.boundaryPrecheck?.warnings || [])] : [];
 
@@ -177,13 +177,21 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
         onPreviewState={handlePreviewState}
       />
 
-      {!review ? (
+      {requiredMediaPending && (
+      <div className={styles.reviewGate}>
+        <div><span>REQUIRED MEDIA · PREPARING</span><p>SignalFlow will run the final exact evidence/authenticity checks automatically after the required visual proof is bound to this revision.</p></div>
+      </div>
+    )}
+
+    {!review ? (
+      requiredMediaPending ? null : (
         <div className={styles.reviewGate}>
-          <div><span>HOSTED QUALITY GATE</span><p>Run evidence and authenticity checks on immutable revision {revision.revisionNumber} before approval.</p></div>
-          <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Checking…" : "Run exact checks"}</button>
+          <div><span>EXACT CHECK RECOVERY</span><p>Automatic exact checks did not complete for immutable revision {revision.revisionNumber}. Retry them without changing the revision.</p></div>
+          <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Checking…" : "Retry exact checks"}</button>
         </div>
-      ) : (
-        <div className={styles.reviewResults}>
+      )
+    ) : (
+      <div className={styles.reviewResults}>
           <div className={styles.resultHeader} data-verdict={review.overallVerdict}>
             <div><span>HOSTED EXACT REVISION REVIEW</span><strong>{titleCase(review.overallVerdict)}</strong><p>Review {review.platformVariantReviewId.slice(-10)} · revision {revision.revisionNumber}{revision.mediaBindings?.length ? " · text + media" : ""}</p></div>
             <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Rechecking…" : "Re-run checks"}</button>

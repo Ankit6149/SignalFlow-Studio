@@ -119,6 +119,10 @@ test("hosted review API verifies every visible media binding and guards stale ed
   assert.match(route, /createProductionHostedScreenshotProductionApplication/);
   assert.match(route, /safeScreenshotResult/);
   assert.match(route, /safeAssetIdentity/);
+  assert.match(route, /preparationReviewApplication\.ensureContentPieceReviewed/);
+  assert.match(route, /automaticallyReviewRevision/);
+  assert.match(route, /result\.status === "bound" && result\.boundRevision/);
+  assert.match(route, /deferredCount/);
   assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);
 });
 
@@ -138,6 +142,9 @@ test("connected-source Plan uses durable hosted review clients, automatic screen
   assert.match(drafts, /!currentRevision\.mediaBindings\?\.length/);
   assert.match(drafts, /Prepare visual proof/);
   assert.match(drafts, /HostedPlatformRevisionReviewPanel/);
+  assert.match(drafts, /reviewPreparation/);
+  assert.match(drafts, /result\.autoReview\?\.status/);
+  assert.match(drafts, /requiredMediaPending/);
   assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);
 
   assert.match(revision, /createBrowserHostedExactMediaPreviewAdapter/);
@@ -150,6 +157,9 @@ test("connected-source Plan uses durable hosted review clients, automatic screen
   assert.match(revision, /regenerateVariant/);
   assert.match(revision, /approveRevision/);
   assert.match(revision, /restoreRevision/);
+  assert.match(revision, /requiredMediaPending/);
+  assert.match(revision, /Retry exact checks/);
+  assert.match(revision, /mediaApprovalBlocked = Boolean\(requiredMediaPending/);
   assert.doesNotMatch(revision, /localStorage|createBrowserPlatformReviewApplication/);
 
   assert.match(client, /credentials: "same-origin"/);
@@ -158,6 +168,8 @@ test("connected-source Plan uses durable hosted review clients, automatic screen
   assert.match(client, /action: "edit_revision"/);
   assert.match(client, /action: "regenerate_variant"/);
   assert.match(client, /action: "produce_screenshot"/);
+  assert.match(client, /normalizeReviewPreparation/);
+  assert.match(client, /autoReview: normalizeAutoReview/);
 });
 
 test("hosted preview and screenshot worker configuration remain server-only", () => {

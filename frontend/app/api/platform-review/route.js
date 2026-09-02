@@ -225,9 +225,11 @@ function safeAutoReview(result) {
 }
 
 function safeReviewPreparation(result) {
+  const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
   return {
     reviewedCount: Array.isArray(result?.reviewed) ? result.reviewed.length : 0,
-    skippedCount: Array.isArray(result?.skipped) ? result.skipped.length : 0,
+    skippedCount: skipped.length,
+    deferredCount: skipped.filter((item) => item.reason === "required_media_pending").length,
     failed: Array.isArray(result?.failed)
       ? result.failed.map((item) => ({
           platformVariantId: item.platformVariantId,
@@ -275,7 +277,7 @@ export async function GET(request) {
       ok: true,
       workspaceId: apps.workspaceId,
       contentPieceId,
-      bundle: await responseBundle(apps, contentPieceId),
+      bundle: result.bundle,
     });
   } catch (error) {
     return publicError(error);

@@ -296,7 +296,7 @@ export async function GET(request) {
       ok: true,
       workspaceId: apps.workspaceId,
       contentPieceId,
-      bundle: result.bundle,
+      bundle: await responseBundle(apps, contentPieceId),
     });
   } catch (error) {
     return publicError(error);
@@ -329,7 +329,7 @@ export async function POST(request) {
         action,
         result: {
           ...result,
-          bundle: await responseBundle(apps, contentPieceId),
+          bundle: result.bundle,
           reviewPreparation: safeReviewPreparation(reviewPreparation),
         },
       });

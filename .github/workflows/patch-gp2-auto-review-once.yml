@@ -25,36 +25,23 @@ jobs:
         run: |
           from pathlib import Path
 
-          def replace(path, old, new):
+          def replace1(path, old, new):
               p = Path(path)
               text = p.read_text()
               if old not in text:
-                  raise SystemExit(f"expected patch anchor missing: {path}: {old[:80]!r}")
+                  raise SystemExit(f"expected patch anchor missing: {path}: {old[:100]!r}")
               p.write_text(text.replace(old, new, 1))
 
           route = "frontend/app/api/platform-review/route.js"
-          replace(route,
-          '''function safeReviewPreparation(result) {
-            return {
-              reviewedCount: Array.isArray(result?.reviewed) ? result.reviewed.length : 0,
-              skippedCount: Array.isArray(result?.skipped) ? result.skipped.length : 0,
-              failed: Array.isArray(result?.failed)
-          ''',
-          '''function safeReviewPreparation(result) {
-            const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
-            return {
-              reviewedCount: Array.isArray(result?.reviewed) ? result.reviewed.length : 0,
-              skippedCount: skipped.length,
-              deferredCount: skipped.filter((item) => item.reason === "required_media_pending").length,
-              failed: Array.isArray(result?.failed)
-          ''')
-          replace(route, 'bundle: await responseBundle(apps, contentPieceId),', 'bundle: result.bundle,')
+          replace1(route,
+              'function safeReviewPreparation(result) {\n  return {\n    reviewedCount: Array.isArray(result?.reviewed) ? result.reviewed.length : 0,\n    skippedCount: Array.isArray(result?.skipped) ? result.skipped.length : 0,',
+              'function safeReviewPreparation(result) {\n  const skipped = Array.isArray(result?.skipped) ? result.skipped : [];\n  return {\n    reviewedCount: Array.isArray(result?.reviewed) ? result.reviewed.length : 0,\n    skippedCount: skipped.length,\n    deferredCount: skipped.filter((item) => item.reason === "required_media_pending").length,')
+          replace1(route, 'bundle: await responseBundle(apps, contentPieceId),', 'bundle: result.bundle,')
 
           client = "frontend/lib/infrastructure/browserHostedPlatformReviewClient.mjs"
-          replace(client,
-          '''function normalizeScreenshotResult(input = {}) {
-          ''',
-          '''function normalizeAutoReview(input = null) {
+          replace1(client,
+              'function normalizeScreenshotResult(input = {}) {',
+              '''function normalizeAutoReview(input = null) {
             if (!input) return null;
             return Object.freeze({
               status: input.status ? String(input.status) : null,
@@ -78,45 +65,24 @@ jobs:
             });
           }
 
-          function normalizeScreenshotResult(input = {}) {
-          ''')
-          replace(client,
-          '''    derivative: input.derivative ? Object.freeze({ ...input.derivative }) : null,
-            });
-          }
-          ''',
-          '''    derivative: input.derivative ? Object.freeze({ ...input.derivative }) : null,
-              autoReview: normalizeAutoReview(input.autoReview),
-            });
-          }
-          ''')
-          replace(client,
-          '''      bundle: normalizeBundle(data.result?.bundle || {}),
-            });
-          }
-          ''',
-          '''      bundle: normalizeBundle(data.result?.bundle || {}),
-              reviewPreparation: normalizeReviewPreparation(data.result?.reviewPreparation),
-            });
-          }
-          ''')
+          function normalizeScreenshotResult(input = {}) {''')
+          replace1(client,
+              '    derivative: input.derivative ? Object.freeze({ ...input.derivative }) : null,\n  });',
+              '    derivative: input.derivative ? Object.freeze({ ...input.derivative }) : null,\n    autoReview: normalizeAutoReview(input.autoReview),\n  });')
+          replace1(client,
+              '      bundle: normalizeBundle(data.result?.bundle || {}),\n    });\n  }\n\n  async function generateVariant',
+              '      bundle: normalizeBundle(data.result?.bundle || {}),\n      reviewPreparation: normalizeReviewPreparation(data.result?.reviewPreparation),\n    });\n  }\n\n  async function generateVariant')
 
           drafts = "frontend/components/HostedPlatformDraftsPanel.js"
-          replace(drafts,
-          '''function screenshotMessage(result, destination) {
-            const label = destinationLabel(destination);
-            if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };
-          ''',
-          '''function screenshotMessage(result, destination) {
-            const label = destinationLabel(destination);
-            if (result.status === "bound" && result.autoReview?.status === "reviewed") return { type: "success", text: `${label} now has the exact screenshot derivative bound and automatic exact checks complete. The revision is ready in Today.` };
+          replace1(drafts,
+              '  if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };',
+              '''  if (result.status === "bound" && result.autoReview?.status === "reviewed") return { type: "success", text: `${label} now has the exact screenshot derivative bound and automatic exact checks complete. The revision is ready in Today.` };
             if (result.status === "bound" && result.autoReview?.status === "already_reviewed") return { type: "success", text: `${label} now has the exact screenshot derivative bound and its current exact review is already available in Today.` };
             if (result.status === "bound" && result.autoReview?.status === "review_failed") return { type: "warning", text: `${label} now has the exact screenshot derivative bound, but automatic exact checks need a retry before owner judgment.` };
             if (result.status === "bound" && result.autoReview?.status === "deferred_required_media") return { type: "warning", text: `${label} media was bound, but another required media dependency still prevents exact review.` };
-            if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };
-          ''')
-          replace(drafts,
-          '''      if (result.failed.length && result.generated.length) {
+            if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };''')
+          replace1(drafts,
+              '''      if (result.failed.length && result.generated.length) {
                 setMessage({
                   type: "warning",
                   text: `${result.generated.length} hosted draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without invalidating the successful revision.`,
@@ -127,9 +93,8 @@ jobs:
                 setMessage({ type: "success", text: "Hosted platform drafts are now durable immutable revisions. Review each exact revision independently." });
               } else {
                 setMessage({ type: "success", text: "Every non-omitted hosted destination already has a current durable revision." });
-              }
-          ''',
-          '''      const reviewPreparation = result.reviewPreparation;
+              }''',
+              '''      const reviewPreparation = result.reviewPreparation;
               const reviewFailures = reviewPreparation?.failed || [];
               if (result.failed.length && result.generated.length) {
                 setMessage({
@@ -146,53 +111,40 @@ jobs:
                 setMessage({ type: "success", text: "Hosted drafts are durable and automatic exact checks are complete. Reviewed revisions are ready in Today." });
               } else {
                 setMessage({ type: "success", text: "Every non-omitted hosted destination already has a current durable revision and exact review is up to date." });
-              }
-          ''')
-          replace(drafts,
-          '''            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);
-          ''',
-          '''            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);
-                const requiredMediaPending = Boolean(requiredScreenshot?.required === true && needsScreenshot);
-          ''')
-          replace(drafts,
-          '''                    <HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} />
-          ''',
-          '''                    <HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} requiredMediaPending={requiredMediaPending} />
-          ''')
-          replace(drafts,
-          '''<div className={styles.subhead}><span>CONNECTED-SOURCE REVIEW · EXACT REVISIONS</span><p>Every judgment is pinned to the visible immutable revision. Media-bound approvals additionally require a signed proof that every exact private AssetVersion was actually rendered.</p></div>
-          ''',
-          '''<div className={styles.subhead}><span>CONNECTED-SOURCE REVIEW · EXACT REVISIONS</span><p>SignalFlow runs exact evidence/authenticity checks automatically when the revision is judgment-ready. Required media is bound first; manual checks remain only as recovery.</p></div>
-          ''')
+              }''')
+          replace1(drafts,
+              '            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);',
+              '            const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);\n            const requiredMediaPending = Boolean(requiredScreenshot?.required === true && needsScreenshot);')
+          replace1(drafts,
+              '<HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} />',
+              '<HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} requiredMediaPending={requiredMediaPending} />')
+          replace1(drafts,
+              'Every judgment is pinned to the visible immutable revision. Media-bound approvals additionally require a signed proof that every exact private AssetVersion was actually rendered.',
+              'SignalFlow runs exact evidence/authenticity checks automatically when the revision is judgment-ready. Required media is bound first; manual checks remain only as recovery.')
 
           panel = "frontend/components/HostedPlatformRevisionReviewPanel.js"
-          replace(panel,
-          '''export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged }) {
-          ''',
-          '''export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged, requiredMediaPending = false }) {
-          ''')
-          replace(panel,
-          '''  const mediaApprovalBlocked = Boolean(revision.mediaBindings?.length && (
-              !previewBelongsToRevision
-              || !mediaPreviewState.ready
-              || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
-            ));
-          ''',
-          '''  const mediaApprovalBlocked = Boolean(requiredMediaPending || (revision.mediaBindings?.length && (
-              !previewBelongsToRevision
-              || !mediaPreviewState.ready
-              || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
-            )));
-          ''')
-          replace(panel,
-          '''      {!review ? (
+          replace1(panel,
+              'export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged }) {',
+              'export default function HostedPlatformRevisionReviewPanel({ entry, client, onChanged, requiredMediaPending = false }) {')
+          replace1(panel,
+              '''  const mediaApprovalBlocked = Boolean(revision.mediaBindings?.length && (
+                !previewBelongsToRevision
+                || !mediaPreviewState.ready
+                || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
+              ));''',
+              '''  const mediaApprovalBlocked = Boolean(requiredMediaPending || (revision.mediaBindings?.length && (
+                !previewBelongsToRevision
+                || !mediaPreviewState.ready
+                || mediaPreviewState.visibleMedia?.length !== revision.mediaBindings.length
+              )));''')
+          replace1(panel,
+              '''      {!review ? (
                 <div className={styles.reviewGate}>
                   <div><span>HOSTED QUALITY GATE</span><p>Run evidence and authenticity checks on immutable revision {revision.revisionNumber} before approval.</p></div>
                   <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Checking…" : "Run exact checks"}</button>
                 </div>
-              ) : (
-          ''',
-          '''      {requiredMediaPending && (
+              ) : (''',
+              '''      {requiredMediaPending && (
                 <div className={styles.reviewGate}>
                   <div><span>REQUIRED MEDIA · PREPARING</span><p>SignalFlow will run the final exact evidence/authenticity checks automatically after the required visual proof is bound to this revision.</p></div>
                 </div>
@@ -205,48 +157,21 @@ jobs:
                     <button type="button" onClick={runChecks} disabled={Boolean(busy)}>{busy === "review" ? "Checking…" : "Retry exact checks"}</button>
                   </div>
                 )
-              ) : (
-          ''')
+              ) : (''')
 
           test_path = "frontend/tests/hostedOwnerReviewUi.test.mjs"
-          replace(test_path,
-          '''  assert.match(route, /safeAssetIdentity/);
-            assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);
-          ''',
-          '''  assert.match(route, /safeAssetIdentity/);
-            assert.match(route, /preparationReviewApplication\.ensureContentPieceReviewed/);
-            assert.match(route, /automaticallyReviewRevision/);
-            assert.match(route, /result\.status === "bound" && result\.boundRevision/);
-            assert.match(route, /deferredCount/);
-            assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);
-          ''')
-          replace(test_path,
-          '''  assert.match(drafts, /HostedPlatformRevisionReviewPanel/);
-            assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);
-          ''',
-          '''  assert.match(drafts, /HostedPlatformRevisionReviewPanel/);
-            assert.match(drafts, /reviewPreparation/);
-            assert.match(drafts, /result\.autoReview\?\.status/);
-            assert.match(drafts, /requiredMediaPending/);
-            assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);
-          ''')
-          replace(test_path,
-          '''  assert.match(revision, /restoreRevision/);
-            assert.doesNotMatch(revision, /localStorage|createBrowserPlatformReviewApplication/);
-          ''',
-          '''  assert.match(revision, /restoreRevision/);
-            assert.match(revision, /requiredMediaPending/);
-            assert.match(revision, /Retry exact checks/);
-            assert.match(revision, /mediaApprovalBlocked = Boolean\(requiredMediaPending/);
-            assert.doesNotMatch(revision, /localStorage|createBrowserPlatformReviewApplication/);
-          ''')
-          replace(test_path,
-          '''  assert.match(client, /action: "produce_screenshot"/);
-          ''',
-          '''  assert.match(client, /action: "produce_screenshot"/);
-            assert.match(client, /normalizeReviewPreparation/);
-            assert.match(client, /autoReview: normalizeAutoReview/);
-          ''')
+          replace1(test_path,
+              '  assert.match(route, /safeAssetIdentity/);\n  assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);',
+              '  assert.match(route, /safeAssetIdentity/);\n  assert.match(route, /preparationReviewApplication\\.ensureContentPieceReviewed/);\n  assert.match(route, /automaticallyReviewRevision/);\n  assert.match(route, /result\\.status === "bound" && result\\.boundRevision/);\n  assert.match(route, /deferredCount/);\n  assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);')
+          replace1(test_path,
+              '  assert.match(drafts, /HostedPlatformRevisionReviewPanel/);\n  assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);',
+              '  assert.match(drafts, /HostedPlatformRevisionReviewPanel/);\n  assert.match(drafts, /reviewPreparation/);\n  assert.match(drafts, /result\\.autoReview\\?\\.status/);\n  assert.match(drafts, /requiredMediaPending/);\n  assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);')
+          replace1(test_path,
+              '  assert.match(revision, /restoreRevision/);\n  assert.doesNotMatch(revision, /localStorage|createBrowserPlatformReviewApplication/);',
+              '  assert.match(revision, /restoreRevision/);\n  assert.match(revision, /requiredMediaPending/);\n  assert.match(revision, /Retry exact checks/);\n  assert.match(revision, /mediaApprovalBlocked = Boolean\\(requiredMediaPending/);\n  assert.doesNotMatch(revision, /localStorage|createBrowserPlatformReviewApplication/);')
+          replace1(test_path,
+              '  assert.match(client, /action: "produce_screenshot"/);',
+              '  assert.match(client, /action: "produce_screenshot"/);\n  assert.match(client, /normalizeReviewPreparation/);\n  assert.match(client, /autoReview: normalizeAutoReview/);')
       - name: Remove one-shot workflow
         run: rm .github/workflows/patch-gp2-auto-review-once.yml
       - name: Run focused automatic review tests

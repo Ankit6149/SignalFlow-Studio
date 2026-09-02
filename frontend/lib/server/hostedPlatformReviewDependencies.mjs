@@ -1,6 +1,8 @@
 import { createIdentityApplication } from "../application/identityApplication.mjs";
+import { createPlatformChangeRequestApplication } from "../application/platformChangeRequestApplication.mjs";
 import { createPlatformGenerationApplication } from "../application/platformGenerationApplication.mjs";
 import { createPlatformReviewApplication } from "../application/platformReviewApplication.mjs";
+import { createTodayDecisionApplication } from "../application/todayDecisionApplication.mjs";
 import { createSystemClock, createSystemIdService } from "../domain/ports.mjs";
 import { createPostgresContentPlanningRepository } from "../infrastructure/postgresContentPlanningAdapter.mjs";
 import { createPostgresContentReviewRepository } from "../infrastructure/postgresContentReviewAdapter.mjs";
@@ -77,6 +79,25 @@ export function createProductionHostedPlatformReviewApplications({
     clock,
     idService,
   });
+  const changeApplication = createPlatformChangeRequestApplication({
+    contentPlanningRepository,
+    contentReviewRepository,
+    contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
+    contentSignalRepository: opportunityCore.contentSignalRepository,
+    identityRepository,
+    inferenceAdapter,
+    workspaceId,
+    userId,
+    clock,
+    idService,
+  });
+  const todayApplication = createTodayDecisionApplication({
+    contentPlanningRepository,
+    contentReviewRepository,
+    contentSignalRepository: opportunityCore.contentSignalRepository,
+    contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
+    workspaceId,
+  });
 
   return Object.freeze({
     workspaceId,
@@ -84,9 +105,13 @@ export function createProductionHostedPlatformReviewApplications({
     database: opportunityCore.database,
     contentPlanningRepository,
     contentReviewRepository,
+    contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
+    contentSignalRepository: opportunityCore.contentSignalRepository,
     identityRepository,
     identityApplication,
     generationApplication,
     reviewApplication,
+    changeApplication,
+    todayApplication,
   });
 }

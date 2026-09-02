@@ -54,13 +54,16 @@ test("Today opportunity filtering preserves ranked order while removing non-acti
   assert.deepEqual(filterTodayActionableOpportunities(null), []);
 });
 
-test("Today renders the ranked opportunity queue without changing exact review behavior", () => {
+test("Today renders the ranked opportunity queue without weakening exact review or all-clear behavior", () => {
   const today = read("components/TodayWorkspace.js");
   assert.match(today, /import TodayOpportunityQueue from "\.\/TodayOpportunityQueue"/);
   assert.match(today, /const \[opportunityCount, setOpportunityCount\] = useState\(null\)/);
   assert.match(today, /<TodayOpportunityQueue onStatus=\{setMessage\} onCountChange=\{setOpportunityCount\} \/>/);
-  assert.match(today, /const inboxLoading = loading \|\| opportunityCount === null/);
-  assert.match(today, /const allClear = !inboxLoading && decisions\.length === 0 && opportunityCount === 0/);
+  assert.match(today, /const inboxLoading = localDecisionStatus === "loading" \|\| hostedDecisionStatus === "loading" \|\| opportunityCount === null/);
+  assert.match(today, /localDecisionStatus === "ready"/);
+  assert.match(today, /hostedDecisionStatus === "ready"/);
+  assert.match(today, /decisions\.length === 0/);
+  assert.match(today, /opportunityCount === 0/);
   assert.match(today, /decisions\.length > 0 \?/);
   assert.match(today, /reviewApplication\.approveRevision/);
   assert.match(today, /reviewApplication\.rejectRevision/);

@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
+import { mergeTodayDecisions } from "../lib/application/todayDecisionSources.mjs";
+import { createBrowserHostedTodayDecisionClient } from "../lib/infrastructure/browserHostedTodayDecisionClient.mjs";
+import { createBrowserHostedPlatformReviewClient } from "../lib/infrastructure/browserHostedPlatformReviewClient.mjs";
+import { createBrowserHostedChangeRequestClient } from "../lib/infrastructure/browserHostedChangeRequestClient.mjs";
+import { createBrowserHostedExactMediaPreviewAdapter } from "../lib/infrastructure/browserHostedExactMediaPreviewAdapter.mjs";
 import ExactMediaRevisionPreview from "./ExactMediaRevisionPreview";
 import RevisionHistoryPanel from "./RevisionHistoryPanel";
 import TodayOpportunityQueue from "./TodayOpportunityQueue";
@@ -29,6 +34,20 @@ function originLabel(item) {
   return "Generated";
 }
 
+function sourceLabel(item) {
+  return item.origin === "hosted" ? "Connected source" : "Direct create";
+}
+
+function hostedUnavailableText(error) {
+  if (error?.status === 401 || error?.code === "owner_session_required") {
+    return "Connected-source review decisions are locked until the owner session is unlocked. Direct-create decisions below remain usable.";
+  }
+  if (error?.code === "owner_access_unconfigured") {
+    return "Connected-source review decisions are unavailable because this hosted deployment is missing its owner access lock.";
+  }
+  return "Connected-source review decisions are temporarily unavailable. Direct-create decisions below remain usable, and Today will not claim all clear until the hosted source is readable.";
+}
+
 function ReviewState({ item }) {
   return (
     <div className={styles.reviewState} aria-label="Quality checks">
@@ -51,14 +70,22 @@ function RevisionPreview({ item }) {
   return <p className={styles.revisionCopy}>{item.content}</p>;
 }
 
-function TodayExactMediaPreview({ item, onState }) {
+function TodayExactMediaPreview({ item, onState, hostedPreviewAdapter }) {
   const handleState = useCallback((next) => onState(item.decisionId, next), [item.decisionId, onState]);
-  return <ExactMediaRevisionPreview mediaBindings={item.mediaBindings || []} onPreviewState={handleState} />;
+  return (
+    <ExactMediaRevisionPreview
+      mediaBindings={item.mediaBindings || []}
+      onPreviewState={handleState}
+      previewAdapter={item.origin === "hosted" ? hostedPreviewAdapter : null}
+    />
+  );
 }
 
 export default function TodayWorkspace() {
   const [decisions, setDecisions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [localDecisionStatus, setLocalDecisionStatus] = useState("loading");
+  const [hostedDecisionStatus, setHostedDecisionStatus] = useState("loading");
+  const [hostedDecisionError, setHostedDecisionError] = useState(null);
   const [opportunityCount, setOpportunityCount] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState(null);
@@ -80,22 +107,35 @@ export default function TodayWorkspace() {
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
+  const hostedTodayClient = useMemo(() => createBrowserHostedTodayDecisionClient(), []);
+  const hostedReviewClient = useMemo(() => createBrowserHostedPlatformReviewClient(), []);
+  const hostedChangeClient = useMemo(() => createBrowserHostedChangeRequestClient(), []);
+  const hostedPreviewAdapter = useMemo(() => createBrowserHostedExactMediaPreviewAdapter(), []);
 
   const handleMediaPreviewState = useCallback((decisionId, next) => {
     setMediaPreviewStates((current) => ({ ...current, [decisionId]: next }));
   }, []);
 
   const reload = useCallback(async () => {
-    try {
-      setDecisions(await todayApplication.listDecisions());
-    } catch (error) {
-      setMessage({ type: "error", text: error?.message || "SignalFlow could not reconstruct the decision inbox." });
-    } finally {
-      setLoading(false);
-    }
-  }, [todayApplication]);
+    const [localResult, hostedResult] = await Promise.allSettled([
+      todayApplication.listDecisions(),
+      hostedTodayClient.listDecisions(),
+    ]);
 
-  useEffect(() => { reload(); }, [reload]);
+    const local = localResult.status === "fulfilled" ? localResult.value : [];
+    const hosted = hostedResult.status === "fulfilled" ? hostedResult.value.decisions : [];
+
+    setLocalDecisionStatus(localResult.status === "fulfilled" ? "ready" : "error");
+    setHostedDecisionStatus(hostedResult.status === "fulfilled" ? "ready" : "error");
+    setHostedDecisionError(hostedResult.status === "rejected" ? hostedResult.reason : null);
+    setDecisions(mergeTodayDecisions({ local, hosted }));
+
+    if (localResult.status === "rejected") {
+      setMessage({ type: "error", text: localResult.reason?.message || "SignalFlow could not reconstruct direct-create review decisions." });
+    }
+  }, [hostedTodayClient, todayApplication]);
+
+  useEffect(() => { void reload(); }, [reload]);
 
   async function decide(item, action, successText) {
     setBusyId(item.decisionId);
@@ -125,11 +165,17 @@ export default function TodayWorkspace() {
       setMessage({ type: "error", text: "SignalFlow cannot approve this media-bound revision until Today visibly resolves the exact AssetVersion attached to it." });
       return;
     }
+    const action = item.origin === "hosted"
+      ? () => hostedReviewClient.approveRevision(item.platformVariantId, item.platformVariantRevisionId, {
+          expectedCurrentRevisionId: item.platformVariantRevisionId,
+          visibleMedia: mediaState?.visibleMedia || [],
+        })
+      : () => reviewApplication.approveRevision(item.platformVariantId, item.platformVariantRevisionId, {
+          expectedCurrentRevisionId: item.platformVariantRevisionId,
+        });
     await decide(
       item,
-      () => reviewApplication.approveRevision(item.platformVariantId, item.platformVariantRevisionId, {
-        expectedCurrentRevisionId: item.platformVariantRevisionId,
-      }),
+      action,
       item.mediaBindings?.length
         ? `${destinationLabel(item.destination)} revision ${item.revisionNumber} is approved as this exact text + media combination.`
         : `${destinationLabel(item.destination)} revision ${item.revisionNumber} is approved exactly.`,
@@ -138,12 +184,18 @@ export default function TodayWorkspace() {
 
   async function reject(event, item) {
     event.preventDefault();
+    const action = item.origin === "hosted"
+      ? () => hostedReviewClient.rejectRevision(item.platformVariantId, item.platformVariantRevisionId, {
+          expectedCurrentRevisionId: item.platformVariantRevisionId,
+          note: rejectNote.trim(),
+        })
+      : () => reviewApplication.rejectRevision(item.platformVariantId, item.platformVariantRevisionId, {
+          expectedCurrentRevisionId: item.platformVariantRevisionId,
+          note: rejectNote.trim(),
+        });
     const saved = await decide(
       item,
-      () => reviewApplication.rejectRevision(item.platformVariantId, item.platformVariantRevisionId, {
-        expectedCurrentRevisionId: item.platformVariantRevisionId,
-        note: rejectNote.trim(),
-      }),
+      action,
       `${destinationLabel(item.destination)} revision ${item.revisionNumber} is rejected. Its text/media history is preserved.`,
     );
     if (saved) {
@@ -160,15 +212,25 @@ export default function TodayWorkspace() {
     setMessage(null);
     let revisionCreated = false;
     try {
-      const visible = await reviewApplication.getReviewBundle(item.platformVariantId);
-      if (visible.revision?.platformVariantRevisionId !== item.platformVariantRevisionId) {
-        const error = new Error("A newer revision became current after this decision loaded.");
-        error.code = "stale_revision_context";
-        throw error;
+      if (item.origin === "hosted") {
+        const nextRevision = await hostedChangeClient.requestChange(item.platformVariantId, instruction, {
+          expectedCurrentRevisionId: item.platformVariantRevisionId,
+        });
+        revisionCreated = true;
+        await hostedReviewClient.reviewRevision(item.platformVariantId, nextRevision.platformVariantRevisionId, {
+          expectedCurrentRevisionId: nextRevision.platformVariantRevisionId,
+        });
+      } else {
+        const visible = await reviewApplication.getReviewBundle(item.platformVariantId);
+        if (visible.revision?.platformVariantRevisionId !== item.platformVariantRevisionId) {
+          const error = new Error("A newer revision became current after this decision loaded.");
+          error.code = "stale_revision_context";
+          throw error;
+        }
+        await changeApplication.requestChange(item.platformVariantId, instruction);
+        revisionCreated = true;
+        await reviewApplication.reviewCurrentVariant(item.platformVariantId);
       }
-      await changeApplication.requestChange(item.platformVariantId, instruction);
-      revisionCreated = true;
-      await reviewApplication.reviewCurrentVariant(item.platformVariantId);
       await reload();
       setRequestingId("");
       setChangeRequest("");
@@ -188,8 +250,12 @@ export default function TodayWorkspace() {
     }
   }
 
-  const inboxLoading = loading || opportunityCount === null;
-  const allClear = !inboxLoading && decisions.length === 0 && opportunityCount === 0;
+  const inboxLoading = localDecisionStatus === "loading" || hostedDecisionStatus === "loading" || opportunityCount === null;
+  const allClear = !inboxLoading
+    && localDecisionStatus === "ready"
+    && hostedDecisionStatus === "ready"
+    && decisions.length === 0
+    && opportunityCount === 0;
 
   return (
     <WorkspaceShell activeItem="today" statusLabel="Decision inbox · Personal Alpha" statusTone="ready">
@@ -205,6 +271,9 @@ export default function TodayWorkspace() {
 
         {message && <div className={`${styles.message} ${styles[`message_${message.type}`] || ""}`} role="status">{message.text}</div>}
         <TodayOpportunityQueue onStatus={setMessage} onCountChange={setOpportunityCount} />
+        {hostedDecisionStatus === "error" && (
+          <div className={`${styles.message} ${styles.message_error}`} role="status">{hostedUnavailableText(hostedDecisionError)}</div>
+        )}
 
         {inboxLoading ? (
           <section className={styles.loading} aria-live="polite">Reconstructing what needs your judgment…</section>
@@ -227,7 +296,7 @@ export default function TodayWorkspace() {
               return (
                 <article className={styles.decision} key={item.decisionId} data-recommended={item.recommendedAction}>
                   <div className={styles.decisionMeta}>
-                    <div><span className={styles.destination}>{destinationLabel(item.destination)}</span><span>REVISION {item.revisionNumber}</span><span>{originLabel(item)}</span></div>
+                    <div><span className={styles.destination}>{destinationLabel(item.destination)}</span><span>REVISION {item.revisionNumber}</span><span>{sourceLabel(item)}</span><span>{originLabel(item)}</span></div>
                     <ReviewState item={item} />
                   </div>
 
@@ -243,7 +312,7 @@ export default function TodayWorkspace() {
                   </div>
 
                   <RevisionPreview item={item} />
-                  <TodayExactMediaPreview item={item} onState={handleMediaPreviewState} />
+                  <TodayExactMediaPreview item={item} onState={handleMediaPreviewState} hostedPreviewAdapter={hostedPreviewAdapter} />
 
                   {isRequesting ? (
                     <form className={styles.inlineForm} onSubmit={(event) => requestChange(event, item)}>
@@ -273,17 +342,20 @@ export default function TodayWorkspace() {
                       {item.opportunity && <section><span>OPPORTUNITY</span><strong>{item.opportunity.title} · {item.opportunity.score}/100</strong><p>{item.opportunity.whyNow}</p></section>}
                       <section><span>SELECTED ANGLE</span><strong>{item.strategy.selectedAngle.title}</strong><p>{item.strategy.selectedAngle.summary}</p></section>
                       <section><span>STRATEGY</span><strong>{item.strategy.coreIdea}</strong><p>{item.strategy.audienceTakeaway}</p></section>
-                      <section><span>REVISION BINDING</span><strong>Strategy revision {item.strategy.strategyRevision}</strong><p>Voice snapshot {item.identityContextSnapshotId} · {originLabel(item)}{item.mediaBindings?.length ? ` · ${item.mediaBindings.length} exact media binding${item.mediaBindings.length === 1 ? "" : "s"}` : ""}</p></section>
+                      <section><span>REVISION BINDING</span><strong>Strategy revision {item.strategy.strategyRevision}</strong><p>Voice snapshot {item.identityContextSnapshotId} · {sourceLabel(item)} · {originLabel(item)}{item.mediaBindings?.length ? ` · ${item.mediaBindings.length} exact media binding${item.mediaBindings.length === 1 ? "" : "s"}` : ""}</p></section>
                       <section><span>REVIEW</span><strong>{titleCase(item.reviewVerdict)}</strong><p>{item.evidenceSummary} {item.authenticitySummary}</p></section>
+                      {item.origin === "hosted" && <section><span>HISTORY</span><strong>Durable hosted revisions</strong><p>Immutable hosted revision history remains server-side and is available from the full plan. Today only applies judgment to the exact current revision shown here.</p></section>}
                     </div>
                     {item.findings.length > 0 && <div className={styles.findings}><span>FINDINGS</span>{item.findings.map((finding, index) => <p key={`${finding.code}-${index}`} data-severity={finding.severity}><strong>{titleCase(finding.severity)}</strong>{finding.message}</p>)}</div>}
-                    <RevisionHistoryPanel
-                      variantId={item.platformVariantId}
-                      currentRevisionId={item.platformVariantRevisionId}
-                      onChanged={reload}
-                      onStatus={setMessage}
-                      context="today"
-                    />
+                    {item.origin !== "hosted" && (
+                      <RevisionHistoryPanel
+                        variantId={item.platformVariantId}
+                        currentRevisionId={item.platformVariantRevisionId}
+                        onChanged={reload}
+                        onStatus={setMessage}
+                        context="today"
+                      />
+                    )}
                     <div className={styles.detailLinks}>{item.opportunity?.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunity.opportunityId)}`}>Open full plan</Link>}</div>
                   </details>
                 </article>

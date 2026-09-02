@@ -1,179 +1,382 @@
 # SignalFlow Studio — Implementation Ledger
 
-> **Purpose:** operational traceability only. Product architecture remains owned by the canonical architecture documents and GitHub roadmap/issues. This ledger records what was actually changed, how it was verified, what capability truth changed, and what remains next.
+> **Synchronized:** 2 September 2026.
 >
-> **Update rule:** do not mark a slice `verified` or `merged` until the normal repository gates prove it. A documented target is not a shipped capability.
+> **Purpose:** operational traceability. This ledger records what has actually landed, what was verified, what remains only on an unmerged branch, and what still requires credential-backed owner acceptance. Canonical product architecture remains owned by the architecture documents.
+>
+> **Truth rule:** `documented target ≠ feature-branch implementation ≠ green CI ≠ merged master ≠ production exact-SHA deployment ≠ credential-backed owner acceptance`.
 
 ## Traceability chain
 
-Every substantive implementation slice should be recoverable through:
+Every substantive slice should be recoverable through:
 
 ```text
-decision / product invariant
-    ↓
-owning issue
-    ↓
-implementation branch + PR
-    ↓
-commit(s)
-    ↓
-normal CI / credential-backed evidence where required
-    ↓
-merged master state
-    ↓
-capability/document truth update
-    ↓
-next dependency
+product invariant / owner burden
+  → owning issue
+  → focused branch + PR
+  → exact candidate SHA
+  → focused tests + full repository gates
+  → exact-head preview when applicable
+  → guarded merge
+  → master CI
+  → production exact-SHA verification
+  → owner acceptance when promised
+  → truthful capability/issue/docs update
 ```
-
-Do not use this ledger as a substitute for issue acceptance criteria or architecture docs.
 
 ## Current execution position
 
-**Active product gate:** Golden Path 2 — real GitHub work → worthwhile opportunity → bounded evidence/media → LinkedIn/X review.
+### Golden Paths
 
-**Current engineering slice:** #163 Phase B — screenshot quality/uncertainty + platform-safe derivative planning and lineage.
-
-**Golden Path status**
-
-| Path | Issue | Status | Proof boundary |
+| Path | Issue | Status | Current boundary |
 | --- | --- | --- | --- |
-| GP1 — manual thought → authentic approval | #166 | complete | End-to-end owner intelligence/review slice accepted. |
-| GP2 — GitHub work → opportunity → automatic screenshot evidence | #167 | active | Raw screenshot Phase A is merged; real GitHub ingestion/noise proof, derivative quality, exact media binding, and final end-to-end evidence remain. |
-| GP3 — exact approval → schedule/publish → NarrativeMemory | #168 | waiting | Starts only after GP2 closes. |
+| GP1 — manual thought/topic → authentic exact judgment | #166 | **Accepted** | Defined owner-first manual intelligence/review vertical accepted. |
+| GP2 — GitHub work → exact evidence/media → owner judgment | #167 | **Active / not accepted** | Major hosted substrate merged through #258; #259 unmerged; post-strategy preparation still has routine owner clicks; real hosted owner acceptance pending. |
+| GP3 — exact approval → durable publication → NarrativeMemory | #168 | **Parked** | Starts only after GP2 owner acceptance. |
 
-## Verified merged foundation
+### Repository checkpoint
 
-### 2026-08-29 — restore trustworthy green baseline
+- master: `ea71fa39836dfadddd70f0fe5a135c2f4d8ce9e0`
+- production: `dpl_ExhZUutbj3peG3BKX1FLDLmJe7Ez`, READY on the same SHA
+- active PR: #259, head `6df646f76151e6544dbd506eb7e41909b83cb8cd`
+- parked GP3 branch: `feat/editorial-execution-layer` at `b53f8faec74b346bc65c694a908728af46827322`
 
-- **Issue context:** approved UI merge #234 left `master` with stale frontend tests and failed CI.
-- **PR:** #237 — `fix: restore green frontend baseline after approved UI merge`
-- **Merge commit:** `5b374a25d3b5a46c0053fa3d073324d90379f103`
-- **What changed:** reconciled tests with the approved landing/workspace UI, restored accessibility/reduced-motion expectations, synchronized public schema truth, removed temporary diagnostic CI debris.
-- **Verification:** normal frontend regression tests, production dependency audit, production build, Python tests, and MCP tests passed before merge and again on `master`.
-- **Capability effect:** no new product capability; restored a trustworthy engineering baseline.
-- **Lesson:** red `master` must never be treated as an acceptable starting point for product work.
+## Verified GP2 implementation progression
 
-### 2026-08-29 — media intelligence, durable jobs, and bounded capture foundation
+### PR #238 — media intelligence, durable jobs and bounded capture foundation
 
-- **Issues:** #162, #73, #179 and related media-domain work supporting #163/#167.
-- **PR:** #238 — clean reconstruction replacing contaminated #235.
-- **What changed:**
-  - protected canonical domain discriminator ownership;
-  - fixed `MediaRequirement.kind` versus selected `mediaKind` separation;
-  - added media intent/use-policy/privacy/lineage foundation;
-  - added durable job lifecycle, leases, heartbeats, retries, cancellation and idempotency semantics;
-  - added versioned `CaptureRecipe` / `CaptureJob` records;
-  - enforced a bounded capture action vocabulary rather than arbitrary recipe JS/shell;
-  - added deterministic screenshot worker foundation;
-  - kept screencast unavailable until its own slice.
-- **Verification:** normal frontend tests/audit/build, Python and MCP passed.
-- **Capability effect:** capture and media execution contracts exist, but this did **not** by itself make real automatic browser screenshots a shipped capability.
+Established media/capture/job domain foundations without claiming real end-to-end screenshot acceptance:
 
-### 2026-08-29 — private immutable asset storage foundation
+- canonical media requirement/intent/use-policy/privacy/lineage foundations;
+- durable job lifecycle, leases, retry/cancel/idempotency semantics;
+- versioned CaptureRecipe/CaptureJob records;
+- bounded action vocabulary instead of arbitrary JS/shell;
+- deterministic screenshot worker foundation;
+- screencast deliberately unavailable.
 
-- **Issue:** #72 Phase A.
-- **PR:** #239 — `product: add private immutable asset storage for GP2`
-- **Merge commit:** `4656384f14c24f0a279f5e33b0417788624f1f65`
-- **What changed:**
-  - extended the existing blob-storage boundary rather than creating a second storage abstraction;
-  - added private S3-compatible storage with SigV4;
-  - workspace-scoped content-addressed immutable object identities;
-  - SHA-256 content identity and idempotent reuse;
-  - workspace authorization before read/preview/delete;
-  - short-lived preview authorization kept ephemeral;
-  - device-private/restricted hosted writes fail closed;
-  - truthful idempotent deletion.
-- **Verification:** normal frontend regression tests, production dependency audit/build, Python and MCP passed; post-merge `master` also passed.
-- **Capability effect:** hosted private Asset byte storage foundation is verified. Resumable/multipart uploads remain #72 Phase B.
+### PR #239 — private immutable Asset storage foundation
 
-### 2026-08-29 — GP2 screenshot Phase A raw execution
+Merge commit: `4656384f14c24f0a279f5e33b0417788624f1f65`.
 
-- **Issues:** #163 Phase A, supporting GP2 #167; builds on #162/#72/#73.
-- **PR:** #241 — `product: wire real GP2 screenshot capture into private asset storage`.
-- **Superseded draft:** #240 contained the same implementation history and was closed only because the connected GitHub tool could not transition draft→ready due its GraphQL query requesting the nonexistent Repository field `fullDatabaseId`. No code defect caused the replacement.
-- **Merge commit:** `ffd5fdecb2112f5e66a5e6f0423273d5829bece2`.
-- **What changed:**
-  - real Chrome DevTools Protocol screenshot worker adapter;
-  - isolated target/page execution;
-  - bounded recipe action surface;
-  - worker-layer same-origin enforcement in addition to recipe-domain navigation enforcement;
-  - explicit viewport + device-scale configuration;
-  - viewport PNG capture;
-  - selector/region PNG capture using semantic element bounds rather than blind center cropping;
-  - privacy selector evaluation immediately before screenshot capture;
-  - `fill_safe_fixture` requires an explicit selector;
-  - hosted capture bytes flow through the private immutable Asset storage application;
-  - deterministic/local blob path remains a compatibility fallback;
-  - durable CaptureJob completion returns canonical Asset IDs;
-  - structured capture-output provenance links exact Asset/version to recipe/version, CaptureJob, checkpoint, safe final URL, environment, viewport/dimensions, capture time, content hash, privacy outcome, and worker version;
-  - provenance URLs remove query strings/fragments and reject credential-bearing URLs;
-  - screencast remains deliberately unavailable.
-- **Verification history:**
-  1. Initial #240 CI exposed a real application-boundary defect: `privateAssetStorage` was incorrectly validated through the domain port registry.
-  2. The fix kept `privateAssetStorage` as an application service and preserved `blobStorage` as the actual external storage port; no fake/duplicate domain port was introduced and no unrelated regression was weakened.
-  3. Normal CI run `33273938719` passed after that fix.
-  4. Output-provenance and documentation changes were added.
-  5. Normal CI run `33274203844` passed on the final implementation/docs head used by #240.
-  6. Non-draft replacement #241 ran normal CI again on latest head `0ac7080310d21e4c6f04b1f682d3dae6459d6160`; run `33274325933` passed frontend regressions, dependency audit, production build, Python and MCP.
-  7. #241 merged at `ffd5fdecb2112f5e66a5e6f0423273d5829bece2`.
-  8. Post-merge `master` push run `33274380066` passed frontend regressions, production dependency audit, production build, Python and MCP.
-- **Capability effect:** production-capable bounded raw screenshot code is now on `master`; this is **not** a claim that every deployment currently has a configured/live CDP worker. Credential-backed/live worker acceptance remains part of final GP2 evidence.
-- **Not complete:** #163 remains open for Phase B quality/derivatives and Phase C exact media review binding. #167 remains open for real GitHub event/noise and complete owner-journey proof.
+Established:
 
-## GP2 remaining sequence
+- private S3-compatible storage behind the existing storage boundary;
+- workspace-scoped content-addressed immutable objects;
+- SHA-256 identity/idempotent reuse;
+- workspace authorization before read/preview/delete;
+- private/device-restricted fail-closed behavior;
+- truthful deletion semantics.
 
-1. #163 Phase B — screenshot quality/uncertainty state and platform-safe derivative planning/lineage.
-2. #163 Phase C — bind an exact screenshot AssetVersion/derivative to an exact PlatformVariant review revision; media replacement must not rewrite unrelated text.
-3. Finish/verify #161 official GitHub App/webhook event ingestion and deployment boundary.
-4. Prove a meaningful real GitHub event end to end through #167.
-5. Prove a low-value/noise event is preserved or ignored appropriately but not promoted into manufactured content.
-6. Prove duplicate delivery, capture retry, partial generation, and refresh/reopen recovery.
-7. Attach sanitized end-to-end evidence and close #163/#167 only when their user outcomes truly pass.
-8. Start GP3 #168.
+This was storage foundation, not full GP2 acceptance.
+
+### PR #241 — real bounded screenshot Phase A
+
+Merge commit: `ffd5fdecb2112f5e66a5e6f0423273d5829bece2`.
+
+Established:
+
+- real Chrome DevTools Protocol screenshot execution;
+- isolated page target;
+- explicit viewport/device scale;
+- viewport and semantic selector-region PNG capture;
+- same-origin enforcement at both recipe/domain and worker layers;
+- privacy selector evaluation immediately before capture;
+- captured bytes persisted as canonical private immutable Asset state;
+- safe capture provenance with sanitized URL, exact recipe/version/job/checkpoint, dimensions/environment/hash/privacy/worker identity;
+- query/fragment/credential stripping in provenance URLs;
+- screencast still unavailable.
+
+Final and post-merge repository gates were green. This established production-capable code, not proof that every deployment had live CDP/storage credentials.
+
+### PR #244 — screenshot quality + crop-safe deterministic derivatives
+
+Exact PR head: `3ef002150c80c7dd141ae626354989924fbf97a0`.
+
+Established:
+
+- canonical ScreenshotQualityReview and ImageDerivativePlan records;
+- raw screenshots remain immutable;
+- blank/error/loading/subject/privacy/legibility uncertainty remains fail-closed;
+- 16:9, 9:16, 1:1 and 4:5 derivative planning around semantic focal/evidence regions;
+- crops refuse to remove required evidence;
+- memory/Postgres media persistence;
+- bounded CDP image decode/analysis/crop/resize;
+- only safe variants render;
+- derivative AssetLineage to parent AssetVersion;
+- retry does not re-render an already rendered variant.
+
+The draft #243 was replaced only because of a connector draft→ready defect, not product code failure.
+
+### PR #245 — exact screenshot media bound to exact review revision
+
+Exact PR head: `d93d6a20ff74c07490a7815bc8b705da52534f01`.
+
+Established:
+
+- immutable media bindings on PlatformVariantRevision;
+- exact screenshot derivative AssetVersion + quality/derivative lineage;
+- media-only replacement creates `media_rebound` and preserves exact text;
+- text edits preserve exact media unless explicitly changed;
+- restore reconstructs historical text+media composite;
+- stale revision/version/lineage fails closed;
+- repeat binding is idempotent;
+- Plan/Today render exact bound media;
+- media-bound approval blocks while exact preview is unresolved.
+
+### PR #246 — hosted protected exact AssetVersion preview
+
+Established:
+
+- workspace-scoped Postgres Asset repository over existing media durability;
+- server-only composition of canonical Asset metadata + private blob storage;
+- owner-authenticated `/api/assets/preview` exact `assetId + assetVersionId` stream;
+- private/non-cacheable responses;
+- no permanent storage URL/object key/presigned URL/credentials to browser;
+- same-origin browser exact-preview client verifies identity + media type;
+- stale/deleted/non-image/cross-workspace states fail closed.
+
+### PR #247 — runtime-injectable exact-media preview seam
+
+Established a `previewAdapter` injection seam so hosted exact preview could reuse the existing exact-media review component without creating a second UI/business-rule system. Local browser adapter remained the default compatibility path.
+
+### PR #248 — durable hosted exact platform review/judgment state
+
+Established:
+
+- durable workspace-scoped exact-revision review/approval records;
+- Postgres contentReviewRepository;
+- server platform generation/revision/evidence/authenticity inference composition;
+- hosted Postgres planning + identity + opportunity/signal integration into existing generation/review applications;
+- owner-only `/api/platform-review` API;
+- exact current revision checks for judgment;
+- hosted media-bound approval initially fail-closed until exact visibility proof was wired.
+
+### PR #249 — hosted owner review UI + signed exact-media visibility proof
+
+Established:
+
+- durable connected-source draft load/generate/reopen in Plan;
+- immutable hosted LinkedIn/X revisions from `/api/platform-review`;
+- exact revision critics;
+- immutable owner edit, stale-safe regenerate, reject/approve/restore;
+- exact HMAC visibility receipt issued only after protected preview serves requested private bytes;
+- browser requires exact identity headers + signed receipt;
+- approval must match every exact media binding;
+- server verifies receipt against workspace + Asset + AssetVersion;
+- expired/tampered/cross-workspace/stale receipts fail closed;
+- no permanent private storage identifiers/credentials exposed.
+
+### PR #250 — exact durable-job claim for request-scoped capture
+
+Exact PR head: `e1be134e973c02a7b913c2e246c5b8a7eb76fdb9`.
+
+Established `claimById(jobId)` semantics so one request-scoped screenshot operation cannot accidentally claim a different queued capture job. `claimNext()` remains available for ordinary worker loops.
+
+### PR #251 — repository execution truth reset
+
+Added the first `docs/CURRENT_EXECUTION_STATE.md`, reconciled stale execution guidance, and reinforced merge→production→acceptance distinctions. This was documentation/repository truth work, not product behavior.
+
+### PR #253 — complete hosted screenshot production binding
+
+Replacement for draft #252 only because of the connected draft→ready tooling defect. Exact head: `88f6b12f1e16c5bc8ebe496294b2018bda296719`.
+
+Established the full hosted screenshot operation over already-built components:
+
+```text
+exact current PlatformVariantRevision
+→ active CaptureRecipe/checkpoint
+→ exact CaptureJob/durable job
+→ bounded capture
+→ private immutable AssetVersion
+→ quality/privacy evaluation
+→ deterministic derivative
+→ exact media binding
+→ new immutable PlatformVariantRevision preserving text
+```
+
+Also established owner-authenticated `produce_screenshot`, safe browser response shaping, strategy-driven screenshot requirement behavior and fail-closed/recovery tests for stale state, retry, quality needs-review/block, durable retry, privacy failure and derivative block.
+
+This did **not** claim owner acceptance.
+
+### PR #254 — owner acceptance readiness + exact evidence continuity
+
+Merged master after exact-head CI/preview verification. Important contracts:
+
+- owner-only `/api/gp2/readiness` with safe configuration-state names only;
+- additive schema-v1-compatible ContentSignal `sourceRevision`;
+- merged PR exact source revision uses `merge_commit_sha` and never PR head fallback;
+- release promotes only when `target_commitish` is already immutable Git SHA;
+- missing/mutable exact source state remains auditable but non-promotional;
+- source revision participates in opportunity identity;
+- exact requested commit can bootstrap/verify GitHub repository evidence;
+- durable opportunity worker refreshes/reuses exact evidence before inference;
+- exact evidence refresh failure blocks/retries instead of evaluating latest context;
+- NarrativeStrategy resolves the exact ProjectContextSnapshot pinned by Opportunity;
+- exact snapshot/revision/SourceArtifact identity remains in fingerprint/task provenance;
+- model input reuses canonical minimized ProjectContext and excludes repository identity/opaque SourceArtifact IDs when not semantically needed;
+- missing/mismatched planning evidence fails closed;
+- GP2 acceptance ledger remains explicitly NOT YET ACCEPTED.
+
+### PR #256 — live acceptance readiness UI + owner access hardening
+
+PR #256 replaced draft #255 using the same branch/head after ready-for-review tooling failure. Exact head: `78ff279c06adb3824fea51845c8eb7bdd6fe1c4c`.
+
+Established:
+
+- owner-safe GP2 readiness panel in canonical Connections workspace;
+- exact allowlisted readiness classes and safe missing configuration names only;
+- fail-closed malformed readiness contract;
+- canonical hosted-mode/owner-access policy;
+- Vercel/public-hosted requires owner lock even if explicit hosted flag is absent;
+- hosted missing owner access key returns safe 503 `owner_access_unconfigured` instead of becoming authorized;
+- local/self-hosted no-key may remain intentionally unlocked;
+- constant-time owner key verification;
+- `/api/session`, readiness, GitHub source readiness and health/hosted-mode reporting share the same owner/hosted boundary;
+- hardened owner auth failures use private/no-store responses;
+- supported anonymous/BYOK paths remain non-owner and do not gain server-owner capability.
+
+### PR #257 — ranked GP2 opportunities in Today
+
+Exact head: `72dc6701712a5436c0ae2ced5fa0bf110a151c3c`.
+
+Established a `Worth considering` Today opportunity queue:
+
+- uses existing Plan opportunity application/canonical snooze/reject semantics;
+- shows why-now/evidence/repetition/angle/destination/media guidance;
+- `See ideas` links to exact opportunity in Plan;
+- `Later` snoozes; `Ignore` rejects while preserving source/evidence history;
+- never auto-selects owner angle;
+- avoids false `ALL CLEAR` while opportunity/connected-source state is unresolved.
+
+### PR #258 — unify hosted exact revisions into Today
+
+Merged master SHA: `ea71fa39836dfadddd70f0fe5a135c2f4d8ce9e0`.
+
+Exact PR head: `7531970beabb477d1d76bb48e3ddee385a9639fd`.
+
+Established:
+
+- hosted pending decisions reconstructed from canonical Postgres planning/review/signal/opportunity state using existing Today projector;
+- owner-authenticated private/no-store `/api/today/decisions`;
+- no second workflow-state store;
+- exact-current hosted change-request endpoint reusing bounded AI revision application;
+- local and hosted Today decisions merged deterministically during migration, preferring hosted canonical state on identical decision identity;
+- hosted approve/reject/change routes preserve hosted persistence;
+- hosted exact-media visibility receipts required before Today media-bound approval;
+- hosted decision unavailability cannot become false `ALL CLEAR`;
+- browser-local history adapter is not pointed at hosted records.
+
+This is current production master.
+
+## Active unmerged PR #259 — automatic exact review before owner judgment
+
+Exact candidate: `6df646f76151e6544dbd506eb7e41909b83cb8cd`.
+
+Final diff: 10 product/test files.
+
+### Implemented on the branch
+
+- reusable automatic exact-review preparation application;
+- automatic exact review after generate/regenerate/edit/restore and successful screenshot media rebound;
+- valid current exact review reuse;
+- critic failure fail-soft; successfully persisted revision remains durable;
+- bounded browser automatic-review/preparation status;
+- manual exact-check action becomes recovery-only;
+- required non-text media defers review until bound;
+- successful screenshot rebound automatically reviews final media-bound revision;
+- required media independently blocks Today projection and server approval;
+- private exact-media visibility-receipt requirement remains unchanged.
+
+### Runtime bug caught before merge
+
+A final diff audit discovered authenticated GET `/api/platform-review` accidentally referenced `result.bundle`, where `result` did not exist. Compilation could still succeed.
+
+Final corrected contract:
+
+- GET uses `await responseBundle(apps, contentPieceId)`;
+- `generate_ready` uses already-successful `result.bundle` plus bounded review-preparation state.
+
+A regression assertion now locks those route sections separately.
+
+### Verification
+
+Exact head `6df646f76151e6544dbd506eb7e41909b83cb8cd`:
+
+- CI #877 / run `33660704164`;
+- frontend regression PASS;
+- production dependency audit PASS;
+- Next production build PASS;
+- Python PASS;
+- MCP PASS;
+- PR mergeable/non-draft;
+- zero review threads/reviews at checkpoint.
+
+### Release gate not yet satisfied
+
+Final exact head has no executed Vercel preview. Account-level build-rate limiting rejected it before build execution.
+
+Earlier branch heads had READY previews but are not valid evidence for this later corrected SHA.
+
+**#259 remains unmerged until exact final head receives a genuine Vercel READY preview.**
+
+## Current GP2 remaining sequence
+
+1. Preserve #259 exact candidate; do not create no-op retry commits.
+2. When exact-head Vercel READY is available, re-check PR metadata and merge #259 with expected head SHA.
+3. Verify master CI + exact merged-SHA production READY + runtime errors; delete merged branch.
+4. Build the post-strategy automatic preparation orchestrator:
+   `approved strategy → automatic generation → automatic required screenshot → automatic exact review → Today`.
+5. Prove idempotency, stale-current handling, partial destination success, critic failure, capture retry and refresh/reopen recovery.
+6. Run real credential-backed GP2 owner acceptance.
+7. Complete sanitized `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`.
+8. Close only proven #161/#163/#167 definitions of done.
+9. Activate GP3 parked branch.
 
 ## Deliberately parked work
 
-Until GP2 closes, do not divert the primary execution path into:
+Until GP2 acceptance:
 
-- #164 screencast production;
-- #165 motion composition/rendering;
-- general-purpose image/video editors;
-- generative-video dependencies;
-- desktop capture/agent breadth;
-- many new source integrations;
-- broad collaboration/billing/analytics SaaS work;
-- another major product UI redesign.
+- screencast/video editing;
+- motion composition;
+- broad carousel expansion;
+- mobile/desktop-agent breadth;
+- broad source/social connector expansion;
+- general-purpose media editor;
+- broad provider-routing rewrite;
+- collaboration/billing/analytics;
+- another large product UI redesign;
+- broad GP3 calendar/publishing implementation.
 
-These remain valid roadmap work, but not current blockers for proving the owner journey.
+## Permanent acceptance/security rules
 
-## Repository governance debt
+- no ContentSignal schema bump for additive optional `sourceRevision`;
+- merged PR exact evidence = `merge_commit_sha`, not head SHA;
+- mutable release refs are not exact evidence;
+- exact evidence mismatch blocks before opportunity inference;
+- private repository identity/opaque SourceArtifact IDs stay out of model prompts when not semantically necessary;
+- owner-only hosted routes fail closed;
+- owner auth/readiness responses are private/no-store;
+- required strategy media must exist before Today/final approval;
+- bound private media approval requires protected exact preview + signed short-lived exact AssetVersion receipt;
+- media rebound preserves text;
+- critic failure does not invalidate persisted draft;
+- external unknown publication outcomes are not blindly retried;
+- issues close on accepted user outcomes, not merely on code presence.
 
-### Branch protection
+## Logging discipline
 
-Current known state: `master` is not branch-protected and required status-check enforcement is off. Until repository settings are hardened, maintain the manual rule:
-
-> **Never merge a red PR. Never weaken unrelated regressions just to obtain green CI.**
-
-This ledger must not claim branch protection is enabled until repository settings prove it.
-
-### Public repository description
-
-The GitHub repository description has been observed lagging behind the current approval-first content operating system direction. Internal package/public schema truth has been corrected in prior work, but repository metadata should be updated when the available GitHub write surface permits it.
-
-## Logging discipline going forward
-
-For each merged product slice, append a compact entry containing:
+For every future merged slice record:
 
 - date;
-- decision/invariant;
+- owner burden/invariant;
 - issue(s);
-- PR;
-- merge commit;
-- meaningful changed boundaries;
-- exact verification gates/evidence;
+- PR + exact candidate;
+- merge SHA;
+- important domain/application/adapter/UI boundaries;
+- exact verification gates;
+- production exact-SHA evidence where applicable;
 - capability truth change;
-- known limitations/non-goals;
+- remaining non-goals/acceptance gaps;
 - next dependency.
 
-If implementation, issues, capability matrix, and this ledger disagree, stop and reconcile them before declaring the slice complete.
+If code, tests, issues, capability claims and this ledger disagree, stop and reconcile before calling the slice complete.

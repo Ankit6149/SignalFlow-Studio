@@ -1,487 +1,362 @@
 # SignalFlow Studio Agent Guide
 
+> **Synchronized:** 2 September 2026.
+>
+> This guide defines how an implementation agent should work in this repository. Read `docs/NEW_CHAT_HANDOFF_2026-09-02.md` and `docs/CURRENT_EXECUTION_STATE.md` first for the exact active PR/deployment frontier. Target architecture does not override current capability truth.
+
 ## Mission
 
-SignalFlow Studio is becoming a **content operating system that lets people stay focused on their real work while SignalFlow handles the burden between what happened, what is worth communicating, what media it needs, and how the approved result reaches the right destination**.
+SignalFlow Studio is an approval-first **content operating system**.
 
-The intended product is not a generic post generator, a prompt wrapper, a social scheduler that must be manually filled, a professional creative-suite replacement, or a dashboard full of model controls.
-
-The target lifecycle is:
+Canonical lifecycle:
 
 ```text
-Work / manual thought / connected source / Direct Create request
-        ↓
-ContentSignal / explicit creative intent
-        ↓
-ContentOpportunity / ContentPiece direction
-        ↓
-NarrativeStrategy
-        ↓
-MediaIntentResolution + MediaDecision
-        ↓
-Evidence + MediaRequirement + MediaPlan
-        ↓
-text + image / carousel / capture / video production as required
-        ↓
-PlatformVariant(s)
-        ↓
-Review / exact text+media approval
-        ↓
-Editorial Calendar / PublicationRequest
-        ↓
-Durable Publication
-        ↓
-NarrativeMemory + eligible Feedback learning
+Work / manual thought / Direct Create / connected source
+  → ContentSignal / explicit creative intent
+  → ContentOpportunity
+  → owner angle judgment
+  → NarrativeStrategy
+  → Evidence + MediaRequirement / MediaPlan
+  → text/media production
+  → immutable PlatformVariant revision(s)
+  → exact evidence/authenticity review
+  → exact owner judgment
+  → editorial timing / PublicationRequest
+  → durable publication
+  → confirmed NarrativeMemory + eligible feedback learning
 ```
 
 > **The user's job is judgment. SignalFlow's job is everything between the work and that judgment.**
 
-The currently implemented manual campaign flow remains a valid foundation and should evolve into the **Create** path. Do not mistake the current UI architecture for the permanent product architecture.
+Do not turn SignalFlow into a generic post generator, prompt wrapper, manually filled scheduler, random browser agent, or professional creative-suite replacement.
 
-## Read this first
+## Read order
 
-Before changing product behavior, read in this order:
+Before changing product behavior, read:
 
-1. `docs/PRODUCT_VISION.md`
-2. `docs/PERSONAL_ALPHA_EXECUTION.md`
-3. `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md`
-4. `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md`
-5. `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md`
-6. `docs/AI_CLIENT_INTEGRATIONS.md`
-7. `docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md`
-8. `docs/MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md`
-9. `docs/CREATIVE_MEDIA_DOMAIN_CONTRACTS.md`
-10. `docs/CAPTURE_AND_MEDIA_PRODUCTION.md`
-11. `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md`
-12. `docs/PRODUCT_INFORMATION_ARCHITECTURE.md`
-13. `docs/CAPABILITY_MATRIX.md`
-14. `docs/INFERENCE_CLIENT_CAPABILITY_MATRIX.md`
-15. `docs/DOMAIN_ARCHITECTURE.md`
-16. `docs/SOURCE_ASSET_CONTRACT.md`
-17. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md`
-18. `docs/PORTABLE_TRANSFER.md`
-19. `docs/CONNECTOR_READINESS.md`
-20. `SECURITY.md`
+1. `docs/NEW_CHAT_HANDOFF_2026-09-02.md`
+2. `docs/CURRENT_EXECUTION_STATE.md`
+3. `docs/IMPLEMENTATION_LEDGER.md`
+4. `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`
+5. `docs/PRODUCT_VISION.md`
+6. `docs/PERSONAL_ALPHA_EXECUTION.md`
+7. `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md`
+8. `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md`
+9. `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md`
+10. `docs/AI_CLIENT_INTEGRATIONS.md`
+11. `docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md`
+12. `docs/MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md`
+13. `docs/CREATIVE_MEDIA_DOMAIN_CONTRACTS.md`
+14. `docs/CAPTURE_AND_MEDIA_PRODUCTION.md`
+15. `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md`
+16. `docs/PRODUCT_INFORMATION_ARCHITECTURE.md`
+17. `docs/CAPABILITY_MATRIX.md`
+18. `docs/DOMAIN_ARCHITECTURE.md`
+19. `docs/SOURCE_ASSET_CONTRACT.md`
+20. `docs/CAMPAIGN_EDITING_AND_VERSIONING.md`
+21. `docs/CONNECTOR_READINESS.md`
+22. `SECURITY.md`
 
-When target architecture and current capability truth differ, **the capability matrix/current code determine what may be claimed as implemented**, while canonical product docs determine the direction new work must follow.
+When sources conflict, use this truth order:
 
-## Product source of truth
+1. current code/tests/exact Git/PR metadata;
+2. credential-backed deployed/runtime evidence;
+3. current execution/handoff docs;
+4. capability/readiness/implementation ledgers;
+5. canonical architecture docs for intended design;
+6. older issues/history for rationale.
 
-### Target product direction
+## Exact current frontier
 
-- `docs/PRODUCT_VISION.md` — canonical product definition and principles.
-- `docs/CONTENT_INTELLIGENCE_ARCHITECTURE.md` — Signals/Opportunities/Campaign/ContentPiece/Memory domain.
-- `docs/IDENTITY_MEMORY_AND_AUTHENTICITY.md` — identity, perception, boundaries, feedback learning and narrative memory.
-- `docs/INFERENCE_AND_PRIVACY_ARCHITECTURE.md` — provider-neutral AI tasks, managed/BYOK/local/private modes, cost routing, data classification and processing policy.
-- `docs/AI_CLIENT_INTEGRATIONS.md` — ChatGPT/Claude/Codex/Gemini/other agent boundaries; external assistants as clients rather than a hidden subscription backend.
-- `docs/CLIENT_ECOSYSTEM_AND_EDGE_AGENT.md` — Web/Mobile/Extension/MCP/Workers/Desktop Agent responsibilities and future desktop-app capture.
-- `docs/MEDIA_INTELLIGENCE_AND_CREATIVE_PRODUCTION.md` — media intent, media format decisions, image editing/generation/composition, carousels, creator footage and Direct Create.
-- `docs/CREATIVE_MEDIA_DOMAIN_CONTRACTS.md` — MediaIntent/AssetRole/AssetUsePolicy/MediaDecision/MediaPlan/Image/Carousel/Video contracts and invariants.
-- `docs/CAPTURE_AND_MEDIA_PRODUCTION.md` — safe automatic screenshot/screencast/product-demo production.
-- `docs/EDITORIAL_CALENDAR_AND_PUBLISHING.md` — cadence/calendar/publication model.
-- `docs/PRODUCT_INFORMATION_ARCHITECTURE.md` — decision-first application structure.
-- `docs/PERSONAL_ALPHA_EXECUTION.md` — existing owner-first vertical guidance; detailed execution phases may be refined separately with the product owner.
+### Master / production
 
-### Current implementation truth
+- master SHA: `ea71fa39836dfadddd70f0fe5a135c2f4d8ce9e0`
+- production deployment: `dpl_ExhZUutbj3peG3BKX1FLDLmJe7Ez`
+- production exact SHA: same master SHA
+- state at checkpoint: READY
 
-- Product capability discovery: `frontend/app/api/capabilities/route.js`
-- Domain schema/serialization: `frontend/lib/domain/contracts.mjs`
-- Campaign aggregate/migration: `frontend/lib/domain/campaign.mjs`
-- Edit-safe reducer: `frontend/lib/studio/campaignState.mjs`
-- Campaign/channel/action state selectors: `frontend/lib/studio/campaignStatus.mjs`
-- Regeneration policies: `frontend/lib/studio/regenerationPolicy.mjs`
-- Application use cases: `frontend/lib/application/`
-- Infrastructure adapters: `frontend/lib/infrastructure/`
-- Canonical source graph: `frontend/lib/domain/sourceArtifacts.mjs`
-- Implemented manual ContentSignal domain/application: `frontend/lib/domain/contentSignals.mjs`, `frontend/lib/application/contentSignalApplication.mjs`, and `docs/CONTENT_SIGNAL_IMPLEMENTATION.md`
-- Implemented manual-Signal opportunity slice: `frontend/lib/domain/contentOpportunities.mjs`, `frontend/lib/application/contentOpportunityApplication.mjs`, `frontend/lib/inference/inferenceTasks.mjs`, and `/plan`; do not confuse this with complete #156/#166 or NarrativeMemory.
-- Implemented explicit owner Voice/Identity slice: `frontend/lib/domain/identityProfiles.mjs`, `frontend/lib/application/identityApplication.mjs`, and `/voice`; explicit profile versions/context snapshots are real, but StyleMemory/NarrativeMemory/automatic identity learning are not.
-- Implemented owner Golden Path planning/generation/review slices: `frontend/lib/domain/contentPlanning.mjs`, `platformVariantRevisions.mjs`, `platformVariantReviews.mjs`, their application/inference adapters, and `/plan`; exact LinkedIn/X revision critics, immutable owner edits/regeneration and exact approve/reject are real, while natural-language change requests, StyleMemory, NarrativeMemory and publishing remain incomplete.
-- Transfer: `frontend/lib/transfer/`
-- Authoritative export: `frontend/lib/export/campaignExport.mjs`
-- Current primary UI: `frontend/app/page.js`
-- Current generation API: `frontend/app/api/launch_kit/route.js`
-- Provider policy/adapters: `frontend/lib/ai/`
-- Social OAuth/status: `frontend/app/api/social/` and `frontend/lib/social/`
-- Confirmed-only publishing: `frontend/app/api/publish/route.js`
-- Context extraction: `frontend/lib/context/`
-- Browser extension: `extension/`
-- MCP server: `mcp/`
+### Golden Paths
 
-## Current product truth boundaries
+- GP1: accepted.
+- GP2: active, substantially built, **not owner-accepted**.
+- GP3: parked until GP2 acceptance.
 
-Do not claim target architecture as shipped functionality.
+### Active PR #259
 
-Currently implemented foundations include:
+- title: `GP2: automate exact review before owner judgment`
+- branch: `feat/gp2-auto-exact-review`
+- exact head: `6df646f76151e6544dbd506eb7e41909b83cb8cd`
+- final diff: 10 product/test files
+- CI #877: all required GitHub jobs green
+- PR: non-draft, mergeable, zero review threads/reviews at checkpoint
+- blocker: final exact-head Vercel preview has not executed because an account-level build-rate gate rejected it before build execution
 
-- real model-provider generation routes;
-- stable browser-local campaign identity;
-- authoritative current drafts;
-- edit-safe regeneration/history rules;
-- approval invalidation on edits;
-- deterministic Markdown/JSON export;
-- canonical Asset/SourceArtifact/AssetProcessing records;
-- browser-local manual ContentSignal intake and lifecycle at `/signals`;
-- browser-local manual Signal → Opportunity/angle → explicit Voice → approved NarrativeStrategy → immutable LinkedIn/X revision → evidence/authenticity review → immutable edit/regeneration → exact revision approve/reject in `/plan`;
-- portable browser archive/import/export;
-- capability discovery;
-- current MCP operations;
-- connector code paths for LinkedIn, X and Reddit where configured.
+**Do not modify #259 just to retry Vercel. Do not merge until this exact SHA gets a genuine READY preview.**
 
-Currently **not** complete production capabilities include:
+### Parked GP3 branch
 
-- automatic ContentSignal ingestion and persistent ContentOpportunity intelligence;
-- automatic work-event opportunity recommendations;
-- identity/style/narrative learning;
-- provider-neutral `InferenceTask` routing/metering;
-- enforceable DataClassification/ProcessingPolicy across inference;
-- SignalFlow Managed inference plans;
-- curated downloadable local intelligence packs;
-- Private Hybrid/Local Only end-to-end processing;
-- ChatGPT/Claude/Codex/Gemini client integrations over the target canonical workflow;
-- Today/Signals/Plan/Calendar target navigation;
-- production mobile application;
-- paired Desktop Edge Agent;
-- desktop application capture;
-- media-intent / AssetRole / AssetUsePolicy automation;
-- automatic media-format recommendation;
-- image editing/generation/composition through the target media contracts;
-- deterministic carousel production;
-- uploaded-footage Reel/Short editing;
-- multimodal Direct Create convergence;
-- media rights/face/voice/audio trust enforcement;
-- cloud account workspace/database/object storage;
-- durable full-pipeline background jobs;
-- automatic browser capture worker;
-- deterministic product-demo rendering;
-- production scheduled publication jobs;
-- broad verified social connector coverage;
-- analytics/performance learning;
-- unreviewed global autoposting.
+- `feat/editorial-execution-layer`
+- SHA `b53f8faec74b346bc65c694a908728af46827322`
+- do not activate before GP2 owner acceptance.
 
-The README and capability matrices must remain truthful while these are built.
+## Current next implementation slice
 
-## Canonical architecture direction
-
-Dependency direction remains:
+After #259 merges and production is verified, the next GP2 vertical is:
 
 ```text
-UI / routes / MCP / extension / mobile / desktop agent / webhook / workers
-                              ↓
-                     application services
-                              ↓
-                    domain contracts + ports
-                              ↑
- browser / memory / cloud / provider / local / connector / processor / renderer / worker adapters
+approved NarrativeStrategy
+  → automatic destination generation/reuse
+  → automatic required screenshot production
+  → automatic exact review
+  → Today
+  → owner judgment
 ```
 
-Target records must follow this direction, including:
+The owner should not normally click `Generate drafts`, `Prepare visual proof`, or `Run exact checks` merely to move a healthy strategy into a judgment-ready state.
 
-- `ContentSignal`, `ContentOpportunity`, `NarrativeStrategy`, `ContentPiece`, `PlatformVariant`;
-- `FeedbackEvent`, `StyleMemory`, `NarrativeMemory`;
-- `InferenceTask`, `InferenceRoute`, `ProcessingPolicy`, `DataClassification`;
-- `MediaIntentResolution`, `AssetRoleBinding`, `AssetUsePolicy`;
-- `MediaDecision`, `MediaRequirement`, `MediaPlan`;
-- `ImageCompositionPlan`, `CarouselCompositionPlan`, `VideoNarrative`, `VideoEditPlan`;
-- `CaptureRecipe`, `MediaComposition`, `MediaApproval`;
-- `CadencePolicy`, `EditorialCalendarEntry`, `PublicationRequest`;
-- `PairedDevice` and edge-job records.
+Manual controls may remain for explicit recovery/override, but the successful path must be automatic and durable.
 
-## Product-domain rules
+Do **not** start GP3 instead.
+
+## Architecture direction
+
+Dependency direction:
+
+```text
+UI / routes / MCP / extension / mobile / edge / webhook / workers
+                            ↓
+                   application services
+                            ↓
+                    domain records + ports
+                            ↑
+ browser / Postgres / object storage / provider / local / connector / renderer adapters
+```
+
+Do not create duplicate persistence/planning/generation/media engines for a new client or Golden Path.
+
+## Core domain rules
 
 ### Signals
 
 - A signal is evidence/context, not generated copy.
 - GitHub is one source, not the whole product.
-- Manual thoughts/topics and `Something else…` must remain first-class.
-- Do not turn every commit/event into an opportunity.
+- Manual thoughts and Direct Create remain first-class.
+- Not every event deserves an opportunity.
 - Event ingestion must be authorized, idempotent and provenance-preserving.
+- A missing exact immutable source revision may remain auditable but must not be promoted into exact-evidence opportunity inference.
+
+### GitHub exact-revision rule
+
+For a merged PR:
+
+- use `merge_commit_sha` as immutable merge evidence;
+- never substitute PR head SHA as merge evidence.
+
+For a release:
+
+- promote only when the target is already an immutable Git SHA or exact resolution is explicitly supported/proven;
+- mutable branch/ref targets remain non-promotional until safely resolved.
+
+Do not bump the ContentSignal schema merely for the additive optional `sourceRevision` field.
 
 ### Opportunities
 
-- Opportunity scoring must be explainable.
-- The system may recommend **do not post**.
-- Repetition, evidence, narrative fit, timing and user boundaries matter.
-- A proposed angle list must allow a free-form override.
-
-### Direct Create
-
-- Direct Create is the manual intentional entry for users who already know approximately what they want.
-- Begin from natural-language intent plus optional photos/videos/files/links/capture, not a giant content-type/model/platform form.
-- Direct Create and automatically discovered opportunities must converge on the same ContentPiece/Media/Review/Approval domain.
-- Important inferred media intent should be visible/correctable; high-risk ambiguity must fail safely.
-
-### Campaigns/content pieces
-
-- A campaign is a narrative container and may contain multiple content pieces over time.
-- Do not force all supported destinations into every campaign.
-- Platform absence is a valid recommendation.
-- Narrative strategy must remain separate from destination copy.
+- Scoring/ranking must be explainable.
+- `do not post` is a valid outcome.
+- Noise/routine dependency events must not become manufactured high-priority content.
+- Opportunity inference must use/reuse exact evidence refreshed at the signal's immutable source revision.
+- Exact evidence mismatch/failure blocks or retries before inference; do not silently fall back to unrelated latest context.
 
 ### Identity/authenticity
 
-- Do not solve identity with only a tone preset.
-- Explicit boundaries outrank engagement optimization.
-- Learned preferences require evidence and should be inspectable/correctable.
-- Approval/edit/rejection events may inform memory but must not silently create irreversible personality rules.
-- Narrative memory (what was said) is separate from style memory (how the user prefers to communicate).
+- Identity is not a tone dropdown.
+- Explicit owner boundaries outrank engagement optimization and learned preferences.
+- StyleMemory and NarrativeMemory are separate.
+- Learned preferences must be evidence-backed, inspectable and removable.
 
-### Inference/provider architecture
+### Inference/privacy
 
-- Product code requests intelligence by `InferenceTask`, not by hard-coded provider/model.
-- A free/testing provider is an adapter, never the business model or domain architecture.
-- BYOK, SignalFlow Managed, local/private and future enterprise inference share application task contracts.
-- Cheap/deterministic/local processing should remove noise before expensive reasoning where appropriate.
-- Strong reasoning should be spent on high-value decisions rather than every raw event.
-- Text, vision, image editing/generation, audio/video understanding and media direction may use different specialized providers.
-- Provider fallback must re-check capability, quality, budget and policy. Never silently lower privacy.
-- Consumer AI subscriptions are not generic API credits unless a provider officially supports the exact integration model.
-- Never scrape another AI product's web session/cookies or reuse unsupported OAuth/CLI credentials.
-- External AI assistants may operate SignalFlow through MCP/API; they are not a substitute for unattended background inference.
+- Application code asks for task capabilities, not hard-coded provider brands.
+- Fallback must re-check capability, quality, budget and privacy; never silently reduce privacy.
+- Private/protected source material is minimized before remote inference where policy requires it.
+- Private repository owner/name and opaque SourceArtifact IDs do not belong in model prompts merely for provenance.
+- Reuse canonical ProjectContext minimization.
+- Exact IDs/revisions belong in canonical records/fingerprints/task provenance where required.
+- Secret material must not become normal model input.
 
-### Data classification/privacy routing
+### Media intent/use
 
-- Protected source/media data must have DataClassification/ProcessingPolicy before remote inference where required.
-- `LOCAL_ONLY` fails closed when only remote inference is available.
-- Private repositories use bounded relevant evidence; do not upload entire repositories by default.
-- `PRIVATE_HYBRID` can keep raw protected evidence local/private and send minimized structured evidence remotely only when policy permits.
-- Secret material should not become normal model input.
-- Local CLI execution does not automatically mean local data processing; model-route policy reflects where content actually goes.
+- Upload does not mean permission to publish.
+- MIME type does not define intended use.
+- `NONE` is a valid MediaDecision.
+- Reference/evidence/private assets cannot silently become publication media.
+- Originals stay immutable; edits/captures/renders produce derived revisions with lineage.
+- Prefer deterministic composition for exact product UI, screenshots, typography and repeatable demos.
+- Do not generatively alter factual evidence while presenting it as unchanged exact UI.
 
-### Client ecosystem
+### Revisions/approval
 
-- Web is the full workspace.
-- Mobile is primarily judgment + quick capture/share + approval + calendar/exception handling.
-- Browser Extension is explicit user-initiated browser context/capture, not hidden browsing surveillance.
-- Structured source integrations should handle passive service events whenever possible.
-- Desktop Agent owns trusted local/private capabilities such as local repositories/files/models, Private Hybrid, optional official local-agent adapters, and later desktop capture.
-- Workers own durable asynchronous execution.
-- All clients call the same application services and canonical records.
-- A stale client cannot approve an unseen newer text/media revision.
+- Approval binds an exact current revision, never `latest` implicitly.
+- A stale client cannot approve unseen newer text/media.
+- Required non-text strategy media must exist before a revision can surface as a final Today decision or be approved.
+- Media-bound approval requires protected exact preview plus short-lived signed visibility receipt for each exact AssetVersion.
+- Media changes create immutable rebound revisions and preserve parent text unless text change was separately requested.
+- Text changes do not silently replace selected media.
+- Critic failure must not invalidate successfully persisted immutable drafts.
 
-### Media intent and asset use
+### Capture
 
-- Upload does not equal permission to publish.
-- MIME type does not define intent.
-- Assets may be reference-only, style reference, evidence, final candidate, edit/composite source, footage, brand/audio material, capture output or derived output.
-- `AssetRoleBinding` is request/content-piece scoped; `AssetUsePolicy` is a separate permission boundary.
-- Reference-only/evidence-only/private assets cannot silently become final publication media.
-- Original user media is immutable. Every edit/composite/render creates derived lineage.
-- Media-use rules compose with ProcessingPolicy/DataClassification; the most restrictive applicable rule wins.
-
-### Media decisions
-
-- Not every story needs media; `NONE` is a successful `MediaDecision`.
-- Not every destination needs the same media or any variant.
-- Existing real evidence/reusable assets should be considered before new generation.
-- Explicit user media instructions outrank recommendation unless safety/privacy/rights block them.
-- Media recommendations should be explainable without storing/revealing hidden model chain-of-thought.
-
-### Image production
-
-- Do not model image AI as one boolean capability.
-- Distinguish image understanding, editing, generation, compositing, background removal, upscale/restoration, OCR/layout direction and visual critique.
-- Prefer deterministic composition for exact product screenshots, typography, cards, comparisons and brand layouts.
-- Generative editing/generation is optional and must preserve provenance/policy.
-- Do not generatively alter factual product evidence while representing it as exact unchanged UI unless explicitly allowed and clearly treated as illustrative.
-
-### Carousels
-
-- A carousel is a sequential narrative, not only `images[]`.
-- Store stable slide IDs, semantic roles, content, source/evidence bindings and layout primitives.
-- AI may plan meaning/sequence; deterministic rendering should own typography/spacing/brand dimensions.
-- Natural-language edits should be surgical: revise/reorder/rebind the affected slide rather than regenerate everything without need.
-- Final publication binds the exact approved rendered carousel revision.
-
-### Creator footage/video editing
-
-- User-uploaded footage and CaptureRecipe footage use different acquisition paths but converge on canonical Assets/MediaPlans/MediaComposition.
-- Separate `VideoNarrative` (meaning) from `VideoEditPlan` (timeline mechanics).
-- Routine trims/cuts/reorder/reframe/captions/overlays/simple transitions/audio treatment/encoding should be deterministic where possible.
-- Natural-language changes mutate structured edit plans.
-- Do not build a Premiere/DaVinci replacement as the initial creator-video goal.
-- Generative video is optional later, not required for ordinary footage editing or real product demos.
-
-### Rights, consent, face/voice/audio
-
-- Uploaded media does not automatically have unrestricted rights.
-- Preserve relevant rights/source/license/generated provenance.
-- Treat material face modification/replacement, voice cloning, lip sync and avatar generation as higher-risk explicit capabilities, not generic "improve" operations.
-- Do not silently add unknown copyrighted music.
-- Rights/consent/privacy blockers can prevent media approval/publication.
-
-### Capture/media
-
-- AI should direct media; deterministic capture/composition is preferred for repeatable product demos.
-- Bounded CaptureRecipes are preferred over random agent clicking.
-- Automated capture must be authorized/target-scoped/privacy-aware.
-- Raw captures and rendered derivatives require canonical Asset provenance.
-- Long media operations belong behind durable jobs/workers.
-- Browser capture, uploaded footage and later desktop capture must reuse the same Asset/revision/approval substrate.
-
-### Editorial calendar
-
-- Cadence is a target/constraint policy, not a recurring content factory.
-- An empty slot is valid.
-- Campaign pieces should be sequenced intentionally rather than published everywhere simultaneously by default.
-- The calendar is editorial state plus execution state, not only timestamps.
+- Use bounded CaptureRecipes, never arbitrary script/shell/random unrestricted browsing.
+- Enforce origin/target/privacy boundaries again at the worker layer.
+- Run privacy checks immediately before capture where required.
+- Store real output as canonical private immutable Assets with provenance.
+- Quality uncertainty remains `needs_review`; blocking quality/privacy fails closed.
+- Derivatives preserve lineage.
+- Exact request/job identity must be idempotent; stale retries must not duplicate bound revisions.
 
 ### Publishing
 
-- Publishing remains an external reputational side effect.
-- Publication intent binds exact draft/media output versions, target identity, approval, source state and idempotency key.
-- A publication job must never resolve `latest media` at execution time.
-- `connected=true` is insufficient; connectors expose verified capabilities/scopes/targets including media types.
-- Manual copy/export/finalization is not direct publication success.
-- `unknown` external outcomes remain unknown until reconciled.
-- No unapproved revised content/media may replace an approved scheduled revision silently.
+- Publishing is an external reputational side effect.
+- Publication intent freezes exact text/media/target/approval/source state.
+- Durable workers own scheduled/immediate external execution; browser timers do not.
+- Duplicate request/job delivery creates at most one external publication.
+- `unknown` is a truthful external outcome and must not be blindly retried.
+- NarrativeMemory gains strong public state only after confirmed publication.
 
-## Existing editing/versioning rules that remain mandatory
+## Hosted owner/auth rules
 
-- Never replace an edited draft silently.
-- Full regeneration with edited drafts requires deliberate policy.
-- Per-channel regeneration mutates only the requested channel.
-- Failed/invalid regeneration leaves current work intact.
-- Editing clears approval for the affected exact revision.
-- Save updates the current stable ID; Save as copy allocates a new ID.
-- Current edited revision is authoritative.
-- Restore remains reversible where current versioning supports it.
-- The same principles extend to image/carousel/video plan revisions: change only dependent work, preserve history, and invalidate approval when the approved output materially changes.
+- `/api/gp2/readiness` remains owner-only.
+- Public-hosted/Vercel mode with missing owner access key fails closed.
+- Local/self-hosted no-key behavior may remain intentionally unlocked where explicitly designed.
+- Owner auth/readiness responses must be private/no-store.
+- Do not leak raw secret/config values in readiness/UI/errors.
+- Never request that the owner paste access keys, GitHub secrets, OAuth codes, webhook secrets, S3 credentials, CDP credentials or signed private object URLs into chat/issue evidence.
 
-## Infrastructure rules
+## GP2 #259 behavioral rules
 
-- React components/domain modules do not own database/object-store/queue/provider/connector/media SDK clients.
-- Persisted/protocol-crossing records require stable IDs and schema versions.
-- Secrets are referenced by secure IDs/adapters, never embedded in campaign/signal/media/memory records.
-- Runtime `File`, `Blob`, Request/Response and SDK objects do not cross domain boundaries.
-- Browser/local/cloud/mobile/desktop-edge/worker implementations sit behind ports/application services.
-- Long-running inference/capture/image/video/render/publication work must not depend on one browser tab/serverless request.
-- Jobs are idempotent/retry-safe and expose persistent progress/failure/cancellation where relevant.
-- Binary media belongs in blob/object storage; relational/domain records own metadata/relationships/plans/provenance.
-- Device/edge jobs require explicit device identity, authorization, expiry, replay protection and idempotency.
-- Do not create a separate Asset store, job engine, approval model or provenance model for creator-media features.
+PR #259 introduces automatic exact-review preparation.
 
-## GitHub integration rule
+Normal path:
 
-Do not use GitHub MCP as the sole production source-event architecture.
+- generated/regenerated/edited/restored exact revisions auto-review;
+- valid current exact review is reused;
+- required non-text media defers review until bound;
+- successful screenshot media rebound auto-reviews final revision;
+- critic failure is fail-soft and bounded;
+- manual exact-check action is recovery-only.
+
+Defense-in-depth required-media enforcement exists at:
+
+1. preparation;
+2. Today projection;
+3. hosted approval API.
+
+Do not remove one layer because another exists.
+
+A final diff audit caught a compile-green runtime bug where GET `/api/platform-review` accidentally referenced `result.bundle`. The final contract is regression-locked:
+
+- GET → `responseBundle(apps, contentPieceId)`;
+- `generate_ready` → already-successful `result.bundle` plus bounded review-preparation status.
+
+Treat this as a reminder that normal CI does not replace final runtime/diff audit.
+
+## Failure semantics
+
+For every pipeline stage, distinguish:
+
+- successful persisted work;
+- retryable downstream preparation;
+- blocked privacy/quality state;
+- non-promotional/noise state;
+- hard failure;
+- unknown external side-effect outcome.
+
+Do not collapse these into one generic `failed` state.
+
+Partial destination failure must preserve successful destination revisions.
+
+Browser refresh/reopen must reconstruct canonical state; it must not become a hidden new source of truth.
+
+## Repository workflow
+
+For substantive changes:
 
 ```text
-GitHub App/webhooks
-    → ongoing authorized work-event/signal ingestion
-
-SignalFlow MCP
-    → AI-agent commands and queries over SignalFlow application services
+read current handoff/status
+→ identify one vertical owner outcome
+→ focused branch
+→ implement only required domain/application/adapter/UI changes
+→ focused tests
+→ full regression/audit/build
+→ PR
+→ final high-risk diff audit
+→ exact-head preview when applicable
+→ verify review threads/reviews/mergeability
+→ merge with expected head SHA
+→ master CI
+→ exact-SHA production verification
+→ runtime inspection
+→ owner acceptance when promised
+→ truthful issue/docs update
+→ branch cleanup
 ```
 
-Both may coexist.
+### Do not
 
-## AI client integration rule
+- merge red CI;
+- weaken unrelated tests to manufacture green;
+- close issues because code exists when live acceptance is still missing;
+- use old READY previews as evidence for a newer SHA;
+- create no-op commits to force hosting retries;
+- start another broad foundation branch while the active Golden Path lacks acceptance;
+- merge all branches indiscriminately;
+- delete the intentionally parked GP3 branch before its role is resolved;
+- claim future architecture as shipped capability.
 
-Keep provider inference and assistant connectivity separate:
+## Vercel preview discipline
 
-```text
-SignalFlow Inference Fabric
-    → official provider API / local runtime
+Feature/helper commits can consume preview capacity. Temporary maintenance work should avoid creating unnecessary hosted previews wherever configuration/workflow safely permits it.
 
-External AI assistant
-    → MCP / supported app/API
-    → SignalFlow application services
-```
+If an exact candidate is rejected before build because of account-level deployment/rate gating:
 
-`ChatGPT connected`, `Claude connected`, or `Codex installed` does **not** mean SignalFlow may use that consumer subscription as an unattended backend.
+- record it as infrastructure gating, not a code build failure;
+- keep candidate SHA stable;
+- do not use a prior preview as evidence;
+- do not weaken the release gate;
+- resume merge only after that exact SHA genuinely builds READY.
 
-## Architecture sequencing rule
+## GP2 acceptance rule
 
-Prefer complete owner journeys over horizontal infrastructure breadth.
+Canonical ledger: `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`.
 
-Current docs/issues contain dependency guidance, but **do not treat it as the final execution plan**. Detailed phases, stack/provider choices, parallelization, infrastructure rollout and cost plan are to be agreed separately with the product owner before broad implementation.
+Keep #161/#163/#167 open until a real credential-backed hosted run proves the applicable definitions of done.
 
-Important dependency constraints already decided:
+Required recovery evidence includes duplicate webhook, missing exact revision, inference retry, evidence mismatch, capture retry, privacy block, quality needs-review, derivative block, partial destination generation failure, critic failure, stale browser/current revision and refresh/reopen continuity.
 
-- land only the thin #171/#172 inference/privacy boundary needed to avoid hard-wiring the first Golden Path;
-- do not block the first text/editorial Golden Path on the entire local/mobile/desktop/creative-media roadmap;
-- when media is attached, #179 role/use-policy must prevent unsafe assumptions;
-- reuse canonical Asset/job/revision/approval architecture across image/carousel/capture/video features;
-- build complete vertical outcomes rather than closing infrastructure-only fragments as finished product features.
+## Current immediate sequence
 
-## UX rules
+At the next implementation session:
 
-- Default product home should eventually be `Today`: decisions/exceptions requiring attention.
-- `Create` is the manual/direct entry path.
-- Direct Create should accept natural language plus photos/videos/files/links/capture without forcing content-type/provider forms first.
-- Provider/model configuration belongs behind Connections/Settings/Advanced for normal users.
-- Normal users should eventually choose a simple AI/privacy mode rather than repeatedly choosing model IDs.
-- Distinguish `AI provider` from `AI assistant` in Connections/Settings.
-- Do not require platform selection before SignalFlow can recommend where a story fits.
-- Keep `Something else…` available where options are proposed.
-- Media interpretations such as final/reference/evidence/edit/combine/do-not-publish should be visible/correctable when material.
-- Review prioritizes exact content/media and the user decision, not infrastructure status.
-- Review must expose exact image/carousel/video revision and privacy/rights blockers.
-- Persistent state cannot rely only on toasts.
-- Mobile should support capture/share/approval/reject/change/schedule recovery without duplicating the whole desktop Studio.
-- Lock-screen notifications avoid private content by default.
-- WCAG 2.2 AA is the target for supported primary workflows.
-- Avoid cramped dashboards, oversized marketing cards, tiny functional text, nested scroll traps and floating bars that cover content.
+1. re-fetch #259 and exact head;
+2. check exact-head Vercel deployment/status;
+3. if READY, re-check CI/review state/mergeability and squash-merge with expected head;
+4. verify master CI + exact-SHA production READY + runtime errors;
+5. clean merged branch;
+6. build automatic post-strategy preparation orchestration;
+7. run real GP2 owner acceptance;
+8. close only proven #161/#163/#167 criteria;
+9. then activate GP3.
 
-## Styling architecture
+## Completion standard
 
-Current implementation styling rules remain until UI architecture work deliberately replaces them:
+A feature is complete only when its actual user promise is demonstrated at the correct boundary.
 
-- scope application styles under `.app-shell`;
-- improve authoritative style owners rather than adding late global override layers;
-- test responsive/zoom behavior;
-- preserve readable forms/editors;
-- do not interpret current Source/Destinations/Review layout as permanent navigation architecture.
+`code exists` is not completion.
 
-## Required verification
+`tests green` is not merge.
 
-Frontend:
+`merged` is not production.
 
-```bash
-cd frontend
-npm ci
-npm test
-npm audit --omit=dev --audit-level=high
-npm run build
-```
+`production READY` is not necessarily credential-backed Golden Path acceptance.
 
-MCP:
-
-```bash
-cd mcp
-npm test
-```
-
-Python compatibility suite:
-
-```bash
-python -m pip install -r requirements.txt
-python -m pip install pytest
-pytest -q
-```
-
-Feature-specific work additionally requires the evidence defined by its issue: contract, migration, authorization, visual, accessibility, worker recovery, inference-route/privacy-policy, AssetUsePolicy/rights, media-lineage, render/revision, device/edge, connector credentials or other relevant gates.
-
-## Completion rules
-
-Never close an implementation issue merely because code exists, a file rendered once, or the build is green.
-
-Close only when:
-
-- the vertical user outcome is real;
-- acceptance criteria pass;
-- current and target docs remain consistent;
-- capability flags are truthful;
-- failure/recovery/cancellation states work where relevant;
-- no approved/manual work is lost;
-- originals/provenance/permissions are preserved;
-- relevant security/privacy/rights boundaries are tested;
-- external side effects are credential-backed where claimed;
-- provider/inference/media routes are verified where claimed;
-- exact text/media revision approval is preserved;
-- screenshots/rendered/browser evidence is attached for visual/capture work;
-- documentation names anything still incomplete.
-
-## Final product rule
-
-> **Reduce the amount of content work the user has to think about. Do not automate the production of noise.**
+Keep those states explicit in code, docs, issues and user-facing claims.

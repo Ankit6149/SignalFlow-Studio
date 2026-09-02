@@ -1,327 +1,205 @@
-# ContentSignal Manual Intake — Implemented Contract
+# SignalFlow Studio — ContentSignal Implementation Contract
 
-> Status: manual browser-local intake is implemented by #152. The GitHub connected-source ingestion core is implemented in code and its durable webhook/Postgres boundary is in progress under #161/#167/#71; production automatic detection is not yet configured or verified.
+> **Synchronized:** 2 September 2026.
+>
+> Manual ContentSignal intake is accepted as part of GP1. GitHub connected-source ingestion/evidence infrastructure is substantially implemented, but real hosted GP2 owner acceptance remains incomplete. Do not collapse those states.
 
-## 1. Product boundary
+## 1. Domain boundary
 
-A manual signal is not a post, campaign, or opportunity.
+A `ContentSignal` records something that happened or something the owner supplied that *might* become worthwhile communication.
 
-It is a durable, provenance-bearing record that says:
+It is not:
 
-> something happened, I learned something, or I may want to talk about this later.
+- generated copy;
+- a ContentOpportunity;
+- a NarrativeStrategy;
+- a Campaign/ContentPiece;
+- publication intent.
 
-Creating a manual ContentSignal does **not**:
+Creating a signal does not itself mean `post`.
 
-- call a model provider;
-- generate copy;
-- choose a destination;
-- create a Campaign;
-- score a ContentOpportunity;
-- schedule or publish anything;
-- imply that SignalFlow detected the event automatically.
+## 2. First-class source types
 
-This is intentionally the first persistent record before editorial judgment.
+Manual owner input remains first-class:
 
-## 2. Current owner path
+- thought;
+- lesson;
+- opinion;
+- question;
+- release/launch/milestone context;
+- personal/career update;
+- research/external topic;
+- other explicit signal kinds.
 
-The implemented browser-local path is:
+GitHub is one connected source, not the definition of SignalFlow.
 
-```text
-/signals
-  → manual thought/event/topic
-  → createManualSignal application service
-  → canonical ContentSignal
-  → browser ContentSignal repository
-  → localStorage persistence
-  → refresh/reopen
-  → same ContentSignal history
-```
+Future sources should normalize into the same signal/application contracts rather than creating connector-specific content engines.
 
-The current route is `/signals`.
+## 3. Manual GP1 implementation
 
-The Signals workspace lets the owner:
+Manual signals are accepted in the GP1 owner vertical.
 
-- capture free-form context;
-- choose a signal kind;
-- optionally associate a project reference;
-- choose a privacy classification;
-- optionally record when the event occurred;
-- record an explicit boundary note;
-- edit signal metadata;
-- ignore a signal without deleting its provenance;
-- snooze it for a future window;
-- archive it;
-- restore ignored/snoozed/archived records.
+The owner can create and manage signal lifecycle in `/signals`, including current supported metadata/project/privacy/lifecycle operations. Browser-local persistence remains a real adapter for the manual Personal Alpha path rather than disposable UI state.
 
-The current Signals UI deliberately states that automatic detection is not implemented for the live owner experience. GitHub connected-source ingestion core is implemented behind application/server boundaries, and the dedicated SignalFlow Neon schema is now migrated and verified; production automatic detection is still not configured because the GitHub App install flow, deployment database/webhook secrets, live repository mapping, and background Opportunity continuation are not yet complete.
+Manual signal → opportunity → owner angle → planning/review is accepted in GP1.
 
-## 3. Canonical domain record
+## 4. Canonical record/provenance
 
-`ContentSignal` is registered in `frontend/lib/domain/contracts.mjs` and normalized in `frontend/lib/domain/contentSignals.mjs`.
+A signal uses stable canonical identity and provenance, including as applicable:
 
-The record contains:
+- `signalId`;
+- workspace/project identity;
+- source type / source connection identity;
+- canonical SourceArtifact/Asset references;
+- safe external event reference;
+- occurred/observed timestamps;
+- headline/summary/kind;
+- importance/privacy/boundary metadata;
+- lifecycle/snooze state;
+- provenance;
+- optional immutable `sourceRevision` for connected-source exact evidence.
 
-- stable `signalId`;
-- global domain `schemaVersion`;
-- signal-specific `signalSchemaVersion`;
-- owning `workspaceId`;
-- optional `projectId`;
-- `sourceType`;
-- optional `sourceConnectionId`;
-- canonical `sourceArtifactIds[]` references;
-- canonical `assetIds[]` references;
-- optional external event reference for connected ingestors;
-- `occurredAt` and `observedAt` timestamps;
-- headline and summary;
-- signal kind;
-- importance hints;
-- privacy classification;
-- optional boundary note;
-- lifecycle status;
-- optional snooze deadline;
-- provenance.
+### Schema compatibility rule
 
-The current manual source type is `manual`.
+`sourceRevision` is additive/optional and remains compatible with the existing ContentSignal schema version. Do **not** bump the schema merely because this optional exact-revision field exists.
 
-## 4. Lifecycle
+## 5. GitHub exact source-revision contract
 
-Current statuses are:
+### Merged PR
 
-```text
-new
-interpreted
-used
-ignored
-snoozed
-archived
-```
+Canonical exact revision is GitHub `merge_commit_sha`.
 
-`interpreted` and `used` exist now so later ContentOpportunity and NarrativeStrategy work can transition the same stable record instead of inventing a second signal representation.
+Never substitute PR head SHA as merge evidence.
 
-User-facing manual intake currently exercises:
+### Release
+
+A release may promote only when the supported target is already an immutable Git SHA.
+
+A mutable branch/tag/ref target may remain auditable but is **non-promotional** until exact immutable resolution is explicitly implemented/proven.
+
+### Missing exact revision
+
+The signal may persist for audit/history, but exact-evidence opportunity inference does not proceed as though freshness is known.
+
+## 6. External event idempotency
+
+Connected ingestion must use stable external-delivery/event identity so duplicate delivery does not create duplicate signal/editorial chains.
+
+Repository port/application boundaries include external-event lookup/insert-if-absent semantics.
+
+Real duplicate-delivery acceptance remains part of GP2 owner acceptance and must not be marked complete solely from unit/adapter coverage.
+
+## 7. Webhook trust boundary
+
+For provider events:
 
 ```text
-new ↔ ignored
-new ↔ snoozed
-new ↔ archived
+raw provider delivery
+→ signature verification
+→ source-connection/resource authority
+→ supported event normalization
+→ exact source revision extraction
+→ canonical ContentSignal insert/reuse
+→ noise/promotion decision
 ```
 
-Restoration returns a record to `new`.
+Never normalize unverified raw provider payload into trusted canonical state merely because the shape matches.
 
-A snoozed record requires a valid future `snoozedUntil` timestamp.
+MCP remains a separate agent-control/query interface; it is not production webhook transport.
 
-## 5. Signal kinds
+## 8. Noise/promotion boundary
 
-The implemented contract supports:
+Not every signal deserves opportunity reasoning.
 
-- feature
-- bugfix
-- release
-- milestone
-- lesson
-- thought
-- research
-- launch
-- personal_update
-- career_update
-- opinion
-- question
-- external_topic
-- other
+A routine dependency/trivial event may remain auditable while staying non-promotional.
 
-These are editorial evidence categories, not posting templates.
+The connected source path must reuse the canonical ContentOpportunity intelligence rather than hard-coding GitHub-specific destinations/posts.
 
-## 6. Provenance and privacy
+Acceptance requires both:
 
-Manual records preserve provenance including:
+- a meaningful real event that becomes a useful opportunity;
+- a low-value/noise event that does not become manufactured content/media.
 
-- source;
-- ingestion method;
-- capture timestamp;
-- non-secret actor reference.
+## 9. Exact evidence continuation
 
-Manual signals default to `workspace_private`.
-
-They reuse the canonical privacy vocabulary from the source/asset domain:
-
-- public
-- workspace_private
-- device_private
-- restricted
-
-Domain serialization remains governed by `frontend/lib/domain/contracts.mjs`:
-
-- raw credentials/tokens/password-like fields are forbidden;
-- request/response runtime objects are forbidden;
-- functions, symbols, bigint values, circular references, and non-plain runtime objects cannot be serialized;
-- filesystem paths are not accepted where signal records require opaque IDs.
-
-Signal metadata therefore remains portable domain state instead of carrying provider clients, HTTP objects, database handles, or secrets.
-
-## 7. Application-service boundary
-
-`frontend/lib/application/contentSignalApplication.mjs` owns the workflow.
-
-Supported operations:
-
-- `createManualSignal`
-- `createExternalSignal`
-- `listSignals`
-- `readSignal`
-- `updateSignalMetadata`
-- `ignoreSignal`
-- `snoozeSignal`
-- `archiveSignal`
-- `markInterpreted`
-- `markUsed`
-- `restoreSignal`
-- `attachSignalToProject`
-- `attachSourceToSignal`
-- `deleteSignal`
-
-UI code does not directly mutate signal localStorage records.
-
-Workspace ownership is enforced at the application boundary. A signal from another workspace cannot be read or changed through an application scoped to the current workspace.
-
-## 8. Canonical source and asset references
-
-ContentSignal does not copy source or asset payloads into itself.
-
-It stores only canonical IDs:
+For a promotable connected GitHub signal:
 
 ```text
-sourceArtifactIds[]
-assetIds[]
+ContentSignal.sourceRevision
+→ durable opportunity job
+→ refresh/reuse bounded repository evidence at exact revision
+→ verify ProjectContextSnapshot revision
+→ opportunity inference
+→ persist exact projectContextSnapshotId
 ```
 
-When source/asset repositories are supplied, the application validates:
+Failure/mismatch blocks/retries before inference. Never silently evaluate against unrelated latest repository context.
 
-- the referenced record exists;
-- the record belongs to the current workspace where workspace ownership exists.
+## 10. Privacy minimization
 
-This avoids domain duplication and keeps future storage migrations additive.
+Exact provenance does not require leaking every identifier to the model.
 
-## 9. Repository adapters
+For private source planning/inference:
 
-`frontend/lib/infrastructure/contentSignalAdapters.mjs` provides the same logical repository contract through:
+- reuse canonical minimized ProjectContext synthesis;
+- preserve safe claims/architecture/constraints/uncertainties;
+- omit private repository owner/name when not semantically needed;
+- omit opaque SourceArtifact IDs when not semantically needed;
+- retain exact identities in canonical records/fingerprints/task provenance;
+- never put access tokens/webhook secrets/credentials into normal model input.
 
-1. memory adapter — deterministic domain/application tests;
-2. browser adapter — current Personal Alpha persistence;
-3. generic store-backed adapter — portable service/storage seam.
+## 11. Current GP2 source status
 
-The canonical ContentSignal repository port now exposes:
+Merged work through PR #258 includes substantial connected-source substrate:
+
+- GitHub connection/runtime boundaries;
+- owner-safe readiness + hosted owner policy;
+- exact source revision rules;
+- exact evidence refresh before opportunity inference;
+- durable hosted opportunity/planning/review continuation;
+- ranked opportunities in Today;
+- hosted exact review decisions in Today.
+
+This does **not** mean #161/#167 are owner-accepted.
+
+Real production acceptance still requires a live authorized App install/repository selection and real meaningful/noise webhook proof.
+
+## 12. Active downstream PR #259
+
+#259 does not change ContentSignal schema/normalization. It changes downstream review preparation after planning/generation.
+
+Exact head: `6df646f76151e6544dbd506eb7e41909b83cb8cd`.
+
+CI #877 fully green; final exact-head Vercel preview not executed due account-level build-rate gating; remains unmerged.
+
+Do not modify signal contracts merely to solve #259 release gating.
+
+## 13. Current next vertical
+
+After #259 merge, the next GP2 gap is downstream of ContentSignal:
 
 ```text
-list
-get
-upsert
-remove
-findByExternalEvent
-insertExternalIfAbsent
+approved NarrativeStrategy
+→ automatic destination generation
+→ automatic required screenshot
+→ automatic exact review
+→ Today
+→ owner judgment
 ```
 
-The browser/memory/store-backed adapters implement the same contract. Connected-source server ingestion additionally has a Postgres adapter in `frontend/lib/infrastructure/postgresConnectedSourceAdapters.mjs`; its migration is applied to the dedicated SignalFlow Neon database, while production runtime configuration is tracked separately from browser-local manual durability.
+After that, perform the real connected-source owner acceptance from GitHub event through final judgment.
 
-The browser key is currently:
+## 14. Acceptance/closing rule
 
-```text
-signalflow_content_signals_v1
-```
+Keep #161/#167 open until real hosted evidence proves:
 
-A duplicate `signalId` cannot be silently reassigned to another workspace.
+- verified GitHub authority;
+- signature verification;
+- exact source revision;
+- exactly one signal under duplicate delivery;
+- meaningful/noise separation;
+- exact evidence continuity;
+- durable continuation through owner judgment;
+- refresh/retry recovery.
 
-## 10. Refresh and recovery
-
-The browser application is composed in `frontend/lib/application/browserContentSignalApplication.mjs`.
-
-Regression coverage reconstructs the application over the same browser storage and verifies that:
-
-- the signal survives;
-- its stable ID survives;
-- project association survives;
-- lifecycle status survives.
-
-This is browser-local durability, **not** cloud sync.
-
-## 11. Portable transfer
-
-ContentSignal history is **not yet included in the portable campaign archive**.
-
-That is an explicit current limitation rather than silent omission.
-
-Before signals become cloud-only or cross-device-owned state, portable ownership must be extended through a new archive schema/version or a workspace-level export that includes ContentSignals. The existing campaign archive must not be falsely described as exporting signal history today.
-
-## 12. Connected-source ingestion remains a separate vertical capability
-
-Manual intake and automatic source observation share the canonical ContentSignal record, but they have different trust and durability boundaries.
-
-The GitHub connected-source ingestion core is implemented in code: allowlisted merged-PR/release normalization, raw-body HMAC verification, SourceConnection/resource authorization, bounded event metadata, external-event idempotency operations, dependency-only prefiltering, Postgres repository/migration code, and a Node webhook route.
-
-The dedicated SignalFlow Neon migration is applied and verified. Production automatic detection is not yet configured or verified. Remaining work under #161/#167 includes the GitHub App install/connect lifecycle, production runtime database/webhook secrets, repository mapping, real delivery acceptance, durable/background continuation into ContentOpportunity, and bounded repository evidence/media steps.
-
-ContentOpportunity scoring/ranking for manual Signals is implemented under #156/#166; the connected-source trigger must reuse that canonical intelligence rather than inventing a GitHub-specific destination generator.
-
-The Today/Signals/Plan decision center remains the owner-judgment surface under #159/#167.
-
-## 13. Scale path
-
-The Personal Alpha implementation is intentionally browser-local, but the core contract is not browser-specific.
-
-The scale path is:
-
-```text
-current
-ContentSignal domain
-  → ContentSignal application service
-  → browser repository
-
-connected-source server path in code
-same ContentSignal domain
-  → same application-service contract
-  → Postgres repository adapter + authenticated provider webhook boundary
-
-later production
-  → configured runtime access to the dedicated migrated SignalFlow database
-  → GitHub App installation lifecycle + durable background continuation
-  → broader authenticated hosted APIs and sources
-```
-
-Workspace/project IDs are already part of the record so SaaS ownership does not require replacing the signal model.
-
-The browser route is therefore a real first adapter, not a disposable prototype.
-
-## 14. Verification contract
-
-Issue #152 is complete only when tests prove:
-
-- versioned signal creation;
-- project-less and project-scoped records;
-- canonical source/asset ID reference behavior;
-- workspace isolation;
-- duplicate-ID ownership protection;
-- ignore/snooze/archive durability;
-- browser refresh/reopen recovery;
-- memory/browser/store-backed repository behavior;
-- domain serialization safety;
-- current Campaign application remains independent;
-- UI truthfully says manual intake is available and automatic detection is not.
-
-## 15. Next vertical slice
-
-Manual ContentSignal → explainable ContentOpportunity → owner judgment is already implemented and accepted in Golden Path 1. The next vertical slice is not automatic publishing; it is connected work reaching that same canonical judgment path:
-
-```text
-verified GitHub work event
-  → canonical ContentSignal
-  → cheap noise gate
-  → explainable ContentOpportunity
-  → bounded authorized evidence
-  → media/content-form requirement when useful
-  → Today / Plan owner judgment
-```
-
-Destination choice remains downstream policy informed by owner preference, connected destinations and the editorial calendar; GitHub ingestion must never hardcode LinkedIn/X.
-
-That preserves the core SignalFlow rule:
-
-> **The user's job is judgment. SignalFlow's job is everything between the work and that judgment.**
+Record sanitized evidence in `acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`.

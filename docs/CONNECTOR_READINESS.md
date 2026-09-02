@@ -1,332 +1,244 @@
-# SignalFlow Studio — Official Destination Connector Readiness
+# SignalFlow Studio — Connector & Hosted Readiness
 
-> **Status:** production-verification contract. This document does not guarantee current external API scopes/pricing/review requirements; re-check each platform's official documentation during implementation/credential rollout.
+> **Synchronized:** 2 September 2026.
+>
+> This file describes connector/readiness truth, especially the current GP2 GitHub-source acceptance boundary. It does not turn configured code into credential-backed acceptance.
 
-SignalFlow's current repository contains official connector code paths for LinkedIn, X, and Reddit. **Code present, configured, authorized, capability-verified, and production-verified are different states.**
+## Current production baseline
 
-The target product will add other destination adapters only through the same capability/approval/publication contracts.
+- master: `ea71fa39836dfadddd70f0fe5a135c2f4d8ce9e0`
+- production: `dpl_ExhZUutbj3peG3BKX1FLDLmJe7Ez`
+- production state at checkpoint: READY on exact master SHA
+- GP2: active / not owner-accepted
 
-## 1. Connector product model
+## Owner access boundary
 
-Do not represent a destination with a single `connected` boolean.
+Merged PR #256 established the canonical hosted owner policy.
 
-A connection should eventually expose a verified capability snapshot such as:
+### Hosted mode
 
-```text
-connectionId
-provider
-workspaceId
-target identity/account/page/channel/community
-granted scopes/products
-status
-verifiedAt
-expiresAt?
-canPublishText
-canPublishImage
-canPublishVideo
-canPublishCarousel
-canReadOwnPosts
-canReadAnalytics
-providerNativeScheduleCapability?
-safe unavailable/failure reason
-secret reference
-```
+A deployment is treated as hosted when explicit hosted configuration indicates it or when Vercel runtime proves hosted deployment context.
 
-Different platforms legitimately expose different capabilities.
+Public-hosted/Vercel deployment must not become owner-authorized because a secret is missing.
 
-## 2. Connection state vocabulary
+If owner access configuration is absent in hosted mode:
 
-Use explicit states rather than “done”:
+- owner-only routes fail closed;
+- safe status is 503 `owner_access_unconfigured` rather than anonymous authorization;
+- owner auth/readiness responses are private/no-store;
+- no secret values are returned.
 
-```text
-not_configured
-configured
-authorization_required
-authorized_unverified
-verified
-insufficient_scope
-expired
-revoked
-provider_unavailable
-manual_only
-implementation_unverified
-```
+Local/self-hosted no-key operation may remain intentionally unlocked where explicitly designed.
 
-A provider can be configured server-side but unavailable to the current session or target.
+Direct owner key verification uses constant-time comparison under the canonical owner policy.
 
-## 3. Definition of production-ready direct publishing
+## GP2 readiness surface
 
-A connector/content-type capability is production-complete only after all relevant conditions pass:
+Canonical owner-safe endpoint: `/api/gp2/readiness`.
 
-- official developer application/project exists;
-- required platform review/API/product access is granted;
-- production client ID/secret/settings are configured server-side;
-- canonical callback URL is registered;
-- required scopes/products are approved;
-- a real intended test account completes OAuth/authorization;
-- SignalFlow identifies the exact account/page/channel/community target;
-- the capability snapshot reflects real granted permissions;
-- a real **approved exact draft/media revision** publishes successfully;
-- the external API confirms publication and returns a stable reference where available;
-- token expiry/refresh/reconnect behavior is verified;
-- revoked/insufficient permission is verified;
-- invalid content/media is verified;
-- rate-limit/transient provider behavior is verified;
-- duplicate request/job delivery cannot create duplicate external posts;
-- unknown provider outcomes are preserved/reconciled rather than guessed;
-- logs/evidence contain no tokens/private campaign content;
-- manual export/copy fallback remains available where appropriate.
+Canonical UI: Connections workspace readiness panel.
 
-Verification may need to be repeated per content type. A connector verified for text does not automatically prove image/video publishing.
+The browser trusts only the known readiness contract and known labels. Unknown/duplicate/missing/malformed checks fail closed rather than being rendered as guessed readiness.
 
-## 4. Exact-revision publication contract
+Readiness displays safe state/missing **configuration names only**, never credential values.
 
-Direct publishing must consume an immutable `PublicationRequest` (target architecture under #103/#168) that references:
+Current expected classes include the core hosted requirements for:
 
-- campaign/content piece;
-- destination PlatformVariant;
-- exact approved `DraftRevision`;
-- exact required media Asset/MediaComposition revisions;
-- exact target connection identity;
-- approval snapshot;
-- source-freshness/quality state;
-- immediate/scheduled time semantics;
-- idempotency key.
+- durable database;
+- owner access lock;
+- GitHub App connection/runtime configuration;
+- GitHub webhook verification;
+- private Asset storage;
+- bounded screenshot worker;
+- exact-media visibility receipts;
+- hosted inference route.
 
-No connector may fetch “whatever text is currently in the editor” at worker execution time if that differs from the approved publication request.
+The precise server contract remains authoritative; UI must not infer readiness by reading browser environment variables.
 
-## 5. Durable scheduling
+## GitHub source authority
 
-Editorial planning (#160) decides what/when should be communicated.
+GP2 source management must remain owner-protected.
 
-Publication jobs (#103) execute the approved intent.
-
-Rules:
-
-- do not use browser timers;
-- scheduled jobs survive browser closure/deploy/worker restart;
-- connection/permission/source/approval policy is revalidated before the side effect;
-- cancel/reschedule is explicit;
-- edited content after scheduling does not silently replace the frozen revision;
-- duplicate delivery remains idempotent.
-
-## 6. Publication result states
-
-Normalized states must include at least:
+Expected live acceptance sequence:
 
 ```text
-scheduled
-queued
-publishing
-published
-failed
-rejected
-unknown
-cancelled
-superseded
+owner session
+→ signed GitHub setup/install state
+→ GitHub App installation
+→ separate owner OAuth authorization where required
+→ exact installation identity verification
+→ repository selection verified against installation authority
+→ persisted active SourceConnection with only selected enabled repository scope
 ```
 
-### `published`
+Pause/resume/revoke must preserve authority semantics.
 
-Only after provider confirmation.
+## GitHub webhook source rules
 
-### `failed`
-
-Known no-success outcome with actionable safe reason.
-
-### `rejected`
-
-Platform refused the request/content/permission.
-
-### `unknown`
-
-SignalFlow cannot prove whether the platform accepted the request, for example after a network timeout following request transmission.
-
-Do not convert `unknown` to failed and retry blindly; that can create duplicates.
-
-## 7. Manual handoff
-
-Manual handoff remains a first-class path when:
-
-- a destination has no official supported connector;
-- the app lacks approved API access;
-- the account/type does not support the required operation;
-- credentials/scopes are unavailable;
-- the user explicitly prefers manual publication.
-
-Manual workflow may provide:
-
-- exact approved text;
-- exact approved media download/copy;
-- validation/checklist;
-- open destination action.
-
-It must not be recorded as confirmed direct publication unless the user explicitly marks it or later verified evidence exists.
-
-## 8. Current canonical environment variables
-
-Current repository connector code may use environment values such as:
+MCP is not the production event transport.
 
 ```text
-NEXTAUTH_URL=https://signal-flow-studio.vercel.app
-SIGNALFLOW_ACCESS_KEY=<private owner key>
-SIGNALFLOW_PUBLIC_HOSTED=true
-SOCIAL_ENCRYPTION_KEY=<independent long random value>
+GitHub App/webhook
+→ production source event ingestion
+
+SignalFlow MCP
+→ AI-agent commands/queries
 ```
 
-Provider-specific client IDs/secrets remain server-side and must never be committed.
+Webhook acceptance requirements:
 
-Exact provider environment names should be verified against current code before deployment.
+- verify delivery signature before trusting event body;
+- normalize delivery ID/event family safely;
+- make delivery idempotent;
+- persist exactly one canonical ContentSignal for duplicate delivery;
+- preserve exact immutable source revision when available;
+- do not log raw private payload/secret material as acceptance evidence.
 
-## 9. Current LinkedIn code path
+## Exact source-revision rules
 
-Current repository configuration uses LinkedIn OAuth/publishing code paths.
+### Merged pull request
 
-Before live rollout verify through current official LinkedIn documentation/dashboard:
+Use `merge_commit_sha` as exact merge evidence.
 
-- application/product access;
-- callback URL;
-- member/page authorization model as implemented;
-- required publishing scopes/products;
-- current API version/header requirements;
-- text/image/video/document flow used by the adapter;
-- organization/page versus member target identity;
-- token lifetime/refresh behavior;
-- API rate/permission errors.
+Do **not** fall back to PR head SHA. Head SHA may identify proposed branch state, not the immutable merged repository state used for evidence.
 
-Do not preserve a hard-coded documentation claim about an API version indefinitely; platform versions change independently of this repository.
+### Release
 
-## 10. Current X code path
+Promote only when `target_commitish` is already an immutable Git SHA under the supported contract.
 
-Current repository configuration uses X OAuth/user publishing code paths.
+A mutable branch/tag/ref target may remain auditable but must remain non-promotional until exact resolution is explicitly supported and verified.
 
-Before live rollout verify through current official X developer documentation/dashboard:
+### Missing exact revision
 
-- app approval/access tier;
-- current pricing/credit model;
-- user authorization method/scopes;
-- callback URL;
-- text-post endpoint behavior;
-- media upload workflow for any claimed media capability;
-- token refresh/expiry;
-- rate/usage limits;
-- duplicate/unknown outcome behavior.
+Missing/unresolved immutable revision means:
 
-Do not assume text verification proves image/video support.
+- the event may remain a canonical/auditable signal;
+- it must not continue into exact-evidence opportunity inference as though freshness were proven.
 
-## 11. Current Reddit code path
+## Exact evidence continuity
 
-Current repository configuration contains Reddit OAuth/submission paths.
+Before opportunity inference for a GitHub GP2 signal:
 
-Before any commercial/public SaaS rollout, re-check current Reddit developer/data-API terms, approval requirements, user-agent expectations, scopes and commercial-use restrictions.
+1. read exact source revision from canonical signal;
+2. refresh or reuse bounded repository evidence at that exact revision;
+3. verify ProjectContextSnapshot resolves to that exact source state;
+4. only then run opportunity inference;
+5. persist the exact ProjectContext snapshot identity used by opportunity;
+6. propagate the exact evidence context into NarrativeStrategy planning.
 
-Direct Reddit publishing remains unavailable unless the actual account/application usage is permitted and credential-backed verification passes.
+Failure/mismatch blocks or retries. Do not silently substitute unrelated latest repository context.
 
-If API/commercial permission is uncertain, keep Reddit as a review/manual-handoff destination rather than bypassing platform policy.
+## Private-source minimization
 
-## 12. Future destination adapters
+Exact provenance does not mean every identifier belongs in the model prompt.
 
-Potential future destinations include other current generation targets such as Instagram, Threads, YouTube and TikTok, plus owned-channel integrations.
+For private source context:
 
-Each future adapter must start by defining:
+- reuse canonical minimized ProjectContext synthesis;
+- include only safe claims/architecture/constraints/uncertainties needed for the task;
+- do not send repository owner/name merely for provenance;
+- do not send opaque SourceArtifact IDs when they provide no semantic value;
+- retain exact IDs/revisions in canonical record/fingerprint/task provenance where required;
+- secret material must not become normal model input.
 
-- supported account type(s);
-- exact target identity model;
-- official API access/review requirements;
-- text/image/video/carousel capabilities;
-- upload/finalization state machine;
-- external rate/size/duration/format constraints;
-- token refresh/expiry/revoke;
-- idempotency/reconciliation possibilities;
-- analytics-read capabilities if later added;
-- manual fallback.
+## Hosted private Asset/capture dependencies
 
-Do not create a universal `publish()` UI assumption before these differences are represented.
+GP2 visual proof depends on:
 
-## 13. Live verification protocol
+- private S3-compatible Asset byte storage;
+- canonical workspace-scoped Asset metadata;
+- bounded CDP browser endpoint;
+- server-only capture environment/configuration;
+- screenshot quality + deterministic derivative pipeline;
+- protected exact AssetVersion preview;
+- server-only visibility-receipt signing secret.
 
-Use controlled test accounts and clearly disposable, non-sensitive content.
+Browser responses must not expose:
 
-### Authorization
+- S3 credentials;
+- canonical private object keys;
+- permanent private storage URLs;
+- CDP/browser credentials;
+- visibility-receipt signing secret.
 
-- connect through owner/authorized Connections flow;
-- confirm exact returned identity;
-- verify callback uses canonical production origin;
-- verify raw tokens never appear in page JavaScript/logs;
-- inspect granted scopes/capabilities;
-- verify reconnect/revoke.
+## Exact media visibility boundary
 
-### Text publish
+Media-bound approval is allowed only when:
 
-- create a short safe draft;
-- approve exact revision;
-- create one publication request with stable idempotency key;
-- execute via durable job where implemented;
-- confirm SignalFlow reports success only after provider confirmation;
-- verify returned external reference/content;
-- remove disposable test content afterward where appropriate.
+- requested approval revision is exact current revision;
+- strategy-required media is actually bound;
+- every exact media binding can be streamed through protected preview;
+- browser receives exact Asset/AssetVersion identity for displayed bytes;
+- server issued a valid short-lived visibility receipt after serving those exact bytes;
+- approval sends matching role/Asset/AssetVersion/receipt set;
+- server verifies each receipt against workspace + exact identity.
 
-### Media publish
+Expired/tampered/cross-workspace/stale receipts fail closed.
 
-Repeat separately for every advertised media type:
+## PR #259 readiness effect — unmerged
 
-- exact source/rendered asset revision;
-- provider upload/finalization;
-- processing status;
-- aspect-ratio/size/duration constraints;
-- timeout after upload but before final confirmation;
-- duplicate job delivery.
+PR #259 exact head: `6df646f76151e6544dbd506eb7e41909b83cb8cd`.
 
-### Expiry/revocation
+It does not change GitHub source authority/configuration. It changes downstream review preparation:
 
-- expired access token;
-- refresh available/unavailable;
-- authorization revoked at provider;
-- scope/product removed;
-- account/page/community access removed.
+- automatic exact critics;
+- valid review reuse;
+- fail-soft critic recovery;
+- required media review deferral;
+- required media Today/API approval guard.
 
-### Rejection/rate/unknown
+CI #877 is green, but #259 remains unmerged because exact final head has no executed Vercel preview due account-level build-rate gating.
 
-Test normalized handling for:
+Do not treat #259 as production readiness until merge + production exact-SHA verification.
 
-- authorization failure;
-- insufficient permission;
-- resource/target mismatch;
-- validation/content rejection;
-- rate limiting/retry guidance;
-- provider temporary failure;
-- timeout where outcome may be unknown.
+## Current live acceptance still required
 
-Every failure preserves the draft/media and approval history.
+The following remain acceptance actions, not documentation claims:
 
-## 14. Current status statement
+- authenticate owner session in production;
+- verify all GP2 readiness classes are actually configured;
+- install/connect GitHub App;
+- select the intended repository through verified installation authority;
+- exercise one real meaningful merged PR;
+- exercise duplicate delivery;
+- exercise one low-value/noise event;
+- prove exact evidence snapshot/revision continuity;
+- prove actual configured capture/storage path;
+- prove automatic destination/media/review preparation after the next orchestration slice;
+- prove exact owner judgment/recovery/reopen states.
 
-Today the truthful high-level status is:
+Record only sanitized safe IDs/states in `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`.
 
-- LinkedIn/X/Reddit connector code paths exist in the repository;
-- deployment configuration is environment-dependent;
-- current-session capability is server/capability dependent;
-- real account authorization requires actual credentials/user action;
-- direct publication must not be called production-verified without current credential-backed evidence;
-- other generation destinations remain manual-hand-off until their own verified adapters exist;
-- durable scheduled publication remains an open implementation area (#103/#168).
+## Current source/connector issue state
 
-## 15. Connections UI requirements
+Keep open until live owner evidence satisfies them:
 
-A destination card/detail should eventually show:
+- #161 — GitHub App/webhook event ingestion;
+- #163 — campaign-ready screenshots/derivatives;
+- #167 — complete GP2 owner path.
 
-- provider name;
-- exact connected target identity;
-- status;
-- granted scopes/products;
-- text/image/video/etc. capabilities;
-- expiry/last verified;
-- test/reconnect/revoke;
-- manual-only/unverified explanation;
-- queued/scheduled publication impact when revoking.
+## Social destination connectors
 
-Never hide a critical permission limitation behind a green “Connected” badge.
+Existing LinkedIn/X/Reddit or other connector code paths must be advertised only according to actual configured/verified capabilities. A route existing in code is not proof that every environment has valid OAuth identity/scopes or that durable publication is complete.
 
-## 16. Connector completion principle
+GP3 will own exact durable publication semantics. Do not broaden destination connector work before GP2 acceptance unless a connector defect directly blocks current acceptance.
 
-> **The code path is only the beginning. SignalFlow may claim a destination capability only when a real account, real authorization, exact approved revision, external confirmation, retry/idempotency, expiry/revoke, and error behavior have been proven.**
+## Failure/response hygiene
+
+- owner/auth failures: private/no-store;
+- readiness: safe names/states only;
+- public browser errors: bounded safe code/message;
+- raw provider/private source errors must not leak sensitive payloads;
+- external outcomes may be `unknown` when confirmation cannot be obtained.
+
+## Next connector/readiness action
+
+No new connector feature branch is the next move.
+
+Next session:
+
+1. preserve #259 exact head;
+2. clear its exact-head Vercel preview gate without no-op commits;
+3. merge/verify production;
+4. build automatic post-strategy GP2 preparation;
+5. then perform real production GitHub owner acceptance using this readiness model.

@@ -1,0 +1,233 @@
+.panel {
+  width: min(calc(100% - (2 * var(--sf-page-gutter-wide, 2rem))), var(--sf-content-max, 88rem));
+  margin: clamp(1rem, 2vw, 1.5rem) auto 0;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid rgba(23, 23, 20, 0.12);
+  border-radius: 0.7rem;
+  background: rgba(255, 253, 248, 0.78);
+  box-shadow: 0 1.2rem 3rem rgba(50, 42, 28, 0.035);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.45rem;
+  color: #8a7450;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heading h2 {
+  margin: 0;
+  color: #171714;
+  font-size: clamp(1.1rem, 1.8vw, 1.45rem);
+  line-height: 1.2;
+}
+
+.heading p:not(.eyebrow) {
+  margin: 0.6rem 0 0;
+  max-width: 58rem;
+  color: #6f6b61;
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.summary {
+  color: #6f6b61;
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.actions button {
+  min-height: 2.2rem;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid rgba(23, 23, 20, 0.14);
+  border-radius: 0.48rem;
+  background: #fffdf8;
+  color: #24231f;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.statusBox,
+.overall {
+  margin-top: 1rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px dashed rgba(23, 23, 20, 0.14);
+  border-radius: 0.55rem;
+  background: rgba(255, 253, 248, 0.72);
+  color: #6f6b61;
+  font-size: 0.73rem;
+  line-height: 1.55;
+}
+
+.statusBox[data-tone="attention"] {
+  border-color: rgba(173, 121, 55, 0.28);
+  background: rgba(211, 184, 116, 0.1);
+  color: #6d5932;
+}
+
+.statusBox strong,
+.overall strong {
+  display: block;
+  color: #171714;
+  font-size: 0.8rem;
+}
+
+.statusBox p {
+  margin: 0.35rem 0 0;
+}
+
+.statusBox a {
+  display: inline-block;
+  margin-top: 0.6rem;
+  color: #5f5136;
+  font-weight: 760;
+}
+
+.overall {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-style: solid;
+}
+
+.overall[data-ready="true"] {
+  border-color: rgba(81, 105, 77, 0.24);
+  background: rgba(113, 145, 106, 0.08);
+}
+
+.overall[data-ready="false"] {
+  border-color: rgba(173, 121, 55, 0.24);
+  background: rgba(211, 184, 116, 0.08);
+}
+
+.overall span {
+  color: #777166;
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.grid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 0.6rem;
+}
+
+.check {
+  min-width: 0;
+  padding: 0.78rem;
+  border: 1px solid rgba(23, 23, 20, 0.1);
+  border-radius: 0.52rem;
+  background: #fffdf8;
+}
+
+.check[data-ready="false"] {
+  border-color: rgba(173, 121, 55, 0.22);
+}
+
+.checkHeading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.checkHeading strong {
+  min-width: 0;
+  color: #24231f;
+  font-size: 0.72rem;
+}
+
+.checkHeading small {
+  color: #777166;
+  font-size: 0.56rem;
+  font-weight: 820;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: #b08952;
+  box-shadow: 0 0 0 0.18rem rgba(176, 137, 82, 0.08);
+}
+
+.check[data-ready="true"] .dot {
+  background: #718f6a;
+  box-shadow: 0 0 0 0.18rem rgba(113, 143, 106, 0.08);
+}
+
+.check p {
+  margin: 0.5rem 0 0;
+  color: #777166;
+  font-size: 0.63rem;
+  line-height: 1.45;
+}
+
+.check code,
+.missing code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.missing {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.missing code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.3rem;
+  background: #f2ecdf;
+  color: #645f54;
+  font-size: 0.55rem;
+}
+
+@media (max-width: 760px) {
+  .panel {
+    width: calc(100% - 2rem);
+  }
+
+  .heading,
+  .overall {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .actions {
+    justify-content: space-between;
+  }
+
+  .overall span {
+    text-align: left;
+  }
+}

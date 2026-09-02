@@ -22,6 +22,7 @@ import {
 } from "./githubInstallState.mjs";
 import { createHostedOpportunityCore } from "./hostedOpportunityCore.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
+import { ownerAccessConfigurationStatus } from "./ownerAccessPolicy.mjs";
 
 function opaque(value, field) {
   const normalized = String(value || "").trim();
@@ -30,18 +31,15 @@ function opaque(value, field) {
   return normalized;
 }
 
-function enabledFlag(value) {
-  return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
-}
-
 export function resolveOwnerWorkspaceId(env = process.env) {
   return opaque(env.SIGNALFLOW_WORKSPACE_ID || "owner-local", "SIGNALFLOW_WORKSPACE_ID");
 }
 
 export function githubSourceConnectionConfigurationStatus(env = process.env) {
   const github = githubAppConfigurationStatus(env);
+  const ownerAccess = ownerAccessConfigurationStatus(env);
   const missing = [...github.missing];
-  if (enabledFlag(env.SIGNALFLOW_PUBLIC_HOSTED) && !String(env.SIGNALFLOW_ACCESS_KEY || "").trim()) {
+  if (ownerAccess.publicHosted && !ownerAccess.configured) {
     missing.push("SIGNALFLOW_ACCESS_KEY");
   }
   return Object.freeze({

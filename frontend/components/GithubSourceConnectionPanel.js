@@ -26,8 +26,14 @@ async function readJson(response) {
 
 function friendlyError(error) {
   const code = String(error?.code || "");
-  if (error?.status === 401) return "Unlock the owner session in Settings before changing source connections.";
+  if (error?.status === 401 || code === "owner_session_required") return "Unlock the owner session in Settings before changing source connections.";
+  if (code === "owner_access_unconfigured") return "This hosted deployment is missing its owner access lock. Configure the deployment before connecting GitHub.";
   if (code === "github_app_unconfigured") return "GitHub App setup is not configured on this deployment yet.";
+  if (code === "github_install_state_expired") return "This GitHub connection attempt expired before it could be verified. Restart installation to create a fresh secure connection state.";
+  if (code === "github_install_state_invalid" || code === "github_install_state_workspace_mismatch") return "SignalFlow could not verify this GitHub connection attempt. Restart installation from Connections rather than reusing the old callback.";
+  if (code === "github_install_callback_incomplete" || code === "github_oauth_callback_incomplete") return "GitHub returned an incomplete connection response. Restart installation from Connections.";
+  if (code === "github_provider_unavailable") return "GitHub connection verification is temporarily unavailable. Your existing SignalFlow state was not changed; retry the connection when GitHub is reachable.";
+  if (code === "github_connection_unavailable") return "SignalFlow connection storage is temporarily unavailable. No GitHub authority was changed; retry after the hosted connection service is healthy.";
   if (code === "github_connection_not_verified") return "Finish the verified GitHub installation before choosing a repository.";
   if (code === "github_connection_not_active") return "The GitHub source must stay active while SignalFlow builds project understanding.";
   if (code === "github_user_authorization_denied" || code === "github_user_authorization_failed") return "GitHub did not authorize this installation for the current owner. Reconnect and approve the App before continuing.";
@@ -96,11 +102,17 @@ export default function GithubSourceConnectionPanel() {
     try {
       const response = await fetch(`/api/sources/github/repositories?source_connection=${encodeURIComponent(sourceConnectionId)}`, { cache: "no-store" });
       const body = await readJson(response);
-      setRepositories(Array.isArray(body.repositories) ? body.repositories : []);
+      const items = Array.isArray(body.repositories) ? body.repositories : [];
+      setRepositories(items);
       setRepositoryConnectionId(sourceConnectionId);
-      if (!body.repositories?.length) setMessage({ tone: "attention", text: "This GitHub installation does not currently expose an observable repository." });
+      if (!items.length) {
+        setMessage({ tone: "attention", text: "This GitHub installation does not currently expose an observable repository." });
+        return false;
+      }
+      return true;
     } catch (error) {
       setMessage({ tone: "attention", text: friendlyError(error) });
+      return false;
     } finally {
       setBusy("");
     }
@@ -150,18 +162,48 @@ export default function GithubSourceConnectionPanel() {
   }
 
   useEffect(() => {
-    void refresh();
     const params = new URLSearchParams(window.location.search);
     const callbackConnection = params.get("source_connection");
     const callbackStatus = params.get("github_source_status");
-    if (callbackStatus === "installed" && callbackConnection) {
-      setMessage({ tone: "ready", text: "GitHub installation and owner authorization verified. Choose the repository SignalFlow should understand and observe." });
-      void loadRepositories(callbackConnection);
+    const callbackError = params.get("github_source_error");
+
+    function clearCallbackParams() {
       const next = new URL(window.location.href);
       next.searchParams.delete("github_source_status");
+      next.searchParams.delete("github_source_error");
       next.searchParams.delete("source_connection");
       window.history.replaceState({}, "", `${next.pathname}${next.search}${next.hash}`);
     }
+
+    async function initialize() {
+      if (!callbackStatus) {
+        await refresh();
+        return;
+      }
+
+      clearCallbackParams();
+      await refresh();
+
+      if (callbackStatus === "installed" && callbackConnection) {
+        const loaded = await loadRepositories(callbackConnection);
+        if (loaded) {
+          setMessage({ tone: "ready", text: "GitHub installation and owner authorization verified. Choose the repository SignalFlow should understand and observe." });
+        }
+        return;
+      }
+
+      if (callbackStatus === "error") {
+        setMessage({
+          tone: "attention",
+          text: friendlyError({ code: callbackError || "github_connection_failed" }),
+        });
+        return;
+      }
+
+      setMessage({ tone: "attention", text: friendlyError({ code: "github_connection_failed" }) });
+    }
+
+    void initialize();
   }, []);
 
   async function startInstallation() {

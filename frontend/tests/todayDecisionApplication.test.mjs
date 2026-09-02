@@ -254,6 +254,19 @@ test("a new current revision stays out of Today until its exact critics have com
   assert.equal(projected[0].revisionOrigin, "ai_revised");
 });
 
+
+test("Today suppresses an already-reviewed text-only revision while strategy-required media is still missing", () => {
+  const fixture = buildFixture();
+  const strategyWithRequiredMedia = {
+    ...fixture.strategy,
+    mediaRequirements: [{ type: "screenshot", reason: "The claim needs visible proof.", required: true }],
+  };
+  const projected = projectOwnerDecisions({
+    ...records(fixture),
+    planningRecords: [strategyWithRequiredMedia, fixture.piece, fixture.variant, fixture.revision],
+  });
+  assert.equal(projected.length, 0);
+});
 test("application derives decisions through repository ports rather than persisting a Today store", async () => {
   const fixture = buildFixture();
   const application = createTodayDecisionApplication({

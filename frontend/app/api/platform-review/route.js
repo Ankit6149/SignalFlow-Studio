@@ -169,8 +169,27 @@ function confirmedVisibleMedia(input) {
   return confirmations;
 }
 
+function hasRequiredNonTextMedia(strategy) {
+  return Boolean((strategy?.mediaRequirements || []).some((item) => {
+    const type = String(item?.type || "").trim().toLowerCase();
+    return item?.required === true && !["", "none", "text_only"].includes(type);
+  }));
+}
+
+async function requireRequiredMediaBound(apps, revision) {
+  if ((revision?.mediaBindings || []).length) return;
+  const strategyId = opaque(revision?.narrativeStrategyId, "narrativeStrategyId");
+  const strategy = await apps.contentPlanningRepository.get(strategyId);
+  if (!strategy || strategy.kind !== "NarrativeStrategy" || !hasRequiredNonTextMedia(strategy)) return;
+  const error = new Error("This strategy requires media before the revision can be approved.");
+  error.code = "required_media_pending";
+  error.status = 409;
+  throw error;
+}
+
 async function requireMediaSafeApproval(apps, platformVariantId, platformVariantRevisionId, visibleMediaInput) {
   const bundle = await apps.reviewApplication.getReviewBundleForRevision(platformVariantId, platformVariantRevisionId);
+  await requireRequiredMediaBound(apps, bundle.revision);
   const expected = expectedVisibleMedia(bundle.revision.mediaBindings || []);
   if (!expected.length) return bundle;
 

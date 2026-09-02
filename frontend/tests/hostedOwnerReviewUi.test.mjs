@@ -123,6 +123,8 @@ test("hosted review API verifies every visible media binding and guards stale ed
   assert.match(route, /automaticallyReviewRevision/);
   assert.match(route, /result\.status === "bound" && result\.boundRevision/);
   assert.match(route, /deferredCount/);
+  assert.match(route, /required_media_pending/);
+  assert.match(route, /requireRequiredMediaBound/);
   assert.doesNotMatch(route, /presign|signedUrl|objectKey|storageRef/);
 });
 

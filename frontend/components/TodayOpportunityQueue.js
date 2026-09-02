@@ -41,11 +41,11 @@ export default function TodayOpportunityQueue({ onStatus = () => {}, onCountChan
       const actionable = filterTodayActionableOpportunities(result.entries);
       setEntries(actionable);
       setHostedState(result.hostedState);
-      onCountChange(actionable.length);
+      onCountChange(actionable.length || (result.hostedState.status === "ready" ? 0 : -1));
     } catch (error) {
       setEntries([]);
       setHostedState({ status: "error", code: String(error?.code || "today_opportunity_failed") });
-      onCountChange(0);
+      onCountChange(-1);
       onStatus({ type: "error", text: error?.message || "SignalFlow could not reconstruct today’s opportunity queue." });
     } finally {
       setLoading(false);

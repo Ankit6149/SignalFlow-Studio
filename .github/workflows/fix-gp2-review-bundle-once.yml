@@ -1,0 +1,82 @@
+name: Correct GP2 hosted review bundle boundary
+
+on:
+  push:
+    branches:
+      - feat/gp2-auto-exact-review
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/gp2-auto-exact-review
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Correct GET and generation response bundle selection
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("frontend/app/api/platform-review/route.js")
+          text = p.read_text()
+          get_old = '''      contentPieceId,
+                bundle: result.bundle,
+              });'''
+          get_new = '''      contentPieceId,
+                bundle: await responseBundle(apps, contentPieceId),
+              });'''
+          if get_old not in text:
+              get_old = '''      contentPieceId,
+            bundle: result.bundle,
+          });'''
+              get_new = '''      contentPieceId,
+            bundle: await responseBundle(apps, contentPieceId),
+          });'''
+          if get_old not in text:
+              get_old = '''      contentPieceId,
+      bundle: result.bundle,
+    });'''
+              get_new = '''      contentPieceId,
+      bundle: await responseBundle(apps, contentPieceId),
+    });'''
+          if get_old not in text:
+              raise SystemExit("GET bundle anchor missing")
+          text = text.replace(get_old, get_new, 1)
+
+          generation_old = '''        result: {
+                  ...result,
+                  bundle: await responseBundle(apps, contentPieceId),
+                  reviewPreparation: safeReviewPreparation(reviewPreparation),'''
+          generation_new = '''        result: {
+                  ...result,
+                  bundle: result.bundle,
+                  reviewPreparation: safeReviewPreparation(reviewPreparation),'''
+          if generation_old not in text:
+              generation_old = '''        result: {
+          ...result,
+          bundle: await responseBundle(apps, contentPieceId),
+          reviewPreparation: safeReviewPreparation(reviewPreparation),'''
+              generation_new = '''        result: {
+          ...result,
+          bundle: result.bundle,
+          reviewPreparation: safeReviewPreparation(reviewPreparation),'''
+          if generation_old not in text:
+              raise SystemExit("generate_ready bundle anchor missing")
+          p.write_text(text.replace(generation_old, generation_new, 1))
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/fix-gp2-review-bundle-once.yml
+      - name: Run focused tests
+        run: node --test frontend/tests/exactReviewPreparation.test.mjs frontend/tests/hostedOwnerReviewUi.test.mjs frontend/tests/todayDecisionApplication.test.mjs
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/app/api/platform-review/route.js .github/workflows/fix-gp2-review-bundle-once.yml
+          git commit -m "fix: preserve hosted review GET and generation boundaries"
+          git push origin HEAD:feat/gp2-auto-exact-review

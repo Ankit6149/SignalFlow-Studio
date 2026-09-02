@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserPlanOpportunityApplication } from "../lib/application/browserPlanOpportunityApplication.mjs";
+import { filterTodayActionableOpportunities } from "../lib/application/todayOpportunityPresentation.mjs";
 import styles from "./TodayOpportunityQueue.module.css";
 
 const LOCAL_WORKSPACE_ID = "local-personal";
@@ -23,17 +24,7 @@ function mediaLabel(value) {
   return titleCase(String(value || "").replace(/^text_only$/, "text only"));
 }
 
-function isActionable(entry) {
-  const opportunity = entry?.opportunity;
-  return Boolean(
-    opportunity
-      && opportunity.recommendation === "post"
-      && !opportunity.selectedAngleId
-      && opportunity.status !== "converted_to_campaign",
-  );
-}
-
-export default function TodayOpportunityQueue({ onStatus = () => {} }) {
+export default function TodayOpportunityQueue({ onStatus = () => {}, onCountChange = () => {} }) {
   const [entries, setEntries] = useState([]);
   const [hostedState, setHostedState] = useState({ status: "ready", code: null });
   const [loading, setLoading] = useState(true);
@@ -47,15 +38,19 @@ export default function TodayOpportunityQueue({ onStatus = () => {} }) {
   const reload = useCallback(async () => {
     try {
       const result = await application.listRankedOpportunities();
-      setEntries(result.entries.filter(isActionable));
+      const actionable = filterTodayActionableOpportunities(result.entries);
+      setEntries(actionable);
       setHostedState(result.hostedState);
+      onCountChange(actionable.length);
     } catch (error) {
       setEntries([]);
+      setHostedState({ status: "error", code: String(error?.code || "today_opportunity_failed") });
+      onCountChange(0);
       onStatus({ type: "error", text: error?.message || "SignalFlow could not reconstruct today’s opportunity queue." });
     } finally {
       setLoading(false);
     }
-  }, [application, onStatus]);
+  }, [application, onCountChange, onStatus]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -77,7 +72,7 @@ export default function TodayOpportunityQueue({ onStatus = () => {} }) {
   }
 
   if (!entries.length) {
-    return hostedState.status === "error"
+    return hostedState.status !== "ready"
       ? <section className={styles.sourceNotice}>Connected-source opportunities are temporarily unavailable. Existing review decisions below remain usable.</section>
       : null;
   }
@@ -92,7 +87,7 @@ export default function TodayOpportunityQueue({ onStatus = () => {} }) {
         <small>SignalFlow found these from ranked, unsnoozed opportunities. Nothing advances until you choose.</small>
       </div>
 
-      {hostedState.status === "error" && <p className={styles.sourceNotice}>Connected-source opportunity refresh is unavailable; any visible direct-create opportunities remain actionable.</p>}
+      {hostedState.status !== "ready" && <p className={styles.sourceNotice}>Connected-source opportunity refresh is unavailable; any visible direct-create opportunities remain actionable.</p>}
 
       <div className={styles.grid}>
         {entries.map((entry) => {

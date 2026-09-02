@@ -1,3 +1,4 @@
+import { createExactReviewPreparationApplication } from "../application/exactReviewPreparationApplication.mjs";
 import { createIdentityApplication } from "../application/identityApplication.mjs";
 import { createPlatformChangeRequestApplication } from "../application/platformChangeRequestApplication.mjs";
 import { createPlatformGenerationApplication } from "../application/platformGenerationApplication.mjs";
@@ -98,6 +99,10 @@ export function createProductionHostedPlatformReviewApplications({
     contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
     workspaceId,
   });
+  const preparationReviewApplication = createExactReviewPreparationApplication({
+    generationApplication,
+    reviewApplication,
+  });
 
   return Object.freeze({
     workspaceId,
@@ -113,5 +118,6 @@ export function createProductionHostedPlatformReviewApplications({
     reviewApplication,
     changeApplication,
     todayApplication,
+    preparationReviewApplication,
   });
 }

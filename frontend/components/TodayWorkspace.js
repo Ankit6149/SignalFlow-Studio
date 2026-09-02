@@ -59,6 +59,7 @@ function TodayExactMediaPreview({ item, onState }) {
 export default function TodayWorkspace() {
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [opportunityCount, setOpportunityCount] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState(null);
   const [requestingId, setRequestingId] = useState("");
@@ -187,6 +188,9 @@ export default function TodayWorkspace() {
     }
   }
 
+  const inboxLoading = loading || opportunityCount === null;
+  const allClear = !inboxLoading && decisions.length === 0 && opportunityCount === 0;
+
   return (
     <WorkspaceShell activeItem="today" statusLabel="Decision inbox · Personal Alpha" statusTone="ready">
       <main className={styles.page} id="workspace-content">
@@ -200,18 +204,18 @@ export default function TodayWorkspace() {
         </header>
 
         {message && <div className={`${styles.message} ${styles[`message_${message.type}`] || ""}`} role="status">{message.text}</div>}
-        <TodayOpportunityQueue onStatus={setMessage} />
+        <TodayOpportunityQueue onStatus={setMessage} onCountChange={setOpportunityCount} />
 
-        {loading ? (
+        {inboxLoading ? (
           <section className={styles.loading} aria-live="polite">Reconstructing what needs your judgment…</section>
-        ) : decisions.length === 0 ? (
+        ) : allClear ? (
           <section className={styles.empty}>
             <span>ALL CLEAR</span>
             <h2>Nothing needs your judgment.</h2>
-            <p>Reviewed drafts that need approval, a change, or rejection will appear here. You can keep working instead of watching a dashboard.</p>
+            <p>No ranked opportunity or reviewed draft currently needs your decision. You can keep working instead of watching a dashboard.</p>
             <div><Link href="/signals">Capture a signal</Link><Link href="/plan">Open Plan</Link></div>
           </section>
-        ) : (
+        ) : decisions.length > 0 ? (
           <section className={styles.queue} aria-label="Decisions requiring owner judgment">
             <div className={styles.queueHeader}><span>NEEDS YOU</span><small>{decisions.length} decision{decisions.length === 1 ? "" : "s"}</small></div>
             {decisions.map((item) => {
@@ -286,7 +290,7 @@ export default function TodayWorkspace() {
               );
             })}
           </section>
-        )}
+        ) : null}
       </main>
     </WorkspaceShell>
   );

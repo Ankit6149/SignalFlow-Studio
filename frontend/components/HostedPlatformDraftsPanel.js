@@ -35,6 +35,10 @@ function screenshotAspectRatio(destination) {
 
 function screenshotMessage(result, destination) {
   const label = destinationLabel(destination);
+  if (result.status === "bound" && result.autoReview?.status === "reviewed") return { type: "success", text: `${label} now has the exact screenshot derivative bound and automatic exact checks complete. The revision is ready in Today.` };
+  if (result.status === "bound" && result.autoReview?.status === "already_reviewed") return { type: "success", text: `${label} now has the exact screenshot derivative bound and its current exact review is already available in Today.` };
+  if (result.status === "bound" && result.autoReview?.status === "review_failed") return { type: "warning", text: `${label} now has the exact screenshot derivative bound, but automatic exact checks need a retry before owner judgment.` };
+  if (result.status === "bound" && result.autoReview?.status === "deferred_required_media") return { type: "warning", text: `${label} media was bound, but another required media dependency still prevents exact review.` };
   if (result.status === "bound") return { type: "success", text: `${label} now has a new immutable revision with the exact automatic screenshot derivative bound for review.` };
   if (result.status === "quality_needs_review") return { type: "warning", text: `${label} screenshot was captured, but its quality needs review before it can become approval media.` };
   if (result.status === "quality_blocked") return { type: "error", text: `${label} screenshot was blocked by the quality/privacy gate and was not attached to the draft.` };
@@ -73,19 +77,25 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
     try {
       const result = await client.generateReady(contentPieceId);
       setBundle(result.bundle);
-      if (result.failed.length && result.generated.length) {
-        setMessage({
-          type: "warning",
-          text: `${result.generated.length} hosted draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without invalidating the successful revision.`,
-        });
-      } else if (result.failed.length) {
-        setMessage({ type: "error", text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" ") });
-      } else if (result.generated.length) {
-        setMessage({ type: "success", text: "Hosted platform drafts are now durable immutable revisions. Review each exact revision independently." });
-      } else {
-        setMessage({ type: "success", text: "Every non-omitted hosted destination already has a current durable revision." });
-      }
-      await reload();
+      const reviewPreparation = result.reviewPreparation;
+    const reviewFailures = reviewPreparation?.failed || [];
+    if (result.failed.length && result.generated.length) {
+      setMessage({
+        type: "warning",
+        text: `${result.generated.length} hosted draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without invalidating the successful revision.`,
+      });
+    } else if (result.failed.length) {
+      setMessage({ type: "error", text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" ") });
+    } else if (reviewFailures.length) {
+      setMessage({ type: "warning", text: `Hosted drafts are durable, but ${reviewFailures.length} automatic exact review${reviewFailures.length === 1 ? "" : "s"} need recovery before owner judgment.` });
+    } else if (reviewPreparation?.deferredCount) {
+      setMessage({ type: "success", text: "Hosted drafts are durable. Required visual proof will be bound before SignalFlow runs the final exact checks." });
+    } else if (reviewPreparation?.reviewedCount || result.generated.length) {
+      setMessage({ type: "success", text: "Hosted drafts are durable and automatic exact checks are complete. Reviewed revisions are ready in Today." });
+    } else {
+      setMessage({ type: "success", text: "Every non-omitted hosted destination already has a current durable revision and exact review is up to date." });
+    }
+    await reload();
     } catch (error) {
       setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not generate the hosted platform drafts." });
     } finally {
@@ -140,11 +150,12 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
 
       {!loading && (
         <div className={styles.draftStage}>
-          <div className={styles.subhead}><span>CONNECTED-SOURCE REVIEW · EXACT REVISIONS</span><p>Every judgment is pinned to the visible immutable revision. Media-bound approvals additionally require a signed proof that every exact private AssetVersion was actually rendered.</p></div>
+          <div className={styles.subhead}><span>CONNECTED-SOURCE REVIEW · EXACT REVISIONS</span><p>SignalFlow runs exact evidence/authenticity checks automatically when the revision is judgment-ready. Required media is bound first; manual checks remain only as recovery.</p></div>
           {rows.map((entry) => {
             const { variant, currentRevision, history } = entry;
             const screenshotBusy = busy === `screenshot:${variant.platformVariantId}`;
             const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);
+            const requiredMediaPending = Boolean(requiredScreenshot?.required === true && needsScreenshot);
             return (
               <article className={styles.draftRow} key={variant.platformVariantId} data-status={variant.status}>
                 <div className={styles.draftMeta}>
@@ -171,7 +182,7 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
                         {screenshotBusy ? "Preparing visual proof…" : "Prepare visual proof"}
                       </button>
                     )}
-                    <HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} />
+                    <HostedPlatformRevisionReviewPanel entry={entry} client={client} onChanged={reload} requiredMediaPending={requiredMediaPending} />
                   </div>
                 ) : (
                   <div>

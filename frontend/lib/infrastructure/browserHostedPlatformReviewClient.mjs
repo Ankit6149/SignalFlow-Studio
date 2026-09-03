@@ -72,6 +72,30 @@ function normalizeVisibleMedia(input = []) {
   }));
 }
 
+function normalizeAutoReview(input = null) {
+  if (!input) return null;
+  return Object.freeze({
+    status: input.status ? String(input.status) : null,
+    platformVariantReviewId: input.platformVariantReviewId ? String(input.platformVariantReviewId) : null,
+    failureCode: input.failureCode ? String(input.failureCode) : null,
+  });
+}
+
+function normalizeReviewPreparation(input = null) {
+  if (!input) return null;
+  return Object.freeze({
+    reviewedCount: Number.isInteger(input.reviewedCount) ? input.reviewedCount : 0,
+    skippedCount: Number.isInteger(input.skippedCount) ? input.skippedCount : 0,
+    deferredCount: Number.isInteger(input.deferredCount) ? input.deferredCount : 0,
+    failed: Array.isArray(input.failed) ? input.failed.map((item) => Object.freeze({
+      platformVariantId: item?.platformVariantId ? String(item.platformVariantId) : null,
+      platformVariantRevisionId: item?.platformVariantRevisionId ? String(item.platformVariantRevisionId) : null,
+      destination: item?.destination ? String(item.destination) : null,
+      code: item?.code ? String(item.code) : "platform_review_failed",
+    })) : [],
+  });
+}
+
 function normalizeScreenshotResult(input = {}) {
   return Object.freeze({
     status: String(input.status || "").trim(),
@@ -89,6 +113,7 @@ function normalizeScreenshotResult(input = {}) {
     qualityReview: input.qualityReview ? Object.freeze({ ...input.qualityReview }) : null,
     derivativePlan: input.derivativePlan ? Object.freeze({ ...input.derivativePlan }) : null,
     derivative: input.derivative ? Object.freeze({ ...input.derivative }) : null,
+    autoReview: normalizeAutoReview(input.autoReview),
   });
 }
 
@@ -118,6 +143,7 @@ export function createBrowserHostedPlatformReviewClient({ fetchImpl = globalThis
       generated: Array.isArray(data.result?.generated) ? data.result.generated.map(normalizePlatformVariantRevision) : [],
       failed: Array.isArray(data.result?.failed) ? data.result.failed.map((item) => ({ ...item })) : [],
       bundle: normalizeBundle(data.result?.bundle || {}),
+      reviewPreparation: normalizeReviewPreparation(data.result?.reviewPreparation),
     });
   }
 

@@ -169,8 +169,27 @@ function confirmedVisibleMedia(input) {
   return confirmations;
 }
 
+function hasRequiredNonTextMedia(strategy) {
+  return Boolean((strategy?.mediaRequirements || []).some((item) => {
+    const type = String(item?.type || "").trim().toLowerCase();
+    return item?.required === true && !["", "none", "text_only"].includes(type);
+  }));
+}
+
+async function requireRequiredMediaBound(apps, revision) {
+  if ((revision?.mediaBindings || []).length) return;
+  const strategyId = opaque(revision?.narrativeStrategyId, "narrativeStrategyId");
+  const strategy = await apps.contentPlanningRepository.get(strategyId);
+  if (!strategy || strategy.kind !== "NarrativeStrategy" || !hasRequiredNonTextMedia(strategy)) return;
+  const error = new Error("This strategy requires media before the revision can be approved.");
+  error.code = "required_media_pending";
+  error.status = 409;
+  throw error;
+}
+
 async function requireMediaSafeApproval(apps, platformVariantId, platformVariantRevisionId, visibleMediaInput) {
   const bundle = await apps.reviewApplication.getReviewBundleForRevision(platformVariantId, platformVariantRevisionId);
+  await requireRequiredMediaBound(apps, bundle.revision);
   const expected = expectedVisibleMedia(bundle.revision.mediaBindings || []);
   if (!expected.length) return bundle;
 
@@ -215,7 +234,33 @@ function safeAssetIdentity(asset) {
   };
 }
 
-function safeScreenshotResult(result) {
+function safeAutoReview(result) {
+  if (!result) return null;
+  return {
+    status: result.status || null,
+    platformVariantReviewId: result.review?.platformVariantReviewId || null,
+    failureCode: result.failure?.code || null,
+  };
+}
+
+function safeReviewPreparation(result) {
+  const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
+  return {
+    reviewedCount: Array.isArray(result?.reviewed) ? result.reviewed.length : 0,
+    skippedCount: skipped.length,
+    deferredCount: skipped.filter((item) => item.reason === "required_media_pending").length,
+    failed: Array.isArray(result?.failed)
+      ? result.failed.map((item) => ({
+          platformVariantId: item.platformVariantId,
+          platformVariantRevisionId: item.platformVariantRevisionId,
+          destination: item.destination || null,
+          code: item.code || "platform_review_failed",
+        }))
+      : [],
+  };
+}
+
+function safeScreenshotResult(result, autoReview = null) {
   return {
     status: result.status,
     platformVariantId: result.platformVariantId,
@@ -232,7 +277,13 @@ function safeScreenshotResult(result) {
     qualityReview: result.qualityReview || null,
     derivativePlan: result.derivativePlan || null,
     derivative: result.derivative || null,
+    autoReview: safeAutoReview(autoReview),
   };
+}
+
+async function automaticallyReviewRevision(apps, revision, destination = null) {
+  if (!revision) return null;
+  return apps.preparationReviewApplication.reviewExactRevision(revision, { destination });
 }
 
 export async function GET(request) {
@@ -271,20 +322,32 @@ export async function POST(request) {
     if (action === "generate_ready") {
       const contentPieceId = opaque(body.contentPieceId, "contentPieceId");
       const result = await apps.generationApplication.generateReadyVariants(contentPieceId);
-      return json({ ok: true, workspaceId: apps.workspaceId, action, result });
+      const reviewPreparation = await apps.preparationReviewApplication.ensureContentPieceReviewed(contentPieceId);
+      return json({
+        ok: true,
+        workspaceId: apps.workspaceId,
+        action,
+        result: {
+          ...result,
+          bundle: result.bundle,
+          reviewPreparation: safeReviewPreparation(reviewPreparation),
+        },
+      });
     }
 
     const platformVariantId = opaque(body.platformVariantId, "platformVariantId");
 
     if (action === "generate_variant") {
       const revision = await apps.generationApplication.generateVariant(platformVariantId, { refresh: false });
-      return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
+      const autoReview = await automaticallyReviewRevision(apps, revision);
+      return json({ ok: true, workspaceId: apps.workspaceId, action, revision, autoReview: safeAutoReview(autoReview) });
     }
 
     if (action === "regenerate_variant") {
       await assertExpectedCurrent(apps, platformVariantId, body.expectedCurrentRevisionId);
       const revision = await apps.generationApplication.regenerateVariant(platformVariantId);
-      return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
+      const autoReview = await automaticallyReviewRevision(apps, revision);
+      return json({ ok: true, workspaceId: apps.workspaceId, action, revision, autoReview: safeAutoReview(autoReview) });
     }
 
     if (action === "edit_revision") {
@@ -294,7 +357,8 @@ export async function POST(request) {
         segments: Array.isArray(body.segments) ? body.segments : [],
         format: body.format || null,
       });
-      return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
+      const autoReview = await automaticallyReviewRevision(apps, revision);
+      return json({ ok: true, workspaceId: apps.workspaceId, action, revision, autoReview: safeAutoReview(autoReview) });
     }
 
     if (action === "produce_screenshot") {
@@ -312,7 +376,10 @@ export async function POST(request) {
         captureRecipeVersion: body.captureRecipeVersion ?? null,
         checkpoint: body.checkpoint ? opaque(body.checkpoint, "checkpoint", 160) : null,
       });
-      return json({ ok: true, workspaceId: apps.workspaceId, action, result: safeScreenshotResult(result) });
+      const autoReview = result.status === "bound" && result.boundRevision
+        ? await automaticallyReviewRevision(apps, result.boundRevision)
+        : null;
+      return json({ ok: true, workspaceId: apps.workspaceId, action, result: safeScreenshotResult(result, autoReview) });
     }
 
     const platformVariantRevisionId = opaque(body.platformVariantRevisionId, "platformVariantRevisionId");
@@ -346,7 +413,8 @@ export async function POST(request) {
     const revision = await apps.reviewApplication.restoreRevision(platformVariantId, platformVariantRevisionId, {
       expectedCurrentRevisionId,
     });
-    return json({ ok: true, workspaceId: apps.workspaceId, action, revision });
+    const autoReview = await automaticallyReviewRevision(apps, revision);
+    return json({ ok: true, workspaceId: apps.workspaceId, action, revision, autoReview: safeAutoReview(autoReview) });
   } catch (error) {
     return publicError(error);
   }

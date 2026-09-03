@@ -94,6 +94,14 @@ function currentDecisionState(decisions, review) {
   return { latest, approvalValid, rejected: false };
 }
 
+function requiredMediaPending(strategy, revision) {
+  const required = (strategy?.mediaRequirements || []).some((item) => {
+    const type = String(item?.type || "").trim().toLowerCase();
+    return item?.required === true && !["", "none", "text_only"].includes(type);
+  });
+  return Boolean(required && !(revision?.mediaBindings || []).length);
+}
+
 export function projectOwnerDecisions({
   planningRecords = [],
   reviewRecords = [],
@@ -160,6 +168,7 @@ export function projectOwnerDecisions({
     const signal = signalById.get(review.sourceSignalId) || null;
     const opportunity = strategy ? opportunityById.get(strategy.opportunityId) || null : null;
     if (!strategy || !piece) continue;
+    if (requiredMediaPending(strategy, revision)) continue;
 
     const summary = reviewSummary(review);
     projected.push({

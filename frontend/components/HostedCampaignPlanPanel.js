@@ -95,7 +95,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
       });
       setPlan(next);
       setStatus("ready");
-      setMessage({ type: "success", text: "Exact strategy approved. The canonical ContentPiece is ready for durable platform generation and review." });
+      setMessage({ type: "success", text: "Exact strategy approved. SignalFlow is continuing destination generation, required visual proof and exact checks automatically. Anything still shown below is recovery work, not a routine next step." });
     } catch (error) {
       setStatus("error");
       setMessage({ type: "error", text: error?.message || "SignalFlow could not approve this narrative plan.", code: error?.code });
@@ -189,7 +189,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
           <div className={styles.approvedState}>
             <span>CANONICAL CONTENT PIECE</span>
             <strong>{plan.contentPiece.canonicalIntent}</strong>
-            <p>The exact approved strategy is durable. Representative LinkedIn/X variants now continue through server-persisted immutable revisions, exact critics and exact owner judgment; broader destination planning remains capability-driven rather than hard-coded into this UI.</p>
+            <p>The exact approved strategy is durable. SignalFlow automatically prepares non-omitted LinkedIn/X revisions, required screenshot proof and exact critics. Controls appear below only when preserved work needs recovery or owner correction.</p>
           </div>
           <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} strategy={strategy} />
         </>

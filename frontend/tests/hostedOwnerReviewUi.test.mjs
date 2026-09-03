@@ -145,26 +145,36 @@ test("hosted review GET reconstructs canonical review state while generation kee
   assert.doesNotMatch(generationSection, /bundle: await responseBundle/);
 });
 
-test("connected-source Plan uses durable hosted review clients, automatic screenshot production and protected exact-media preview only", () => {
+test("connected-source Plan uses durable hosted review clients, automatic preparation, automatic screenshot production and protected exact-media preview only", () => {
   const plan = source("components", "HostedCampaignPlanPanel.js");
   const drafts = source("components", "HostedPlatformDraftsPanel.js");
   const revision = source("components", "HostedPlatformRevisionReviewPanel.js");
   const client = source("lib", "infrastructure", "browserHostedPlatformReviewClient.mjs");
+  const preparationClient = source("lib", "infrastructure", "browserHostedGp2PreparationClient.mjs");
 
   assert.match(plan, /HostedPlatformDraftsPanel/);
   assert.match(plan, /strategy=\{strategy\}/);
+  assert.match(drafts, /createBrowserHostedGp2PreparationClient/);
+  assert.match(drafts, /preparationClient\.prepareContentPiece\(contentPieceId\)/);
   assert.match(drafts, /createBrowserHostedPlatformReviewClient/);
   assert.match(drafts, /client\.getBundle\(contentPieceId\)/);
   assert.match(drafts, /screenshotRequirement\(strategy\)/);
   assert.match(drafts, /client\.produceScreenshot\(variant\.platformVariantId/);
   assert.match(drafts, /expectedCurrentRevisionId: currentRevision\.platformVariantRevisionId/);
   assert.match(drafts, /!currentRevision\.mediaBindings\?\.length/);
-  assert.match(drafts, /Prepare visual proof/);
+  assert.match(drafts, /Retry visual proof/);
+  assert.match(drafts, /Retry available drafts/);
   assert.match(drafts, /HostedPlatformRevisionReviewPanel/);
   assert.match(drafts, /reviewPreparation/);
   assert.match(drafts, /result\.autoReview\?\.status/);
   assert.match(drafts, /requiredMediaPending/);
+  assert.doesNotMatch(drafts, />Prepare visual proof</);
+  assert.doesNotMatch(drafts, />Generate available drafts</);
   assert.doesNotMatch(drafts, /localStorage|createBrowserPlatformReviewApplication|createBrowserPlatformGenerationApplication/);
+
+  assert.match(preparationClient, /\/api\/gp2\/preparation/);
+  assert.match(preparationClient, /credentials: "same-origin"/);
+  assert.match(preparationClient, /cache: "no-store"/);
 
   assert.match(revision, /createBrowserHostedExactMediaPreviewAdapter/);
   assert.match(revision, /previewAdapter=\{previewAdapter\}/);

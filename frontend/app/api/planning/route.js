@@ -1,4 +1,5 @@
 import { requireOwnerAccess } from "../_auth";
+import { createProductionHostedGp2PreparationApplication } from "../../../lib/server/hostedGp2PreparationDependencies.mjs";
 import { createProductionHostedPlanningApplications } from "../../../lib/server/hostedPlanningDependencies.mjs";
 
 export const runtime = "nodejs";
@@ -126,6 +127,31 @@ function applications(request) {
   return createProductionHostedPlanningApplications({ origin: new URL(request.url).origin });
 }
 
+function failSoftPreparation(result, error) {
+  return Object.freeze({
+    status: "recovery_required",
+    contentPieceId: result?.contentPiece?.contentPieceId || null,
+    narrativeStrategyId: result?.strategy?.narrativeStrategyId || null,
+    activeDestinationCount: Array.isArray(result?.variants)
+      ? result.variants.filter((variant) => variant?.status !== "omitted").length
+      : 0,
+    generatedCount: 0,
+    generationReusedCount: 0,
+    mediaBoundCount: 0,
+    mediaReusedCount: 0,
+    reviewedCount: 0,
+    reviewReusedCount: 0,
+    failures: Object.freeze([Object.freeze({
+      stage: "preparation",
+      code: String(error?.code || "gp2_preparation_failed"),
+      platformVariantId: null,
+      platformVariantRevisionId: null,
+      destination: null,
+    })]),
+    nextRoute: "/plan",
+  });
+}
+
 export async function GET(request) {
   const accessError = requireOwnerAccess(request);
   if (accessError) return accessError;
@@ -154,7 +180,7 @@ export async function POST(request) {
     }
 
     const opportunityId = opaque(body.opportunityId, "opportunityId");
-    const { workspaceId, planningApplication } = applications(request);
+    const { workspaceId, planningApplication, database } = applications(request);
 
     if (action === "build_strategy") {
       const strategy = await planningApplication.buildStrategy(opportunityId, { refresh: body.refresh === true });
@@ -188,8 +214,20 @@ export async function POST(request) {
       origin: "owner",
       reason: String(body.reason || "").trim() || null,
     });
+
+    let preparation = null;
+    try {
+      const production = createProductionHostedGp2PreparationApplication({
+        origin: new URL(request.url).origin,
+        database,
+      });
+      preparation = await production.preparationApplication.prepareContentPiece(result.contentPiece.contentPieceId);
+    } catch (error) {
+      preparation = failSoftPreparation(result, error);
+    }
+
     const plan = await planningApplication.getPlanBundle(opportunityId);
-    return json({ ok: true, workspaceId, opportunityId, ...result, plan });
+    return json({ ok: true, workspaceId, opportunityId, ...result, preparation, plan });
   } catch (error) {
     return publicError(error);
   }

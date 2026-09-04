@@ -1,215 +1,206 @@
 # SignalFlow Studio — Current Execution State
 
-> **Authoritative execution frontier as of 2026-08-31.**
+> **Authoritative execution frontier as of 2026-09-04.**
 >
-> Read this file before `AGENTS.md`, roadmap epics, or older implementation ledgers when deciding what to build next. Canonical product documents still define the long-term architecture; this file defines the current implementation frontier and sequencing.
+> Read this before older handoffs, issue descriptions, or implementation ledgers when deciding what to build next. Canonical product documents still define the long-term architecture; this file defines the current shipped state, acceptance boundary, and sequencing.
 
 ## Current repository checkpoint
 
 - Default branch: `master`
-- Audited master checkpoint: `691fd28184f96d75860b2d4eb5a7135f7acd17d8` (merged PR #250)
+- Current production master: `47954ff92cede61966956dd3536ea92ac5ca3288` (PR #261)
+- Vercel production: `dpl_7DCWxbrSPZxu8FD9A33fseTN9gDr`, READY on the exact current master SHA
+- Master CI #886: frontend regression tests, production dependency audit, Next production build, Python tests, and MCP tests all green
+- Production runtime verification after #261: no runtime error clusters and no warning/error/fatal logs in the inspected window
 - Golden Path 1: **accepted**
-- Golden Path 2: **active; not yet owner-accepted end to end**
-- Golden Path 3: **next after GP2 acceptance, not the current build slice**
-- Open PRs at this checkpoint: **0** after stale landing PR #236 was closed without merge
-- CI gate on current work: frontend regression tests + production dependency audit + production build + Python tests + MCP tests
+- Gate A / GP2 automatic exact review: **released** via #259
+- Gate B / GP2 automatic hosted preparation + resume: **released** via #261
+- Gate C / real credential-backed GP2 acceptance: **active and blocked only on a real production GitHub App/source installation plus owner journey evidence**
+- Gate D / repository and release hardening: **active**
+- Golden Path 3 durable publication: **parked until Gate C is accepted**
+- Direct Create unification: **after durable publication unless an acceptance blocker forces earlier work**
 
 ## Current product execution rule
 
-SignalFlow is built vertically. Do not open another broad horizontal foundation phase while the active Golden Path still lacks owner acceptance.
+SignalFlow is built vertically. Do not declare a Golden Path accepted from tests or fixtures when its definition requires a real credential-backed hosted run.
 
-The current active outcome is:
-
-```text
-connected/hosted opportunity
-        ↓
-NarrativeStrategy + PlatformVariant revision
-        ↓
-media requirement = product screenshot when justified
-        ↓
-exact CaptureRecipe / CaptureJob
-        ↓
-claim the exact durable job
-        ↓
-bounded browser screenshot capture
-        ↓
-private immutable AssetVersion
-        ↓
-quality/privacy evaluation
-        ↓
-deterministic platform-safe derivative
-        ↓
-exact media binding
-        ↓
-new immutable PlatformVariantRevision
-        ↓
-protected exact-media owner preview
-        ↓
-approve / change / reject
-        ↓
-owner acceptance proof
-```
-
-## Golden Path status
-
-### Golden Path 1 — manual thought to exact approved content
-
-**Status: accepted / properly built for its defined owner-first vertical.**
-
-Implemented and accepted behavior includes:
-
-- manual ContentSignal intake;
-- Signal → opportunity/angle planning;
-- explicit owner Voice/Identity profile use;
-- approved NarrativeStrategy;
-- destination-specific LinkedIn/X PlatformVariant revisions;
-- evidence/authenticity critics;
-- immutable edit/regeneration/change-request behavior;
-- exact revision approve/reject semantics;
-- owner-facing Today/Plan continuity for the accepted vertical.
-
-Do not rebuild GP1 foundations merely because older parent issues remain open.
-
-### Golden Path 2 — connected work to screenshot-backed exact review
-
-**Status: active / substantially built, but not yet complete end to end.**
-
-Merged foundation and production slices:
-
-- #238 — media intelligence + durable jobs + bounded CaptureRecipe/CaptureJob foundation;
-- #239 — private hosted Asset storage foundation;
-- #241 — real bounded CDP screenshot worker, same-origin/privacy checks, private canonical capture Asset persistence and provenance;
-- #244 — screenshot quality evaluation + deterministic derivative planning/rendering + lineage;
-- #245 — exact screenshot AssetVersion/derivative lineage bound to immutable PlatformVariantRevision; local/browser exact-media approval gate;
-- #246 — hosted protected exact AssetVersion preview boundary with server-only private storage composition;
-- #247 — runtime-injectable exact-media preview seam;
-- #248 — durable hosted PlatformVariant generation/review/approval state with stale-current guards;
-- #249 — owner-facing hosted review UI, protected exact-byte preview, revision-bound visibility receipts and fail-closed media approval;
-- #250 — exact durable-job `claimById(jobId)` semantics for request-scoped capture orchestration.
-
-**Current missing production slice:** compose the already-built pieces into one hosted operation that starts from one exact PlatformVariant revision and executes:
+The current real target is:
 
 ```text
-exact capture request
-→ exact durable-job claim
-→ capture
-→ private AssetVersion
-→ quality/privacy result
-→ deterministic derivative
-→ exact media binding
-→ new immutable PlatformVariantRevision
+real GitHub App installation + selected repository
+        ↓
+verified real webhook delivery
+        ↓
+exactly one canonical ContentSignal with immutable source revision
+        ↓
+exact bounded repository evidence refresh
+        ↓
+ProjectContextSnapshot + ranked ContentOpportunity
+        ↓
+Today → owner angle judgment
+        ↓
+evidence-bound NarrativeStrategy
+        ↓
+automatic destination revision generation/reuse
+        ↓
+automatic required screenshot production/reuse
+        ↓
+private immutable AssetVersion + deterministic derivative
+        ↓
+exact media-bound PlatformVariantRevision
+        ↓
+automatic exact evidence/authenticity critics
+        ↓
+Today → exact owner judgment
 ```
 
-After that slice, GP2 still requires real owner acceptance covering refresh/reopen, retry, duplicate delivery, privacy blocking, stale revision behavior, partial/failure outcomes, and a real authorized source/capture fixture. Record the proof in `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`.
+## Gate status
 
-Keep #163 and #167 open until that acceptance is real.
+### Gate A — automatic exact review before owner judgment
 
-### Golden Path 3 — exact approval to durable publication
+**Status: COMPLETE / RELEASED.**
 
-**Status: planned next; not current execution.**
+PR #259 moved exact evidence/authenticity critics into preparation, including review reuse, fail-soft critic recovery, required-media deferral, automatic review after media rebound, and protection against presenting required-media-incomplete revisions as final owner judgment.
 
-Target vertical:
+Release proof:
+
+- frozen exact head `6df646f76151e6544dbd506eb7e41909b83cb8cd` passed original CI #877 and fresh CI #883;
+- exact-head Vercel preview `dpl_HMsWGuR1mopcdyirW8XFiuBTjJLx` was READY and healthy;
+- squash merge produced `beefe536ff0aa496442df8d151562b958a74cb48`;
+- post-merge master CI #884 passed;
+- production `dpl_H35QrfASiBX7WRsm2jCmqvdSGhxG` was READY on that exact SHA.
+
+### Gate B — automatic hosted preparation after strategy approval
+
+**Status: COMPLETE / RELEASED.**
+
+PR #261 completed the low-attention continuation:
+
+`approved NarrativeStrategy → generate/reuse non-omitted destination revisions → produce/reuse required screenshot → bind exact derivative → run/reuse exact critics → Today`.
+
+Normal workflow no longer requires routine `Generate drafts`, `Prepare visual proof`, or `Retry exact checks` clicks. Those controls remain recovery/override paths. Reopening an approved Plan automatically resumes the same idempotent preparation application.
+
+Release proof:
+
+- clean release head `b9dd4e93acc1883ca2ac89664fbf8ae6c55cb27b` was rebuilt as one commit directly on released master with exactly 10 Gate-B files;
+- CI #885 passed frontend regressions, dependency audit, production build, Python, and MCP;
+- exact-head Vercel preview `dpl_7ZBxDeemDZok2itS1BtQFEJwhcQ8` was READY and healthy;
+- squash merge produced current master `47954ff92cede61966956dd3536ea92ac5ca3288`;
+- master CI #886 passed;
+- production `dpl_7DCWxbrSPZxu8FD9A33fseTN9gDr` is READY on that exact SHA;
+- production runtime inspection is clean.
+
+### Gate C — real GP2 owner acceptance
+
+**Status: ACTIVE / NOT ACCEPTED.**
+
+The code path is materially complete, but acceptance cannot be manufactured from unit tests or the ChatGPT GitHub connector. The SignalFlow production source database was inspected on 2026-09-04 and currently contains:
+
+- 0 `sf_source_connections` rows;
+- 0 `sf_source_connection_resources` rows;
+- 0 `sf_content_signals` rows;
+- 0 `sf_source_artifacts` rows;
+- 0 `sf_project_context_snapshots` rows;
+- 0 `sf_content_opportunities` rows;
+- 0 `sf_signal_opportunity_jobs` rows.
+
+Therefore no SignalFlow GitHub App installation/repository scope exists in the production workspace yet, and the #261 merge could not have entered SignalFlow as a real webhook event.
+
+Do **not** close #167 until the real owner-authorized journey is evidenced in `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`, including:
+
+1. production readiness;
+2. GitHub App installation and exact repository selection;
+3. real meaningful merged PR or immutable release delivery;
+4. exactly one canonical signal and duplicate-delivery idempotency;
+5. low-value/noise event kept non-promotional;
+6. exact evidence snapshot and ranked Today opportunity;
+7. explicit owner angle;
+8. evidence-bound approved NarrativeStrategy;
+9. automatic screenshot/private AssetVersion/derivative when the story needs visual proof;
+10. exact LinkedIn/X review and owner judgment;
+11. refresh/reopen/retry/stale/privacy/partial-failure acceptance;
+12. sanitized closing evidence.
+
+### Gate D — repository and release hardening
+
+**Status: ACTIVE.**
+
+Completed in the current pass:
+
+- obsolete Sep-2 documentation PR #260 was closed without merge rather than allowing stale frozen-candidate truth onto master;
+- current execution truth is being replaced from the exact production master, not rebased from stale handoff history;
+- release discipline remains exact-SHA preview → guarded merge → master CI → production exact-SHA READY → runtime inspection.
+
+Outstanding GitHub administration items:
+
+- protect `master` and require CI before merge;
+- enable automatic deletion of merged head branches;
+- remove merged/validation branches left by #259/#261 and temporary validation work.
+
+The connected GitHub automation available in this execution environment can read branch protection and mutate PRs/files/refs, but does not expose branch deletion or branch-protection writes. Do not mark those two administration items complete until GitHub settings actually show them enabled/applied.
+
+### Gate E — Golden Path 3 durable publication
+
+**Status: PARKED until Gate C acceptance.**
+
+Target:
 
 ```text
-exact approved text revision + exact approved media revision
-        ↓
-editorial timing / Calendar entry
-        ↓
-immutable PublicationRequest
-        ↓
-durable publication execution
-        ↓
-confirmed / failed / unknown external outcome
-        ↓
-NarrativeMemory becomes confirmed-public only after external confirmation
+exact approved revision
+→ immutable PublicationRequest
+→ durable enqueue/worker
+→ one real destination connector
+→ CONFIRMED | FAILED | UNKNOWN external outcome
+→ Publication record
+→ NarrativeMemory becomes confirmed-public only after CONFIRMED
 ```
 
-Do not begin broad calendar/publishing expansion before GP2 owner acceptance.
+Important rule: timeout/ambiguous provider response must become `UNKNOWN`; never blindly retry when the provider may already have accepted the publication.
 
-## Repository truth problems to prevent
+### Gate F — Direct Create unification
+
+**Status: PLANNED after publication vertical.**
+
+Target:
+
+`Post about X + images/video/files/links → media intent → ContentPiece/NarrativeStrategy → same immutable destination revisions → same exact review → same publication path`.
+
+Do not build a second editor/generator/review pipeline for Direct Create.
+
+## Repository truth rules
 
 ### Backlog priority inflation
 
-At the audit checkpoint the issue register contained approximately 110 open issues, including 44 issue titles marked `[P0]` and 46 marked `[P1]`. This does not represent 90 simultaneous execution priorities.
+The repository still has roughly 110 open issues. `[P0]`/`[P1]` labels in old titles do not mean simultaneous current execution. Classify work as:
 
-Treat issues as one of:
+1. active Golden Path blocker;
+2. parent/architectural requirement;
+3. future roadmap;
+4. acceptance-complete, superseded, duplicate, or historical cleanup candidate.
 
-1. **Active Golden Path blockers** — current execution;
-2. **parent epics / architectural requirements** — retained for traceability;
-3. **future roadmap** — not current;
-4. **historical / acceptance-complete / superseded** — verify and close deliberately.
+### Branch truth
 
-Never select work only because an old issue title says P0.
-
-### Branch accumulation
-
-The audited repository had 73 branches, mostly historical merged/superseded implementation branches. Development branches are temporary artifacts, not roadmap state.
-
-After a PR is merged and production/acceptance evidence is recorded, delete its head branch unless it has an explicit continuing purpose.
+Current branch inventory still contains merged and temporary Gate-A/Gate-B branches in addition to `master` and the intentionally parked `feat/editorial-execution-layer`. These should be deleted once repository tooling/settings permit. Branch existence is not roadmap state.
 
 ### Deployment truth
 
-At this checkpoint Vercel production was still on `2ea1c34f47d1946d9cabff4fc7897f325f5e0883` (PR #247) while GitHub `master` was already at #250. Preview deployments for the later slices were building successfully.
-
-A change is not considered shipped merely because it merged. Release verification must prove that the production deployment SHA equals the intended approved `master` SHA.
+A merge is not shipped until Vercel production reports READY on the exact intended `master` SHA. A prior preview, prior production deployment, or green build on another SHA does not satisfy the gate.
 
 ### Documentation truth
 
-Older ledgers and portions of `AGENTS.md` may describe a capability as unimplemented even after later GP2 slices landed. Use this priority when sources disagree:
+When sources disagree, use this priority:
 
-1. current code + tests + accepted production evidence;
-2. this execution-state file;
-3. capability matrix / current implementation docs;
-4. canonical product documents for direction;
-5. old issue bodies / historical ledgers for requirements and history.
-
-Do not claim target architecture as shipped merely because a document defines it.
-
-## Not the next build slice
-
-Unless a direct blocker is discovered, do **not** switch current execution to:
-
-- screencast/video editing/rendering;
-- carousel expansion beyond requirements needed by the active path;
-- mobile application;
-- Desktop Edge Agent;
-- local/private model packs;
-- broad provider-routing redesign;
-- general calendar expansion;
-- broad social-connector coverage;
-- large legacy Studio rewrite;
-- another landing-page redesign;
-- large cross-cutting refactor performed only for cleanliness.
-
-These remain valid roadmap areas, but they must not interrupt GP2 closure.
-
-## Merge and release discipline
-
-For every current product slice:
-
-```text
-issue acceptance criteria
-→ focused branch
-→ implementation
-→ focused + regression tests
-→ PR
-→ green CI
-→ preview verification when applicable
-→ merge
-→ verify production SHA / runtime when intended for production
-→ record owner acceptance when the issue requires it
-→ close only acceptance-complete issues
-→ delete merged branch
-→ update execution/capability truth
-```
-
-`master` should be protected with required CI checks and pull-request-based changes. Repository settings should also automatically delete merged head branches. These are repository settings and must be configured in GitHub if the available automation cannot mutate them.
+1. current production code + tests + verified runtime/acceptance evidence;
+2. this file;
+3. current acceptance ledgers/capability docs;
+4. canonical product architecture for intended direction;
+5. old issue bodies and old handoffs for historical requirements only.
 
 ## Immediate execution order
 
-1. Keep repository truth synchronized and remove clearly historical noise.
-2. Build the hosted GP2 screenshot orchestration slice directly after #250.
-3. Run and document GP2 owner acceptance; close only issues whose complete definitions of done are satisfied.
-4. Reconcile remaining open issues into active / parent / later / close categories.
-5. Begin GP3 durable publication vertical.
-6. After GP2/GP3 product behavior is dependable, decompose legacy UI/code debt and continue broader roadmap work.
+1. Finish Gate D repository-truth cleanup that does not alter product sequencing.
+2. Owner installs/connects the SignalFlow GitHub App to the intended repository in production.
+3. Run Gate C end-to-end with a real meaningful event + duplicate/noise proof and record the evidence.
+4. Close #167 only when its definition of done is genuinely satisfied.
+5. Begin Gate E durable publication vertical.
+6. After publication is dependable, unify Gate F Direct Create onto the same domain/application path.
+7. Broader media/video/mobile/desktop/local-model/SaaS work follows these Golden Paths rather than interrupting them.

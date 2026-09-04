@@ -118,6 +118,23 @@ export function createGithubManifestProvisioningApplication({
     return connection;
   }
 
+  async function prepareRegistration({ state } = {}) {
+    const statePayload = stateCodec.verifyInstall(state, { workspaceId: ownerWorkspaceId });
+    const connection = await requireManifestConnection(statePayload.sourceConnectionId);
+    if (connection.credentialRef) {
+      const error = new Error("GitHub App credentials are already bound to this SourceConnection.");
+      error.code = "github_manifest_already_completed";
+      throw error;
+    }
+    return buildGithubManifestRegistration({
+      state,
+      manifest: buildSignalFlowGithubAppManifest({
+        origin: canonicalOrigin,
+        appName: appNameForConnection(connection.sourceConnectionId),
+      }),
+    });
+  }
+
   async function startRegistration({ returnTo = "/?workspace=connections" } = {}) {
     const connection = await pendingConnection();
     const state = stateCodec.createInstall({
@@ -125,14 +142,12 @@ export function createGithubManifestProvisioningApplication({
       sourceConnectionId: connection.sourceConnectionId,
       returnTo,
     });
-    const manifest = buildSignalFlowGithubAppManifest({
-      origin: canonicalOrigin,
-      appName: appNameForConnection(connection.sourceConnectionId),
-    });
+    const registrationBridge = new URL("/api/sources/github/manifest/register", canonicalOrigin);
+    registrationBridge.searchParams.set("state", state);
     return Object.freeze({
       sourceConnectionId: connection.sourceConnectionId,
       status: connection.status,
-      registration: buildGithubManifestRegistration({ state, manifest }),
+      installUrl: registrationBridge.toString(),
     });
   }
 
@@ -189,5 +204,5 @@ export function createGithubManifestProvisioningApplication({
     }
   }
 
-  return Object.freeze({ startRegistration, completeRegistration });
+  return Object.freeze({ startRegistration, prepareRegistration, completeRegistration });
 }

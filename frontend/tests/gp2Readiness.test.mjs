@@ -45,6 +45,20 @@ test("GP2 readiness is true only when every production dependency class is confi
   );
 });
 
+test("request-scoped Vercel OIDC satisfies hosted inference without a provider API key", () => {
+  const env = configuredEnv();
+  delete env.OPENAI_API_KEY;
+  delete env.AI_GATEWAY_API_KEY;
+  delete env.VERCEL_OIDC_TOKEN;
+
+  const status = gp2ReadinessStatus(env, { vercelOidcAvailable: true });
+  const inference = status.checks.find((item) => item.id === "inference");
+  assert.equal(inference.configured, true);
+  assert.deepEqual(inference.missing, []);
+  assert.equal(inference.provider, "vercel_oidc");
+  assert.equal(status.ready, true);
+});
+
 test("GP2 readiness reports only missing configuration names and never values", () => {
   const env = configuredEnv();
   delete env.GITHUB_WEBHOOK_SECRET;
@@ -58,6 +72,7 @@ test("GP2 readiness reports only missing configuration names and never values", 
   assert.ok(status.missing.includes("SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT"));
   assert.ok(status.missing.includes("SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"));
   assert.ok(status.missing.some((item) => item.includes("OPENAI_API_KEY")));
+  assert.ok(status.missing.some((item) => item.includes("VERCEL_RUNTIME_OIDC")));
   const serialized = JSON.stringify(status);
   assert.doesNotMatch(serialized, /owner-lock|client-secret|secret-key|provider-key|preview-receipt-secret/);
 });
@@ -71,10 +86,11 @@ test("public hosted readiness requires the owner access lock", () => {
   assert.deepEqual(owner.missing, ["SIGNALFLOW_ACCESS_KEY"]);
 });
 
-test("GP2 readiness route is owner-only, no-store and returns the safe status contract", () => {
+test("GP2 readiness route is owner-only, no-store and resolves request-scoped OIDC without exposing it", () => {
   const route = fs.readFileSync(path.join(ROOT, "app", "api", "gp2", "readiness", "route.js"), "utf8");
   assert.match(route, /requireOwnerAccess\(request\)/);
-  assert.match(route, /gp2ReadinessStatus\(process\.env\)/);
+  assert.match(route, /vercelRuntimeOidcAvailable\(request, process\.env\)/);
+  assert.match(route, /gp2ReadinessStatus\(process\.env, \{/);
   assert.match(route, /private, no-store, max-age=0/);
   assert.doesNotMatch(route, /process\.env\[[^\]]+\].*Response|secret.*value|credentialRef|storageRef/);
 });

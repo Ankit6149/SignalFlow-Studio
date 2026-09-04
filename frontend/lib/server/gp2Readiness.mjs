@@ -33,7 +33,7 @@ function check(id, label, configured, missing = [], details = {}) {
   });
 }
 
-export function gp2ReadinessStatus(env = process.env) {
+export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = false } = {}) {
   const github = githubSourceConnectionConfigurationStatus(env);
   const storage = hostedAssetStorageConfigurationStatus(env);
   const ownerAccess = ownerAccessConfigurationStatus(env);
@@ -75,12 +75,13 @@ export function gp2ReadinessStatus(env = process.env) {
     previewSecretReady,
     previewSecretReady ? [] : ["SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"],
   );
-  const inferenceReady = INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
+  const inferenceReady = Boolean(vercelOidcAvailable) || INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
   const inference = check(
     "inference",
     "Hosted inference route",
     inferenceReady,
-    inferenceReady ? [] : ["VERCEL_OIDC_TOKEN(auto)|AI_GATEWAY_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"],
+    inferenceReady ? [] : ["VERCEL_RUNTIME_OIDC|AI_GATEWAY_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"],
+    { provider: Boolean(vercelOidcAvailable) ? "vercel_oidc" : null },
   );
 
   const checks = Object.freeze([

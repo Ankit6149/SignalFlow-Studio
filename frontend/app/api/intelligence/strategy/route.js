@@ -12,6 +12,7 @@ import {
   INFERENCE_TASK_TYPES,
   normalizeInferenceTask,
 } from "../../../../lib/inference/inferenceTasks.mjs";
+import { readVercelRuntimeOidcToken } from "../../../../lib/server/vercelRuntimeOidc.mjs";
 
 export const maxDuration = 45;
 
@@ -24,7 +25,7 @@ function normalizedProvider(value) {
   return assertModelGenerationProvider(candidate);
 }
 
-function pickConfiguredProvider(requested = "") {
+function pickConfiguredProvider(requested = "", gatewayCredential = "") {
   const candidates = Array.from(new Set([
     requested,
     String(process.env.DEFAULT_MODEL_PROVIDER || "").trim().toLowerCase(),
@@ -39,6 +40,7 @@ function pickConfiguredProvider(requested = "") {
     }
     const meta = PROVIDERS[providerId];
     if (!meta || !CANDIDATE_PROVIDERS.includes(providerId)) continue;
+    if (providerId === "vercel_gateway" && gatewayCredential) return { providerId, meta };
     if (meta.isConfigured()) return { providerId, meta };
   }
   return null;
@@ -54,6 +56,7 @@ function json(payload, status = 200) {
 export async function POST(request) {
   const accessError = requireOwnerAccess(request);
   const isOwner = accessError === null;
+  const gatewayCredential = isOwner ? readVercelRuntimeOidcToken(request, process.env) : "";
 
   try {
     const body = await request.json();
@@ -70,7 +73,7 @@ export async function POST(request) {
     }
 
     const requestedProvider = String(body?.provider || "").trim().toLowerCase();
-    const selected = pickConfiguredProvider(requestedProvider);
+    const selected = pickConfiguredProvider(requestedProvider, gatewayCredential);
     if (!selected) {
       return json({
         ok: false,
@@ -98,6 +101,7 @@ export async function POST(request) {
       modelOverride: model || null,
       config: {
         allowServerKey: isOwner,
+        apiKey: providerId === "vercel_gateway" ? gatewayCredential : undefined,
         maxTokens: 3200,
       },
     });

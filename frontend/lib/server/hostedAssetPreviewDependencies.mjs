@@ -1,5 +1,6 @@
 import { createPrivateAssetStorageApplication } from "../application/privateAssetStorageApplication.mjs";
 import { createPostgresAssetRepository } from "../infrastructure/postgresAssetAdapter.mjs";
+import { createPostgresBlobStorage } from "../infrastructure/postgresBlobStorage.mjs";
 import { createS3CompatibleBlobStorage } from "../infrastructure/s3CompatibleBlobStorage.mjs";
 import { resolveOwnerWorkspaceId } from "./githubConnectionDependencies.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
@@ -46,18 +47,36 @@ function normalizeBytes(value) {
   throw previewError("hosted_asset_preview_bytes_invalid", "Stored Asset bytes are unavailable in a supported binary representation.", 503);
 }
 
+function present(env, name) {
+  return Boolean(String(env?.[name] || "").trim());
+}
+
 export function hostedAssetStorageConfigurationStatus(env = process.env) {
-  const required = [
+  const requiredS3 = [
     HOSTED_ASSET_STORAGE_ENV.endpoint,
     HOSTED_ASSET_STORAGE_ENV.bucket,
     HOSTED_ASSET_STORAGE_ENV.accessKeyId,
     HOSTED_ASSET_STORAGE_ENV.secretAccessKey,
   ];
-  const missing = required.filter((name) => !String(env?.[name] || "").trim());
-  return Object.freeze({ configured: missing.length === 0, missing });
+  const configuredS3 = requiredS3.filter((name) => present(env, name));
+
+  if (configuredS3.length === requiredS3.length) {
+    return Object.freeze({ configured: true, missing: [], provider: "s3-compatible" });
+  }
+  if (configuredS3.length > 0) {
+    return Object.freeze({
+      configured: false,
+      missing: requiredS3.filter((name) => !present(env, name)),
+      provider: "s3-compatible",
+    });
+  }
+  if (present(env, "DATABASE_URL")) {
+    return Object.freeze({ configured: true, missing: [], provider: "postgres" });
+  }
+  return Object.freeze({ configured: false, missing: ["DATABASE_URL"], provider: "postgres" });
 }
 
-function createConfiguredBlobStorage({ env, fetchImpl, clock }) {
+function createConfiguredBlobStorage({ env, fetchImpl, clock, database, workspaceId }) {
   const status = hostedAssetStorageConfigurationStatus(env);
   if (!status.configured) {
     throw previewError(
@@ -67,6 +86,11 @@ function createConfiguredBlobStorage({ env, fetchImpl, clock }) {
       { missing: status.missing },
     );
   }
+
+  if (status.provider === "postgres") {
+    return createPostgresBlobStorage({ database, workspaceId, clock });
+  }
+
   return createS3CompatibleBlobStorage({
     endpoint: env[HOSTED_ASSET_STORAGE_ENV.endpoint],
     bucket: env[HOSTED_ASSET_STORAGE_ENV.bucket],
@@ -89,9 +113,17 @@ export function createProductionHostedPrivateAssetStorage({
   blobStorage = null,
 } = {}) {
   const workspaceId = resolveOwnerWorkspaceId(env);
-  const db = database || (assetRepository ? null : createNeonQueryExecutor({ databaseUrl: env.DATABASE_URL }));
+  const storageStatus = blobStorage ? null : hostedAssetStorageConfigurationStatus(env);
+  const databaseRequired = !assetRepository || (!blobStorage && storageStatus?.provider === "postgres");
+  const db = database || (databaseRequired ? createNeonQueryExecutor({ databaseUrl: env.DATABASE_URL }) : null);
   const assets = assetRepository || createPostgresAssetRepository({ database: db, workspaceId });
-  const blobs = blobStorage || createConfiguredBlobStorage({ env, fetchImpl, clock });
+  const blobs = blobStorage || createConfiguredBlobStorage({
+    env,
+    fetchImpl,
+    clock,
+    database: db,
+    workspaceId,
+  });
   const privateStorage = createPrivateAssetStorageApplication({
     blobStorage: blobs,
     assetRepository: assets,

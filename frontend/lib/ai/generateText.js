@@ -1,3 +1,4 @@
+import { generateVercelGateway } from "./providers/vercelGateway";
 import { generateOpenAI } from "./providers/openai";
 import { generateClaude } from "./providers/claude";
 import { generateGemini } from "./providers/gemini";
@@ -19,6 +20,8 @@ export async function generateText({ provider, prompt, modelOverride = null, con
   };
 
   switch (p) {
+    case "vercel_gateway":
+      return await generateVercelGateway(prompt, modelOverride, resolvedConfig);
     case "openai":
       return await generateOpenAI(prompt, modelOverride, resolvedConfig);
     case "claude":

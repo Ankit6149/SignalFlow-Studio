@@ -1,4 +1,5 @@
 export const MODEL_GENERATION_PROVIDERS = new Set([
+  "vercel_gateway",
   "gemini",
   "openai",
   "claude",

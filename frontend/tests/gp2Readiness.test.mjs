@@ -56,7 +56,7 @@ test("GP2 readiness reports only missing configuration names and never values", 
   assert.equal(status.ready, false);
   assert.ok(status.missing.includes("GITHUB_WEBHOOK_SECRET"));
   assert.ok(status.missing.includes("SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT"));
-  assert.ok(status.missing.includes("SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET"));
+  assert.ok(status.missing.includes("SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"));
   assert.ok(status.missing.some((item) => item.includes("OPENAI_API_KEY")));
   const serialized = JSON.stringify(status);
   assert.doesNotMatch(serialized, /owner-lock|client-secret|secret-key|provider-key|preview-receipt-secret/);

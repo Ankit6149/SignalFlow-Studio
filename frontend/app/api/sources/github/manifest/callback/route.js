@@ -1,8 +1,8 @@
-import { requireOwnerAccess } from "../../../../../_auth";
+import { requireOwnerAccess } from "../../../../_auth";
 import {
   createProductionGithubSourceConnectionApplication,
   githubSourceConnectionConfigurationStatus,
-} from "../../../../../../../lib/server/githubConnectionDependencies.mjs";
+} from "../../../../../../lib/server/githubConnectionDependencies.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

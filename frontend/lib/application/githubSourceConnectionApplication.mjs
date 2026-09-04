@@ -31,6 +31,30 @@ function requiredMethod(target, method, label) {
   return target;
 }
 
+function validateGithubClient(githubAppClient) {
+  return requiredMethod(
+    requiredMethod(
+      requiredMethod(
+        requiredMethod(
+          requiredMethod(
+            requiredMethod(githubAppClient, "getInstallation", "GitHub App client"),
+            "exchangeUserCode",
+            "GitHub App client",
+          ),
+          "verifyUserInstallationAccess",
+          "GitHub App client",
+        ),
+        "buildUserAuthorizationUrl",
+        "GitHub App client",
+      ),
+      "listInstallationRepositories",
+      "GitHub App client",
+    ),
+    "getRepositoryForInstallation",
+    "GitHub App client",
+  );
+}
+
 function stableProjectId(repositoryId) {
   const id = requiredOpaque(repositoryId, "repositoryId");
   if (!/^\d+$/.test(id)) throw new TypeError("GitHub repositoryId must be numeric.");
@@ -66,35 +90,19 @@ function safeCapabilities(permissionScopes = []) {
 export function createGithubSourceConnectionApplication({
   workspaceId,
   sourceConnectionRepository,
-  githubAppClient,
+  githubAppClient = null,
+  resolveGithubAppClient = null,
   installStateCodec,
-  installationUrlBuilder,
+  installationUrlBuilder = null,
   clock = createSystemClock(),
   idService = createSystemIdService("signalflow"),
 } = {}) {
   const ownerWorkspaceId = requiredOpaque(workspaceId, "workspaceId");
   const connections = assertPort("sourceConnectionRepository", sourceConnectionRepository);
-  const github = requiredMethod(
-    requiredMethod(
-      requiredMethod(
-        requiredMethod(
-          requiredMethod(
-            requiredMethod(githubAppClient, "getInstallation", "GitHub App client"),
-            "exchangeUserCode",
-            "GitHub App client",
-          ),
-          "verifyUserInstallationAccess",
-          "GitHub App client",
-        ),
-        "buildUserAuthorizationUrl",
-        "GitHub App client",
-      ),
-      "listInstallationRepositories",
-      "GitHub App client",
-    ),
-    "getRepositoryForInstallation",
-    "GitHub App client",
-  );
+  const fixedGithub = githubAppClient ? validateGithubClient(githubAppClient) : null;
+  if (!fixedGithub && typeof resolveGithubAppClient !== "function") {
+    throw new TypeError("GitHub source connection application requires a fixed App client or resolveGithubAppClient().");
+  }
   const stateCodec = requiredMethod(
     requiredMethod(
       requiredMethod(
@@ -108,9 +116,16 @@ export function createGithubSourceConnectionApplication({
     "verifyAuthorization",
     "GitHub install-state codec",
   );
-  if (typeof installationUrlBuilder !== "function") throw new TypeError("GitHub source connection application requires installationUrlBuilder().");
+  if (installationUrlBuilder !== null && typeof installationUrlBuilder !== "function") {
+    throw new TypeError("installationUrlBuilder must be a function when provided.");
+  }
   const systemClock = assertPort("clock", clock);
   const ids = assertPort("idService", idService);
+
+  async function githubFor(connection) {
+    if (fixedGithub) return fixedGithub;
+    return validateGithubClient(await resolveGithubAppClient(normalizeSourceConnection(connection)));
+  }
 
   function assertOwned(input) {
     const connection = normalizeSourceConnection(input);
@@ -157,6 +172,11 @@ export function createGithubSourceConnectionApplication({
   }
 
   async function startInstallation({ returnTo = "/?workspace=connections" } = {}) {
+    if (!installationUrlBuilder) {
+      const error = new Error("This GitHub authority must be provisioned before installation can start.");
+      error.code = "github_app_provisioning_required";
+      throw error;
+    }
     const existingPending = (await listConnections()).find((item) => (
       item.status === SOURCE_CONNECTION_STATUSES.PENDING
       && !item.installationRef
@@ -192,6 +212,7 @@ export function createGithubSourceConnectionApplication({
       installationId: normalizedInstallationId,
       returnTo: statePayload.returnTo,
     });
+    const github = await githubFor(current);
     return Object.freeze({
       sourceConnectionId: current.sourceConnectionId,
       authorizationUrl: github.buildUserAuthorizationUrl(authorizationState),
@@ -207,6 +228,7 @@ export function createGithubSourceConnectionApplication({
       throw error;
     }
 
+    const github = await githubFor(current);
     const userToken = await github.exchangeUserCode(requiredOpaque(code, "authorizationCode"));
     await github.verifyUserInstallationAccess(userToken, statePayload.installationId);
     const installation = await github.getInstallation(statePayload.installationId);
@@ -232,7 +254,7 @@ export function createGithubSourceConnectionApplication({
     const next = updateSourceConnection(target, {
       providerAccountRef: installation.accountRef,
       installationRef: installation.installationId,
-      credentialRef: null,
+      credentialRef: target.credentialRef || current.credentialRef || null,
       permissionScopes: installationPermissions(installation),
       capabilities: safeCapabilities(installationPermissions(installation)),
       verifiedAt: now,
@@ -255,7 +277,7 @@ export function createGithubSourceConnectionApplication({
       error.code = "github_connection_not_verified";
       throw error;
     }
-    return github.listInstallationRepositories(connection.installationRef);
+    return (await githubFor(connection)).listInstallationRepositories(connection.installationRef);
   }
 
   async function selectRepository({ sourceConnectionId, repositoryId } = {}) {
@@ -265,7 +287,10 @@ export function createGithubSourceConnectionApplication({
       error.code = "github_connection_not_verified";
       throw error;
     }
-    const repository = await github.getRepositoryForInstallation(current.installationRef, requiredOpaque(repositoryId, "repositoryId"));
+    const repository = await (await githubFor(current)).getRepositoryForInstallation(
+      current.installationRef,
+      requiredOpaque(repositoryId, "repositoryId"),
+    );
     if (repository.disabled || repository.archived) {
       const error = new Error("Disabled or archived repositories cannot be enabled for automatic SignalFlow observation.");
       error.code = "github_repository_not_observable";
@@ -315,7 +340,7 @@ export function createGithubSourceConnectionApplication({
       error.code = "github_connection_not_verified";
       throw error;
     }
-    await github.getInstallation(current.installationRef);
+    await (await githubFor(current)).getInstallation(current.installationRef);
     return assertOwned(await connections.upsert(
       transitionSourceConnection(current, SOURCE_CONNECTION_STATUSES.ACTIVE, systemClock.now(), { lastErrorCode: null }),
     ));

@@ -1,6 +1,7 @@
 import { requireOwnerAccess } from "../../_auth";
 import { createProductionHostedExactAssetPreviewApplication } from "../../../../lib/server/hostedAssetPreviewDependencies.mjs";
 import { createHostedMediaPreviewReceiptService } from "../../../../lib/server/hostedMediaPreviewReceipt.mjs";
+import { resolveMediaPreviewReceiptSecret } from "../../../../lib/server/runtimeSigningSecrets.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,7 +68,7 @@ export async function GET(request) {
       assetVersionId: url.searchParams.get("assetVersionId"),
     });
     const receiptService = createHostedMediaPreviewReceiptService({
-      signingSecret: process.env.SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET,
+      signingSecret: resolveMediaPreviewReceiptSecret(process.env),
     });
     const previewReceipt = receiptService.issue({
       workspaceId: result.workspaceId,

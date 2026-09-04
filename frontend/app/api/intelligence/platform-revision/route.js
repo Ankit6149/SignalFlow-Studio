@@ -15,7 +15,7 @@ import {
 
 export const maxDuration = 45;
 
-const CANDIDATE_PROVIDERS = ["gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
+const CANDIDATE_PROVIDERS = ["vercel_gateway", "gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
 const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
 
 function normalizedProvider(value) {

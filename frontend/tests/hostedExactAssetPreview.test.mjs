@@ -130,15 +130,11 @@ test("hosted exact preview fails closed across workspaces before returning bytes
   );
 });
 
-test("hosted storage configuration reports every missing server-only credential", () => {
+test("hosted storage configuration falls back to Postgres and reports only the missing database", () => {
   const status = hostedAssetStorageConfigurationStatus({});
   assert.equal(status.configured, false);
-  assert.deepEqual(status.missing.sort(), [
-    "SIGNALFLOW_S3_ACCESS_KEY_ID",
-    "SIGNALFLOW_S3_BUCKET",
-    "SIGNALFLOW_S3_ENDPOINT",
-    "SIGNALFLOW_S3_SECRET_ACCESS_KEY",
-  ].sort());
+  assert.equal(status.provider, "postgres");
+  assert.deepEqual(status.missing, ["DATABASE_URL"]);
 });
 
 test("hosted browser preview client preserves exact identity and never requests a public object URL", async () => {

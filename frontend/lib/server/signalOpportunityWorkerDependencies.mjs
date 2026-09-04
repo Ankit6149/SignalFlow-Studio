@@ -19,6 +19,7 @@ import {
 } from "../infrastructure/serverInferenceAdapter.mjs";
 import { readGithubAppConfiguration } from "../integrations/github/githubAppApi.mjs";
 import { createGithubRepositoryApiClient } from "../integrations/github/githubRepositoryApi.mjs";
+import { resolveGithubRuntimeEnv } from "./githubRuntimeConfig.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
 
 export function createProductionSignalOpportunityWorker({
@@ -28,12 +29,13 @@ export function createProductionSignalOpportunityWorker({
   clock = createSystemClock(),
   idService = createSystemIdService("signalflow"),
 } = {}) {
-  const database = createNeonQueryExecutor({ databaseUrl: env.DATABASE_URL });
+  const runtimeEnv = resolveGithubRuntimeEnv(env);
+  const database = createNeonQueryExecutor({ databaseUrl: runtimeEnv.DATABASE_URL });
   const opportunityJobRepository = createPostgresSignalOpportunityJobRepository({ database });
-  const inferenceOrigin = String(env.SIGNALFLOW_INTERNAL_ORIGIN || origin || "").trim();
+  const inferenceOrigin = String(runtimeEnv.SIGNALFLOW_INTERNAL_ORIGIN || origin || "").trim();
   const inferenceAdapter = createServerOpportunityInferenceAdapter({
     origin: inferenceOrigin,
-    accessKey: env.SIGNALFLOW_ACCESS_KEY,
+    accessKey: runtimeEnv.SIGNALFLOW_ACCESS_KEY,
     fetchImpl,
   });
 
@@ -57,10 +59,10 @@ export function createProductionSignalOpportunityWorker({
         contentSignalRepository: repositories.contentSignalRepository,
         sourceConnectionRepository: repositories.sourceConnectionRepository,
         async createGithubRepositoryBootstrapApplication() {
-          const config = readGithubAppConfiguration(env);
+          const config = readGithubAppConfiguration(runtimeEnv);
           const projectContextInference = createServerProjectContextInferenceAdapter({
             origin: inferenceOrigin,
-            accessKey: env.SIGNALFLOW_ACCESS_KEY,
+            accessKey: runtimeEnv.SIGNALFLOW_ACCESS_KEY,
             fetchImpl,
           });
           const projectContextApplication = createProjectContextApplication({

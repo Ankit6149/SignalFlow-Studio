@@ -2,8 +2,11 @@ import { githubSourceConnectionConfigurationStatus } from "./githubConnectionDep
 import { hostedAssetStorageConfigurationStatus } from "./hostedAssetPreviewDependencies.mjs";
 import { hostedScreenshotConfigurationStatus } from "./hostedScreenshotProductionDependencies.mjs";
 import { ownerAccessConfigurationStatus } from "./ownerAccessPolicy.mjs";
+import { resolveMediaPreviewReceiptSecret } from "./runtimeSigningSecrets.mjs";
 
 const INFERENCE_ENV_GROUPS = Object.freeze([
+  ["VERCEL_OIDC_TOKEN"],
+  ["AI_GATEWAY_API_KEY"],
   ["OPENAI_API_KEY"],
   ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
   ["GEMINI_API_KEY"],
@@ -51,7 +54,13 @@ export function gp2ReadinessStatus(env = process.env) {
   );
   const githubApp = check("github_app", "GitHub App connection", github.configured, github.missing);
   const webhook = check("github_webhook", "GitHub webhook verification", present(env, "GITHUB_WEBHOOK_SECRET"), present(env, "GITHUB_WEBHOOK_SECRET") ? [] : ["GITHUB_WEBHOOK_SECRET"]);
-  const privateStorage = check("private_asset_storage", "Private Asset storage", storage.configured, storage.missing);
+  const privateStorage = check(
+    "private_asset_storage",
+    "Private Asset storage",
+    storage.configured,
+    storage.missing,
+    { provider: storage.provider || null },
+  );
   const captureWorker = check(
     "capture_worker",
     "Bounded screenshot worker",
@@ -59,19 +68,19 @@ export function gp2ReadinessStatus(env = process.env) {
     capture.missing,
     { environment: capture.environment || null },
   );
-  const previewSecretReady = String(env?.SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET || "").trim().length >= 32;
+  const previewSecretReady = resolveMediaPreviewReceiptSecret(env).length >= 32;
   const exactPreview = check(
     "exact_media_preview",
     "Exact media visibility receipts",
     previewSecretReady,
-    previewSecretReady ? [] : ["SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET"],
+    previewSecretReady ? [] : ["SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"],
   );
   const inferenceReady = INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
   const inference = check(
     "inference",
     "Hosted inference route",
     inferenceReady,
-    inferenceReady ? [] : ["OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"],
+    inferenceReady ? [] : ["VERCEL_OIDC_TOKEN(auto)|AI_GATEWAY_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"],
   );
 
   const checks = Object.freeze([

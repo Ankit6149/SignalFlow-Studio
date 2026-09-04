@@ -20,6 +20,7 @@ import {
   verifyGithubAuthorizationState,
   verifyGithubInstallState,
 } from "./githubInstallState.mjs";
+import { resolveGithubRuntimeEnv } from "./githubRuntimeConfig.mjs";
 import { createHostedOpportunityCore } from "./hostedOpportunityCore.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
 import { ownerAccessConfigurationStatus } from "./ownerAccessPolicy.mjs";
@@ -36,7 +37,8 @@ export function resolveOwnerWorkspaceId(env = process.env) {
 }
 
 export function githubSourceConnectionConfigurationStatus(env = process.env) {
-  const github = githubAppConfigurationStatus(env);
+  const runtimeEnv = resolveGithubRuntimeEnv(env);
+  const github = githubAppConfigurationStatus(runtimeEnv);
   const ownerAccess = ownerAccessConfigurationStatus(env);
   const missing = [...github.missing];
   if (ownerAccess.publicHosted && !ownerAccess.configured) {
@@ -55,9 +57,10 @@ export function createProductionGithubSourceConnectionApplication({
   clock = createSystemClock(),
   idService = createSystemIdService("signalflow"),
 } = {}) {
-  const config = readGithubAppConfiguration(env);
-  const workspaceId = resolveOwnerWorkspaceId(env);
-  const database = createNeonQueryExecutor({ databaseUrl: env.DATABASE_URL });
+  const runtimeEnv = resolveGithubRuntimeEnv(env);
+  const config = readGithubAppConfiguration(runtimeEnv);
+  const workspaceId = resolveOwnerWorkspaceId(runtimeEnv);
+  const database = createNeonQueryExecutor({ databaseUrl: runtimeEnv.DATABASE_URL });
   const sourceConnectionRepository = createPostgresSourceConnectionRepository({ database, workspaceId });
   const githubAppClient = createGithubAppApiClient({
     appId: config.appId,
@@ -67,7 +70,7 @@ export function createProductionGithubSourceConnectionApplication({
     callbackUrl: config.callbackUrl,
     fetchImpl,
   });
-  const stateSecret = String(env.GITHUB_INSTALL_STATE_SECRET || "").trim();
+  const stateSecret = runtimeEnv.GITHUB_INSTALL_STATE_SECRET;
   const stateNow = () => Date.parse(clock.now());
   const installStateCodec = Object.freeze({
     createInstall(input) {
@@ -102,15 +105,16 @@ export function createProductionGithubRepositoryBootstrapApplication({
   clock = createSystemClock(),
   idService = createSystemIdService("signalflow"),
 } = {}) {
-  const config = readGithubAppConfiguration(env);
-  const workspaceId = resolveOwnerWorkspaceId(env);
-  const database = createNeonQueryExecutor({ databaseUrl: env.DATABASE_URL });
+  const runtimeEnv = resolveGithubRuntimeEnv(env);
+  const config = readGithubAppConfiguration(runtimeEnv);
+  const workspaceId = resolveOwnerWorkspaceId(runtimeEnv);
+  const database = createNeonQueryExecutor({ databaseUrl: runtimeEnv.DATABASE_URL });
   const sourceConnectionRepository = createPostgresSourceConnectionRepository({ database, workspaceId });
   const sourceArtifactRepository = createPostgresSourceArtifactRepository({ database, workspaceId });
   const projectContextRepository = createPostgresProjectContextRepository({ database, workspaceId });
   const inferenceAdapter = createServerProjectContextInferenceAdapter({
     origin,
-    accessKey: env.SIGNALFLOW_ACCESS_KEY,
+    accessKey: runtimeEnv.SIGNALFLOW_ACCESS_KEY,
     fetchImpl,
   });
   const projectContextApplication = createProjectContextApplication({
@@ -128,7 +132,7 @@ export function createProductionGithubRepositoryBootstrapApplication({
   const opportunityCore = createHostedOpportunityCore({
     workspaceId,
     origin,
-    env,
+    env: runtimeEnv,
     fetchImpl,
     clock,
     idService,

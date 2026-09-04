@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { resolveMediaPreviewReceiptSecret } from "./runtimeSigningSecrets.mjs";
 
 const RECEIPT_VERSION = 1;
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
@@ -16,7 +17,7 @@ function required(value, field, maxLength = 320) {
 function secret(value) {
   const normalized = String(value || "").trim();
   if (normalized.length < 32) {
-    const error = new Error("SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET must be at least 32 characters.");
+    const error = new Error("SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET or SIGNALFLOW_ACCESS_KEY must provide a 32+ character signing key.");
     error.code = "preview_receipt_secret_unconfigured";
     error.status = 503;
     throw error;
@@ -62,10 +63,11 @@ function canonicalClaims({ workspaceId, assetId, assetVersionId, issuedAt, expir
 
 export function createHostedMediaPreviewReceiptService({
   signingSecret,
+  env = process.env,
   clock = { now: () => new Date().toISOString() },
   ttlMs = DEFAULT_TTL_MS,
 } = {}) {
-  const key = secret(signingSecret);
+  const key = secret(String(signingSecret || "").trim() || resolveMediaPreviewReceiptSecret(env));
   const ttl = Number(ttlMs);
   if (!Number.isFinite(ttl) || ttl < 30_000 || ttl > 15 * 60 * 1000) {
     throw new TypeError("Preview receipt ttlMs must be between 30 seconds and 15 minutes.");

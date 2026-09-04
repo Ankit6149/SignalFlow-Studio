@@ -17,6 +17,18 @@ export const PROVIDERS = {
     isConfigured: () => true,
     defaultModel: "deterministic-local"
   },
+  vercel_gateway: {
+    id: "vercel_gateway",
+    label: "Vercel AI Gateway",
+    description: "Uses Vercel AI Gateway with an explicit Gateway key or the deployment-provided Vercel OIDC token.",
+    isLocal: false,
+    isFree: false,
+    isConfigured: () => Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
+    defaultModel: process.env.VERCEL_AI_GATEWAY_MODEL || "google/gemini-2.5-flash-lite",
+    requiredEnv: ["AI_GATEWAY_API_KEY|VERCEL_OIDC_TOKEN"],
+    canTest: true,
+    supportsTemporaryKey: true
+  },
   openai: {
     id: "openai",
     label: "OpenAI",
@@ -127,6 +139,7 @@ export function getProviderApiKey(providerKey, config = {}) {
   if (publicHosted && !config.allowServerKey) return "";
 
   switch (providerKey) {
+    case "vercel_gateway": return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
     case "openai": return process.env.OPENAI_API_KEY || "";
     case "claude": return process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || "";
     case "gemini": return process.env.GEMINI_API_KEY || "";

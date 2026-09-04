@@ -17,7 +17,7 @@ import {
 
 export const maxDuration = 45;
 
-const CANDIDATE_PROVIDERS = ["gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
+const CANDIDATE_PROVIDERS = ["vercel_gateway", "gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
 const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
 const CRITIC_TASKS = new Set([INFERENCE_TASK_TYPES.EVIDENCE_CRITIQUE, INFERENCE_TASK_TYPES.AUTHENTICITY_CRITIQUE]);
 

@@ -53,7 +53,7 @@ export function githubSourceConnectionConfigurationStatus(env = process.env) {
   const ownerAccess = ownerAccessConfigurationStatus(env);
   const ownerReady = !ownerAccess.publicHosted || ownerAccess.configured;
   const authorityReady = legacy.configured || manifest.configured;
-  const missing = authorityReady ? [] : manifest.missing;
+  const missing = authorityReady ? [] : [...manifest.missing];
   if (!ownerReady) missing.push("SIGNALFLOW_ACCESS_KEY");
   return Object.freeze({
     configured: authorityReady && ownerReady,
@@ -132,6 +132,7 @@ export function createProductionGithubSourceConnectionApplication({
       if (legacyConfig) return application.startInstallation(input);
       return manifest.startRegistration(input);
     },
+    prepareManifestRegistration: manifest.prepareRegistration,
     completeManifestRegistration: manifest.completeRegistration,
   });
 }

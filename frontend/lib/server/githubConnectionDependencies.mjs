@@ -137,6 +137,21 @@ export function createProductionGithubSourceConnectionApplication({
   });
 }
 
+export function createProductionGithubWebhookSecretResolver({
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  const runtimeEnv = resolveGithubRuntimeEnv(env);
+  if (!String(runtimeEnv.DATABASE_URL || "").trim()) return null;
+  const database = createNeonQueryExecutor({ databaseUrl: runtimeEnv.DATABASE_URL });
+  const authority = createGithubCredentialAuthority({ database, env: runtimeEnv, fetchImpl });
+  return async function resolveWebhookSecret({ payload } = {}) {
+    const installationId = String(payload?.installation?.id || "").trim();
+    if (!installationId) return String(runtimeEnv.GITHUB_WEBHOOK_SECRET || "").trim();
+    return authority.resolveWebhookSecretForInstallation(installationId);
+  };
+}
+
 export function createProductionGithubRepositoryBootstrapApplication({
   origin,
   env = process.env,

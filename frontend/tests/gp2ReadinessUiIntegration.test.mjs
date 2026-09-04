@@ -108,10 +108,11 @@ test("browser readiness panel uses only the protected owner-safe API surface and
   assert.doesNotMatch(panel, /GITHUB_APP_PRIVATE_KEY|GITHUB_APP_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|SIGNALFLOW_S3_SECRET_ACCESS_KEY|OPENAI_API_KEY/);
 });
 
-test("GP2 readiness route stays owner-authenticated and non-cacheable", () => {
+test("GP2 readiness route stays owner-authenticated, non-cacheable, and request-scoped for OIDC", () => {
   const route = read("app/api/gp2/readiness/route.js");
   assert.match(route, /requireOwnerAccess\(request\)/);
   assert.match(route, /cache-control": "private, no-store, max-age=0"/);
-  assert.match(route, /gp2ReadinessStatus\(process\.env\)/);
+  assert.match(route, /gp2ReadinessStatus\(process\.env, \{/);
+  assert.match(route, /vercelRuntimeOidcAvailable\(request, process\.env\)/);
   assert.doesNotMatch(route, /SIGNALFLOW_ACCESS_KEY\s*[:=]|GITHUB_APP_PRIVATE_KEY\s*[:=]|OPENAI_API_KEY\s*[:=]/);
 });

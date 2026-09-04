@@ -37,7 +37,7 @@ test("Vercel Gateway adapter sends bounded JSON chat completion with the supplie
   assert.deepEqual(body.messages, [{ role: "user", content: "Return JSON." }]);
 });
 
-test("every canonical GP2 intelligence route considers Vercel Gateway before direct provider keys", () => {
+test("every canonical GP2 intelligence route considers request-scoped Vercel OIDC before direct provider keys", () => {
   const routes = [
     "app/api/intelligence/project-context/route.js",
     "app/api/intelligence/opportunity/route.js",
@@ -50,6 +50,10 @@ test("every canonical GP2 intelligence route considers Vercel Gateway before dir
   for (const route of routes) {
     const source = read(route);
     assert.match(source, /const CANDIDATE_PROVIDERS = \["vercel_gateway", "gemini"/);
+    assert.match(source, /readVercelRuntimeOidcToken/);
+    assert.match(source, /gatewayCredential = isOwner \? readVercelRuntimeOidcToken\(request, process\.env\) : ""/);
+    assert.match(source, /providerId === "vercel_gateway" && gatewayCredential/);
+    assert.match(source, /apiKey: providerId === "vercel_gateway" \? gatewayCredential : undefined/);
     assert.match(source, /assertInferenceRouteAllowed/);
     assert.match(source, /allowServerKey: isOwner/);
   }

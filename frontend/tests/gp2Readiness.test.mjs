@@ -60,6 +60,28 @@ test("request-scoped Vercel OIDC satisfies hosted inference without a provider A
   assert.equal(status.ready, true);
 });
 
+test("manifest-backed GitHub setup satisfies webhook readiness without a static webhook environment secret", () => {
+  const env = configuredEnv();
+  env.SIGNALFLOW_ACCESS_KEY = "o".repeat(48);
+  delete env.GITHUB_APP_ID;
+  delete env.GITHUB_APP_SLUG;
+  delete env.GITHUB_APP_PRIVATE_KEY;
+  delete env.GITHUB_APP_CLIENT_ID;
+  delete env.GITHUB_APP_CLIENT_SECRET;
+  delete env.GITHUB_INSTALL_STATE_SECRET;
+  delete env.GITHUB_WEBHOOK_SECRET;
+
+  const status = gp2ReadinessStatus(env);
+  const githubApp = status.checks.find((item) => item.id === "github_app");
+  const webhook = status.checks.find((item) => item.id === "github_webhook");
+
+  assert.equal(githubApp?.configured, true);
+  assert.equal(webhook?.configured, true);
+  assert.deepEqual(webhook?.missing, []);
+  assert.equal(webhook?.provider, "github_manifest");
+  assert.equal(status.missing.includes("GITHUB_WEBHOOK_SECRET"), false);
+});
+
 test("GP2 readiness reports only direct missing configuration names and never values", () => {
   const env = configuredEnv();
   delete env.GITHUB_WEBHOOK_SECRET;

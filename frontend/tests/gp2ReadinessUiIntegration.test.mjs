@@ -66,7 +66,7 @@ test("GP2 readiness data is safe to render because secret values never leave the
   }
 });
 
-test("Vercel GP2 readiness remains blocked when the owner lock is missing even without the explicit hosted flag", () => {
+test("Vercel GP2 readiness blocks GitHub on the owner lock without duplicating the owner setting", () => {
   const env = {
     ...readyEnv(),
     SIGNALFLOW_PUBLIC_HOSTED: "",
@@ -81,7 +81,8 @@ test("Vercel GP2 readiness remains blocked when the owner lock is missing even w
   assert.equal(ownerLock?.configured, false);
   assert.deepEqual(ownerLock?.missing, ["SIGNALFLOW_ACCESS_KEY"]);
   assert.equal(githubApp?.configured, false);
-  assert.ok(githubApp?.missing.includes("SIGNALFLOW_ACCESS_KEY"));
+  assert.equal(githubApp?.missing.includes("SIGNALFLOW_ACCESS_KEY"), false);
+  assert.deepEqual(githubApp?.blockedBy, ["owner_lock"]);
 });
 
 test("Connections workspace renders readiness before GitHub installation controls", () => {
@@ -91,14 +92,19 @@ test("Connections workspace renders readiness before GitHub installation control
   assert.ok(shell.indexOf("<Gp2ReadinessPanel />") < shell.indexOf("<GithubSourceConnectionPanel />"));
 });
 
-test("browser readiness panel uses only the protected owner-safe API surface and fails closed on contract drift", () => {
+test("browser readiness panel uses protected safe contract and renders direct settings separately from blockers", () => {
   const panel = read("components/Gp2ReadinessPanel.js");
   assert.match(panel, /fetch\("\/api\/gp2\/readiness"/);
   assert.match(panel, /credentials: "same-origin"/);
   assert.match(panel, /state\.error\?\.status === 401/);
   assert.match(panel, /state\.error\?\.code === "owner_access_unconfigured"/);
   assert.match(panel, /Owner lock configuration required/);
-  assert.match(panel, /credential values never leave the server/i);
+  assert.match(panel, /Each missing setting is shown only at the dependency that owns it/);
+  assert.match(panel, /safeBlockedBy/);
+  assert.match(panel, /readinessState/);
+  assert.match(panel, /itemState === "blocked" \? "Blocked"/);
+  assert.match(panel, /<ul className=\{styles\.missing\}/);
+  assert.match(panel, /Blocked by \{item\.blockedBy/);
   assert.match(panel, /const CHECK_LABELS = Object\.freeze/);
   assert.match(panel, /const CONFIGURATION_NAME = \/\^\[A-Z0-9_\+\|\.\-\]/);
   assert.match(panel, /filter\(\(value\) => CONFIGURATION_NAME\.test\(value\)\)/);

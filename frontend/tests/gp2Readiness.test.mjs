@@ -43,6 +43,7 @@ test("GP2 readiness is true only when every production dependency class is confi
     status.checks.map((item) => item.id),
     ["database", "owner_lock", "github_app", "github_webhook", "private_asset_storage", "capture_worker", "exact_media_preview", "inference"],
   );
+  assert.ok(status.checks.every((item) => Array.isArray(item.blockedBy) && item.blockedBy.length === 0));
 });
 
 test("request-scoped Vercel OIDC satisfies hosted inference without a provider API key", () => {
@@ -59,7 +60,7 @@ test("request-scoped Vercel OIDC satisfies hosted inference without a provider A
   assert.equal(status.ready, true);
 });
 
-test("GP2 readiness reports only missing configuration names and never values", () => {
+test("GP2 readiness reports only direct missing configuration names and never values", () => {
   const env = configuredEnv();
   delete env.GITHUB_WEBHOOK_SECRET;
   delete env.SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT;
@@ -77,13 +78,38 @@ test("GP2 readiness reports only missing configuration names and never values", 
   assert.doesNotMatch(serialized, /owner-lock|client-secret|secret-key|provider-key|preview-receipt-secret/);
 });
 
-test("public hosted readiness requires the owner access lock", () => {
+test("shared upstream configuration is reported once and downstream checks become blocked", () => {
+  const env = configuredEnv();
+  delete env.DATABASE_URL;
+  delete env.SIGNALFLOW_S3_ENDPOINT;
+  delete env.SIGNALFLOW_S3_BUCKET;
+  delete env.SIGNALFLOW_S3_ACCESS_KEY_ID;
+  delete env.SIGNALFLOW_S3_SECRET_ACCESS_KEY;
+
+  const status = gp2ReadinessStatus(env);
+  const database = status.checks.find((item) => item.id === "database");
+  const githubApp = status.checks.find((item) => item.id === "github_app");
+  const storage = status.checks.find((item) => item.id === "private_asset_storage");
+
+  assert.deepEqual(database?.missing, ["DATABASE_URL"]);
+  assert.deepEqual(database?.blockedBy, []);
+  assert.equal(githubApp?.missing.includes("DATABASE_URL"), false);
+  assert.deepEqual(githubApp?.blockedBy, ["database"]);
+  assert.deepEqual(storage?.missing, []);
+  assert.deepEqual(storage?.blockedBy, ["database"]);
+  assert.equal(status.missing.filter((name) => name === "DATABASE_URL").length, 1);
+});
+
+test("public hosted readiness requires the owner access lock without duplicating it in GitHub App settings", () => {
   const env = configuredEnv();
   delete env.SIGNALFLOW_ACCESS_KEY;
   const status = gp2ReadinessStatus(env);
   const owner = status.checks.find((item) => item.id === "owner_lock");
+  const githubApp = status.checks.find((item) => item.id === "github_app");
   assert.equal(owner.configured, false);
   assert.deepEqual(owner.missing, ["SIGNALFLOW_ACCESS_KEY"]);
+  assert.equal(githubApp?.missing.includes("SIGNALFLOW_ACCESS_KEY"), false);
+  assert.deepEqual(githubApp?.blockedBy, ["owner_lock"]);
 });
 
 test("GP2 readiness route is owner-only, no-store and resolves request-scoped OIDC without exposing it", () => {

@@ -15,6 +15,11 @@ const INFERENCE_ENV_GROUPS = Object.freeze([
   ["CUSTOM_OPENAI_BASE_URL", "CUSTOM_OPENAI_API_KEY"],
 ]);
 
+const UPSTREAM_CONFIGURATION = Object.freeze({
+  DATABASE_URL: "database",
+  SIGNALFLOW_ACCESS_KEY: "owner_lock",
+});
+
 function present(env, name) {
   return Boolean(String(env?.[name] || "").trim());
 }
@@ -23,14 +28,31 @@ function groupReady(env, group) {
   return group.every((name) => present(env, name));
 }
 
+function unique(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(String).filter(Boolean))].sort();
+}
+
 function check(id, label, configured, missing = [], details = {}) {
   return Object.freeze({
     id,
     label,
     configured: Boolean(configured),
-    missing: [...new Set((Array.isArray(missing) ? missing : []).map(String).filter(Boolean))].sort(),
+    missing: unique(missing),
+    blockedBy: unique(details.blockedBy),
     ...details,
+    blockedBy: unique(details.blockedBy),
   });
+}
+
+function splitUpstreamMissing(missing = [], readiness = {}) {
+  const directMissing = [];
+  const blockedBy = [];
+  for (const name of unique(missing)) {
+    const upstream = UPSTREAM_CONFIGURATION[name];
+    if (upstream && readiness[upstream] === false) blockedBy.push(upstream);
+    else directMissing.push(name);
+  }
+  return Object.freeze({ directMissing: unique(directMissing), blockedBy: unique(blockedBy) });
 }
 
 export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = false } = {}) {
@@ -44,7 +66,9 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
     capture = { configured: false, missing: ["SIGNALFLOW_CAPTURE_ENVIRONMENT"] };
   }
 
-  const database = check("database", "Durable database", present(env, "DATABASE_URL"), present(env, "DATABASE_URL") ? [] : ["DATABASE_URL"]);
+  const databaseReady = present(env, "DATABASE_URL");
+  const database = check("database", "Durable database", databaseReady, databaseReady ? [] : ["DATABASE_URL"]);
+
   const ownerLockReady = !ownerAccess.publicHosted || ownerAccess.configured;
   const ownerLock = check(
     "owner_lock",
@@ -52,15 +76,33 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
     ownerLockReady,
     ownerLockReady ? [] : ["SIGNALFLOW_ACCESS_KEY"],
   );
-  const githubApp = check("github_app", "GitHub App connection", github.configured, github.missing);
-  const webhook = check("github_webhook", "GitHub webhook verification", present(env, "GITHUB_WEBHOOK_SECRET"), present(env, "GITHUB_WEBHOOK_SECRET") ? [] : ["GITHUB_WEBHOOK_SECRET"]);
+
+  const upstreamReadiness = { database: databaseReady, owner_lock: ownerLockReady };
+  const githubRequirements = splitUpstreamMissing(github.missing, upstreamReadiness);
+  const githubApp = check(
+    "github_app",
+    "GitHub App connection",
+    github.configured && githubRequirements.blockedBy.length === 0,
+    githubRequirements.directMissing,
+    { blockedBy: githubRequirements.blockedBy },
+  );
+
+  const webhook = check(
+    "github_webhook",
+    "GitHub webhook verification",
+    present(env, "GITHUB_WEBHOOK_SECRET"),
+    present(env, "GITHUB_WEBHOOK_SECRET") ? [] : ["GITHUB_WEBHOOK_SECRET"],
+  );
+
+  const storageRequirements = splitUpstreamMissing(storage.missing, upstreamReadiness);
   const privateStorage = check(
     "private_asset_storage",
     "Private Asset storage",
-    storage.configured,
-    storage.missing,
-    { provider: storage.provider || null },
+    storage.configured && storageRequirements.blockedBy.length === 0,
+    storageRequirements.directMissing,
+    { provider: storage.provider || null, blockedBy: storageRequirements.blockedBy },
   );
+
   const captureWorker = check(
     "capture_worker",
     "Bounded screenshot worker",
@@ -68,6 +110,7 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
     capture.missing,
     { environment: capture.environment || null },
   );
+
   const previewSecretReady = resolveMediaPreviewReceiptSecret(env).length >= 32;
   const exactPreview = check(
     "exact_media_preview",
@@ -75,6 +118,7 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
     previewSecretReady,
     previewSecretReady ? [] : ["SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"],
   );
+
   const inferenceReady = Boolean(vercelOidcAvailable) || INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
   const inference = check(
     "inference",
@@ -94,7 +138,7 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
     exactPreview,
     inference,
   ]);
-  const missing = [...new Set(checks.flatMap((item) => item.missing))].sort();
+  const missing = unique(checks.flatMap((item) => item.missing));
 
   return Object.freeze({
     ready: checks.every((item) => item.configured),

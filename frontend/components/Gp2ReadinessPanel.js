@@ -39,6 +39,15 @@ function safeMissing(values) {
     : [];
 }
 
+function safeBlockedBy(values, currentId) {
+  return Array.isArray(values)
+    ? Array.from(new Set(values
+      .map((value) => String(value || "").trim())
+      .filter((value) => CHECK_LABELS[value] && value !== currentId)))
+      .slice(0, CHECK_IDS.length)
+    : [];
+}
+
 function normalizeReadiness(body) {
   const raw = body?.gp2;
   if (!raw || typeof raw.ready !== "boolean" || !Array.isArray(raw.checks)) {
@@ -61,6 +70,7 @@ function normalizeReadiness(body) {
       label: CHECK_LABELS[id],
       configured: item.configured === true,
       missing: safeMissing(item.missing),
+      blockedBy: safeBlockedBy(item.blockedBy, id),
       environment: environmentValue && CAPTURE_ENVIRONMENT.test(environmentValue) ? environmentValue : null,
     }));
   }
@@ -76,6 +86,12 @@ function normalizeReadiness(body) {
     ready: raw.ready === true && checks.every((item) => item.configured),
     checks,
   });
+}
+
+function readinessState(item) {
+  if (item.configured) return "ready";
+  if (item.missing.length === 0 && item.blockedBy.length > 0) return "blocked";
+  return "missing";
 }
 
 export default function Gp2ReadinessPanel() {
@@ -109,7 +125,7 @@ export default function Gp2ReadinessPanel() {
         <div>
           <p className={styles.eyebrow}>Golden Path 2</p>
           <h2 id="gp2-readiness-title">Production readiness</h2>
-          <p>Owner-safe deployment checks for the GitHub → evidence → screenshot → exact-review path. Only configuration state and missing setting names are shown; credential values never leave the server.</p>
+          <p>Owner-safe deployment checks for the GitHub → evidence → screenshot → exact-review path. Each missing setting is shown only at the dependency that owns it; downstream checks are marked as blocked instead of repeating the same setting.</p>
         </div>
         <div className={styles.actions}>
           {totalCount > 0 && <span className={styles.summary}>{readyCount}/{totalCount} ready</span>}
@@ -141,25 +157,33 @@ export default function Gp2ReadinessPanel() {
         <>
           <div className={styles.overall} data-ready={state.readiness.ready}>
             <strong>{state.readiness.ready ? "GP2 infrastructure ready" : "GP2 infrastructure needs configuration"}</strong>
-            <span>{state.readiness.ready ? "The required production dependency classes are configured." : "Resolve the named deployment settings below before live owner acceptance."}</span>
+            <span>{state.readiness.ready ? "The required production dependency classes are configured." : "Resolve each directly missing setting once; blocked checks will clear automatically."}</span>
           </div>
 
           <div className={styles.grid}>
-            {checks.map((item) => (
-              <article className={styles.check} key={item.id} data-ready={item.configured}>
-                <div className={styles.checkHeading}>
-                  <span className={styles.dot} aria-hidden="true" />
-                  <strong>{item.label}</strong>
-                  <small>{item.configured ? "Ready" : "Missing"}</small>
-                </div>
-                {item.environment && <p>Capture environment: <code>{item.environment}</code></p>}
-                {item.missing.length > 0 && (
-                  <div className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
-                    {item.missing.map((name) => <code key={name}>{name}</code>)}
+            {checks.map((item) => {
+              const itemState = readinessState(item);
+              return (
+                <article className={styles.check} key={item.id} data-state={itemState}>
+                  <div className={styles.checkHeading}>
+                    <span className={styles.dot} aria-hidden="true" />
+                    <strong>{item.label}</strong>
+                    <small>{itemState === "ready" ? "Ready" : itemState === "blocked" ? "Blocked" : "Missing"}</small>
                   </div>
-                )}
-              </article>
-            ))}
+                  {item.environment && <p>Capture environment: <code>{item.environment}</code></p>}
+                  {item.missing.length > 0 && (
+                    <ul className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
+                      {item.missing.map((name) => <li key={name}><code>{name}</code></li>)}
+                    </ul>
+                  )}
+                  {item.blockedBy.length > 0 && (
+                    <p className={styles.blocked}>
+                      Blocked by {item.blockedBy.map((id) => CHECK_LABELS[id]).join(", ")}. It will recheck automatically after that dependency is configured.
+                    </p>
+                  )}
+                </article>
+              );
+            })}
           </div>
         </>
       )}

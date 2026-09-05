@@ -30,3 +30,10 @@ export function resolveMediaPreviewReceiptSecret(env = process.env) {
   const ownerSecret = derivationRoot(env);
   return ownerSecret ? derive(ownerSecret, "media-preview-receipt") : "";
 }
+
+export function resolveCredentialVaultSecret(env = process.env) {
+  const explicit = text(env?.SIGNALFLOW_CREDENTIAL_VAULT_SECRET);
+  if (explicit) return explicit;
+  const ownerSecret = derivationRoot(env);
+  return ownerSecret ? derive(ownerSecret, "credential-vault") : "";
+}

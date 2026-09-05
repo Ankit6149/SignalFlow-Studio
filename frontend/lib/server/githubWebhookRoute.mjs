@@ -15,19 +15,24 @@ function errorCode(error) {
 
 export function createGithubWebhookHandler({
   webhookSecret,
+  resolveWebhookSecret = null,
   createIngestionApplication,
   maxBodyBytes = 5 * 1024 * 1024,
 } = {}) {
-  const secret = String(webhookSecret || "");
+  const staticSecret = String(webhookSecret || "");
+  if (!staticSecret && typeof resolveWebhookSecret !== "function") {
+    return async function unconfiguredGithubWebhook() {
+      return jsonResponse(503, { error: "github_webhook_unconfigured" });
+    };
+  }
+  if (resolveWebhookSecret !== null && typeof resolveWebhookSecret !== "function") {
+    throw new TypeError("resolveWebhookSecret must be a function when provided.");
+  }
   if (typeof createIngestionApplication !== "function") {
     throw new TypeError("GitHub webhook handler requires createIngestionApplication().");
   }
 
   return async function handleGithubWebhook(request) {
-    if (!secret) {
-      return jsonResponse(503, { error: "github_webhook_unconfigured" });
-    }
-
     let githubHeaders;
     try {
       githubHeaders = readGithubWebhookHeaders(request?.headers);
@@ -44,19 +49,48 @@ export function createGithubWebhookHandler({
     if (rawBody.byteLength > maxBodyBytes) {
       return jsonResponse(413, { error: "github_webhook_body_too_large" });
     }
-    if (!verifyGithubWebhookSignature({
-      rawBody,
-      signatureHeader: githubHeaders.signatureHeader,
-      secret,
-    })) {
-      return jsonResponse(401, { error: "github_webhook_signature_invalid" });
-    }
 
-    let payload;
-    try {
-      payload = JSON.parse(rawBody.toString("utf8"));
-    } catch {
-      return jsonResponse(400, { error: "github_webhook_json_invalid" });
+    let payload = null;
+    let secret = staticSecret;
+
+    if (secret) {
+      if (!verifyGithubWebhookSignature({
+        rawBody,
+        signatureHeader: githubHeaders.signatureHeader,
+        secret,
+      })) {
+        return jsonResponse(401, { error: "github_webhook_signature_invalid" });
+      }
+      try {
+        payload = JSON.parse(rawBody.toString("utf8"));
+      } catch {
+        return jsonResponse(400, { error: "github_webhook_json_invalid" });
+      }
+    } else {
+      try {
+        payload = JSON.parse(rawBody.toString("utf8"));
+      } catch {
+        return jsonResponse(400, { error: "github_webhook_json_invalid" });
+      }
+      try {
+        secret = String(await resolveWebhookSecret({ payload, githubHeaders }) || "");
+      } catch (error) {
+        const code = errorCode(error);
+        if (code === "signalflow_database_unconfigured" || code === "signalflow_database_invalid") {
+          return jsonResponse(503, { error: "github_webhook_storage_unavailable" });
+        }
+        if (code === "github_source_ambiguous") {
+          return jsonResponse(409, { error: "github_webhook_mapping_ambiguous" });
+        }
+        return jsonResponse(503, { error: "github_webhook_authority_unavailable" });
+      }
+      if (!secret || !verifyGithubWebhookSignature({
+        rawBody,
+        signatureHeader: githubHeaders.signatureHeader,
+        secret,
+      })) {
+        return jsonResponse(401, { error: "github_webhook_signature_invalid" });
+      }
     }
 
     let ingestion;

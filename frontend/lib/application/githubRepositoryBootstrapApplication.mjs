@@ -28,6 +28,14 @@ function requiredMethod(target, method, label) {
   return target;
 }
 
+function validateGithubRepositoryApi(api) {
+  return requiredMethod(
+    requiredMethod(api, "getRepositorySnapshot", "GitHub repository API"),
+    "readTextFiles",
+    "GitHub repository API",
+  );
+}
+
 function repositoryNames(repository) {
   const fullName = String(repository?.fullName || "").trim();
   const [owner, name, ...rest] = fullName.split("/");
@@ -75,7 +83,8 @@ export function createGithubRepositoryBootstrapApplication({
   sourceConnectionRepository,
   sourceArtifactRepository,
   projectContextApplication,
-  githubRepositoryApi,
+  githubRepositoryApi = null,
+  resolveGithubRepositoryApi = null,
   firstOpportunityApplication = null,
   clock,
 } = {}) {
@@ -87,15 +96,19 @@ export function createGithubRepositoryBootstrapApplication({
     "synthesizeAndBootstrapProjectContext",
     "ProjectContext application",
   );
-  const github = requiredMethod(
-    requiredMethod(githubRepositoryApi, "getRepositorySnapshot", "GitHub repository API"),
-    "readTextFiles",
-    "GitHub repository API",
-  );
+  const fixedGithub = githubRepositoryApi ? validateGithubRepositoryApi(githubRepositoryApi) : null;
+  if (!fixedGithub && typeof resolveGithubRepositoryApi !== "function") {
+    throw new TypeError("GitHub repository bootstrap requires a fixed API or resolveGithubRepositoryApi().");
+  }
   const firstOpportunity = firstOpportunityApplication
     ? requiredMethod(firstOpportunityApplication, "ensureInitialOpportunity", "First Opportunity application")
     : null;
   const systemClock = assertPort("clock", clock);
+
+  async function githubFor(connection) {
+    if (fixedGithub) return fixedGithub;
+    return validateGithubRepositoryApi(await resolveGithubRepositoryApi(normalizeSourceConnection(connection)));
+  }
 
   async function requireActiveRepository(sourceConnectionId, repositoryId) {
     const connectionId = requiredOpaque(sourceConnectionId, "sourceConnectionId");
@@ -163,6 +176,7 @@ export function createGithubRepositoryBootstrapApplication({
   async function bootstrapRepository({ sourceConnectionId, repositoryId, revision = null } = {}) {
     const exactRevision = optionalRevision(revision);
     const { connection, resource, repositoryId: repoId } = await requireActiveRepository(sourceConnectionId, repositoryId);
+    const github = await githubFor(connection);
     const snapshot = await github.getRepositorySnapshot(connection.installationRef, repoId, exactRevision);
     if (String(snapshot.repository?.id || "") !== repoId) {
       const error = new Error("GitHub repository identity does not match the selected SourceConnection resource.");

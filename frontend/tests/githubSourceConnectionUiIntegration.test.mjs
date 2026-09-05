@@ -30,18 +30,34 @@ function configuredEnv(overrides = {}) {
   };
 }
 
-test("public hosted GitHub source readiness fails closed without owner lock or OAuth verification config", () => {
+test("public hosted GitHub source readiness fails closed unless either legacy App credentials or secure manifest prerequisites are complete", () => {
   const unlocked = githubSourceConnectionConfigurationStatus(configuredEnv({ SIGNALFLOW_ACCESS_KEY: "" }));
   assert.equal(unlocked.configured, false);
   assert.ok(unlocked.missing.includes("SIGNALFLOW_ACCESS_KEY"));
 
-  const noOauthSecret = githubSourceConnectionConfigurationStatus(configuredEnv({ GITHUB_APP_CLIENT_SECRET: "" }));
-  assert.equal(noOauthSecret.configured, false);
-  assert.ok(noOauthSecret.missing.includes("GITHUB_APP_CLIENT_SECRET"));
+  const incompleteLegacy = githubSourceConnectionConfigurationStatus(configuredEnv({ GITHUB_APP_CLIENT_SECRET: "" }));
+  assert.equal(incompleteLegacy.configured, false);
+  assert.equal(incompleteLegacy.mode, "unconfigured");
+  assert.ok(incompleteLegacy.missing.includes("SIGNALFLOW_CREDENTIAL_VAULT_SECRET|SIGNALFLOW_ACCESS_KEY"));
+  assert.equal(incompleteLegacy.missing.includes("GITHUB_APP_CLIENT_SECRET"), false);
 
-  const ready = githubSourceConnectionConfigurationStatus(configuredEnv());
-  assert.equal(ready.configured, true);
-  assert.deepEqual(ready.missing, []);
+  const manifestReady = githubSourceConnectionConfigurationStatus(configuredEnv({
+    SIGNALFLOW_ACCESS_KEY: "o".repeat(48),
+    GITHUB_APP_ID: "",
+    GITHUB_APP_SLUG: "",
+    GITHUB_APP_PRIVATE_KEY: "",
+    GITHUB_APP_CLIENT_ID: "",
+    GITHUB_APP_CLIENT_SECRET: "",
+    GITHUB_INSTALL_STATE_SECRET: "",
+  }));
+  assert.equal(manifestReady.configured, true);
+  assert.equal(manifestReady.mode, "manifest");
+  assert.deepEqual(manifestReady.missing, []);
+
+  const legacyReady = githubSourceConnectionConfigurationStatus(configuredEnv());
+  assert.equal(legacyReady.configured, true);
+  assert.equal(legacyReady.mode, "legacy_app");
+  assert.deepEqual(legacyReady.missing, []);
 });
 
 test("Personal Alpha uses the same owner-local workspace identity unless explicitly overridden", () => {

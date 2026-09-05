@@ -50,6 +50,7 @@
   color: #6f6b61;
   font-size: 0.68rem;
   font-weight: 760;
+  white-space: nowrap;
 }
 
 .actions button {
@@ -145,8 +146,13 @@
   background: #fffdf8;
 }
 
-.check[data-ready="false"] {
-  border-color: rgba(173, 121, 55, 0.22);
+.check[data-state="missing"] {
+  border-color: rgba(173, 121, 55, 0.24);
+}
+
+.check[data-state="blocked"] {
+  border-color: rgba(119, 113, 102, 0.18);
+  background: rgba(248, 245, 238, 0.78);
 }
 
 .checkHeading {
@@ -178,9 +184,14 @@
   box-shadow: 0 0 0 0.18rem rgba(176, 137, 82, 0.08);
 }
 
-.check[data-ready="true"] .dot {
+.check[data-state="ready"] .dot {
   background: #718f6a;
   box-shadow: 0 0 0 0.18rem rgba(113, 143, 106, 0.08);
+}
+
+.check[data-state="blocked"] .dot {
+  background: #aaa397;
+  box-shadow: 0 0 0 0.18rem rgba(119, 113, 102, 0.07);
 }
 
 .check p {
@@ -196,20 +207,34 @@
 }
 
 .missing {
-  margin-top: 0.55rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
+  margin: 0.58rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.32rem;
+  list-style: none;
+}
+
+.missing li {
+  min-width: 0;
 }
 
 .missing code {
+  display: block;
+  width: fit-content;
   max-width: 100%;
   overflow-wrap: anywhere;
-  padding: 0.2rem 0.35rem;
+  padding: 0.23rem 0.4rem;
   border-radius: 0.3rem;
   background: #f2ecdf;
   color: #645f54;
   font-size: 0.55rem;
+  line-height: 1.4;
+}
+
+.blocked {
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(23, 23, 20, 0.07);
+  color: #817a6e !important;
 }
 
 @media (max-width: 760px) {

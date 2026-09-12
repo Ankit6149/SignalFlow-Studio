@@ -1,6 +1,7 @@
 import { requireOwnerAccess } from "../../_auth.js";
 import { getAllConnectionStatus } from "../../../../lib/social/tokenStore.js";
 import { getAllPlatformStatus } from "../../../../lib/social/socialConfig.js";
+import { internalErrorResponse } from "../../../../lib/server/safeApiErrors.mjs";
 
 /**
  * GET /api/social/status
@@ -109,9 +110,8 @@ export async function GET(request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+    return internalErrorResponse("social.status", err, {
+      message: "SignalFlow could not read social connection status.",
     });
   }
 }

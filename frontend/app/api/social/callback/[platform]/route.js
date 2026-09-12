@@ -6,6 +6,23 @@ import {
   readOAuthState,
 } from "../../../../../lib/social/tokenStore.js";
 
+const GENERIC_CONNECTION_ERROR = "Could not complete this social connection. Return to SignalFlow and try again.";
+
+function oauthFailure(code, status = null) {
+  const error = new Error(GENERIC_CONNECTION_ERROR);
+  error.code = code;
+  if (Number.isInteger(status)) error.status = status;
+  return error;
+}
+
+function logOAuthFailure(platformId, error) {
+  console.error("SignalFlow social OAuth callback failed", {
+    platform: platformId,
+    code: String(error?.code || "social_oauth_failed"),
+    status: Number.isInteger(error?.status) ? error.status : null,
+  });
+}
+
 /**
  * GET /api/social/callback/[platform]
  * Exchanges an OAuth authorization code and stores the encrypted token session
@@ -16,17 +33,21 @@ export async function GET(request, { params }) {
   const platform = SOCIAL_PLATFORMS[platformId];
 
   if (!platform) {
-    return buildRedirect(request, "error", `Unknown platform: ${platformId}`);
+    return buildRedirect(request, "error", "Unsupported social platform.");
   }
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
-  const errorDescription = searchParams.get("error_description");
 
   if (error) {
-    return buildRedirect(request, "error", errorDescription || error, [clearOAuthStateCookie()]);
+    return buildRedirect(
+      request,
+      "error",
+      `Authorization was not completed for ${platform.label}. Return to SignalFlow and try again.`,
+      [clearOAuthStateCookie()],
+    );
   }
 
   if (!code || !state) {
@@ -55,12 +76,12 @@ export async function GET(request, { params }) {
     return buildRedirect(
       request,
       "success",
-      `Connected to ${platform.label} as ${profile.name || profile.username || "user"}`,
+      `Connected to ${platform.label}.`,
       [createTokenCookie(platformId, tokenSession), clearOAuthStateCookie()],
     );
   } catch (err) {
-    console.error(`OAuth callback error for ${platformId}:`, err.message);
-    return buildRedirect(request, "error", err.message, [clearOAuthStateCookie()]);
+    logOAuthFailure(platformId, err);
+    return buildRedirect(request, "error", GENERIC_CONNECTION_ERROR, [clearOAuthStateCookie()]);
   }
 }
 
@@ -98,8 +119,7 @@ async function exchangeCodeForToken(platformId, platform, code, stateData) {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Token exchange failed for ${platform.label} (${response.status}): ${errorText}`);
+    throw oauthFailure("social_token_exchange_failed", response.status);
   }
 
   return response.json();
@@ -154,7 +174,11 @@ function buildRedirect(request, status, message, cookies = []) {
   });
   const response = new Response(null, {
     status: 302,
-    headers: { Location: `${baseUrl}/?${params.toString()}` },
+    headers: {
+      Location: `${baseUrl}/?${params.toString()}`,
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+    },
   });
   cookies.forEach((cookie) => response.headers.append("Set-Cookie", cookie));
   return response;

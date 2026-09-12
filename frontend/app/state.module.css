@@ -45,28 +45,166 @@
   line-height: 1.7;
 }
 
-.loader {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  height: 34px;
+.loadingPage {
+  position: relative;
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(34, 107, 87, 0.09), transparent 34rem),
+    #f7f5ef;
+  color: #161a17;
+  font-family: "Segoe UI", "Inter", "Aptos", system-ui, sans-serif;
+  padding: clamp(24px, 5vw, 56px);
+  animation: pageIn 320ms ease both;
 }
 
-.loader span {
-  width: 14px;
-  height: 14px;
+.loadingPage::before,
+.loadingPage::after {
+  position: absolute;
+  width: 26rem;
+  height: 26rem;
+  border: 1px solid rgba(34, 107, 87, 0.08);
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+}
+
+.loadingPage::before {
+  top: -17rem;
+  right: -10rem;
+}
+
+.loadingPage::after {
+  bottom: -19rem;
+  left: -12rem;
+}
+
+.loadingShell {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  animation: loaderRise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.loadingBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #415148;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.loadingMark {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid rgba(34, 107, 87, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 250, 240, 0.82);
+  box-shadow: 0 7px 24px rgba(33, 28, 18, 0.07);
+  padding: 7px;
+}
+
+.loadingMark span {
+  width: 3px;
   border-radius: 999px;
   background: #226b57;
-  animation: dotPulse 900ms ease-in-out infinite;
+  transform-origin: bottom;
+  animation: signalBar 1.2s ease-in-out infinite;
 }
 
-.loader span:nth-child(2) {
-  animation-delay: 120ms;
+.loadingMark span:nth-child(1) {
+  height: 7px;
+  animation-delay: -180ms;
 }
 
-.loader span:nth-child(3) {
-  animation-delay: 240ms;
-  background: #ea6b4d;
+.loadingMark span:nth-child(2) {
+  height: 14px;
+}
+
+.loadingMark span:nth-child(3) {
+  height: 10px;
+  animation-delay: 180ms;
+}
+
+.loadingCopy {
+  margin-top: clamp(28px, 6vw, 44px);
+}
+
+.loadingEyebrow {
+  margin: 0;
+  color: #226b57;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.loadingCopy h1 {
+  max-width: 500px;
+  margin: 9px 0 0;
+  color: #111512;
+  font-size: clamp(2.25rem, 8vw, 4.1rem);
+  font-weight: 760;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.loadingCopy > p:last-child {
+  max-width: 470px;
+  margin: 18px 0 0;
+  color: #5c675f;
+  font-size: clamp(0.96rem, 2vw, 1.04rem);
+  line-height: 1.65;
+}
+
+.loadingProgress {
+  margin-top: clamp(30px, 7vw, 44px);
+}
+
+.loadingTrack {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ddd7ca;
+}
+
+.loadingTrack span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(34, 107, 87, 0.28), #226b57, rgba(34, 107, 87, 0.28));
+  animation: loadingSweep 1.55s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.loadingMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  color: #747d76;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.loadingPulse {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #226b57;
+  box-shadow: 0 0 0 0 rgba(34, 107, 87, 0.22);
+  animation: loadingPulse 1.5s ease-out infinite;
 }
 
 .errorMark,
@@ -147,11 +285,25 @@
   transform: translateY(-1px);
 }
 
+@media (max-width: 560px) {
+  .loadingPage {
+    place-items: center start;
+  }
+
+  .loadingCopy h1 {
+    font-size: clamp(2.25rem, 13vw, 3.35rem);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .statePage,
   .statePage *,
   .statePage *::before,
-  .statePage *::after {
+  .statePage *::after,
+  .loadingPage,
+  .loadingPage *,
+  .loadingPage *::before,
+  .loadingPage *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
@@ -178,14 +330,44 @@
   }
 }
 
-@keyframes dotPulse {
+@keyframes loaderRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes signalBar {
   0%,
   100% {
-    opacity: 0.42;
-    transform: translateY(0);
+    opacity: 0.45;
+    transform: scaleY(0.62);
   }
   50% {
     opacity: 1;
-    transform: translateY(-6px);
+    transform: scaleY(1);
+  }
+}
+
+@keyframes loadingSweep {
+  0% {
+    transform: translateX(-115%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+@keyframes loadingPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 107, 87, 0.25);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 8px rgba(34, 107, 87, 0);
   }
 }

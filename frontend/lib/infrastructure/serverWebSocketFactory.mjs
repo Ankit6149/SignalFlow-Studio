@@ -12,10 +12,11 @@ function boundedSecret(value, field, maxLength = 12000) {
   return normalized;
 }
 
-export function createServerWebSocketFactory({ bearerToken = "" } = {}) {
+export function createServerWebSocketFactory({ bearerToken = "", WebSocketImpl = WebSocket } = {}) {
   const token = boundedSecret(bearerToken, "browserAuthToken");
+  if (typeof WebSocketImpl !== "function") throw new TypeError("Server WebSocket implementation is required.");
   return function serverWebSocketFactory(endpoint) {
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-    return new WebSocket(endpoint, headers ? { headers } : undefined);
+    return new WebSocketImpl(endpoint, headers ? { headers } : undefined);
   };
 }

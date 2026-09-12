@@ -1,5 +1,6 @@
 import { requireOwnerAccess } from "../../_auth.js";
-import { clearTokenCookie, getConnectionStatus } from "../../../../lib/social/tokenStore.js";
+import { getConnectionStatus, clearTokenCookie } from "../../../../lib/social/tokenStore.js";
+import { internalErrorResponse } from "../../../../lib/server/safeApiErrors.mjs";
 
 /**
  * POST /api/social/disconnect
@@ -32,9 +33,8 @@ export async function POST(request) {
     response.headers.append("Set-Cookie", clearTokenCookie(platform));
     return response;
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+    return internalErrorResponse("social.disconnect", err, {
+      message: "SignalFlow could not disconnect that social account.",
     });
   }
 }

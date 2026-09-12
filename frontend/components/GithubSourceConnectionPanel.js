@@ -28,7 +28,7 @@ function friendlyError(error) {
   const code = String(error?.code || "");
   if (error?.status === 401 || code === "owner_session_required") return "Unlock the owner session in Settings before changing source connections.";
   if (code === "owner_access_unconfigured") return "This hosted deployment is missing its owner access lock. Configure the deployment before connecting GitHub.";
-  if (code === "github_app_unconfigured") return "GitHub App setup is not configured on this deployment yet.";
+  if (code === "github_app_unconfigured") return "SignalFlow's secure GitHub provisioning prerequisites are not complete on this deployment yet.";
   if (code === "github_install_state_expired") return "This GitHub connection attempt expired before it could be verified. Restart installation to create a fresh secure connection state.";
   if (code === "github_install_state_invalid" || code === "github_install_state_workspace_mismatch") return "SignalFlow could not verify this GitHub connection attempt. Restart installation from Connections rather than reusing the old callback.";
   if (code === "github_install_callback_incomplete" || code === "github_oauth_callback_incomplete") return "GitHub returned an incomplete connection response. Restart installation from Connections.";
@@ -86,7 +86,7 @@ export default function GithubSourceConnectionPanel() {
       const body = await readJson(response);
       setConfigured(Boolean(body.configured));
       setConnections(Array.isArray(body.connections) ? body.connections : []);
-      if (!body.configured) setMessage({ tone: "attention", text: "GitHub source automation needs server-side App configuration before it can be connected." });
+      if (!body.configured) setMessage({ tone: "attention", text: "GitHub source automation needs its hosted manifest prerequisites before it can be connected." });
       else if (!quiet) setMessage(null);
     } catch (error) {
       setConfigured(error?.status === 401 ? "locked" : false);
@@ -310,8 +310,8 @@ export default function GithubSourceConnectionPanel() {
         </div>
       ) : configured === false ? (
         <div className={styles.emptyState}>
-          <strong>GitHub App setup pending</strong>
-          <p>The product code is ready, but this deployment still needs its server-side GitHub App, owner lock, database, OAuth, and webhook secrets configured before installation can begin.</p>
+          <strong>Hosted GitHub provisioning pending</strong>
+          <p>SignalFlow creates the private GitHub App through GitHub's secure manifest flow. You do not need to pre-create or paste App, OAuth, or webhook secrets. This deployment only needs its hosted prerequisites—durable database, canonical app origin, owner access/signing authority, and encrypted credential vault—ready before installation can begin.</p>
         </div>
       ) : (
         <>

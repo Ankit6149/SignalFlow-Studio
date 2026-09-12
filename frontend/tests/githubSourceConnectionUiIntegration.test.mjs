@@ -75,6 +75,9 @@ test("Connections workspace renders GitHub sources in the existing canonical she
   assert.match(panel, /\/api\/sources\/github\/repositories/);
   assert.match(panel, /\/api\/sources\/github\/connections/);
   assert.match(panel, /there is no trigger setup/i);
+  assert.match(panel, /secure manifest flow/i);
+  assert.match(panel, /do not need to pre-create or paste App, OAuth, or webhook secrets/i);
+  assert.doesNotMatch(panel, /server-side GitHub App, owner lock, database, OAuth, and webhook secrets configured/i);
   assert.doesNotMatch(panel, /GITHUB_APP_PRIVATE_KEY|GITHUB_APP_CLIENT_SECRET|GITHUB_INSTALL_STATE_SECRET|credentialRef/);
 });
 

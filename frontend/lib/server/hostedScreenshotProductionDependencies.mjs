@@ -9,12 +9,14 @@ import { createCdpImageProcessorAdapter } from "../infrastructure/cdpImageProces
 import { createPostgresCaptureRepository } from "../infrastructure/postgresCaptureAdapter.mjs";
 import { createPostgresDurableJobRepository } from "../infrastructure/postgresDurableJobAdapter.mjs";
 import { createPostgresMediaIntelligenceRepository } from "../infrastructure/postgresMediaIntelligenceAdapter.mjs";
+import { createServerWebSocketFactory } from "../infrastructure/serverWebSocketFactory.mjs";
 import { resolveOwnerWorkspaceId } from "./githubConnectionDependencies.mjs";
 import { createProductionHostedPrivateAssetStorage } from "./hostedAssetPreviewDependencies.mjs";
 import { resolveOwnerUserId } from "./hostedPlanningDependencies.mjs";
 
 export const HOSTED_SCREENSHOT_ENV = Object.freeze({
   browserWsEndpoint: "SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT",
+  browserAuthToken: "SIGNALFLOW_CDP_BROWSER_AUTH_TOKEN",
   captureEnvironment: "SIGNALFLOW_CAPTURE_ENVIRONMENT",
   allowInsecureLocalhost: "SIGNALFLOW_CAPTURE_ALLOW_INSECURE_LOCALHOST",
 });
@@ -52,6 +54,7 @@ export function hostedScreenshotConfigurationStatus(env = process.env) {
     configured: missing.length === 0,
     missing,
     environment: captureEnvironment(env),
+    authenticatedTransport: Boolean(String(env?.[HOSTED_SCREENSHOT_ENV.browserAuthToken] || "").trim()),
   });
 }
 
@@ -102,14 +105,18 @@ export function createProductionHostedScreenshotProductionApplication({
   const media = mediaIntelligenceRepository || createPostgresMediaIntelligenceRepository({ database, workspaceId });
   const environment = configuration.environment;
   const browserEndpoint = String(env?.[HOSTED_SCREENSHOT_ENV.browserWsEndpoint] || "").trim();
+  const browserAuthToken = String(env?.[HOSTED_SCREENSHOT_ENV.browserAuthToken] || "").trim();
+  const webSocketFactory = createServerWebSocketFactory({ bearerToken: browserAuthToken });
   const worker = captureWorkerAdapter || createCdpCaptureWorkerAdapter({
     browserWSEndpoint: browserEndpoint,
     allowedEnvironments: [environment],
     allowInsecureLocalhost: allowInsecureLocalhost(env),
+    webSocketFactory,
   });
   const processor = imageProcessorAdapter || createCdpImageProcessorAdapter({
     browserWSEndpoint: browserEndpoint,
     allowInsecureLocalhost: allowInsecureLocalhost(env),
+    webSocketFactory,
   });
 
   const captureExecutionApplication = createCaptureExecutionApplication({

@@ -136,3 +136,15 @@ test("manifest registration routes stay owner-only, no-store and never serialize
   assert.match(callback, /Response\.redirect\(result\.installUrl, 303\)/);
   assert.doesNotMatch(callback, /JSON\.stringify\(result\)|privateKey|clientSecret|webhookSecret/);
 });
+
+test("manifest-backed runtime resolves webhook and worker authority from encrypted connection credentials", () => {
+  const webhook = fs.readFileSync(path.join(ROOT, "app/api/sources/github/webhook/route.js"), "utf8");
+  const worker = fs.readFileSync(path.join(ROOT, "lib/server/signalOpportunityWorkerDependencies.mjs"), "utf8");
+
+  assert.match(webhook, /createProductionGithubWebhookSecretResolver/);
+  assert.match(webhook, /resolveWebhookSecret:\s*createProductionGithubWebhookSecretResolver\(\)/);
+
+  assert.match(worker, /createGithubCredentialAuthority/);
+  assert.match(worker, /resolveGithubRepositoryApi:\s*githubAuthority\.resolveRepositoryApi/);
+  assert.doesNotMatch(worker, /readGithubAppConfiguration|createGithubRepositoryApiClient/);
+});

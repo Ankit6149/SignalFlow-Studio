@@ -89,13 +89,20 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
 
   const staticWebhookSecret = present(env, "GITHUB_WEBHOOK_SECRET");
   const manifestWebhookAuthority = github.mode === "manifest" && github.configured;
+  const manifestWebhookBlocked = !staticWebhookSecret
+    && !manifestWebhookAuthority
+    && github.mode !== "legacy_app"
+    && !githubApp.configured;
   const webhookReady = staticWebhookSecret || manifestWebhookAuthority;
   const webhook = check(
     "github_webhook",
     "GitHub webhook verification",
     webhookReady,
-    webhookReady ? [] : ["GITHUB_WEBHOOK_SECRET"],
-    { provider: manifestWebhookAuthority ? "github_manifest" : staticWebhookSecret ? "static_env" : null },
+    webhookReady || manifestWebhookBlocked ? [] : ["GITHUB_WEBHOOK_SECRET"],
+    {
+      provider: manifestWebhookAuthority ? "github_manifest" : staticWebhookSecret ? "static_env" : null,
+      blockedBy: manifestWebhookBlocked ? ["github_app"] : [],
+    },
   );
 
   const storageRequirements = splitUpstreamMissing(storage.missing, upstreamReadiness);

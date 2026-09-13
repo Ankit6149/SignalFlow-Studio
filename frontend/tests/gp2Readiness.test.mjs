@@ -82,6 +82,37 @@ test("manifest-backed GitHub setup satisfies webhook readiness without a static 
   assert.equal(status.missing.includes("GITHUB_WEBHOOK_SECRET"), false);
 });
 
+test("manifest webhook readiness is blocked by GitHub authority instead of asking for a legacy static secret", () => {
+  const env = configuredEnv();
+  env.SIGNALFLOW_ACCESS_KEY = "o".repeat(48);
+  delete env.GITHUB_APP_ID;
+  delete env.GITHUB_APP_SLUG;
+  delete env.GITHUB_APP_PRIVATE_KEY;
+  delete env.GITHUB_APP_CLIENT_ID;
+  delete env.GITHUB_APP_CLIENT_SECRET;
+  delete env.GITHUB_INSTALL_STATE_SECRET;
+  delete env.GITHUB_WEBHOOK_SECRET;
+  delete env.DATABASE_URL;
+  delete env.SIGNALFLOW_S3_ENDPOINT;
+  delete env.SIGNALFLOW_S3_BUCKET;
+  delete env.SIGNALFLOW_S3_ACCESS_KEY_ID;
+  delete env.SIGNALFLOW_S3_SECRET_ACCESS_KEY;
+
+  const status = gp2ReadinessStatus(env);
+  const database = status.checks.find((item) => item.id === "database");
+  const githubApp = status.checks.find((item) => item.id === "github_app");
+  const webhook = status.checks.find((item) => item.id === "github_webhook");
+
+  assert.deepEqual(database?.missing, ["DATABASE_URL"]);
+  assert.equal(githubApp?.configured, false);
+  assert.deepEqual(githubApp?.blockedBy, ["database"]);
+  assert.equal(webhook?.configured, false);
+  assert.deepEqual(webhook?.missing, []);
+  assert.deepEqual(webhook?.blockedBy, ["github_app"]);
+  assert.equal(webhook?.provider, null);
+  assert.equal(status.missing.includes("GITHUB_WEBHOOK_SECRET"), false);
+});
+
 test("GP2 readiness reports only direct missing configuration names and never values", () => {
   const env = configuredEnv();
   delete env.GITHUB_WEBHOOK_SECRET;

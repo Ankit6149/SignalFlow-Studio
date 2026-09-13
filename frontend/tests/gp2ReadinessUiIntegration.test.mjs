@@ -85,14 +85,14 @@ test("Vercel GP2 readiness blocks GitHub on the owner lock without duplicating t
   assert.deepEqual(githubApp?.blockedBy, ["owner_lock"]);
 });
 
-test("Connections workspace renders readiness before GitHub installation controls", () => {
+test("Connections workspace puts the user action before technical readiness details", () => {
   const shell = read("components/WorkspaceShell.js");
   assert.match(shell, /import Gp2ReadinessPanel from "\.\/Gp2ReadinessPanel"/);
-  assert.match(shell, /activeItem === "connections" && <><Gp2ReadinessPanel \/><GithubSourceConnectionPanel \/><\/>/);
-  assert.ok(shell.indexOf("<Gp2ReadinessPanel />") < shell.indexOf("<GithubSourceConnectionPanel />"));
+  assert.match(shell, /activeItem === "connections" && <><GithubSourceConnectionPanel \/><Gp2ReadinessPanel \/><\/>/);
+  assert.ok(shell.indexOf("<GithubSourceConnectionPanel />") < shell.indexOf("<Gp2ReadinessPanel />"));
 });
 
-test("browser readiness panel uses protected safe contract and renders direct settings separately from blockers", () => {
+test("browser readiness panel uses protected safe contract and keeps technical checks secondary", () => {
   const panel = read("components/Gp2ReadinessPanel.js");
   assert.match(panel, /fetch\("\/api\/gp2\/readiness"/);
   assert.match(panel, /credentials: "same-origin"/);
@@ -100,6 +100,8 @@ test("browser readiness panel uses protected safe contract and renders direct se
   assert.match(panel, /state\.error\?\.code === "owner_access_unconfigured"/);
   assert.match(panel, /Owner lock configuration required/);
   assert.match(panel, /Each missing setting is shown only at the dependency that owns it/);
+  assert.match(panel, /<details className=\{styles\.details\}>/);
+  assert.match(panel, /Technical readiness details/);
   assert.match(panel, /safeBlockedBy/);
   assert.match(panel, /readinessState/);
   assert.match(panel, /itemState === "blocked" \? "Blocked"/);

@@ -26,7 +26,7 @@ async function readJson(response) {
 
 function friendlyError(error) {
   const code = String(error?.code || "");
-  if (error?.status === 401 || code === "owner_session_required") return "Unlock the owner session in Settings before changing source connections.";
+  if (error?.status === 401 || code === "owner_session_required") return "Owner access is required before GitHub can be connected.";
   if (code === "owner_access_unconfigured") return "This hosted deployment is missing its owner access lock. Configure the deployment before connecting GitHub.";
   if (code === "github_app_unconfigured") return "SignalFlow's secure GitHub provisioning prerequisites are not complete on this deployment yet.";
   if (code === "github_install_state_expired") return "This GitHub connection attempt expired before it could be verified. Restart installation to create a fresh secure connection state.";
@@ -73,11 +73,45 @@ export default function GithubSourceConnectionPanel() {
   const [repositories, setRepositories] = useState([]);
   const [repositoryConnectionId, setRepositoryConnectionId] = useState("");
   const [message, setMessage] = useState(null);
+  const [ownerKey, setOwnerKey] = useState("");
+  const [showOwnerKey, setShowOwnerKey] = useState(false);
 
   const activeCount = useMemo(
     () => connections.filter((item) => item.status === "active").length,
     [connections],
   );
+  const hasVerifiedInstallation = useMemo(
+    () => connections.some((item) => item.status !== "revoked" && Boolean(item.installationRef)),
+    [connections],
+  );
+  const hasSelectedRepository = useMemo(
+    () => connections.some((item) => item.status === "active" && repositoryCount(item) > 0),
+    [connections],
+  );
+
+  const journey = [
+    {
+      number: "01",
+      label: "Unlock workspace",
+      detail: "Private owner session",
+      done: configured !== null && configured !== "locked",
+      active: configured === "locked",
+    },
+    {
+      number: "02",
+      label: "Authorize GitHub",
+      detail: "Create and install the App",
+      done: hasVerifiedInstallation,
+      active: configured === true && !hasVerifiedInstallation,
+    },
+    {
+      number: "03",
+      label: "Choose repository",
+      detail: "Select what SignalFlow observes",
+      done: hasSelectedRepository,
+      active: hasVerifiedInstallation && !hasSelectedRepository,
+    },
+  ];
 
   async function refresh({ quiet = false } = {}) {
     if (!quiet) setLoading(true);
@@ -86,13 +120,53 @@ export default function GithubSourceConnectionPanel() {
       const body = await readJson(response);
       setConfigured(Boolean(body.configured));
       setConnections(Array.isArray(body.connections) ? body.connections : []);
-      if (!body.configured) setMessage({ tone: "attention", text: "GitHub source automation needs its hosted manifest prerequisites before it can be connected." });
-      else if (!quiet) setMessage(null);
+      if (!body.configured) {
+        setMessage({ tone: "attention", text: "GitHub source automation needs its hosted manifest prerequisites before it can be connected." });
+      } else if (!quiet) {
+        setMessage(null);
+      }
     } catch (error) {
       setConfigured(error?.status === 401 ? "locked" : false);
-      setMessage({ tone: "attention", text: friendlyError(error) });
+      setConnections([]);
+      if (error?.status === 401) setMessage(null);
+      else setMessage({ tone: "attention", text: friendlyError(error) });
     } finally {
       if (!quiet) setLoading(false);
+    }
+  }
+
+  async function unlockOwnerSession(event) {
+    event.preventDefault();
+    const accessKey = ownerKey.trim();
+    if (!accessKey || busy) return;
+
+    setBusy("unlock");
+    setMessage(null);
+    try {
+      const response = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_key: accessKey }),
+      });
+      const body = await readJson(response);
+      if (!body.authenticated && body.locked !== false) {
+        const error = new Error("owner_session_required");
+        error.code = "owner_session_required";
+        error.status = 401;
+        throw error;
+      }
+      setOwnerKey("");
+      setMessage({ tone: "ready", text: "Owner session unlocked. GitHub connection controls are now available." });
+      window.location.assign("/?workspace=connections");
+    } catch (error) {
+      setMessage({
+        tone: "attention",
+        text: error?.status === 401
+          ? "That owner access key was not accepted. Check the key configured for this hosted workspace and try again."
+          : friendlyError(error),
+      });
+    } finally {
+      setBusy("");
     }
   }
 
@@ -288,33 +362,88 @@ export default function GithubSourceConnectionPanel() {
     <section className={styles.panel} aria-labelledby="github-source-title">
       <div className={styles.heading}>
         <div>
-          <p className={styles.eyebrow}>Source connections</p>
-          <h2 id="github-source-title">Let SignalFlow notice the work worth talking about.</h2>
-          <p>Connect a GitHub repository once. SignalFlow builds persistent project understanding and then uses supported repository events as signals; there is no trigger setup.</p>
+          <p className={styles.eyebrow}>GitHub source</p>
+          <h2 id="github-source-title">Connect shipped work to SignalFlow.</h2>
+          <p>Set this up once. SignalFlow can then notice meaningful repository events, build bounded project understanding, and bring only worthwhile editorial decisions back to you.</p>
         </div>
         <div className={styles.headingActions}>
-          <span className={styles.summary}>{activeCount} active</span>
+          <span className={styles.summary}>{activeCount ? `${activeCount} active` : "Not connected"}</span>
           <button type="button" className={styles.secondaryButton} onClick={() => void refresh()} disabled={loading || Boolean(busy)}>Refresh</button>
         </div>
+      </div>
+
+      <div className={styles.journey} aria-label="GitHub connection steps">
+        {journey.map((step) => (
+          <div className={styles.journeyStep} data-done={step.done} data-active={step.active} key={step.number}>
+            <span className={styles.journeyNumber}>{step.done ? "✓" : step.number}</span>
+            <div><strong>{step.label}</strong><small>{step.done ? "Complete" : step.detail}</small></div>
+          </div>
+        ))}
       </div>
 
       {message && <div className={styles.message} data-tone={message.tone} role="status">{message.text}</div>}
 
       {loading ? (
-        <div className={styles.emptyState}>Checking GitHub source readiness…</div>
+        <div className={styles.loadingState}><span className={styles.loadingDot} /> Checking the secure GitHub connection…</div>
       ) : configured === "locked" ? (
-        <div className={styles.emptyState}>
-          <strong>Owner session required</strong>
-          <p>Source connections are private workspace configuration.</p>
-          <a href="/?workspace=settings">Open Settings</a>
+        <div className={styles.actionCard} data-step="01">
+          <div className={styles.actionCopy}>
+            <span className={styles.actionKicker}>Step 1 · Private workspace</span>
+            <strong>Unlock here. You should not have to leave this page.</strong>
+            <p>The owner key is required before SignalFlow can create or change source connections. This form exchanges it for the existing secure owner session; the key is not written to local storage by this panel.</p>
+          </div>
+          <form className={styles.unlockForm} onSubmit={unlockOwnerSession}>
+            <label htmlFor="github-owner-key">Owner access key</label>
+            <div className={styles.passwordRow}>
+              <input
+                id="github-owner-key"
+                type={showOwnerKey ? "text" : "password"}
+                value={ownerKey}
+                onChange={(event) => setOwnerKey(event.target.value)}
+                placeholder="Enter the private workspace key"
+                autoComplete="current-password"
+                required
+              />
+              <button type="button" className={styles.revealButton} onClick={() => setShowOwnerKey((value) => !value)} aria-label={showOwnerKey ? "Hide owner access key" : "Show owner access key"}>
+                {showOwnerKey ? "Hide" : "Show"}
+              </button>
+            </div>
+            <button type="submit" className={styles.primaryButton} disabled={!ownerKey.trim() || busy === "unlock"}>
+              {busy === "unlock" ? "Unlocking…" : "Unlock & continue"}
+            </button>
+            <small>Never paste this key into chat, GitHub, or a third-party form.</small>
+          </form>
         </div>
       ) : configured === false ? (
-        <div className={styles.emptyState}>
-          <strong>Hosted GitHub provisioning pending</strong>
-          <p>SignalFlow creates the private GitHub App through GitHub's secure manifest flow. You do not need to pre-create or paste App, OAuth, or webhook secrets. This deployment only needs its hosted prerequisites—durable database, canonical app origin, owner access/signing authority, and encrypted credential vault—ready before installation can begin.</p>
+        <div className={styles.actionCard} data-step="blocked">
+          <div className={styles.actionCopy}>
+            <span className={styles.actionKicker}>Hosted setup</span>
+            <strong>GitHub installation is not available on this deployment yet.</strong>
+            <p>SignalFlow creates its private GitHub App through GitHub's secure manifest flow. You do not need to pre-create or paste App, OAuth, or webhook secrets. The hosted database, canonical origin, owner signing authority, and encrypted credential vault must be healthy first.</p>
+          </div>
+          <div className={styles.blockedAction}>
+            <span>No browser action can fix this state.</span>
+            <button type="button" className={styles.secondaryButton} onClick={() => void refresh()}>Recheck setup</button>
+          </div>
         </div>
       ) : (
         <>
+          {connections.every((item) => item.status === "revoked") && (
+            <div className={styles.actionCard} data-step="02">
+              <div className={styles.actionCopy}>
+                <span className={styles.actionKicker}>Step 2 · GitHub authorization</span>
+                <strong>{connections.length ? "Connect another GitHub repository." : "Authorize GitHub to continue."}</strong>
+                <p>GitHub will open its own consent screen. Choose your account, grant access only to the repositories you want SignalFlow to observe, then GitHub will return you here.</p>
+              </div>
+              <div className={styles.primaryAction}>
+                <button type="button" className={styles.primaryButton} onClick={() => void startInstallation()} disabled={Boolean(busy)}>
+                  {busy === "install" ? "Opening GitHub…" : "Connect GitHub"}
+                </button>
+                <small>You stay in control of repository access in GitHub.</small>
+              </div>
+            </div>
+          )}
+
           <div className={styles.connectionList}>
             {connections.map((connection) => {
               const count = repositoryCount(connection);
@@ -331,7 +460,7 @@ export default function GithubSourceConnectionPanel() {
                         {connection.status === "active"
                           ? `${count} ${count === 1 ? "repository" : "repositories"} observed automatically. Project understanding is reusable and refreshes only when repository revision evidence changes.`
                           : connection.installationRef && connection.status === "pending"
-                            ? "Installation verified. Choose a repository to finish the connection."
+                            ? "GitHub authorization is verified. Choose a repository to finish the connection."
                             : connection.status === "paused"
                               ? "Observation is paused. Existing project and narrative context are preserved."
                               : connection.status === "revoked"
@@ -349,7 +478,7 @@ export default function GithubSourceConnectionPanel() {
                   </div>
                   <div className={styles.cardActions}>
                     {connection.installationRef && connection.status === "pending" && (
-                      <button type="button" onClick={() => void loadRepositories(connection.sourceConnectionId)} disabled={Boolean(busy)}>
+                      <button type="button" className={styles.primaryButton} onClick={() => void loadRepositories(connection.sourceConnectionId)} disabled={Boolean(busy)}>
                         {busy === `repositories:${connection.sourceConnectionId}` ? "Checking…" : "Choose repository"}
                       </button>
                     )}
@@ -370,24 +499,13 @@ export default function GithubSourceConnectionPanel() {
             })}
           </div>
 
-          {connections.every((item) => item.status === "revoked") && (
-            <div className={styles.connectRow}>
-              <div>
-                <strong>{connections.length ? "Connect another repository" : "Connect your first repository"}</strong>
-                <p>GitHub controls which repositories the App can access. SignalFlow stores the selected mapping and safe evidence provenance, not raw repository credentials.</p>
-              </div>
-              <button type="button" className={styles.primaryButton} onClick={() => void startInstallation()} disabled={Boolean(busy)}>
-                {busy === "install" ? "Opening GitHub…" : "Connect GitHub"}
-              </button>
-            </div>
-          )}
-
           {repositories.length > 0 && (
             <div className={styles.repositoryPicker}>
               <div className={styles.pickerHeading}>
                 <div>
-                  <span>Authorized repositories</span>
-                  <h3>Choose what SignalFlow should understand first.</h3>
+                  <span>Step 3 · Authorized repositories</span>
+                  <h3>Choose what SignalFlow should understand and observe.</h3>
+                  <p>Start with one repository. You can change or add scope later without rebuilding the rest of SignalFlow.</p>
                 </div>
                 <button type="button" className={styles.quietButton} onClick={() => { setRepositories([]); setRepositoryConnectionId(""); }}>Cancel</button>
               </div>
@@ -402,7 +520,7 @@ export default function GithubSourceConnectionPanel() {
                   >
                     <strong>{repository.fullName}</strong>
                     <span>{repository.private ? "Private" : "Public"}{repository.defaultBranch ? ` · ${repository.defaultBranch}` : ""}</span>
-                    <small>{repository.archived ? "Archived" : repository.disabled ? "Disabled" : "Use this repository"}</small>
+                    <small>{repository.archived ? "Archived" : repository.disabled ? "Disabled" : busy === `select:${repository.id}` ? "Connecting…" : "Use this repository →"}</small>
                   </button>
                 ))}
               </div>

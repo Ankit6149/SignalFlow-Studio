@@ -118,14 +118,15 @@ export default function Gp2ReadinessPanel() {
   const checks = state.readiness?.checks || [];
   const readyCount = checks.filter((item) => item.configured).length;
   const totalCount = checks.length;
+  const directMissingCount = checks.filter((item) => readinessState(item) === "missing").length;
 
   return (
     <section className={styles.panel} aria-labelledby="gp2-readiness-title">
       <div className={styles.heading}>
         <div>
-          <p className={styles.eyebrow}>Golden Path 2</p>
-          <h2 id="gp2-readiness-title">Production readiness</h2>
-          <p>Owner-safe deployment checks for the GitHub → evidence → screenshot → exact-review path. Each missing setting is shown only at the dependency that owns it; downstream checks are marked as blocked instead of repeating the same setting.</p>
+          <p className={styles.eyebrow}>Automation health</p>
+          <h2 id="gp2-readiness-title">Can SignalFlow run the full GitHub workflow?</h2>
+          <p>This is a technical health check for the automation behind GitHub evidence, screenshots, and exact review. It should support the connection flow—not become the connection flow.</p>
         </div>
         <div className={styles.actions}>
           {totalCount > 0 && <span className={styles.summary}>{readyCount}/{totalCount} ready</span>}
@@ -136,55 +137,64 @@ export default function Gp2ReadinessPanel() {
       </div>
 
       {state.loading ? (
-        <div className={styles.statusBox}>Checking protected production readiness…</div>
+        <div className={styles.statusBox}>Checking protected automation health…</div>
       ) : state.error?.status === 401 ? (
-        <div className={styles.statusBox} data-tone="attention">
-          <strong>Owner session required</strong>
-          <p>Unlock the private workspace in Settings, then return here and recheck readiness.</p>
-          <a href="/?workspace=settings">Open Settings</a>
+        <div className={styles.statusBox} data-tone="neutral">
+          <strong>Automation details are private</strong>
+          <p>Unlock the workspace in the GitHub connection section above. This health check will become available automatically in the same owner session.</p>
         </div>
       ) : state.error?.code === "owner_access_unconfigured" ? (
         <div className={styles.statusBox} data-tone="attention">
           <strong>Owner lock configuration required</strong>
-          <p>This public hosted deployment must configure its private owner access lock before protected GP2 readiness can be inspected.</p>
+          <p>This public hosted deployment must configure its private owner access lock before protected automation readiness can be inspected.</p>
         </div>
       ) : state.error ? (
         <div className={styles.statusBox} data-tone="attention">
-          <strong>Readiness check unavailable</strong>
+          <strong>Automation health check unavailable</strong>
           <p>SignalFlow could not read the protected readiness contract. The connection workflow remains unchanged; recheck after the owner session and deployment are healthy.</p>
         </div>
       ) : (
         <>
           <div className={styles.overall} data-ready={state.readiness.ready}>
-            <strong>{state.readiness.ready ? "GP2 infrastructure ready" : "GP2 infrastructure needs configuration"}</strong>
-            <span>{state.readiness.ready ? "The required production dependency classes are configured." : "Resolve each directly missing setting once; blocked checks will clear automatically."}</span>
+            <div>
+              <strong>{state.readiness.ready ? "Automation infrastructure is ready" : `${directMissingCount} direct setup ${directMissingCount === 1 ? "item" : "items"} still need attention`}</strong>
+              <span>{state.readiness.ready ? "The production dependencies needed for the full workflow are configured." : "Fix the direct setup items once. Downstream blocked checks will clear when their dependency becomes ready."}</span>
+            </div>
+            <i aria-hidden="true" />
           </div>
 
-          <div className={styles.grid}>
-            {checks.map((item) => {
-              const itemState = readinessState(item);
-              return (
-                <article className={styles.check} key={item.id} data-state={itemState}>
-                  <div className={styles.checkHeading}>
-                    <span className={styles.dot} aria-hidden="true" />
-                    <strong>{item.label}</strong>
-                    <small>{itemState === "ready" ? "Ready" : itemState === "blocked" ? "Blocked" : "Missing"}</small>
-                  </div>
-                  {item.environment && <p>Capture environment: <code>{item.environment}</code></p>}
-                  {item.missing.length > 0 && (
-                    <ul className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
-                      {item.missing.map((name) => <li key={name}><code>{name}</code></li>)}
-                    </ul>
-                  )}
-                  {item.blockedBy.length > 0 && (
-                    <p className={styles.blocked}>
-                      Blocked by {item.blockedBy.map((id) => CHECK_LABELS[id]).join(", ")}. It will recheck automatically after that dependency is configured.
-                    </p>
-                  )}
-                </article>
-              );
-            })}
-          </div>
+          <details className={styles.details}>
+            <summary>
+              <span>Technical readiness details</span>
+              <small>{readyCount} of {totalCount} checks ready</small>
+            </summary>
+            <p className={styles.detailsIntro}>Each missing setting is shown only at the dependency that owns it; downstream checks are marked as blocked instead of repeating the same setting.</p>
+            <div className={styles.grid}>
+              {checks.map((item) => {
+                const itemState = readinessState(item);
+                return (
+                  <article className={styles.check} key={item.id} data-state={itemState}>
+                    <div className={styles.checkHeading}>
+                      <span className={styles.dot} aria-hidden="true" />
+                      <strong>{item.label}</strong>
+                      <small>{itemState === "ready" ? "Ready" : itemState === "blocked" ? "Blocked" : "Missing"}</small>
+                    </div>
+                    {item.environment && <p>Capture environment: <code>{item.environment}</code></p>}
+                    {item.missing.length > 0 && (
+                      <ul className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
+                        {item.missing.map((name) => <li key={name}><code>{name}</code></li>)}
+                      </ul>
+                    )}
+                    {item.blockedBy.length > 0 && (
+                      <p className={styles.blocked}>
+                        Blocked by {item.blockedBy.map((id) => CHECK_LABELS[id]).join(", ")}. It will recheck automatically after that dependency is configured.
+                      </p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </details>
         </>
       )}
     </section>

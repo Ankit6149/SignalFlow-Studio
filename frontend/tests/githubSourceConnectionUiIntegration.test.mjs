@@ -65,26 +65,29 @@ test("Personal Alpha uses the same owner-local workspace identity unless explici
   assert.equal(resolveOwnerWorkspaceId({ SIGNALFLOW_WORKSPACE_ID: "workspace-custom" }), "workspace-custom");
 });
 
-test("Connections workspace renders GitHub sources in the existing canonical shell, not a competing route", () => {
+test("Connections workspace renders the actionable GitHub source journey in the canonical shell", () => {
   const shell = read("components/WorkspaceShell.js");
   const panel = read("components/GithubSourceConnectionPanel.js");
   assert.match(shell, /GithubSourceConnectionPanel/);
   assert.match(shell, /activeItem === "connections"/);
-  assert.match(panel, /Source connections/);
+  assert.match(panel, /Connect shipped work to SignalFlow/);
+  assert.match(panel, /Unlock workspace/);
+  assert.match(panel, /Authorize GitHub/);
+  assert.match(panel, /Choose repository/);
   assert.match(panel, /\/api\/sources\/github\/connect/);
   assert.match(panel, /\/api\/sources\/github\/repositories/);
   assert.match(panel, /\/api\/sources\/github\/connections/);
-  assert.match(panel, /there is no trigger setup/i);
-  assert.match(panel, /secure manifest flow/i);
-  assert.match(panel, /do not need to pre-create or paste App, OAuth, or webhook secrets/i);
+  assert.match(panel, /You should not have to leave this page/);
+  assert.match(panel, /Unlock & continue/);
   assert.doesNotMatch(panel, /server-side GitHub App, owner lock, database, OAuth, and webhook secrets configured/i);
   assert.doesNotMatch(panel, /GITHUB_APP_PRIVATE_KEY|GITHUB_APP_CLIENT_SECRET|GITHUB_INSTALL_STATE_SECRET|credentialRef/);
 });
 
 test("GitHub source panel keeps source and destination responsibilities distinct", () => {
   const panel = read("components/GithubSourceConnectionPanel.js");
-  assert.match(panel, /work worth talking about/i);
-  assert.match(panel, /repository events as signals/i);
+  assert.match(panel, /meaningful repository events/i);
+  assert.match(panel, /worthwhile editorial decisions/i);
+  assert.match(panel, /select what SignalFlow observes/i);
   assert.doesNotMatch(panel, /LinkedIn|Instagram|TikTok|publish approved/i);
 });
 

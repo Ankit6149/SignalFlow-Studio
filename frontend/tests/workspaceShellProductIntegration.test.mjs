@@ -8,17 +8,17 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(testDir, "..");
 const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "utf8");
 
-test("workspace shell represents the current product map without inventing routes for future stages", () => {
+test("workspace shell represents the current product map without hiding the real Create surface", () => {
   const shell = read("components/WorkspaceShell.js");
-  for (const label of ["Today", "Signals", "Plan", "Library", "Connections", "Voice", "Settings"]) {
+  for (const label of ["Today", "Signals", "Plan", "Create", "Library", "Connections", "Voice", "Settings"]) {
     assert.match(shell, new RegExp(`label: "${label}"`));
   }
   for (const [id, href] of [["today", "/today"], ["signals", "/signals"], ["plan", "/plan"], ["voice", "/voice"]]) {
     assert.match(shell, new RegExp(`id: "${id}", label: "[^"]+", href: "${href.replace("/", "\\/")}", status: "available"`));
   }
-  assert.match(shell, /id: "create", label: "Create", status: "next"/);
+  assert.match(shell, /id: "create", label: "Create", href: "\/\?workspace=studio", status: "available"/);
+  assert.match(shell, /if \(activeItem === "create"\) return "create"/);
   assert.match(shell, /id: "calendar", label: "Publish", status: "planned"/);
-  assert.doesNotMatch(shell, /id: "create"[^\n]+href:/);
   assert.doesNotMatch(shell, /id: "calendar"[^\n]+href:/);
 });
 
@@ -29,7 +29,16 @@ test("the visible flow bar mirrors the canonical Capture Shape Create Review Pub
   }
   assert.match(shell, /step\.status === "available"/);
   assert.match(shell, /styles\.flowStepLocked/);
-  assert.match(shell, /step\.status === "next" \? "next" : "later"/);
+  assert.match(shell, /<small>later<\/small>/);
+});
+
+test("system surfaces do not waste space on the content flow bar", () => {
+  const shell = read("components/WorkspaceShell.js");
+  const css = read("components/WorkspaceShell.module.css");
+  assert.match(shell, /const FLOW_SURFACES = new Set\(\["today", "signals", "plan", "create"\]\)/);
+  assert.match(shell, /const showFlow = FLOW_SURFACES\.has\(activeItem\)/);
+  assert.match(shell, /\{showFlow && \(/);
+  assert.match(css, /\.mainColumn\[data-flow-visible="false"\]/);
 });
 
 test("real current surfaces share the canonical shell", () => {
@@ -64,6 +73,7 @@ test("workspace shell has an intentional mobile drawer and accessibility states"
   assert.match(shell, /id="workspace-content"/);
   assert.match(shell, /tabIndex=\{-1\}/);
   assert.match(shell, /aria-label="Close navigation"/);
+  assert.match(shell, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(css, /@media \(max-width: 980px\)/);
   assert.match(css, /transform:\s*translateX\(-105%\)/);
   assert.match(css, /\.railOpen\s*\{\s*transform:\s*none;/);

@@ -14,7 +14,7 @@
   width: 100%;
   height: 100dvh;
   display: grid;
-  grid-template-columns: 14.25rem minmax(0, 1fr);
+  grid-template-columns: 15.25rem minmax(0, 1fr);
   overflow: hidden;
   background: var(--canvas);
   color: var(--ink);
@@ -51,44 +51,44 @@
 }
 .railTop { padding: .1rem .45rem 1.15rem; border-bottom: 1px solid var(--line-soft); }
 .brandLink, .mobileBrand { color: inherit; text-decoration: none; }
-.contextBlock { margin-top: .95rem; display: grid; gap: .12rem; }
-.contextBlock span { color: var(--ink-soft); font-size: .66rem; font-weight: 700; }
-.contextBlock small { color: var(--faint); font-size: .55rem; }
+.contextBlock { margin-top: .95rem; display: grid; gap: .16rem; }
+.contextBlock span { color: var(--ink-soft); font-size: .72rem; font-weight: 720; }
+.contextBlock small { color: var(--faint); font-size: .61rem; }
 
-.navigation { flex: 1 1 auto; min-height: 0; padding: 1rem 0; }
-.navGroup + .navGroup { margin-top: 1.3rem; }
+.navigation { flex: 1 1 auto; min-height: 0; padding: 1rem 0; overflow-y: auto; scrollbar-width: thin; }
+.navGroup + .navGroup { margin-top: 1.35rem; }
 .navGroup > p {
   margin: 0 0 .42rem;
   padding: 0 .55rem;
   color: var(--faint);
-  font-size: .48rem;
-  font-weight: 800;
-  letter-spacing: .16em;
+  font-size: .56rem;
+  font-weight: 820;
+  letter-spacing: .14em;
   text-transform: uppercase;
 }
-.navGroup > div { display: grid; gap: .08rem; }
+.navGroup > div { display: grid; gap: .1rem; }
 .navItem {
   position: relative;
-  min-height: 2.48rem;
-  padding: .45rem .55rem;
+  min-height: 2.72rem;
+  padding: .54rem .62rem;
   border: 0;
-  border-radius: .58rem;
+  border-radius: .62rem;
   display: grid;
-  grid-template-columns: 1.2rem minmax(0,1fr);
+  grid-template-columns: 1.25rem minmax(0,1fr);
   align-items: center;
-  gap: .52rem;
+  gap: .58rem;
   background: transparent;
   color: #706c64;
   font: inherit;
-  font-size: .75rem;
-  font-weight: 600;
+  font-size: .82rem;
+  font-weight: 620;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
-.navItem:hover { background: rgba(255,255,255,.68); color: var(--ink); }
-.navItemActive { background: #fff; color: var(--ink); box-shadow: 0 1px 0 rgba(24,23,20,.03), 0 7px 18px rgba(24,23,20,.035); }
+.navItem:hover { background: rgba(255,255,255,.72); color: var(--ink); }
+.navItemActive { background: #fff; color: var(--ink); box-shadow: 0 1px 0 rgba(24,23,20,.03), 0 8px 22px rgba(24,23,20,.045); }
 .navItemActive::before {
   content: "";
   position: absolute;
@@ -100,58 +100,66 @@
   background: var(--champagne);
 }
 .navIcon { display: grid; place-items: center; color: currentColor; }
-.navIcon svg { width: .98rem; height: .98rem; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+.navIcon svg { width: 1.04rem; height: 1.04rem; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
 
-.railFooter { padding: .85rem .45rem .1rem; border-top: 1px solid var(--line-soft); }
-.statusLine { display: flex; align-items: center; gap: .48rem; color: var(--muted); font-size: .6rem; }
-.statusLine i { width: .38rem; height: .38rem; border-radius: 50%; background: #aaa49a; }
+.railFooter { padding: .9rem .45rem .1rem; border-top: 1px solid var(--line-soft); }
+.statusLine { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .66rem; line-height: 1.35; }
+.statusLine i { width: .4rem; height: .4rem; flex: 0 0 auto; border-radius: 50%; background: #aaa49a; }
 .statusLine[data-tone="ready"] i { background: var(--success); box-shadow: 0 0 0 4px rgba(85,117,100,.08); }
 
-.mainColumn { min-width: 0; min-height: 0; height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr); }
-.flowBar {
-  min-height: 4.15rem;
-  padding: .7rem 1.4rem;
+.mainColumn {
+  min-width: 0;
+  min-height: 0;
+  height: 100dvh;
   display: grid;
-  grid-template-columns: 7.5rem minmax(0,1fr);
+  grid-template-rows: auto minmax(0,1fr);
+}
+.mainColumn[data-flow-visible="false"] { grid-template-rows: minmax(0,1fr); }
+.flowBar {
+  min-height: 4.25rem;
+  padding: .72rem 1.45rem;
+  display: grid;
+  grid-template-columns: 7.8rem minmax(0,1fr);
   align-items: center;
   gap: 1rem;
   border-bottom: 1px solid var(--line);
-  background: rgba(252,251,248,.92);
+  background: rgba(252,251,248,.93);
   backdrop-filter: blur(14px);
 }
 .flowTitle { display: grid; gap: .12rem; }
-.flowTitle span { color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-size: 1rem; font-weight: 500; letter-spacing: -.02em; }
-.flowTitle small { color: var(--faint); font-size: .53rem; }
+.flowTitle span { color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-size: 1.02rem; font-weight: 500; letter-spacing: -.02em; }
+.flowTitle small { color: var(--faint); font-size: .56rem; }
 .flowSteps { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); align-items: stretch; border-left: 1px solid var(--line-soft); }
 .flowStep {
   position: relative;
   min-width: 0;
-  min-height: 2.6rem;
-  padding: .4rem .85rem;
+  min-height: 2.68rem;
+  padding: .42rem .85rem;
   display: grid;
   grid-template-columns: auto minmax(0,1fr) auto;
   align-items: center;
-  gap: .45rem;
+  gap: .48rem;
   border-right: 1px solid var(--line-soft);
   color: #8a857c;
   text-decoration: none;
-  font-size: .64rem;
-  font-weight: 620;
+  font-size: .7rem;
+  font-weight: 630;
 }
-.flowStep b { color: #b3ada3; font-size: .47rem; font-weight: 800; letter-spacing: .08em; }
-.flowStep small { color: #b7b1a6; font-size: .42rem; letter-spacing: .08em; text-transform: uppercase; }
-.flowStep:hover { background: rgba(255,255,255,.54); color: var(--ink); }
+.flowStep b { color: #b3ada3; font-size: .5rem; font-weight: 820; letter-spacing: .08em; }
+.flowStep small { color: #b7b1a6; font-size: .43rem; letter-spacing: .08em; text-transform: uppercase; }
+.flowStep:hover { background: rgba(255,255,255,.58); color: var(--ink); }
 .flowStepActive { color: var(--ink); background: #fff; }
 .flowStepActive::after { content: ""; position: absolute; left: .85rem; right: .85rem; bottom: 0; height: 2px; background: var(--champagne); }
 .flowStepActive b { color: #9b8047; }
-.flowStepLocked { opacity: .55; }
+.flowStepLocked { opacity: .52; cursor: default; }
 
 .workspaceCanvas {
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: linear-gradient(180deg, rgba(255,255,255,.28), transparent 20rem), var(--canvas);
+  background: linear-gradient(180deg, rgba(255,255,255,.3), transparent 20rem), var(--canvas);
   font-family: "DM Sans", system-ui, sans-serif;
+  scroll-padding-top: 1rem;
 }
 .workspaceCanvas h1,
 .workspaceCanvas h2,
@@ -162,9 +170,9 @@
 .workspaceCanvas .editorialHeading { font-family: "Playfair Display", Georgia, serif; }
 .workspaceCanvas h1 {
   font-family: "Playfair Display", Georgia, serif !important;
-  font-size: clamp(2.35rem, 4vw, 4.25rem) !important;
-  line-height: .98 !important;
-  letter-spacing: -.04em !important;
+  font-size: clamp(2.15rem, 3.7vw, 3.85rem) !important;
+  line-height: 1 !important;
+  letter-spacing: -.035em !important;
   font-weight: 500 !important;
 }
 .workspaceCanvas p { line-height: 1.58; }
@@ -173,7 +181,13 @@
 .workspaceCanvas textarea,
 .workspaceCanvas select { font-family: "DM Sans", system-ui, sans-serif; }
 .mobileHeader, .backdrop { display: none; }
-.shell button:focus-visible, .shell a:focus-visible { outline: 2px solid rgba(201,173,107,.65); outline-offset: 2px; }
+.shell button:focus-visible, .shell a:focus-visible, .shell input:focus-visible, .shell select:focus-visible, .shell textarea:focus-visible { outline: 2px solid rgba(201,173,107,.68); outline-offset: 2px; }
+
+@media (max-width: 1100px) and (min-width: 981px) {
+  .shell { grid-template-columns: 13.6rem minmax(0, 1fr); }
+  .flowBar { grid-template-columns: 6.7rem minmax(0,1fr); padding-inline: 1rem; }
+  .flowStep { padding-inline: .62rem; }
+}
 
 @media (max-width: 980px) {
   .shell { height: auto; min-height: 100dvh; grid-template-columns: 1fr; padding-top: 3.7rem; overflow: visible; }
@@ -192,43 +206,46 @@
   }
   .menuButton {
     min-height: 2.25rem;
-    padding: 0 .7rem;
+    padding: 0 .72rem;
     border: 1px solid var(--line);
-    border-radius: .56rem;
+    border-radius: .58rem;
     display: grid;
-    grid-template-columns: .7rem auto;
+    grid-template-columns: .72rem auto;
     grid-template-rows: auto auto;
     align-items: center;
-    column-gap: .45rem;
+    column-gap: .48rem;
     background: #fff;
     color: var(--ink);
     font: inherit;
   }
-  .menuButton span { width: .7rem; height: 1px; background: currentColor; }
-  .menuButton b { grid-column: 2; grid-row: 1 / span 2; font-size: .67rem; }
+  .menuButton span { width: .72rem; height: 1px; background: currentColor; }
+  .menuButton b { grid-column: 2; grid-row: 1 / span 2; font-size: .69rem; }
   .rail {
     position: fixed;
     z-index: 100;
     inset: 0 auto 0 0;
-    width: min(18rem, calc(100vw - 3rem));
+    width: min(18.5rem, calc(100vw - 2.5rem));
     transform: translateX(-105%);
     transition: transform .18s ease;
-    box-shadow: 1rem 0 3rem rgba(24,23,20,.1);
+    box-shadow: 1rem 0 3rem rgba(24,23,20,.12);
   }
   .railOpen { transform: none; }
-  .backdrop { position: fixed; z-index: 95; inset: 0; display: block; border: 0; background: rgba(24,23,20,.25); }
+  .backdrop { position: fixed; z-index: 95; inset: 0; display: block; border: 0; background: rgba(24,23,20,.3); }
   .mainColumn { height: auto; min-height: calc(100dvh - 3.7rem); }
-  .flowBar { grid-template-columns: 1fr; padding: .7rem .85rem; gap: .45rem; }
+  .mainColumn[data-flow-visible="false"] { min-height: calc(100dvh - 3.7rem); }
+  .flowBar { grid-template-columns: 1fr; padding: .66rem .85rem; gap: .45rem; }
   .flowTitle small { display: none; }
-  .flowSteps { overflow-x: auto; grid-template-columns: repeat(5,minmax(6.5rem,1fr)); border-left: 0; }
+  .flowSteps { overflow-x: auto; grid-template-columns: repeat(5,minmax(6.7rem,1fr)); border-left: 0; scrollbar-width: thin; }
   .workspaceCanvas { overflow: visible; }
 }
 
 @media (max-width: 560px) {
+  .mobileHeader { padding-inline: .7rem; }
   .flowTitle { display: none; }
-  .flowBar { padding: .45rem .65rem; }
-  .flowStep { min-height: 2.4rem; padding-inline: .65rem; }
+  .flowBar { padding: .42rem .55rem; }
+  .flowStep { min-height: 2.45rem; padding-inline: .62rem; }
   .flowStep small { display: none; }
+  .workspaceCanvas h1 { font-size: clamp(1.9rem, 10vw, 2.8rem) !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

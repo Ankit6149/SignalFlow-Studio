@@ -22,19 +22,19 @@ const LOCAL_WORKSPACE_ID = "local-browser";
 
 const STATUS_LABELS = Object.freeze({
   idle: "Ready",
-  ready: "Ready to import",
+  ready: "Ready to restore",
   [TRANSFER_STATUSES.PREPARING]: "Preparing",
-  [TRANSFER_STATUSES.VALIDATING]: "Validating",
+  [TRANSFER_STATUSES.VALIDATING]: "Checking",
   [TRANSFER_STATUSES.WARNINGS_FOUND]: "Review warnings",
   [TRANSFER_STATUSES.BLOCKED]: "Blocked",
   [TRANSFER_STATUSES.SELECTING_DESTINATION]: "Choose destination",
   [TRANSFER_STATUSES.UPLOADING]: "Uploading",
-  [TRANSFER_STATUSES.IMPORTING]: "Importing",
-  [TRANSFER_STATUSES.PARTIALLY_IMPORTED]: "Partially imported",
+  [TRANSFER_STATUSES.IMPORTING]: "Restoring",
+  [TRANSFER_STATUSES.PARTIALLY_IMPORTED]: "Partially restored",
   [TRANSFER_STATUSES.COMPLETE]: "Complete",
   [TRANSFER_STATUSES.CANCELLED]: "Cancelled",
   [TRANSFER_STATUSES.FAILED]: "Failed",
-  [TRANSFER_STATUSES.ROLLED_BACK]: "Rolled back",
+  [TRANSFER_STATUSES.ROLLED_BACK]: "Undone",
 });
 
 function formatBytes(value) {
@@ -169,10 +169,10 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
       setPreparedArchive(archive);
       setNotice({
         type: "success",
-        text: "Archive prepared. Review the campaign, metadata, asset, byte, and exclusion counts before downloading it.",
+        text: "Backup ready. Review what will be included before downloading it.",
       });
     } catch (error) {
-      setNotice({ type: "error", text: error.message || "SignalFlow could not prepare the archive." });
+      setNotice({ type: "error", text: error.message || "SignalFlow could not prepare the backup." });
     }
   }
 
@@ -181,7 +181,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
     downloadArchive(preparedArchive);
     setNotice({
       type: "success",
-      text: "Portable archive downloaded. Its SHA-256 integrity will be verified during import.",
+      text: "Backup downloaded. SignalFlow will verify the file before restoring it.",
     });
   }
 
@@ -207,14 +207,14 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
     dispatch({ type: "PREPARING" });
     try {
       if (file.size > DEFAULT_MAX_ARCHIVE_BYTES) {
-        throw new Error(`This archive is ${formatBytes(file.size)}. The browser import limit is ${formatBytes(DEFAULT_MAX_ARCHIVE_BYTES)}.`);
+        throw new Error(`This backup is ${formatBytes(file.size)}. The browser restore limit is ${formatBytes(DEFAULT_MAX_ARCHIVE_BYTES)}.`);
       }
       const raw = await file.text();
       let archive;
       try {
         archive = JSON.parse(raw);
       } catch {
-        throw new Error("This file is not valid JSON and cannot be a SignalFlow portable archive.");
+        throw new Error("This file is not a valid SignalFlow backup.");
       }
       await createPreview(archive, { fileName: file.name });
     } catch (error) {
@@ -275,8 +275,8 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
       setNotice({
         type: report.status === TRANSFER_STATUSES.COMPLETE ? "success" : "warning",
         text: report.status === TRANSFER_STATUSES.COMPLETE
-          ? "Archive imported into this browser library. Historical generation timestamps and provenance were preserved."
-          : `Transfer finished with status: ${STATUS_LABELS[report.status] || report.status}. Review the report before continuing.`,
+          ? "Backup restored into this browser library. Existing history and timestamps were preserved."
+          : `Restore finished with status: ${STATUS_LABELS[report.status] || report.status}. Review the report before continuing.`,
       });
     } catch (error) {
       dispatch({ type: "FAILED", error: error.message });
@@ -287,7 +287,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
 
   function cancelImport() {
     abortControllerRef.current?.abort();
-    setNotice({ type: "warning", text: "Cancellation requested. SignalFlow will stop between transfer records and preserve an auditable report." });
+    setNotice({ type: "warning", text: "Cancellation requested. SignalFlow will stop safely between records and keep a recovery report." });
   }
 
   async function rollbackReport(reportId) {
@@ -301,11 +301,11 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
       setNotice({
         type: report.status === TRANSFER_STATUSES.ROLLED_BACK ? "success" : "error",
         text: report.status === TRANSFER_STATUSES.ROLLED_BACK
-          ? "Imported records were rolled back using the transfer journal."
-          : "Rollback was incomplete. Review the report errors before changing the library.",
+          ? "The changes from that restore were undone."
+          : "SignalFlow could not undo every change. Review the report before changing the library again.",
       });
     } catch (error) {
-      setNotice({ type: "error", text: error.message || "SignalFlow could not roll back this import." });
+      setNotice({ type: "error", text: error.message || "SignalFlow could not undo that restore." });
     }
   }
 
@@ -328,13 +328,13 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
     <section className={`${styles.root} portable-transfer`} aria-labelledby="portable-transfer-title">
       <header className="portable-transfer__heading">
         <div>
-          <p className="portable-transfer__eyebrow">Portable ownership</p>
-          <h2 id="portable-transfer-title">Move campaigns without surrendering control.</h2>
+          <p className="portable-transfer__eyebrow">Backup & move</p>
+          <h2 id="portable-transfer-title">Keep a copy of your campaigns or move them safely.</h2>
           <p>
-            Prepare or import a versioned SignalFlow archive. Secrets, signed references, and private local paths are excluded; imported history remains historical.
+            Download selected campaigns and assets, or restore them later. Private credentials and local-only paths stay out of the backup.
           </p>
         </div>
-        <span className="portable-transfer__schema">Archive schema v{PORTABLE_ARCHIVE_SCHEMA_VERSION}</span>
+        <span className="portable-transfer__schema">Backup format v{PORTABLE_ARCHIVE_SCHEMA_VERSION}</span>
       </header>
 
       {notice && (
@@ -347,21 +347,21 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
         <article className="portable-transfer-card" aria-labelledby="transfer-export-title">
           <div className="portable-transfer-card__heading">
             <div>
-              <span>Export</span>
-              <h3 id="transfer-export-title">Prepare a reviewed archive</h3>
+              <span>Backup</span>
+              <h3 id="transfer-export-title">Choose what to back up</h3>
             </div>
             <strong>{selectedCampaignIds.length}/{campaigns.length}</strong>
           </div>
-          <p>Select the campaigns that should move. Browser-local transfer metadata and assets are included and itemized in the manifest before download.</p>
+          <p>Select the campaigns you want to keep or move. SignalFlow shows exactly what will be included before download.</p>
 
           <div className="portable-transfer-selection-actions">
             <button type="button" onClick={selectAllCampaigns} disabled={!campaigns.length}>Select all</button>
             <button type="button" onClick={clearCampaignSelection} disabled={!selectedCampaignIds.length}>Clear</button>
           </div>
 
-          <div className="portable-transfer-campaigns" role="group" aria-label="Campaigns to include in the portable archive">
+          <div className="portable-transfer-campaigns" role="group" aria-label="Campaigns to include in the backup">
             {campaigns.length === 0 ? (
-              <p className="portable-transfer-empty">Save a campaign before preparing an archive.</p>
+              <p className="portable-transfer-empty">Save a campaign before preparing a backup.</p>
             ) : campaigns.map((campaign) => (
               <label key={campaign.campaignId}>
                 <input
@@ -384,7 +384,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
               onClick={prepareExport}
               disabled={!selectedCampaignIds.length}
             >
-              Prepare archive
+              Prepare backup
             </button>
             <button
               type="button"
@@ -392,12 +392,12 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
               onClick={handleDownloadPreparedArchive}
               disabled={!preparedArchive}
             >
-              Download .signalflow.json
+              Download backup
             </button>
           </div>
 
           {preparedManifest && (
-            <div className="portable-transfer-manifest" aria-label="Prepared archive manifest">
+            <div className="portable-transfer-manifest" aria-label="Prepared backup summary">
               <div className="portable-transfer-metrics">
                 <div><strong>{preparedManifest.campaignCount}</strong><span>campaigns</span></div>
                 <div><strong>{preparedManifest.assetCount}</strong><span>assets</span></div>
@@ -405,7 +405,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
                 <div><strong>{formatBytes(preparedManifest.estimatedAssetBytes)}</strong><span>asset payload</span></div>
               </div>
               <div className="portable-transfer-integrity">
-                <span>SHA-256</span>
+                <span>File check</span>
                 <code title={preparedArchive.integrity?.digest}>{preparedArchive.integrity?.digest?.slice(0, 18)}…</code>
               </div>
               {preparedManifest.exclusions?.length > 0 && (
@@ -425,12 +425,12 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
         <article className="portable-transfer-card" aria-labelledby="transfer-import-title">
           <div className="portable-transfer-card__heading">
             <div>
-              <span>Import</span>
-              <h3 id="transfer-import-title">Validate before changing the library</h3>
+              <span>Restore</span>
+              <h3 id="transfer-import-title">Check a backup before restoring it</h3>
             </div>
             <strong className={`portable-transfer-status is-${state.status}`}>{STATUS_LABELS[state.status] || state.status}</strong>
           </div>
-          <p>The archive is checked for schema compatibility, traversal, size, payload length, SHA-256 integrity, optional signatures, missing assets, and conflicts before import.</p>
+          <p>SignalFlow checks the file for compatibility, safety, completeness, and conflicts before anything changes.</p>
 
           <input
             ref={fileInputRef}
@@ -446,13 +446,13 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
             onClick={() => fileInputRef.current?.click()}
             disabled={!view.canChooseFile}
           >
-            <strong>{state.selectedFileName || "Choose a SignalFlow archive"}</strong>
-            <span>Maximum {formatBytes(DEFAULT_MAX_ARCHIVE_BYTES)} · no automatic upload or sync</span>
+            <strong>{state.selectedFileName || "Choose a SignalFlow backup"}</strong>
+            <span>Maximum {formatBytes(DEFAULT_MAX_ARCHIVE_BYTES)} · nothing changes until you confirm restore</span>
           </button>
 
           <div className="portable-transfer-controls">
             <label>
-              <span>Destination</span>
+              <span>Restore to</span>
               <select
                 value={state.destinationWorkspaceId}
                 onChange={(event) => void changeDestination(event.target.value)}
@@ -460,25 +460,25 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
               >
                 <option value={LOCAL_WORKSPACE_ID}>This browser library</option>
               </select>
-              <small>Hosted workspaces will use the same contract when a hosted adapter is connected.</small>
+              <small>Personal Alpha currently restores backups into this browser library.</small>
             </label>
             <label>
-              <span>Conflict policy</span>
+              <span>If matching records exist</span>
               <select
                 value={state.conflictPolicy}
                 onChange={(event) => void changeConflictPolicy(event.target.value)}
                 disabled={view.busy}
               >
-                <option value={TRANSFER_CONFLICT_POLICIES.SKIP}>Skip existing records</option>
-                <option value={TRANSFER_CONFLICT_POLICIES.COPY}>Import as independent copies</option>
+                <option value={TRANSFER_CONFLICT_POLICIES.SKIP}>Keep existing records</option>
+                <option value={TRANSFER_CONFLICT_POLICIES.COPY}>Restore as independent copies</option>
                 <option value={TRANSFER_CONFLICT_POLICIES.REPLACE}>Replace matching records</option>
               </select>
-              <small>Replace is reversible through the transfer journal until that report is rolled back.</small>
+              <small>Replacing matching records can be undone from the restore report.</small>
             </label>
           </div>
 
           {preview && (
-            <div className="portable-transfer-preview" aria-label="Import preview">
+            <div className="portable-transfer-preview" aria-label="Restore preview">
               <div className="portable-transfer-metrics">
                 <div><strong>{preview.counts?.campaigns || 0}</strong><span>campaigns</span></div>
                 <div><strong>{preview.counts?.assets || 0}</strong><span>assets</span></div>
@@ -488,7 +488,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
 
               {validationErrors.length > 0 && (
                 <div className="portable-transfer-issues is-error" role="alert">
-                  <strong>Import blocked</strong>
+                  <strong>Restore blocked</strong>
                   <ul>{validationErrors.map((item, index) => <li key={`${item.code}-${index}`}>{issueMessage(item)}</li>)}</ul>
                 </div>
               )}
@@ -505,7 +505,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
                     {conflicts.map((conflict) => (
                       <li key={`${conflict.kind}-${conflict.sourceId}`}>
                         <strong>{conflict.kind}</strong>
-                        <span>{conflict.type === "already_imported" ? "Already imported from this archive" : "ID already exists"}</span>
+                        <span>{conflict.type === "already_imported" ? "Already restored from this backup" : "ID already exists"}</span>
                         <code>{conflict.sourceId}</code>
                       </li>
                     ))}
@@ -514,7 +514,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
               )}
               {exclusions.length > 0 && (
                 <details>
-                  <summary>{exclusions.length} fields were excluded when this archive was created</summary>
+                  <summary>{exclusions.length} fields were excluded when this backup was created</summary>
                   <ul>
                     {exclusions.map((item, index) => (
                       <li key={`${item.path}-${index}`}><code>{item.path}</code><span>{item.reason}</span></li>
@@ -527,7 +527,7 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
 
           <div className="portable-transfer-card__actions">
             {view.busy && state.status === TRANSFER_STATUSES.IMPORTING ? (
-              <button type="button" className="button button--outline" onClick={cancelImport}>Cancel import</button>
+              <button type="button" className="button button--outline" onClick={cancelImport}>Cancel restore</button>
             ) : (
               <button
                 type="button"
@@ -535,12 +535,12 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
                 onClick={() => void runImport()}
                 disabled={!view.canImport || view.busy}
               >
-                Import reviewed archive
+                Restore reviewed backup
               </button>
             )}
             {view.canResume && state.report && (
               <button type="button" className="button button--outline" onClick={() => void runImport({ resumeReportId: state.report.transferReportId })}>
-                Resume import
+                Resume restore
               </button>
             )}
             <button type="button" className="button button--outline" onClick={resetImport} disabled={view.busy}>Reset</button>
@@ -560,14 +560,14 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
       <section className="portable-transfer-reports" aria-labelledby="transfer-reports-title">
         <div className="portable-transfer-reports__heading">
           <div>
-            <p className="portable-transfer__eyebrow">Audit and recovery</p>
-            <h3 id="transfer-reports-title">Transfer reports</h3>
+            <p className="portable-transfer__eyebrow">Restore history</p>
+            <h3 id="transfer-reports-title">Recent restores</h3>
           </div>
           <button type="button" onClick={() => void refreshReports()}>Refresh</button>
         </div>
 
         {reports.length === 0 ? (
-          <p className="portable-transfer-empty">No import reports are stored in this browser yet.</p>
+          <p className="portable-transfer-empty">No restore reports are stored in this browser yet.</p>
         ) : (
           <div className="portable-transfer-report-list">
             {reports.map((report) => (
@@ -575,18 +575,18 @@ export default function PortableTransferPanel({ campaigns = [], onLibraryChanged
                 <div>
                   <span className={`portable-transfer-status is-${report.status}`}>{STATUS_LABELS[report.status] || report.status}</span>
                   <strong>{report.summary?.imported ?? report.summary?.completed ?? report.items?.length ?? 0} processed records</strong>
-                  <small>{formatDate(report.updatedAt)} · {report.conflictPolicy || "skip"} conflicts</small>
+                  <small>{formatDate(report.updatedAt)} · {report.conflictPolicy || "skip"} matching-record rule</small>
                 </div>
                 <div className="portable-transfer-report__actions">
                   {reportCanResume(report) && state.archive && state.archive.integrity?.digest === report.archiveDigest && (
                     <button type="button" onClick={() => void runImport({ resumeReportId: report.transferReportId })}>Resume</button>
                   )}
                   {reportCanRollback(report) && confirmRollbackId !== report.transferReportId && (
-                    <button type="button" onClick={() => setConfirmRollbackId(report.transferReportId)}>Rollback</button>
+                    <button type="button" onClick={() => setConfirmRollbackId(report.transferReportId)}>Undo restore</button>
                   )}
                   {confirmRollbackId === report.transferReportId && (
-                    <div className="portable-transfer-rollback-confirmation" role="group" aria-label="Confirm transfer rollback">
-                      <span>Reverse every journaled change?</span>
+                    <div className="portable-transfer-rollback-confirmation" role="group" aria-label="Confirm restore rollback">
+                      <span>Undo every change from this restore?</span>
                       <button type="button" onClick={() => void rollbackReport(report.transferReportId)}>Confirm</button>
                       <button type="button" onClick={() => setConfirmRollbackId("")}>Cancel</button>
                     </div>

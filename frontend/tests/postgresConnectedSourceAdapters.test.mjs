@@ -13,6 +13,7 @@ import {
 } from "../lib/infrastructure/postgresConnectedSourceAdapters.mjs";
 
 const NOW = "2026-08-18T18:30:00.000Z";
+const SOURCE_REVISION = "a".repeat(40);
 
 function sourceConnectionRow() {
   return {
@@ -49,6 +50,7 @@ function contentSignalRow() {
     project_id: "project-1",
     source_type: "github",
     source_connection_id: "connection-1",
+    source_revision: SOURCE_REVISION,
     source_artifact_ids: [],
     asset_ids: [],
     external_provider: "github",
@@ -83,9 +85,10 @@ function fakeDatabase(results = []) {
   };
 }
 
-test("relational migration encodes workspace ownership and atomic external-event uniqueness", () => {
+test("relational migrations encode workspace ownership, event uniqueness and exact source revision persistence", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const migration = fs.readFileSync(path.join(here, "../db/migrations/0001_connected_source_signals.sql"), "utf8");
+  const sourceRevisionMigration = fs.readFileSync(path.join(here, "../db/migrations/0009_content_signal_source_revision.sql"), "utf8");
 
   assert.match(migration, /CREATE TABLE IF NOT EXISTS sf_source_connections/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS sf_source_connection_resources/);
@@ -94,6 +97,7 @@ test("relational migration encodes workspace ownership and atomic external-event
   assert.match(migration, /UNIQUE INDEX IF NOT EXISTS sf_content_signals_external_idempotency_unique/);
   assert.match(migration, /FOREIGN KEY \(workspace_id, source_connection_id\)/);
   assert.match(migration, /provider, installation_ref/);
+  assert.match(sourceRevisionMigration, /ADD COLUMN IF NOT EXISTS source_revision text/);
   assert.doesNotMatch(migration, /webhook_payload|raw_payload|pull_request_body|release_body|access_token|refresh_token/i);
 });
 
@@ -106,6 +110,7 @@ test("Postgres row mapping round-trips canonical SourceConnection and ContentSig
   const signal = __testables.signalFromRow(contentSignalRow());
   assert.equal(signal.kind, "ContentSignal");
   assert.equal(signal.workspaceId, "workspace-1");
+  assert.equal(signal.sourceRevision, SOURCE_REVISION);
   assert.deepEqual(signal.externalEventRef, {
     provider: "github",
     eventId: "delivery-1",
@@ -130,7 +135,7 @@ test("trusted source lookup is installation-scoped while ordinary repository acc
   );
 });
 
-test("source upsert refuses cross-owner/provider collision and replaces resource scope atomically", async () => {
+test("source upsert preserves current scopes by upserting them and deleting only stale resources", async () => {
   const connection = createSourceConnection({
     sourceConnectionId: "connection-1",
     workspaceId: "workspace-1",
@@ -157,20 +162,24 @@ test("source upsert refuses cross-owner/provider collision and replaces resource
   const stored = await repository.upsert(connection);
   assert.equal(stored.sourceConnectionId, "connection-1");
   assert.match(db.calls[0].statement, /WITH upsert_connection AS/);
-  assert.match(db.calls[0].statement, /delete_resources AS/);
-  assert.match(db.calls[0].statement, /insert_resources AS/);
+  assert.match(db.calls[0].statement, /upsert_resources AS/);
+  assert.match(db.calls[0].statement, /ON CONFLICT \(source_connection_id, resource_ref\) DO UPDATE/);
+  assert.match(db.calls[0].statement, /delete_stale_resources AS/);
+  assert.match(db.calls[0].statement, /NOT EXISTS/);
+  assert.doesNotMatch(db.calls[0].statement, /delete_resources AS/);
   assert.match(db.calls[0].statement, /sf_source_connections\.workspace_id = EXCLUDED\.workspace_id/);
   assert.equal(typeof db.calls[0].params[15], "string");
   assert.match(db.calls[0].params[15], /repository-1/);
 });
 
-test("external signal insert uses database conflict handling and returns the canonical existing row on duplicate", async () => {
+test("external signal insert persists the immutable source revision and returns the canonical row on duplicate", async () => {
   const signal = createConnectedContentSignal({
     signalId: "signal-attempt-2",
     workspaceId: "workspace-1",
     projectId: "project-1",
     sourceType: "github",
     sourceConnectionId: "connection-1",
+    sourceRevision: SOURCE_REVISION,
     externalEventRef: { provider: "github", eventId: "delivery-1", idempotencyKey: "github:delivery-1" },
     headline: "Merged a meaningful change",
     summary: "Merged pull request #1.",
@@ -185,6 +194,9 @@ test("external signal insert uses database conflict handling and returns the can
   const inserted = await insertedRepo.insertExternalIfAbsent(signal);
   assert.equal(inserted.created, true);
   assert.equal(inserted.signal.signalId, "signal-attempt-2");
+  assert.equal(inserted.signal.sourceRevision, SOURCE_REVISION);
+  assert.equal(insertedDb.calls[0].params[5], SOURCE_REVISION);
+  assert.match(insertedDb.calls[0].statement, /source_revision/);
   assert.match(insertedDb.calls[0].statement, /ON CONFLICT \(workspace_id, external_provider, external_event_id\) DO NOTHING/);
 
   const duplicateDb = fakeDatabase([[], [contentSignalRow()]]);
@@ -192,6 +204,7 @@ test("external signal insert uses database conflict handling and returns the can
   const duplicate = await duplicateRepo.insertExternalIfAbsent(signal);
   assert.equal(duplicate.created, false);
   assert.equal(duplicate.signal.signalId, "signal-1");
+  assert.equal(duplicate.signal.sourceRevision, SOURCE_REVISION);
   assert.equal(duplicateDb.calls.length, 2);
   assert.match(duplicateDb.calls[1].statement, /external_provider = \$2 AND external_event_id = \$3/);
 });

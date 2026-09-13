@@ -49,6 +49,18 @@ test("repository discovery reports success only when an observable repository wa
   assert.match(loader, /catch \(error\) \{[\s\S]*return false;/);
 });
 
+test("locked GitHub setup can securely unlock in place instead of becoming a dead-end", () => {
+  const panel = read("components/GithubSourceConnectionPanel.js");
+  assert.match(panel, /async function unlockOwnerSession\(event\)/);
+  assert.match(panel, /fetch\("\/api\/session", \{/);
+  assert.match(panel, /method: "POST"/);
+  assert.match(panel, /body: JSON\.stringify\(\{ access_key: accessKey \}\)/);
+  assert.match(panel, /Unlock & continue/);
+  assert.match(panel, /You should not have to leave this page/);
+  assert.match(panel, /window\.location\.assign\("\/\?workspace=connections"\)/);
+  assert.doesNotMatch(panel, /localStorage\.(setItem|getItem)\([^\n]*owner/i);
+});
+
 test("callback-safe server codes map to actionable owner copy without displaying raw callback data", () => {
   const panel = read("components/GithubSourceConnectionPanel.js");
   for (const code of [

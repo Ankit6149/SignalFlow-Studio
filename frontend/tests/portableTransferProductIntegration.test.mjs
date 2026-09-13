@@ -26,24 +26,35 @@ test("Library renders the browser transfer application as a real product surface
   assert.match(page, /setLibrary\(await campaignApplication\.listCampaigns\(\)\)/);
 });
 
-test("portable transfer UI exposes preparation validation conflicts cancellation resume and rollback", () => {
+test("portable transfer UI exposes safe backup restore conflicts cancellation resume and rollback", () => {
   const component = readFrontend("components/PortableTransferPanel.js");
-  assert.match(component, /Prepare archive/);
-  assert.match(component, /Download \.signalflow\.json/);
+  assert.match(component, /Prepare backup/);
+  assert.match(component, /Download backup/);
   assert.match(component, /campaignIds: selectedCampaignIds/);
   assert.match(component, /previewImport/);
-  assert.match(component, /Import reviewed archive/);
+  assert.match(component, /Restore reviewed backup/);
   assert.match(component, /TRANSFER_CONFLICT_POLICIES\.SKIP/);
   assert.match(component, /TRANSFER_CONFLICT_POLICIES\.COPY/);
   assert.match(component, /TRANSFER_CONFLICT_POLICIES\.REPLACE/);
-  assert.match(component, /Cancel import/);
+  assert.match(component, /Cancel restore/);
   assert.match(component, /resumeImport/);
   assert.match(component, /rollbackImport/);
-  assert.match(component, /Confirm transfer rollback/);
+  assert.match(component, /Confirm restore rollback/);
   assert.match(component, /role="alert"/);
   assert.match(component, /aria-live="polite"/);
-  assert.match(component, /Hosted workspaces will use the same contract when a hosted adapter is connected/);
+  assert.match(component, /Personal Alpha currently restores backups into this browser library/);
+  assert.match(component, /SignalFlow checks the file for compatibility, safety, completeness, and conflicts/);
   assert.doesNotMatch(component, /cloud database is available|sync enabled|uploaded automatically/i);
+});
+
+test("Library keeps cryptographic and schema implementation language out of the primary product copy", () => {
+  const component = readFrontend("components/PortableTransferPanel.js");
+  assert.match(component, /Backup & move/);
+  assert.match(component, /Keep a copy of your campaigns or move them safely/);
+  assert.match(component, /Private credentials and local-only paths stay out of the backup/);
+  assert.doesNotMatch(component, /SHA-256 integrity will be verified during import/);
+  assert.doesNotMatch(component, /checked for schema compatibility, traversal, size, payload length/);
+  assert.doesNotMatch(component, />Archive schema v/);
 });
 
 test("portable transfer layout contains responsive zoom-safe and reduced-motion rules", () => {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import BrandMark from "./BrandMark";
 import GithubSourceConnectionPanel from "./GithubSourceConnectionPanel";
 import Gp2ReadinessPanel from "./Gp2ReadinessPanel";
+import OwnerSessionUnlockPanel from "./OwnerSessionUnlockPanel";
 import styles from "./WorkspaceShell.module.css";
 
 const FLOW = [
@@ -15,7 +16,7 @@ const FLOW = [
   { id: "calendar", label: "Publish", status: "planned" },
 ];
 
-const FLOW_SURFACES = new Set(["today", "signals", "plan", "create"]);
+const FLOW_SURFACES = new Set(["today", "signals", "plan"]);
 
 const NAV_GROUPS = [
   { label: "Work", items: [
@@ -138,6 +139,12 @@ export default function WorkspaceShell({ activeItem, children, onNavigate, statu
           </div>
         )}
         <main id="workspace-content" tabIndex={-1} className={styles.workspaceCanvas}>
+          {activeItem === "today" && (
+            <OwnerSessionUnlockPanel
+              title="Unlock Today to see connected work."
+              description="Direct-create work can stay usable, but GitHub-connected opportunities and reviews need your private owner session. Unlock here and continue on the same page."
+            />
+          )}
           {activeItem === "connections" && <><GithubSourceConnectionPanel /><Gp2ReadinessPanel /></>}
           {children}
         </main>

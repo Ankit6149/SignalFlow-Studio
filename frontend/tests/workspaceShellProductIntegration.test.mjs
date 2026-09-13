@@ -32,13 +32,27 @@ test("the visible flow bar mirrors the canonical Capture Shape Create Review Pub
   assert.match(shell, /<small>later<\/small>/);
 });
 
-test("system surfaces do not waste space on the content flow bar", () => {
+test("Create and system surfaces avoid a duplicate global flow bar", () => {
   const shell = read("components/WorkspaceShell.js");
   const css = read("components/WorkspaceShell.module.css");
-  assert.match(shell, /const FLOW_SURFACES = new Set\(\["today", "signals", "plan", "create"\]\)/);
+  assert.match(shell, /const FLOW_SURFACES = new Set\(\["today", "signals", "plan"\]\)/);
   assert.match(shell, /const showFlow = FLOW_SURFACES\.has\(activeItem\)/);
   assert.match(shell, /\{showFlow && \(/);
   assert.match(css, /\.mainColumn\[data-flow-visible="false"\]/);
+});
+
+test("Today exposes the reusable in-place owner unlock before connected decisions", () => {
+  const shell = read("components/WorkspaceShell.js");
+  const unlock = read("components/OwnerSessionUnlockPanel.js");
+  assert.match(shell, /OwnerSessionUnlockPanel/);
+  assert.match(shell, /activeItem === "today"/);
+  assert.match(shell, /Unlock Today to see connected work/);
+  assert.match(unlock, /fetch\("\/api\/session"/);
+  assert.match(unlock, /method: "POST"/);
+  assert.match(unlock, /body: JSON\.stringify\(\{ access_key: accessKey \}\)/);
+  assert.match(unlock, /Unlock & continue/);
+  assert.match(unlock, /window\.location\.reload\(\)/);
+  assert.doesNotMatch(unlock, /localStorage\.(setItem|getItem)/);
 });
 
 test("real current surfaces share the canonical shell", () => {

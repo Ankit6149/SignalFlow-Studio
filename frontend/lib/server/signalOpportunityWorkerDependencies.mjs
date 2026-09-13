@@ -17,8 +17,7 @@ import {
   createServerOpportunityInferenceAdapter,
   createServerProjectContextInferenceAdapter,
 } from "../infrastructure/serverInferenceAdapter.mjs";
-import { readGithubAppConfiguration } from "../integrations/github/githubAppApi.mjs";
-import { createGithubRepositoryApiClient } from "../integrations/github/githubRepositoryApi.mjs";
+import { createGithubCredentialAuthority } from "./githubCredentialAuthority.mjs";
 import { resolveGithubRuntimeEnv } from "./githubRuntimeConfig.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
 
@@ -32,6 +31,7 @@ export function createProductionSignalOpportunityWorker({
   const runtimeEnv = resolveGithubRuntimeEnv(env);
   const database = createNeonQueryExecutor({ databaseUrl: runtimeEnv.DATABASE_URL });
   const opportunityJobRepository = createPostgresSignalOpportunityJobRepository({ database });
+  const githubAuthority = createGithubCredentialAuthority({ database, env: runtimeEnv, fetchImpl });
   const inferenceOrigin = String(runtimeEnv.SIGNALFLOW_INTERNAL_ORIGIN || origin || "").trim();
   const inferenceAdapter = createServerOpportunityInferenceAdapter({
     origin: inferenceOrigin,
@@ -59,7 +59,6 @@ export function createProductionSignalOpportunityWorker({
         contentSignalRepository: repositories.contentSignalRepository,
         sourceConnectionRepository: repositories.sourceConnectionRepository,
         async createGithubRepositoryBootstrapApplication() {
-          const config = readGithubAppConfiguration(runtimeEnv);
           const projectContextInference = createServerProjectContextInferenceAdapter({
             origin: inferenceOrigin,
             accessKey: runtimeEnv.SIGNALFLOW_ACCESS_KEY,
@@ -77,11 +76,7 @@ export function createProductionSignalOpportunityWorker({
             sourceConnectionRepository: repositories.sourceConnectionRepository,
             sourceArtifactRepository: repositories.sourceArtifactRepository,
             projectContextApplication,
-            githubRepositoryApi: createGithubRepositoryApiClient({
-              appId: config.appId,
-              privateKey: config.privateKey,
-              fetchImpl,
-            }),
+            resolveGithubRepositoryApi: githubAuthority.resolveRepositoryApi,
             firstOpportunityApplication: null,
             clock,
           });

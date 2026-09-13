@@ -1,6 +1,7 @@
 import { requireOwnerAccess } from "../../_auth";
 import { ingestGitHubRepo } from "../../../../lib/context/github";
 import { ingestLocalRepo } from "../../../../lib/context/localRepo";
+import { internalErrorResponse } from "../../../../lib/server/safeApiErrors.mjs";
 
 export async function POST(request) {
   const accessError = requireOwnerAccess(request);
@@ -34,9 +35,8 @@ export async function POST(request) {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
+    return internalErrorResponse("context.github", err, {
+      message: "SignalFlow could not read that repository safely.",
     });
   }
 }

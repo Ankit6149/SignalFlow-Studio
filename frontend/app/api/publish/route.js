@@ -5,6 +5,7 @@ import {
   getConnectionStatus,
   readTokenSession,
 } from "../../../lib/social/tokenStore.js";
+import { internalErrorResponse } from "../../../lib/server/safeApiErrors.mjs";
 
 /**
  * POST /api/publish
@@ -58,13 +59,13 @@ export async function POST(request) {
 
     return response;
   } catch (err) {
-    return new Response(JSON.stringify({
-      ok: false,
-      error: `Publishing failed: ${err.message}`,
-      manualInstruction: "Copy the approved draft and publish it manually as a fallback.",
-    }), {
+    return internalErrorResponse("publish", err, {
+      message: "Publishing could not be confirmed. Use the manual fallback.",
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      body: {
+        ok: false,
+        manualInstruction: "Copy the approved draft and publish it manually as a fallback.",
+      },
     });
   }
 }

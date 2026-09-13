@@ -1,4 +1,7 @@
 import { after } from "next/server";
+import {
+  createProductionGithubWebhookSecretResolver,
+} from "../../../../../lib/server/githubConnectionDependencies.mjs";
 import { createProductionGithubIngestionApplication } from "../../../../../lib/server/githubWebhookDependencies.mjs";
 import { createGithubWebhookHandler } from "../../../../../lib/server/githubWebhookRoute.mjs";
 import { createProductionSignalOpportunityWorker } from "../../../../../lib/server/signalOpportunityWorkerDependencies.mjs";
@@ -9,6 +12,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request) {
   const handler = createGithubWebhookHandler({
     webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
+    resolveWebhookSecret: createProductionGithubWebhookSecretResolver(),
     createIngestionApplication: () => createProductionGithubIngestionApplication(),
   });
   const response = await handler(request);

@@ -46,7 +46,7 @@ test("GP2 readiness is true only when every production dependency class is confi
   assert.ok(status.checks.every((item) => Array.isArray(item.blockedBy) && item.blockedBy.length === 0));
 });
 
-test("request-scoped Vercel OIDC satisfies hosted inference without a provider API key", () => {
+test("request-scoped Vercel OIDC satisfies hosted Gateway inference without a provider API key", () => {
   const env = configuredEnv();
   delete env.OPENAI_API_KEY;
   delete env.AI_GATEWAY_API_KEY;
@@ -56,7 +56,7 @@ test("request-scoped Vercel OIDC satisfies hosted inference without a provider A
   const inference = status.checks.find((item) => item.id === "inference");
   assert.equal(inference.configured, true);
   assert.deepEqual(inference.missing, []);
-  assert.equal(inference.provider, "vercel_oidc");
+  assert.equal(inference.provider, "vercel_gateway");
   assert.equal(status.ready, true);
 });
 

@@ -11,10 +11,16 @@ function safeToken(value) {
   return token;
 }
 
+/**
+ * Prefer Vercel's documented runtime OIDC environment credential. The header
+ * fallback is retained only for compatibility with request-scoped runtimes
+ * that surface the same credential there. Never prefer a caller-controlled
+ * header over the platform-issued environment token when both exist.
+ */
 export function readVercelRuntimeOidcToken(request, env = process.env) {
-  const fromHeader = safeToken(request?.headers?.get?.(OIDC_HEADER));
-  if (fromHeader) return fromHeader;
-  return safeToken(env?.VERCEL_OIDC_TOKEN);
+  const fromEnvironment = safeToken(env?.VERCEL_OIDC_TOKEN);
+  if (fromEnvironment) return fromEnvironment;
+  return safeToken(request?.headers?.get?.(OIDC_HEADER));
 }
 
 export function vercelRuntimeOidcAvailable(request, env = process.env) {

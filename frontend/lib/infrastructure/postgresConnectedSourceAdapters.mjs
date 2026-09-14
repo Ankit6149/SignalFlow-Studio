@@ -64,6 +64,7 @@ function signalFromRow(row) {
     projectId: row.project_id,
     sourceType: row.source_type,
     sourceConnectionId: row.source_connection_id,
+    sourceRevision: row.source_revision || null,
     sourceArtifactIds: row.source_artifact_ids || [],
     assetIds: row.asset_ids || [],
     externalEventRef,
@@ -187,12 +188,7 @@ WITH upsert_connection AS (
   WHERE sf_source_connections.workspace_id = EXCLUDED.workspace_id
     AND sf_source_connections.provider = EXCLUDED.provider
   RETURNING source_connection_id, workspace_id
-), delete_resources AS (
-  DELETE FROM sf_source_connection_resources r
-  USING upsert_connection c
-  WHERE r.source_connection_id = c.source_connection_id
-    AND r.workspace_id = c.workspace_id
-), insert_resources AS (
+), upsert_resources AS (
   INSERT INTO sf_source_connection_resources (
     workspace_id, source_connection_id, resource_ref, resource_type,
     project_id, display_name, event_families, enabled
@@ -208,6 +204,25 @@ WITH upsert_connection AS (
     COALESCE((item->>'enabled')::boolean, true)
   FROM upsert_connection c
   CROSS JOIN LATERAL jsonb_array_elements($16::jsonb) item
+  ON CONFLICT (source_connection_id, resource_ref) DO UPDATE SET
+    resource_type = EXCLUDED.resource_type,
+    project_id = EXCLUDED.project_id,
+    display_name = EXCLUDED.display_name,
+    event_families = EXCLUDED.event_families,
+    enabled = EXCLUDED.enabled
+  WHERE sf_source_connection_resources.workspace_id = EXCLUDED.workspace_id
+  RETURNING source_connection_id, resource_ref
+), delete_stale_resources AS (
+  DELETE FROM sf_source_connection_resources r
+  USING upsert_connection c
+  WHERE r.source_connection_id = c.source_connection_id
+    AND r.workspace_id = c.workspace_id
+    AND NOT EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements($16::jsonb) item
+      WHERE item->>'resourceRef' = r.resource_ref
+    )
+  RETURNING r.source_connection_id, r.resource_ref
 )
 SELECT source_connection_id, workspace_id FROM upsert_connection`, [
       connection.sourceConnectionId,
@@ -271,7 +286,7 @@ SELECT source_connection_id, workspace_id FROM upsert_connection`, [
 }
 
 const SIGNAL_COLUMNS = `
-  signal_id, workspace_id, project_id, source_type, source_connection_id,
+  signal_id, workspace_id, project_id, source_type, source_connection_id, source_revision,
   source_artifact_ids, asset_ids, external_provider, external_event_id,
   external_idempotency_key, occurred_at, observed_at, created_at, updated_at,
   headline, summary, signal_kind, importance_hints, privacy_classification,
@@ -284,6 +299,7 @@ function signalParams(signal) {
     signal.projectId,
     signal.sourceType,
     signal.sourceConnectionId,
+    signal.sourceRevision,
     signal.sourceArtifactIds,
     signal.assetIds,
     signal.externalEventRef?.provider || null,
@@ -308,11 +324,11 @@ function signalParams(signal) {
 }
 
 const SIGNAL_VALUES = `
-  $1, $2, $3, $4, $5,
-  $6::text[], $7::text[], $8, $9,
-  $10, $11::timestamptz, $12::timestamptz, $13::timestamptz, $14::timestamptz,
-  $15, $16, $17, $18::text[], $19,
-  $20, $21, $22::timestamptz, $23::timestamptz, $24::jsonb, $25`;
+  $1, $2, $3, $4, $5, $6,
+  $7::text[], $8::text[], $9, $10,
+  $11, $12::timestamptz, $13::timestamptz, $14::timestamptz, $15::timestamptz,
+  $16, $17, $18, $19::text[], $20,
+  $21, $22, $23::timestamptz, $24::timestamptz, $25::jsonb, $26`;
 
 export function createPostgresContentSignalRepository({ database, workspaceId = null } = {}) {
   const db = requireDatabase(database);
@@ -350,6 +366,7 @@ VALUES (${SIGNAL_VALUES})
 ON CONFLICT (signal_id) DO UPDATE SET
   project_id = EXCLUDED.project_id,
   source_connection_id = EXCLUDED.source_connection_id,
+  source_revision = EXCLUDED.source_revision,
   source_artifact_ids = EXCLUDED.source_artifact_ids,
   asset_ids = EXCLUDED.asset_ids,
   updated_at = EXCLUDED.updated_at,

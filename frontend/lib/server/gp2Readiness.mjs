@@ -4,9 +4,7 @@ import { hostedScreenshotConfigurationStatus } from "./hostedScreenshotProductio
 import { ownerAccessConfigurationStatus } from "./ownerAccessPolicy.mjs";
 import { resolveMediaPreviewReceiptSecret } from "./runtimeSigningSecrets.mjs";
 
-const INFERENCE_ENV_GROUPS = Object.freeze([
-  ["VERCEL_OIDC_TOKEN"],
-  ["AI_GATEWAY_API_KEY"],
+const DIRECT_INFERENCE_ENV_GROUPS = Object.freeze([
   ["OPENAI_API_KEY"],
   ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
   ["GEMINI_API_KEY"],
@@ -55,7 +53,10 @@ function splitUpstreamMissing(missing = [], readiness = {}) {
   return Object.freeze({ directMissing: unique(directMissing), blockedBy: unique(blockedBy) });
 }
 
-export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = false } = {}) {
+export function gp2ReadinessStatus(env = process.env, {
+  vercelOidcAvailable = false,
+  vercelGatewayAccess = null,
+} = {}) {
   const github = githubSourceConnectionConfigurationStatus(env);
   const storage = hostedAssetStorageConfigurationStatus(env);
   const ownerAccess = ownerAccessConfigurationStatus(env);
@@ -130,13 +131,32 @@ export function gp2ReadinessStatus(env = process.env, { vercelOidcAvailable = fa
     previewSecretReady ? [] : ["SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"],
   );
 
-  const inferenceReady = Boolean(vercelOidcAvailable) || INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
+  const gatewayCredentialAvailable = Boolean(vercelOidcAvailable)
+    || present(env, "VERCEL_OIDC_TOKEN")
+    || present(env, "AI_GATEWAY_API_KEY");
+  const gatewayAccessKnown = Boolean(vercelGatewayAccess)
+    && typeof vercelGatewayAccess.available === "boolean";
+  const gatewayReady = gatewayCredentialAvailable
+    && (!gatewayAccessKnown || vercelGatewayAccess.available === true);
+  const directInferenceReady = DIRECT_INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
+  const inferenceReady = gatewayCredentialAvailable ? gatewayReady : directInferenceReady;
+  const inferenceMissing = inferenceReady
+    ? []
+    : gatewayCredentialAvailable && gatewayAccessKnown
+      ? ["VERCEL_AI_GATEWAY_ACCESS"]
+      : ["VERCEL_RUNTIME_OIDC|AI_GATEWAY_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"];
   const inference = check(
     "inference",
     "Hosted inference route",
     inferenceReady,
-    inferenceReady ? [] : ["VERCEL_RUNTIME_OIDC|AI_GATEWAY_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"],
-    { provider: Boolean(vercelOidcAvailable) ? "vercel_oidc" : null },
+    inferenceMissing,
+    {
+      provider: gatewayCredentialAvailable ? "vercel_gateway" : directInferenceReady ? "direct_provider" : null,
+      gatewayStatus: gatewayAccessKnown ? String(vercelGatewayAccess.status || "unknown") : null,
+      gatewayStatusCode: gatewayAccessKnown && Number.isInteger(vercelGatewayAccess.statusCode)
+        ? vercelGatewayAccess.statusCode
+        : null,
+    },
   );
 
   const checks = Object.freeze([

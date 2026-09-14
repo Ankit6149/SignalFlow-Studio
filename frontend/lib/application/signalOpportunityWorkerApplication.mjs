@@ -10,6 +10,18 @@ function safeErrorCode(error) {
     || "opportunity_evaluation_failed";
 }
 
+function retryPolicyForError(errorCode) {
+  const code = String(errorCode || "").trim().toLowerCase();
+  const match = code.match(/^vercel_gateway_http_(\d{3})$/);
+  if (!match) return Object.freeze({});
+  const status = Number(match[1]);
+  const retryableClientStatuses = new Set([408, 409, 425, 429]);
+  if (status >= 400 && status < 500 && !retryableClientStatuses.has(status)) {
+    return Object.freeze({ maxAttempts: 1 });
+  }
+  return Object.freeze({});
+}
+
 export function createSignalOpportunityWorkerApplication({
   opportunityJobRepository,
   createContinuationApplication,
@@ -53,9 +65,11 @@ export function createSignalOpportunityWorkerApplication({
         recommendation: result.opportunity.recommendation,
       });
     } catch (error) {
+      const errorCode = safeErrorCode(error);
       const failed = await jobs.fail(job.jobId, {
-        errorCode: safeErrorCode(error),
+        errorCode,
         now: systemClock.now(),
+        ...retryPolicyForError(errorCode),
       });
       return Object.freeze({
         status: failed.status === "dead" ? "dead" : "retry_scheduled",

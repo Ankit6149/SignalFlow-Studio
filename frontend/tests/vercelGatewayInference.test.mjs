@@ -33,8 +33,25 @@ test("Vercel Gateway adapter sends bounded JSON chat completion with the supplie
   assert.equal(body.model, "google/gemini-2.5-flash-lite");
   assert.equal(body.max_tokens, 321);
   assert.equal(body.stream, false);
-  assert.deepEqual(body.response_format, { type: "json_object" });
+  assert.deepEqual(body.response_format, { type: "json" });
   assert.deepEqual(body.messages, [{ role: "user", content: "Return JSON." }]);
+});
+
+test("Vercel Gateway adapter preserves a safe provider-specific error code", async () => {
+  await assert.rejects(
+    () => generateVercelGateway("Return JSON.", null, {
+      apiKey: "test-gateway-credential",
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: { message: "Unsupported response format" },
+      }), { status: 400, headers: { "content-type": "application/json" } }),
+    }),
+    (error) => {
+      assert.equal(error?.code, "vercel_gateway_http_400");
+      assert.equal(error?.status, 400);
+      assert.match(error?.message || "", /HTTP 400/);
+      return true;
+    },
+  );
 });
 
 test("every canonical GP2 intelligence route considers request-scoped Vercel OIDC before direct provider keys", () => {

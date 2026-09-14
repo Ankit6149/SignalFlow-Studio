@@ -1,6 +1,7 @@
 import { requireOwnerAccess } from "../../_auth";
 import { gp2ReadinessStatus } from "../../../../lib/server/gp2Readiness.mjs";
-import { vercelRuntimeOidcAvailable } from "../../../../lib/server/vercelRuntimeOidc.mjs";
+import { probeVercelGatewayAccess } from "../../../../lib/server/vercelGatewayAccess.mjs";
+import { readVercelRuntimeOidcToken, vercelRuntimeOidcAvailable } from "../../../../lib/server/vercelRuntimeOidc.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,10 +21,17 @@ export async function GET(request) {
   const denied = requireOwnerAccess(request);
   if (denied) return denied;
   try {
+    const runtimeOidc = readVercelRuntimeOidcToken(request, process.env);
+    const gatewayCredential = String(process.env.AI_GATEWAY_API_KEY || runtimeOidc || "").trim();
+    const gatewayAccess = gatewayCredential
+      ? await probeVercelGatewayAccess({ credential: gatewayCredential })
+      : null;
+
     return json({
       ok: true,
       gp2: gp2ReadinessStatus(process.env, {
         vercelOidcAvailable: vercelRuntimeOidcAvailable(request, process.env),
+        vercelGatewayAccess: gatewayAccess,
       }),
     });
   } catch {

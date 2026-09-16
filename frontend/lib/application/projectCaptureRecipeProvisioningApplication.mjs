@@ -144,3 +144,28 @@ export function createProjectCaptureRecipeProvisioningApplication({
 
   return Object.freeze({ ensureProjectRecipe });
 }
+
+export function createProvisioningCaptureRepository({
+  captureRepository,
+  provisioningApplication,
+} = {}) {
+  const captures = assertPort("captureRepository", captureRepository);
+  if (!provisioningApplication || typeof provisioningApplication.ensureProjectRecipe !== "function") {
+    throw new TypeError("Provisioning capture repository requires ensureProjectRecipe().");
+  }
+
+  return assertPort("captureRepository", {
+    async listRecipes(options = {}) {
+      const projectId = String(options?.projectId || "").trim();
+      if (projectId && !options?.captureRecipeId) {
+        await provisioningApplication.ensureProjectRecipe(projectId);
+      }
+      return captures.listRecipes(options);
+    },
+    getRecipe: (...args) => captures.getRecipe(...args),
+    upsertRecipe: (...args) => captures.upsertRecipe(...args),
+    listJobs: (...args) => captures.listJobs(...args),
+    getJob: (...args) => captures.getJob(...args),
+    upsertJob: (...args) => captures.upsertJob(...args),
+  });
+}

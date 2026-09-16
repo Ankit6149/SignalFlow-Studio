@@ -48,6 +48,33 @@ function customRecipe(id = "custom-project-proof") {
   }), NOW);
 }
 
+function staleCanonicalRecipe() {
+  return activateCaptureRecipe(createCaptureRecipe({
+    captureRecipeId: `gp2-workspace-loading-${PROJECT}`,
+    workspaceId: WORKSPACE,
+    projectId: PROJECT,
+    name: "SignalFlow workspace loading proof",
+    targetOrigin: TARGET,
+    allowedEnvironment: "preview",
+    requiredCapabilities: ["screenshot"],
+    fixturePolicy: { allowedKeys: [], realUserDataAllowed: false },
+    privacyRules: [],
+    expectedCheckpoints: ["workspace-loading"],
+    steps: [
+      { stepId: "open-workspace-loading-preview", action: "navigate", path: "/capture-preview/workspace-loading" },
+      { stepId: "wait-for-workspace-loading", action: "wait_for", selector: "main" },
+      {
+        stepId: "capture-workspace-loading",
+        action: "capture_checkpoint",
+        checkpoint: "workspace-loading",
+        qualitySelectors: { error: [], loading: [], requiredSubject: ["main"] },
+      },
+    ],
+    createdAt: NOW,
+    updatedAt: NOW,
+  }), NOW);
+}
+
 test("zero project recipes self-provision exactly one active safe workspace-loading recipe", async () => {
   const base = createMemoryCaptureRepository();
   const repository = createProvisioningCaptureRepository({
@@ -72,9 +99,28 @@ test("zero project recipes self-provision exactly one active safe workspace-load
   assert.deepEqual(recipe.requiredCapabilities, ["screenshot"]);
   assert.equal(recipe.steps[0].action, "navigate");
   assert.equal(recipe.steps[0].path, "/capture-preview/workspace-loading");
-  assert.equal(recipe.steps.at(-1).action, "capture_checkpoint");
-  assert.equal(recipe.steps.at(-1).checkpoint, "workspace-loading");
+  const captureStep = recipe.steps.at(-1);
+  assert.equal(captureStep.action, "capture_checkpoint");
+  assert.equal(captureStep.checkpoint, "workspace-loading");
+  assert.deepEqual(captureStep.qualitySelectors.error, ["[data-signalflow-capture-error]"]);
+  assert.deepEqual(captureStep.qualitySelectors.loading, ["[data-signalflow-capture-unexpected-loading]"]);
+  assert.deepEqual(captureStep.qualitySelectors.requiredSubject, ["[data-signalflow-capture-subject='workspace-loading']"]);
   assert.ok(recipe.privacyRules.some((rule) => rule.code === "private-marker-visible" && rule.severity === "block"));
+});
+
+test("stale canonical v1 recipe is revised immutably instead of rewritten in place", async () => {
+  const old = staleCanonicalRecipe();
+  const base = createMemoryCaptureRepository({ recipes: [old] });
+  const result = await provisioning(base).ensureProjectRecipe(PROJECT);
+  const stored = await base.listRecipes({ projectId: PROJECT });
+
+  assert.equal(result.revised, true);
+  assert.equal(result.recipe.version, 2);
+  assert.equal(result.recipe.captureRecipeId, old.captureRecipeId);
+  assert.equal(stored.length, 2);
+  const versions = stored.map((item) => item.version).sort((a, b) => a - b);
+  assert.deepEqual(versions, [1, 2]);
+  assert.deepEqual(result.recipe.steps.at(-1).qualitySelectors.error, ["[data-signalflow-capture-error]"]);
 });
 
 test("an existing custom active project recipe is reused without manufacturing a second active recipe", async () => {

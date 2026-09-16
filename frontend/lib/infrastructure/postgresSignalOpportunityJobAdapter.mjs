@@ -1,5 +1,6 @@
 const JOB_TYPE = "opportunity_evaluation";
 const JOB_STATUSES = new Set(["pending", "processing", "completed", "dead"]);
+const SAFE_ERROR_CODE = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
 function requireDatabase(database) {
   if (!database || typeof database.query !== "function") {
@@ -25,6 +26,17 @@ function iso(value, field) {
   const parsed = new Date(value);
   if (!Number.isFinite(parsed.getTime())) throw new TypeError(`${field} must be a valid timestamp.`);
   return parsed.toISOString();
+}
+
+function safeErrorCodes(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new TypeError("requeueDead requires at least one recoverable error code.");
+  }
+  const normalized = [...new Set(values.map((value) => String(value || "").trim().toLowerCase()))];
+  if (!normalized.length || normalized.length > 20 || normalized.some((value) => !SAFE_ERROR_CODE.test(value) || value.length > 160)) {
+    throw new TypeError("requeueDead error codes must be bounded stable identifiers.");
+  }
+  return normalized;
 }
 
 function jobFromRow(row = {}) {
@@ -152,7 +164,41 @@ RETURNING *`, [normalizedId, code, retryAt, attempts, at]));
     return jobFromRow(rows[0]);
   }
 
-  return Object.freeze({ enqueue, get, claimNext, complete, fail });
+  async function requeueDead({ workspaceId, errorCodes, now, limit = 5 } = {}) {
+    const owner = required(workspaceId, "workspaceId");
+    const codes = safeErrorCodes(errorCodes);
+    const at = iso(now, "now");
+    const boundedLimit = Math.max(1, Math.min(10, Math.round(Number(limit) || 5)));
+    const rows = resultRows(await db.query(`
+WITH candidates AS (
+  SELECT job_id
+  FROM sf_signal_opportunity_jobs
+  WHERE workspace_id = $1
+    AND job_type = $2
+    AND status = 'dead'
+    AND last_error_code = ANY($3::text[])
+  ORDER BY updated_at ASC, created_at ASC, job_id ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT $4::integer
+)
+UPDATE sf_signal_opportunity_jobs jobs
+SET
+  status = 'pending',
+  attempt_count = 0,
+  available_at = $5::timestamptz,
+  lease_until = NULL,
+  opportunity_id = NULL,
+  last_error_code = NULL,
+  completed_at = NULL,
+  updated_at = $5::timestamptz
+FROM candidates
+WHERE jobs.job_id = candidates.job_id
+  AND jobs.workspace_id = $1
+RETURNING jobs.*`, [owner, JOB_TYPE, codes, boundedLimit, at]));
+    return rows.map(jobFromRow);
+  }
+
+  return Object.freeze({ enqueue, get, claimNext, complete, fail, requeueDead });
 }
 
 export { JOB_TYPE as SIGNAL_OPPORTUNITY_JOB_TYPE, jobFromRow as signalOpportunityJobFromRow };

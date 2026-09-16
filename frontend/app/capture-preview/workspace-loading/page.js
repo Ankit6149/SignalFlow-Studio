@@ -9,5 +9,9 @@ export const metadata = {
 };
 
 export default function WorkspaceLoadingCapturePreview() {
-  return <Loading />;
+  return (
+    <div data-signalflow-capture-subject="workspace-loading">
+      <Loading />
+    </div>
+  );
 }

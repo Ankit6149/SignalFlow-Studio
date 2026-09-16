@@ -1,5 +1,6 @@
 import { PROVIDERS } from "../ai/types.js";
 import { assertModelGenerationProvider } from "../ai/generationPolicy.mjs";
+import { probeVercelGatewayAccess } from "./vercelGatewayAccess.mjs";
 
 export const HOSTED_DIRECT_PROVIDER_ORDER = Object.freeze([
   "gemini",
@@ -39,54 +40,89 @@ function directConfigured(providerId, env = process.env) {
   }
 }
 
-function selection(providerId, reason) {
+function selection(providerId, reason, gatewayAccess = null) {
   const meta = PROVIDERS[providerId];
-  return meta ? Object.freeze({ providerId, meta, reason }) : null;
+  return meta ? Object.freeze({ providerId, meta, reason, gatewayAccess }) : null;
 }
 
 /**
- * Selects one hosted/remote model route without silently crossing into local
- * inference. Explicit requests remain exact: an unavailable explicit provider
- * returns null instead of being replaced by an unrelated provider.
- *
- * Automatic precedence after an absent explicit request is:
- * configured DEFAULT_MODEL_PROVIDER -> operational Gateway -> configured direct
- * remote provider.
+ * Pure hosted/remote provider selection. Explicit requests remain exact: an
+ * unavailable explicit provider returns null instead of being replaced by an
+ * unrelated provider. Automatic selection never crosses into local inference.
  */
 export function selectHostedInferenceProvider({
   requestedProvider = "",
   env = process.env,
   gatewayCredential = "",
   gatewayOperational = true,
+  gatewayAccess = null,
 } = {}) {
   const requested = normalizeSupported(requestedProvider);
   if (text(requestedProvider)) {
     if (!requested) return null;
     if (requested === "vercel_gateway") {
-      return gatewayCredential && gatewayOperational ? selection(requested, "requested") : null;
+      return gatewayCredential && gatewayOperational ? selection(requested, "requested", gatewayAccess) : null;
     }
     if (!HOSTED_DIRECT_PROVIDER_ORDER.includes(requested)) return null;
-    return directConfigured(requested, env) ? selection(requested, "requested") : null;
+    return directConfigured(requested, env) ? selection(requested, "requested", gatewayAccess) : null;
   }
 
   const preferred = normalizeSupported(env?.DEFAULT_MODEL_PROVIDER);
   if (preferred) {
     if (preferred === "vercel_gateway") {
-      if (gatewayCredential && gatewayOperational) return selection(preferred, "default");
+      if (gatewayCredential && gatewayOperational) return selection(preferred, "default", gatewayAccess);
     } else if (HOSTED_DIRECT_PROVIDER_ORDER.includes(preferred) && directConfigured(preferred, env)) {
-      return selection(preferred, "default");
+      return selection(preferred, "default", gatewayAccess);
     }
   }
 
   if (gatewayCredential && gatewayOperational) {
-    return selection("vercel_gateway", "gateway");
+    return selection("vercel_gateway", "gateway", gatewayAccess);
   }
 
   for (const providerId of HOSTED_DIRECT_PROVIDER_ORDER) {
-    if (directConfigured(providerId, env)) return selection(providerId, "direct_fallback");
+    if (directConfigured(providerId, env)) return selection(providerId, "direct_fallback", gatewayAccess);
   }
 
   return null;
+}
+
+/**
+ * Runtime selector used by hosted inference routes. It avoids a Gateway probe
+ * when an explicit/configured direct provider already wins. Otherwise the
+ * non-generation credits endpoint is probed once before choosing Gateway, so a
+ * forbidden Gateway cannot mask a configured direct remote fallback.
+ */
+export async function selectOperationalHostedInferenceProvider({
+  requestedProvider = "",
+  env = process.env,
+  gatewayCredential = "",
+  probeGatewayAccess = probeVercelGatewayAccess,
+} = {}) {
+  const requested = normalizeSupported(requestedProvider);
+  if (text(requestedProvider) && requested && requested !== "vercel_gateway") {
+    return selectHostedInferenceProvider({ requestedProvider, env, gatewayCredential, gatewayOperational: false });
+  }
+
+  const preferred = normalizeSupported(env?.DEFAULT_MODEL_PROVIDER);
+  if (!text(requestedProvider) && preferred && preferred !== "vercel_gateway" && HOSTED_DIRECT_PROVIDER_ORDER.includes(preferred) && directConfigured(preferred, env)) {
+    return selectHostedInferenceProvider({ env, gatewayCredential, gatewayOperational: false });
+  }
+
+  let gatewayAccess = null;
+  let gatewayOperational = false;
+  if (gatewayCredential) {
+    gatewayAccess = await probeGatewayAccess({ credential: gatewayCredential });
+    gatewayOperational = gatewayAccess?.available === true;
+  }
+
+  return selectHostedInferenceProvider({
+    requestedProvider,
+    env,
+    gatewayCredential,
+    gatewayOperational,
+    gatewayAccess,
+  });
 }
 
 export function hostedDirectInferenceConfigured(env = process.env) {

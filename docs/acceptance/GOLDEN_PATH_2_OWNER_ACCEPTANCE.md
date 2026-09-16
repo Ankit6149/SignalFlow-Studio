@@ -2,7 +2,7 @@
 
 > Status: **NOT YET ACCEPTED**
 >
-> This document is an evidence ledger, not a declaration of completion. Do not mark an item passed without a credential-backed hosted run or deterministic recovery proof that actually satisfies it. Never paste GitHub tokens, OAuth codes, webhook secrets, private source bodies, browser credentials, S3 credentials, signed object URLs, cookies, or raw private repository content here.
+> This document is an evidence ledger, not a declaration of completion. Mark an item passed only when a credential-backed hosted run or deterministic recovery proof actually satisfies it. Never paste GitHub tokens, OAuth codes, webhook secrets, private source bodies, browser credentials, S3 credentials, signed object URLs, cookies, or raw private repository content here.
 
 ## Acceptance target
 
@@ -24,80 +24,87 @@ real meaningful GitHub work event
 
 A routine dependency-only or similarly low-value event must also be exercised and must **not** be promoted merely because a webhook arrived.
 
-## Production checkpoint
+## Production checkpoint — verified 2026-09-16
 
 Record only safe identifiers and states.
 
-- Production Git SHA: `TBD`
-- Vercel production deployment ID: `TBD`
-- Production readiness endpoint result: `TBD`
-- GitHub source connection safe ID: `TBD`
-- Selected repository safe provider ID/name: `TBD`
-- Project ID: `TBD`
+- Production Git SHA: `7ec89657badb8a3bfab146a51e1dfd03dbc989f5`
+- Vercel production deployment ID: `dpl_3eRv9BgVJw2dADE21bousyJarHgK` — `READY`
+- Production readiness: **not fully ready** — hosted inference is operationally blocked by `vercel_gateway_http_403`; remote CDP endpoint is not configured
+- GitHub source connection safe ID: `signalflow-github-connection-794c1349-dbfa-414a-ae96-6ebb4444d0fd`
+- Selected repository safe provider ID/name: GitHub repository ID `1269263906`, `Ankit6149/SignalFlow-Studio`
+- Project ID: `sf-project-github-1269263906`
+- Current live ingestion count: 11 GitHub Signals / 10 revision-bound / 99 bounded SourceArtifacts
+- Current continuation state: 10 dead signal-opportunity jobs, all safe error code `vercel_gateway_http_403`
+- Current ProjectContextSnapshot count: 0
+- Current ContentOpportunity count: 0
 
 ## A. Connection authority
 
-- [ ] Owner-only GP2 readiness reports every required dependency configured without exposing secret values.
-- [ ] GitHub App installation completes through signed setup state + separate owner OAuth authorization.
-- [ ] Exact installation identity is independently verified before persistence.
-- [ ] Repository selection is verified through installation authority.
-- [ ] SourceConnection becomes `active` with only the selected enabled repository scope.
+- [ ] Owner-only GP2 readiness reports every required dependency configured without exposing secret values. **Blocked by inference + CDP, so not yet passable.**
+- [x] GitHub App installation completes through signed setup state + separate owner OAuth authorization.
+- [x] Exact installation identity is independently verified before persistence.
+- [x] Repository selection is verified through installation authority.
+- [x] SourceConnection becomes `active` with only the selected enabled repository scope.
 - [ ] Pause/resume/revoke behavior remains correct after the live install.
 
 Evidence:
 
-- Safe connection status: `TBD`
-- Installation/repository permission class (names only): `TBD`
-- Relevant test/run references: `TBD`
+- Safe connection status: `active`, verified, installed; no current connection error
+- Permission scopes: `contents:read`, `metadata:read`, `pull_requests:read`
+- Capabilities: `repository_contents`, `repository_events`, `repository_metadata`
+- Latest observed GitHub event during audit: `2026-09-16T17:40:35Z`
+- Initial first-install webhook 503 is historical/transitional; current event delivery is succeeding
 
 ## B. Real webhook and idempotency
 
 ### Meaningful event
 
-- [ ] Use a real merged pull request with an exact GitHub `merge_commit_sha`, or a published release whose `target_commitish` is already an immutable Git SHA.
-- [ ] A release whose target is only a mutable branch/ref remains an auditable signal but is not promoted until exact-ref resolution support exists; do not treat that case as GP2 acceptance evidence.
-- [ ] GitHub delivery signature is accepted by the hosted webhook.
-- [ ] Delivery ID/event family is normalized safely.
-- [ ] Exactly one canonical ContentSignal is persisted.
-- [ ] The canonical signal retains the exact immutable source revision used for evidence freshness.
-- [ ] A duplicate delivery resolves to the same signal / does not create a second editorial chain.
-- [ ] No raw private payload or credential material appears in logs/evidence.
+- [ ] Use a real merged pull request with an exact GitHub `merge_commit_sha`, or a published release whose `target_commitish` is already an immutable Git SHA, as the final controlled GP2 positive acceptance event.
+- [x] GitHub delivery signature is accepted by the hosted webhook in current production operation.
+- [x] Delivery ID/event family is normalized safely for current live events.
+- [x] Canonical ContentSignals are being persisted from live GitHub events.
+- [x] Revision-bound live signals retain exact immutable source revisions.
+- [ ] A duplicate delivery resolves to the same signal / does not create a second editorial chain. **Distinct-ingestion integrity is observed, but an explicit duplicate-delivery acceptance case still must be exercised.**
+- [x] No raw credential material was exposed in the safe production evidence collected for this ledger.
 
 Safe evidence:
 
-- Delivery/event safe reference: `TBD`
-- ContentSignal ID: `TBD`
-- Exact source revision SHA: `TBD`
-- Duplicate result: `TBD`
+- Revision-bound GitHub Signals: `10`
+- Distinct immutable revisions: `10`
+- Distinct external idempotency keys: `10`
+- Distinct external event IDs: `10`
+- Duplicate accumulation detected in current persisted set: `none`
+- Reserved final positive acceptance event: PR #291, currently unmerged
 
 ### Noise event
 
-- [ ] Exercise one dependency-only/routine/trivial event fixture or real event.
+- [ ] Exercise one explicit dependency-only/routine/trivial event fixture or real event as the final negative-control proof.
 - [ ] Signal may remain auditable, but `shouldEvaluateOpportunity` is false or the resulting decision is non-promotional.
 - [ ] No high-priority opportunity is manufactured from the event.
 
 Safe evidence:
 
-- Noise event class: `TBD`
-- Decision/status: `TBD`
+- An older GitHub signal exists with no immutable source revision and no continuation job; it is not being treated as promotional GP2 evidence.
+- Final negative-control event class/decision: `TBD`
 
 ## C. Opportunity and exact evidence
 
-- [ ] Meaningful signal produces/reuses one durable opportunity job only when an exact source revision is available.
-- [ ] Before opportunity inference, SignalFlow refreshes/reuses bounded repository evidence at the exact signal revision; failure blocks/retries the job instead of evaluating against unrelated latest context.
+- [x] Revision-bound live signals currently produce one durable continuation job each; 10 revision-bound Signals map to 10 durable jobs.
+- [ ] Before opportunity inference, SignalFlow refreshes/reuses bounded repository evidence at the exact signal revision and completes ProjectContext synthesis. **99 bounded SourceArtifacts already exist, but inference blocks before ProjectContextSnapshot completion.**
 - [ ] Browser close/refresh does not destroy pending or completed continuation state.
 - [ ] Opportunity explains what changed, why now, evidence readiness, narrative fit, and repetition risk.
 - [ ] Opportunity pins the exact `projectContextSnapshotId` used during evaluation.
 - [ ] The pinned ProjectContextSnapshot resolves to immutable SourceArtifact IDs and the exact GitHub repository revision.
-- [ ] Owner can choose an offered angle or `Something else`.
+- [ ] Owner can choose an offered angle or `Something else` for the hosted GitHub-origin opportunity.
 
 Safe evidence:
 
-- Opportunity ID: `TBD`
-- ProjectContextSnapshot ID/version/fingerprint: `TBD`
-- GitHub revision SHA/reference: `TBD`
-- SourceArtifact IDs/count: `TBD`
-- Selected angle ID/origin: `TBD`
+- Current SourceArtifact count: `99`
+- Current ProjectContextSnapshot count: `0`
+- Current ContentOpportunity count: `0`
+- Current durable-job blocker: `vercel_gateway_http_403` on all 10 continuation jobs
+- Owner-safe recovery path: merged PR #295; requeue remains gated on live inference readiness
 
 ## D. Evidence-backed planning
 
@@ -110,9 +117,7 @@ Safe evidence:
 
 Safe evidence:
 
-- NarrativeStrategy ID/revision: `TBD`
-- Evidence context reference(s): `TBD`
-- MediaRequirement decision: `TBD`
+- Hosted planning implementation exists, but no GitHub-origin Opportunity has crossed the blocked inference boundary yet.
 
 ## E. Automatic screenshot vertical
 
@@ -130,15 +135,16 @@ For a visual proof event:
 
 Safe evidence:
 
-- CaptureRecipe ID/version/checkpoint: `TBD`
-- CaptureJob/durable job IDs and final states: `TBD`
-- Raw Asset/AssetVersion IDs: `TBD`
-- Quality review ID/state: `TBD`
-- Derivative plan/variant/output AssetVersion IDs: `TBD`
+- Current CaptureRecipe count: `0`
+- Current CaptureJob count: `0`
+- Current media record count: `0`
+- `SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT` still requires production configuration
+- WSS transport + optional bearer-token support is already implemented
+- Reserved Gate-C loading surface is compatible with planned `4:5` and `16:9` derivative generation under the current capture geometry
 
 ## F. Exact review and judgment
 
-- [ ] LinkedIn and X exact immutable revisions are visible.
+- [ ] LinkedIn and X exact immutable revisions are visible for the GitHub-origin acceptance opportunity.
 - [ ] Evidence/authenticity critics are tied to the exact reviewed revision.
 - [ ] Bound private media is streamed only through the protected exact-preview route.
 - [ ] Every media-bound approval requires a valid short-lived visibility receipt for the exact AssetVersion.
@@ -148,15 +154,13 @@ Safe evidence:
 
 Safe evidence:
 
-- LinkedIn revision ID/review/decision: `TBD`
-- X revision ID/review/decision: `TBD`
-- Exact-media safe IDs shown: `TBD`
+- Hosted exact-review implementation is merged, but no GitHub-origin acceptance revision has reached owner judgment because continuation is blocked upstream.
 
 ## G. Recovery matrix
 
 - [ ] duplicate webhook delivery
-- [ ] unresolved/missing GitHub source revision remains non-promotional
-- [ ] opportunity inference failure + retry
+- [x] unresolved/missing GitHub source revision remains without a continuation job in the observed legacy/non-promotable case
+- [x] opportunity inference failure enters a durable dead state with safe code `vercel_gateway_http_403`; owner-safe bounded recovery is deployed but final retry success awaits healthy inference
 - [ ] source/project enrichment failure without connection loss
 - [ ] exact evidence refresh/revision mismatch blocks before opportunity inference
 - [ ] capture worker retry
@@ -167,19 +171,48 @@ Safe evidence:
 - [ ] stale browser tab / stale current revision
 - [ ] browser refresh/reopen during processing and after review
 
-For every case, record whether state was `retryable`, `blocked`, `failed`, `non_promotional`, or safely resumed, plus the stable safe error code. Do not paste raw exception payloads if they could contain private source data.
+Current deterministic recovery evidence:
+
+- 10 dead opportunity jobs are workspace-scoped and share the same safe error class.
+- PR #295 provides bounded dead-only recovery and refuses requeue while inference is still unhealthy.
+- No manual production SQL is required for final recovery.
+
+For remaining cases, record whether state was `retryable`, `blocked`, `failed`, `non_promotional`, or safely resumed, plus the stable safe error code. Do not paste raw exception payloads if they could contain private source data.
 
 ## H. Release gates
 
-- [ ] frontend regression tests green
-- [ ] production dependency audit green
-- [ ] Next.js production build green
-- [ ] Python tests green
-- [ ] MCP tests green
-- [ ] Vercel preview green
-- [ ] post-merge `master` CI green
-- [ ] Vercel production READY on the exact merged SHA
-- [ ] post-deploy error/fatal runtime-log inspection clean or understood
+Current `master` / recovery production:
+
+- [x] frontend regression tests green for PR #295
+- [x] production dependency audit green for PR #295
+- [x] Next.js production build green for PR #295
+- [x] Python tests green for PR #295
+- [x] MCP tests green for PR #295
+- [x] Vercel preview green for PR #295
+- [x] Vercel production READY after merge
+- [x] current runtime-error-cluster inspection showed no unresolved production error cluster during the recovery deployment audit window
+
+Reserved Gate-C PR #291 after refresh onto hardened master:
+
+- [x] behind master: 0
+- [x] diff remains exactly two intended loading-surface files
+- [x] frontend regression tests green
+- [x] production dependency audit green
+- [x] Next.js production build green
+- [x] Python tests green
+- [x] MCP tests green
+- [x] Vercel preview READY at refreshed commit `770a0284ebad79f387b592b331e9d3dcc1971d4a`
+- [ ] merge #291 only after inference and CDP are operational for the live acceptance run
+- [ ] final post-merge `master` CI green for Gate C
+- [ ] final Vercel production READY on the exact Gate-C merged SHA
+- [ ] final post-deploy runtime/data inspection clean or understood
+
+## Current external blockers
+
+1. Hosted inference: production AI Gateway generation currently returns HTTP 403. SignalFlow's raw OpenAI-compatible Gateway call follows Vercel's documented Bearer/OIDC contract, so treat this as an authorization/account condition unless a later credential-backed probe proves otherwise.
+2. Remote screenshot execution: production still needs an approved WSS CDP endpoint, plus `SIGNALFLOW_CDP_BROWSER_AUTH_TOKEN` only if that provider requires bearer auth.
+
+Do not merge #291, replay GitHub history, create manual Opportunities, or manually modify dead jobs while either blocker remains.
 
 ## Closing rule
 

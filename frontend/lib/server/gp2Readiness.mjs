@@ -18,6 +18,14 @@ const UPSTREAM_CONFIGURATION = Object.freeze({
   SIGNALFLOW_ACCESS_KEY: "owner_lock",
 });
 
+const CAPTURE_RUNTIME_STATUSES = new Set([
+  "ready",
+  "unreachable",
+  "protocol_error",
+  "configuration_invalid",
+  "unavailable",
+]);
+
 function present(env, name) {
   return Boolean(String(env?.[name] || "").trim());
 }
@@ -53,9 +61,15 @@ function splitUpstreamMissing(missing = [], readiness = {}) {
   return Object.freeze({ directMissing: unique(directMissing), blockedBy: unique(blockedBy) });
 }
 
+function safeCaptureRuntimeStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return CAPTURE_RUNTIME_STATUSES.has(normalized) ? normalized : "unavailable";
+}
+
 export function gp2ReadinessStatus(env = process.env, {
   vercelOidcAvailable = false,
   vercelGatewayAccess = null,
+  captureWorkerAccess = null,
 } = {}) {
   const github = githubSourceConnectionConfigurationStatus(env);
   const storage = hostedAssetStorageConfigurationStatus(env);
@@ -115,12 +129,23 @@ export function gp2ReadinessStatus(env = process.env, {
     { provider: storage.provider || null, blockedBy: storageRequirements.blockedBy },
   );
 
+  const captureAccessKnown = Boolean(captureWorkerAccess)
+    && typeof captureWorkerAccess.available === "boolean";
+  const captureRuntimeReady = !captureAccessKnown || captureWorkerAccess.available === true;
+  const captureConfigured = capture.configured && captureRuntimeReady;
+  const captureMissing = capture.configured && captureAccessKnown && !captureRuntimeReady
+    ? ["SIGNALFLOW_CDP_BROWSER_ACCESS"]
+    : capture.missing;
   const captureWorker = check(
     "capture_worker",
     "Bounded screenshot worker",
-    capture.configured,
-    capture.missing,
-    { environment: capture.environment || null },
+    captureConfigured,
+    captureMissing,
+    {
+      environment: capture.environment || null,
+      liveChecked: captureAccessKnown,
+      runtimeStatus: captureAccessKnown ? safeCaptureRuntimeStatus(captureWorkerAccess.status) : null,
+    },
   );
 
   const previewSecretReady = resolveMediaPreviewReceiptSecret(env).length >= 32;

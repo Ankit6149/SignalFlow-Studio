@@ -165,11 +165,41 @@ test("public hosted readiness requires the owner access lock without duplicating
   assert.deepEqual(githubApp?.blockedBy, ["owner_lock"]);
 });
 
+test("explicit live CDP failure overrides configured screenshot readiness without exposing endpoint details", () => {
+  const env = configuredEnv();
+  const status = gp2ReadinessStatus(env, {
+    captureWorkerAccess: { available: false, status: "unreachable" },
+  });
+  const capture = status.checks.find((item) => item.id === "capture_worker");
+
+  assert.equal(capture?.configured, false);
+  assert.equal(capture?.liveChecked, true);
+  assert.equal(capture?.runtimeStatus, "unreachable");
+  assert.deepEqual(capture?.missing, ["SIGNALFLOW_CDP_BROWSER_ACCESS"]);
+  assert.equal(status.ready, false);
+  assert.equal(JSON.stringify(status).includes(env.SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT), false);
+});
+
+test("successful live CDP check proves screenshot worker reachability", () => {
+  const status = gp2ReadinessStatus(configuredEnv(), {
+    captureWorkerAccess: { available: true, status: "ready" },
+  });
+  const capture = status.checks.find((item) => item.id === "capture_worker");
+
+  assert.equal(capture?.configured, true);
+  assert.equal(capture?.liveChecked, true);
+  assert.equal(capture?.runtimeStatus, "ready");
+  assert.deepEqual(capture?.missing, []);
+  assert.equal(status.ready, true);
+});
+
 test("GP2 readiness route is owner-only, no-store and resolves request-scoped OIDC without exposing it", () => {
   const route = fs.readFileSync(path.join(ROOT, "app", "api", "gp2", "readiness", "route.js"), "utf8");
   assert.match(route, /requireOwnerAccess\(request\)/);
   assert.match(route, /vercelRuntimeOidcAvailable\(request, process\.env\)/);
   assert.match(route, /gp2ReadinessStatus\(process\.env, \{/);
+  assert.match(route, /capture_probe/);
+  assert.match(route, /probeCdpBrowserAccess/);
   assert.match(route, /private, no-store, max-age=0/);
   assert.doesNotMatch(route, /process\.env\[[^\]]+\].*Response|secret.*value|credentialRef|storageRef/);
 });

@@ -1,7 +1,5 @@
 import { requireOwnerAccess } from "../../_auth";
 import { generateJSON } from "../../../../lib/ai/generateJSON";
-import { PROVIDERS } from "../../../../lib/ai/types";
-import { assertModelGenerationProvider } from "../../../../lib/ai/generationPolicy.mjs";
 import {
   acceptPlatformVariantDraft,
   buildPlatformVariantPrompt,
@@ -12,39 +10,12 @@ import {
   INFERENCE_TASK_TYPES,
   normalizeInferenceTask,
 } from "../../../../lib/inference/inferenceTasks.mjs";
+import { selectOperationalHostedInferenceProvider } from "../../../../lib/server/hostedInferenceProviderSelection.mjs";
 import { readVercelRuntimeOidcToken } from "../../../../lib/server/vercelRuntimeOidc.mjs";
 
 export const maxDuration = 45;
 
-const CANDIDATE_PROVIDERS = ["vercel_gateway", "gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
-const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
-
-function normalizedProvider(value) {
-  const candidate = String(value || "").trim().toLowerCase();
-  if (!candidate) return "";
-  return assertModelGenerationProvider(candidate);
-}
-
-function pickConfiguredProvider(requested = "", gatewayCredential = "") {
-  const candidates = Array.from(new Set([
-    requested,
-    String(process.env.DEFAULT_MODEL_PROVIDER || "").trim().toLowerCase(),
-    ...CANDIDATE_PROVIDERS,
-  ].filter(Boolean)));
-  for (const candidate of candidates) {
-    let providerId;
-    try {
-      providerId = normalizedProvider(candidate);
-    } catch {
-      continue;
-    }
-    const meta = PROVIDERS[providerId];
-    if (!meta || !CANDIDATE_PROVIDERS.includes(providerId)) continue;
-    if (providerId === "vercel_gateway" && gatewayCredential) return { providerId, meta };
-    if (meta.isConfigured()) return { providerId, meta };
-  }
-  return null;
-}
+const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom"]);
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -77,12 +48,16 @@ export async function POST(request) {
     }
 
     const requestedProvider = String(body?.provider || "").trim().toLowerCase();
-    const selected = pickConfiguredProvider(requestedProvider, gatewayCredential);
+    const selected = await selectOperationalHostedInferenceProvider({
+      requestedProvider,
+      env: process.env,
+      gatewayCredential,
+    });
     if (!selected) {
       return json({
         ok: false,
         code: "inference_route_unavailable",
-        error: "No configured model route is available for LinkedIn/X writing. Configure a provider before generating drafts.",
+        error: "No configured operational model route is available for LinkedIn/X writing. Configure or restore a permitted provider before generating drafts.",
       }, 503);
     }
 

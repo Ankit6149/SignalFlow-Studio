@@ -16,6 +16,7 @@ const CHECK_LABELS = Object.freeze({
 const CHECK_IDS = Object.freeze(Object.keys(CHECK_LABELS));
 const CONFIGURATION_NAME = /^[A-Z0-9_+|.-]{1,240}$/;
 const CAPTURE_ENVIRONMENT = /^[a-z0-9_-]{2,40}$/;
+const RUNTIME_STATUS = /^[a-z0-9_-]{1,64}$/;
 
 async function readJson(response) {
   const text = await response.text();
@@ -65,6 +66,7 @@ function normalizeReadiness(body) {
       throw error;
     }
     const environmentValue = String(item?.environment || "").trim().toLowerCase();
+    const runtimeStatusValue = String(item?.runtimeStatus || "").trim().toLowerCase();
     byId.set(id, Object.freeze({
       id,
       label: CHECK_LABELS[id],
@@ -72,6 +74,8 @@ function normalizeReadiness(body) {
       missing: safeMissing(item.missing),
       blockedBy: safeBlockedBy(item.blockedBy, id),
       environment: environmentValue && CAPTURE_ENVIRONMENT.test(environmentValue) ? environmentValue : null,
+      liveChecked: item.liveChecked === true,
+      runtimeStatus: runtimeStatusValue && RUNTIME_STATUS.test(runtimeStatusValue) ? runtimeStatusValue : null,
     }));
   }
 
@@ -94,13 +98,25 @@ function readinessState(item) {
   return "missing";
 }
 
+function runtimeStatusLabel(value) {
+  switch (value) {
+    case "ready": return "reachable";
+    case "unreachable": return "unreachable";
+    case "protocol_error": return "protocol error";
+    case "configuration_invalid": return "invalid configuration";
+    default: return "unavailable";
+  }
+}
+
 export default function Gp2ReadinessPanel() {
   const [state, setState] = useState({ loading: true, readiness: null, error: null });
+  const [recovery, setRecovery] = useState({ status: "idle", message: "" });
 
-  async function refresh() {
+  async function refresh({ liveCapture = false } = {}) {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
-      const response = await fetch("/api/gp2/readiness", {
+      const endpoint = liveCapture ? "/api/gp2/readiness?capture_probe=1" : "/api/gp2/readiness";
+      const response = await fetch(endpoint, {
         cache: "no-store",
         credentials: "same-origin",
       });
@@ -108,6 +124,35 @@ export default function Gp2ReadinessPanel() {
       setState({ loading: false, readiness: normalizeReadiness(body), error: null });
     } catch (error) {
       setState({ loading: false, readiness: null, error });
+    }
+  }
+
+  async function recoverBlockedWork() {
+    setRecovery({ status: "working", message: "" });
+    try {
+      const response = await fetch("/api/gp2/recovery", {
+        method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+      const body = await readJson(response);
+      const recoveredCount = Math.max(0, Math.min(3, Number(body?.recoveredCount || 0)));
+      setRecovery({
+        status: "success",
+        message: recoveredCount > 0
+          ? `${recoveredCount} blocked ${recoveredCount === 1 ? "job was" : "jobs were"} requeued. Durable processing has restarted.`
+          : "No recoverable blocked opportunity work is waiting right now.",
+      });
+      await refresh();
+    } catch (error) {
+      setRecovery({
+        status: "error",
+        message: error?.code === "gp2_inference_not_ready"
+          ? "Inference is still blocked, so SignalFlow did not requeue any failed work. Fix the inference route and recheck first."
+          : "SignalFlow could not restart blocked work safely. No manual database change is required; recheck automation health before retrying.",
+      });
     }
   }
 
@@ -119,6 +164,8 @@ export default function Gp2ReadinessPanel() {
   const readyCount = checks.filter((item) => item.configured).length;
   const totalCount = checks.length;
   const directMissingCount = checks.filter((item) => readinessState(item) === "missing").length;
+  const inferenceReady = checks.some((item) => item.id === "inference" && item.configured);
+  const recoveryBusy = recovery.status === "working";
 
   return (
     <section className={styles.panel} aria-labelledby="gp2-readiness-title">
@@ -130,11 +177,29 @@ export default function Gp2ReadinessPanel() {
         </div>
         <div className={styles.actions}>
           {totalCount > 0 && <span className={styles.summary}>{readyCount}/{totalCount} ready</span>}
-          <button type="button" onClick={() => void refresh()} disabled={state.loading}>
+          <button type="button" onClick={() => void refresh({ liveCapture: true })} disabled={state.loading || recoveryBusy}>
+            {state.loading ? "Checking…" : "Test browser worker"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void recoverBlockedWork()}
+            disabled={state.loading || recoveryBusy || !inferenceReady}
+            title={inferenceReady ? "Restart recoverable opportunity work that failed during an inference outage." : "Inference must be healthy before blocked work can be retried."}
+          >
+            {recoveryBusy ? "Restarting…" : "Retry blocked work"}
+          </button>
+          <button type="button" onClick={() => void refresh()} disabled={state.loading || recoveryBusy}>
             {state.loading ? "Checking…" : "Recheck"}
           </button>
         </div>
       </div>
+
+      {recovery.message && (
+        <div className={styles.statusBox} data-tone={recovery.status === "error" ? "attention" : "neutral"}>
+          <strong>{recovery.status === "error" ? "Recovery did not run" : "Recovery check complete"}</strong>
+          <p>{recovery.message}</p>
+        </div>
+      )}
 
       {state.loading ? (
         <div className={styles.statusBox}>Checking protected automation health…</div>
@@ -168,7 +233,7 @@ export default function Gp2ReadinessPanel() {
               <span>Technical readiness details</span>
               <small>{readyCount} of {totalCount} checks ready</small>
             </summary>
-            <p className={styles.detailsIntro}>Each missing setting is shown only at the dependency that owns it; downstream checks are marked as blocked instead of repeating the same setting.</p>
+            <p className={styles.detailsIntro}>Each missing setting is shown only at the dependency that owns it. The browser worker live check runs only when you request it because opening a remote browser connection can consume provider runtime. Blocked inference work is retried only after the inference health check is genuinely ready.</p>
             <div className={styles.grid}>
               {checks.map((item) => {
                 const itemState = readinessState(item);
@@ -180,6 +245,9 @@ export default function Gp2ReadinessPanel() {
                       <small>{itemState === "ready" ? "Ready" : itemState === "blocked" ? "Blocked" : "Missing"}</small>
                     </div>
                     {item.environment && <p>Capture environment: <code>{item.environment}</code></p>}
+                    {item.id === "capture_worker" && item.liveChecked && (
+                      <p>Live worker check: <strong>{runtimeStatusLabel(item.runtimeStatus)}</strong></p>
+                    )}
                     {item.missing.length > 0 && (
                       <ul className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
                         {item.missing.map((name) => <li key={name}><code>{name}</code></li>)}

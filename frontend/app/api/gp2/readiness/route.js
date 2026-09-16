@@ -1,4 +1,5 @@
 import { requireOwnerAccess } from "../../_auth";
+import { probeCdpBrowserAccess } from "../../../../lib/server/cdpBrowserAccess.mjs";
 import { gp2ReadinessStatus } from "../../../../lib/server/gp2Readiness.mjs";
 import { probeVercelGatewayAccess } from "../../../../lib/server/vercelGatewayAccess.mjs";
 import { readVercelRuntimeOidcToken, vercelRuntimeOidcAvailable } from "../../../../lib/server/vercelRuntimeOidc.mjs";
@@ -27,11 +28,22 @@ export async function GET(request) {
       ? await probeVercelGatewayAccess({ credential: gatewayCredential })
       : null;
 
+    const requestUrl = new URL(request.url);
+    const captureProbeRequested = requestUrl.searchParams.get("capture_probe") === "1";
+    const captureEndpoint = String(process.env.SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT || "").trim();
+    const captureWorkerAccess = captureProbeRequested && captureEndpoint
+      ? await probeCdpBrowserAccess({
+          endpoint: captureEndpoint,
+          bearerToken: String(process.env.SIGNALFLOW_CDP_BROWSER_AUTH_TOKEN || "").trim(),
+        })
+      : null;
+
     return json({
       ok: true,
       gp2: gp2ReadinessStatus(process.env, {
         vercelOidcAvailable: vercelRuntimeOidcAvailable(request, process.env),
         vercelGatewayAccess: gatewayAccess,
+        captureWorkerAccess,
       }),
     });
   } catch {

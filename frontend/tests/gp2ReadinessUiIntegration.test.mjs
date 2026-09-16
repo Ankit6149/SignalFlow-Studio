@@ -94,12 +94,15 @@ test("Connections workspace puts the user action before technical readiness deta
 
 test("browser readiness panel uses protected safe contract and keeps technical checks secondary", () => {
   const panel = read("components/Gp2ReadinessPanel.js");
-  assert.match(panel, /fetch\("\/api\/gp2\/readiness"/);
+  assert.match(panel, /"\/api\/gp2\/readiness"/);
+  assert.match(panel, /"\/api\/gp2\/readiness\?capture_probe=1"/);
   assert.match(panel, /credentials: "same-origin"/);
   assert.match(panel, /state\.error\?\.status === 401/);
   assert.match(panel, /state\.error\?\.code === "owner_access_unconfigured"/);
   assert.match(panel, /Owner lock configuration required/);
-  assert.match(panel, /Each missing setting is shown only at the dependency that owns it/);
+  assert.match(panel, /Test browser worker/);
+  assert.match(panel, /runtimeStatusLabel/);
+  assert.match(panel, /opening a remote browser connection can consume provider runtime/);
   assert.match(panel, /<details className=\{styles\.details\}>/);
   assert.match(panel, /Technical readiness details/);
   assert.match(panel, /safeBlockedBy/);
@@ -116,11 +119,13 @@ test("browser readiness panel uses protected safe contract and keeps technical c
   assert.doesNotMatch(panel, /GITHUB_APP_PRIVATE_KEY|GITHUB_APP_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|SIGNALFLOW_S3_SECRET_ACCESS_KEY|OPENAI_API_KEY/);
 });
 
-test("GP2 readiness route stays owner-authenticated, non-cacheable, and request-scoped for OIDC", () => {
+test("GP2 readiness route stays owner-authenticated, non-cacheable, request-scoped and live-probes CDP only on demand", () => {
   const route = read("app/api/gp2/readiness/route.js");
   assert.match(route, /requireOwnerAccess\(request\)/);
   assert.match(route, /cache-control": "private, no-store, max-age=0"/);
   assert.match(route, /gp2ReadinessStatus\(process\.env, \{/);
   assert.match(route, /vercelRuntimeOidcAvailable\(request, process\.env\)/);
+  assert.match(route, /searchParams\.get\("capture_probe"\) === "1"/);
+  assert.match(route, /probeCdpBrowserAccess/);
   assert.doesNotMatch(route, /SIGNALFLOW_ACCESS_KEY\s*[:=]|GITHUB_APP_PRIVATE_KEY\s*[:=]|OPENAI_API_KEY\s*[:=]/);
 });

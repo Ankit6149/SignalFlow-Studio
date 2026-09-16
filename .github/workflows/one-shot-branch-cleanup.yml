@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   cleanup:
-    if: github.event.head_commit.message == 'chore: run one-shot branch cleanup'
+    if: "${{ github.event.head_commit.message == 'chore: run one-shot branch cleanup v2' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Delete stale branches and verify survivors
@@ -28,7 +28,6 @@ jobs:
 
           repo = os.environ["REPOSITORY"]
           token = os.environ["GH_TOKEN"]
-          owner = repo.split("/", 1)[0]
           preserved = {
               "master",
               "feat/refine-workspace-loader-gate-c-20260915",

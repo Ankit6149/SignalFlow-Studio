@@ -1,4 +1,5 @@
 import { createContentOpportunityApplication } from "../application/contentOpportunityApplication.mjs";
+import { createGp2OpportunityRecoveryApplication } from "../application/gp2OpportunityRecoveryApplication.mjs";
 import { createGithubRepositoryBootstrapApplication } from "../application/githubRepositoryBootstrapApplication.mjs";
 import { createGithubSignalEvidenceRefreshApplication } from "../application/githubSignalEvidenceRefreshApplication.mjs";
 import { createProjectContextApplication } from "../application/projectContextApplication.mjs";
@@ -18,8 +19,24 @@ import {
   createServerProjectContextInferenceAdapter,
 } from "../infrastructure/serverInferenceAdapter.mjs";
 import { createGithubCredentialAuthority } from "./githubCredentialAuthority.mjs";
+import { resolveOwnerWorkspaceId } from "./githubConnectionDependencies.mjs";
 import { resolveGithubRuntimeEnv } from "./githubRuntimeConfig.mjs";
 import { createNeonQueryExecutor } from "./neonDatabase.mjs";
+
+export function createProductionGp2OpportunityRecoveryApplication({
+  env = process.env,
+  clock = createSystemClock(),
+} = {}) {
+  const runtimeEnv = resolveGithubRuntimeEnv(env);
+  const database = createNeonQueryExecutor({ databaseUrl: runtimeEnv.DATABASE_URL });
+  const workspaceId = resolveOwnerWorkspaceId(runtimeEnv);
+  const opportunityJobRepository = createPostgresSignalOpportunityJobRepository({ database });
+  return createGp2OpportunityRecoveryApplication({
+    workspaceId,
+    opportunityJobRepository,
+    clock,
+  });
+}
 
 export function createProductionSignalOpportunityWorker({
   origin,

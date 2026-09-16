@@ -14,16 +14,20 @@ function requiredOpaque(value, field) {
   return normalized;
 }
 
+function requireRecoveryRepository(value) {
+  if (!value || typeof value !== "object" || typeof value.requeueDead !== "function") {
+    throw new TypeError("GP2 opportunity recovery requires opportunityJobRepository.requeueDead().");
+  }
+  return value;
+}
+
 export function createGp2OpportunityRecoveryApplication({
   workspaceId,
   opportunityJobRepository,
   clock = createSystemClock(),
 } = {}) {
   const ownerWorkspaceId = requiredOpaque(workspaceId, "workspaceId");
-  const jobs = assertPort("opportunityJobRepository", opportunityJobRepository);
-  if (typeof jobs.requeueDead !== "function") {
-    throw new TypeError("GP2 opportunity recovery requires opportunityJobRepository.requeueDead().");
-  }
+  const jobs = requireRecoveryRepository(opportunityJobRepository);
   const time = assertPort("clock", clock);
 
   async function requeueBlocked({ limit = 3 } = {}) {

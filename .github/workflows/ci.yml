@@ -53,6 +53,11 @@ jobs:
         run: |
           set -o pipefail
           npm test 2>&1 | tee frontend-test-output.log
+      - name: Run GP2 deterministic preflight
+        working-directory: frontend
+        run: |
+          set -o pipefail
+          npm run gp2:preflight 2>&1 | tee -a frontend-test-output.log
       - name: Preserve frontend test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

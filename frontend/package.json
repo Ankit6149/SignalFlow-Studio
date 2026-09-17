@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "next dev",
     "test": "node --test tests/*.test.mjs",
+    "gp2:preflight": "node --test tests/githubSignalIngestion.test.mjs tests/gp2BurstIdempotency.test.mjs tests/hostedSignalOpportunityContinuation.test.mjs tests/gp2ExactRevisionEvidence.test.mjs tests/hostedInferenceProviderSelection.test.mjs tests/vercelGatewayAccessReadiness.test.mjs tests/vercelGatewayInference.test.mjs tests/gp2OpportunityRecovery.test.mjs tests/hostedGp2Preparation.test.mjs tests/hostedGp2PreparationResume.test.mjs tests/capturePrivateStorageIntegration.test.mjs tests/cdpCaptureWorkerAdapter.test.mjs tests/captureScreenshotQualityIntegration.test.mjs tests/screenshotDerivativeApplication.test.mjs tests/hostedScreenshotProduction.test.mjs tests/platformMediaReviewBinding.test.mjs tests/hostedExactAssetPreview.test.mjs tests/platformRevisionHistory.test.mjs tests/hostedOwnerReviewUi.test.mjs",
     "build": "next build",
     "start": "next start"
   },

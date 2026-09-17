@@ -54,7 +54,7 @@ test("Vercel Gateway adapter preserves a safe provider-specific error code", asy
   );
 });
 
-test("every canonical GP2 intelligence route considers request-scoped Vercel OIDC before direct provider keys", () => {
+test("every canonical GP2 intelligence route delegates hosted selection with request-scoped Vercel OIDC context", () => {
   const routes = [
     "app/api/intelligence/project-context/route.js",
     "app/api/intelligence/opportunity/route.js",
@@ -66,13 +66,17 @@ test("every canonical GP2 intelligence route considers request-scoped Vercel OID
 
   for (const route of routes) {
     const source = read(route);
-    assert.match(source, /const CANDIDATE_PROVIDERS = \["vercel_gateway", "gemini"/);
+    assert.match(source, /selectOperationalHostedInferenceProvider/);
     assert.match(source, /readVercelRuntimeOidcToken/);
     assert.match(source, /gatewayCredential = isOwner \? readVercelRuntimeOidcToken\(request, process\.env\) : ""/);
-    assert.match(source, /providerId === "vercel_gateway" && gatewayCredential/);
+    assert.match(source, /selected = await selectOperationalHostedInferenceProvider\(\{/);
+    assert.match(source, /requestedProvider,/);
+    assert.match(source, /env: process\.env,/);
+    assert.match(source, /gatewayCredential,/);
     assert.match(source, /apiKey: providerId === "vercel_gateway" \? gatewayCredential : undefined/);
     assert.match(source, /assertInferenceRouteAllowed/);
     assert.match(source, /allowServerKey: isOwner/);
+    assert.doesNotMatch(source, /const CANDIDATE_PROVIDERS =/);
   }
 });
 

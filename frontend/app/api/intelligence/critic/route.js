@@ -1,7 +1,5 @@
 import { requireOwnerAccess } from "../../_auth";
 import { generateJSON } from "../../../../lib/ai/generateJSON";
-import { PROVIDERS } from "../../../../lib/ai/types";
-import { assertModelGenerationProvider } from "../../../../lib/ai/generationPolicy.mjs";
 import {
   acceptAuthenticityCritic,
   acceptEvidenceCritic,
@@ -14,40 +12,13 @@ import {
   INFERENCE_TASK_TYPES,
   normalizeInferenceTask,
 } from "../../../../lib/inference/inferenceTasks.mjs";
+import { selectOperationalHostedInferenceProvider } from "../../../../lib/server/hostedInferenceProviderSelection.mjs";
 import { readVercelRuntimeOidcToken } from "../../../../lib/server/vercelRuntimeOidc.mjs";
 
 export const maxDuration = 45;
 
-const CANDIDATE_PROVIDERS = ["vercel_gateway", "gemini", "openai", "claude", "openrouter", "groq", "custom", "ollama", "lmstudio"];
-const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
+const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom"]);
 const CRITIC_TASKS = new Set([INFERENCE_TASK_TYPES.EVIDENCE_CRITIQUE, INFERENCE_TASK_TYPES.AUTHENTICITY_CRITIQUE]);
-
-function normalizedProvider(value) {
-  const candidate = String(value || "").trim().toLowerCase();
-  if (!candidate) return "";
-  return assertModelGenerationProvider(candidate);
-}
-
-function pickConfiguredProvider(requested = "", gatewayCredential = "") {
-  const candidates = Array.from(new Set([
-    requested,
-    String(process.env.DEFAULT_MODEL_PROVIDER || "").trim().toLowerCase(),
-    ...CANDIDATE_PROVIDERS,
-  ].filter(Boolean)));
-  for (const candidate of candidates) {
-    let providerId;
-    try {
-      providerId = normalizedProvider(candidate);
-    } catch {
-      continue;
-    }
-    const meta = PROVIDERS[providerId];
-    if (!meta || !CANDIDATE_PROVIDERS.includes(providerId)) continue;
-    if (providerId === "vercel_gateway" && gatewayCredential) return { providerId, meta };
-    if (meta.isConfigured()) return { providerId, meta };
-  }
-  return null;
-}
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } });
@@ -80,9 +51,14 @@ export async function POST(request) {
       return json({ ok: false, code: "inference_privacy_mismatch", error: "Critic classification must match the canonical source Signal." }, 400);
     }
 
-    const selected = pickConfiguredProvider(String(body?.provider || "").trim().toLowerCase(), gatewayCredential);
+    const requestedProvider = String(body?.provider || "").trim().toLowerCase();
+    const selected = await selectOperationalHostedInferenceProvider({
+      requestedProvider,
+      env: process.env,
+      gatewayCredential,
+    });
     if (!selected) {
-      return json({ ok: false, code: "inference_route_unavailable", error: "No configured model route is available for draft review." }, 503);
+      return json({ ok: false, code: "inference_route_unavailable", error: "No configured operational model route is available for draft review." }, 503);
     }
     const { providerId, meta } = selected;
     if (!isOwner && OWNER_ONLY_ENDPOINT_PROVIDERS.has(providerId)) {

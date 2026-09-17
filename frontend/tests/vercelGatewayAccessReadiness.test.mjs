@@ -33,7 +33,7 @@ test("Gateway readiness probe verifies auth without reading or exposing credit b
   assert.doesNotMatch(JSON.stringify(result), /opaque-runtime-token|5\.00/);
 });
 
-test("Gateway 403 makes GP2 inference readiness fail closed with a safe configuration name", async () => {
+test("Gateway 403 makes GP2 inference readiness fail closed when there is no direct fallback", async () => {
   const access = await probeVercelGatewayAccess({
     credential: "opaque-runtime-token",
     fetchImpl: async () => ({ ok: false, status: 403 }),
@@ -53,6 +53,39 @@ test("Gateway 403 makes GP2 inference readiness fail closed with a safe configur
   assert.doesNotMatch(JSON.stringify(inference), /opaque-runtime-token/);
 });
 
+test("Gateway 403 allows a configured direct remote fallback to satisfy inference readiness", () => {
+  const status = gp2ReadinessStatus({
+    VERCEL_OIDC_TOKEN: "opaque-runtime-token",
+    GEMINI_API_KEY: "opaque-gemini-key",
+  }, {
+    vercelOidcAvailable: true,
+    vercelGatewayAccess: { available: false, status: "forbidden", statusCode: 403 },
+  });
+  const inference = status.checks.find((item) => item.id === "inference");
+  assert.equal(inference.configured, true);
+  assert.deepEqual(inference.missing, []);
+  assert.equal(inference.provider, "gemini");
+  assert.equal(inference.selectionReason, "direct_fallback");
+  assert.equal(inference.gatewayStatus, "forbidden");
+  assert.equal(inference.gatewayStatusCode, 403);
+  assert.doesNotMatch(JSON.stringify(inference), /opaque-runtime-token|opaque-gemini-key/);
+});
+
+test("configured DEFAULT_MODEL_PROVIDER is reflected consistently in readiness", () => {
+  const status = gp2ReadinessStatus({
+    VERCEL_OIDC_TOKEN: "opaque-runtime-token",
+    DEFAULT_MODEL_PROVIDER: "openai",
+    OPENAI_API_KEY: "opaque-openai-key",
+  }, {
+    vercelOidcAvailable: true,
+    vercelGatewayAccess: { available: false, status: "forbidden", statusCode: 403 },
+  });
+  const inference = status.checks.find((item) => item.id === "inference");
+  assert.equal(inference.configured, true);
+  assert.equal(inference.provider, "openai");
+  assert.equal(inference.selectionReason, "default");
+});
+
 test("Gateway auth success makes request-scoped OIDC operationally ready", () => {
   const status = gp2ReadinessStatus({ VERCEL_OIDC_TOKEN: "opaque-runtime-token" }, {
     vercelOidcAvailable: true,
@@ -61,6 +94,7 @@ test("Gateway auth success makes request-scoped OIDC operationally ready", () =>
   const inference = status.checks.find((item) => item.id === "inference");
   assert.equal(inference.configured, true);
   assert.deepEqual(inference.missing, []);
+  assert.equal(inference.provider, "vercel_gateway");
   assert.equal(inference.gatewayStatus, "authorized");
   assert.equal(inference.gatewayStatusCode, 200);
 });

@@ -1,17 +1,9 @@
 import { githubSourceConnectionConfigurationStatus } from "./githubConnectionDependencies.mjs";
 import { hostedAssetStorageConfigurationStatus } from "./hostedAssetPreviewDependencies.mjs";
 import { hostedScreenshotConfigurationStatus } from "./hostedScreenshotProductionDependencies.mjs";
+import { selectHostedInferenceProvider } from "./hostedInferenceProviderSelection.mjs";
 import { ownerAccessConfigurationStatus } from "./ownerAccessPolicy.mjs";
 import { resolveMediaPreviewReceiptSecret } from "./runtimeSigningSecrets.mjs";
-
-const DIRECT_INFERENCE_ENV_GROUPS = Object.freeze([
-  ["OPENAI_API_KEY"],
-  ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
-  ["GEMINI_API_KEY"],
-  ["GROQ_API_KEY"],
-  ["OPENROUTER_API_KEY"],
-  ["CUSTOM_OPENAI_BASE_URL", "CUSTOM_OPENAI_API_KEY"],
-]);
 
 const UPSTREAM_CONFIGURATION = Object.freeze({
   DATABASE_URL: "database",
@@ -30,10 +22,6 @@ function present(env, name) {
   return Boolean(String(env?.[name] || "").trim());
 }
 
-function groupReady(env, group) {
-  return group.every((name) => present(env, name));
-}
-
 function unique(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(String).filter(Boolean))].sort();
 }
@@ -44,7 +32,6 @@ function check(id, label, configured, missing = [], details = {}) {
     label,
     configured: Boolean(configured),
     missing: unique(missing),
-    blockedBy: unique(details.blockedBy),
     ...details,
     blockedBy: unique(details.blockedBy),
   });
@@ -156,18 +143,27 @@ export function gp2ReadinessStatus(env = process.env, {
     previewSecretReady ? [] : ["SIGNALFLOW_MEDIA_PREVIEW_RECEIPT_SECRET|SIGNALFLOW_ACCESS_KEY"],
   );
 
-  const gatewayCredentialAvailable = Boolean(vercelOidcAvailable)
+  const gatewayCredential = Boolean(vercelOidcAvailable)
     || present(env, "VERCEL_OIDC_TOKEN")
-    || present(env, "AI_GATEWAY_API_KEY");
+    || present(env, "AI_GATEWAY_API_KEY")
+    ? String(env?.AI_GATEWAY_API_KEY || env?.VERCEL_OIDC_TOKEN || "request-scoped-vercel-oidc")
+    : "";
   const gatewayAccessKnown = Boolean(vercelGatewayAccess)
     && typeof vercelGatewayAccess.available === "boolean";
-  const gatewayReady = gatewayCredentialAvailable
-    && (!gatewayAccessKnown || vercelGatewayAccess.available === true);
-  const directInferenceReady = DIRECT_INFERENCE_ENV_GROUPS.some((group) => groupReady(env, group));
-  const inferenceReady = gatewayCredentialAvailable ? gatewayReady : directInferenceReady;
+  const gatewayOperational = !gatewayAccessKnown || vercelGatewayAccess.available === true;
+  const selectedInference = selectHostedInferenceProvider({
+    env,
+    gatewayCredential,
+    gatewayOperational,
+  });
+  const inferenceReady = Boolean(selectedInference);
+  const gatewayBlockedWithoutFallback = Boolean(gatewayCredential)
+    && gatewayAccessKnown
+    && vercelGatewayAccess.available === false
+    && !inferenceReady;
   const inferenceMissing = inferenceReady
     ? []
-    : gatewayCredentialAvailable && gatewayAccessKnown
+    : gatewayBlockedWithoutFallback
       ? ["VERCEL_AI_GATEWAY_ACCESS"]
       : ["VERCEL_RUNTIME_OIDC|AI_GATEWAY_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|CUSTOM_OPENAI_BASE_URL+CUSTOM_OPENAI_API_KEY"];
   const inference = check(
@@ -176,7 +172,8 @@ export function gp2ReadinessStatus(env = process.env, {
     inferenceReady,
     inferenceMissing,
     {
-      provider: gatewayCredentialAvailable ? "vercel_gateway" : directInferenceReady ? "direct_provider" : null,
+      provider: selectedInference?.providerId || (gatewayBlockedWithoutFallback ? "vercel_gateway" : null),
+      selectionReason: selectedInference?.reason || null,
       gatewayStatus: gatewayAccessKnown ? String(vercelGatewayAccess.status || "unknown") : null,
       gatewayStatusCode: gatewayAccessKnown && Number.isInteger(vercelGatewayAccess.statusCode)
         ? vercelGatewayAccess.statusCode

@@ -4,23 +4,13 @@ import {
   createProductionGp2OpportunityRecoveryApplication,
   createProductionSignalOpportunityWorker,
 } from "../../../../lib/server/signalOpportunityWorkerDependencies.mjs";
-import { probeVercelGatewayAccess } from "../../../../lib/server/vercelGatewayAccess.mjs";
+import { selectOperationalHostedInferenceProvider } from "../../../../lib/server/hostedInferenceProviderSelection.mjs";
 import { readVercelRuntimeOidcToken } from "../../../../lib/server/vercelRuntimeOidc.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_RECOVERY_JOBS = 3;
-const SAFE_GATEWAY_STATUSES = new Set([
-  "authorized",
-  "missing",
-  "unauthorized",
-  "forbidden",
-  "rate_limited",
-  "upstream_error",
-  "unreachable",
-  "unavailable",
-]);
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -33,27 +23,23 @@ function json(body, status = 200) {
   });
 }
 
-function safeGatewayStatus(value) {
-  const normalized = String(value || "unavailable").trim().toLowerCase();
-  return SAFE_GATEWAY_STATUSES.has(normalized) ? normalized : "unavailable";
-}
-
 export async function POST(request) {
   const denied = requireOwnerAccess(request);
   if (denied) return denied;
 
   try {
     const runtimeOidc = readVercelRuntimeOidcToken(request, process.env);
-    const credential = String(process.env.AI_GATEWAY_API_KEY || runtimeOidc || "").trim();
-    const gatewayAccess = credential
-      ? await probeVercelGatewayAccess({ credential })
-      : { available: false, status: "missing" };
+    const gatewayCredential = String(process.env.AI_GATEWAY_API_KEY || runtimeOidc || "").trim();
+    const selectedProvider = await selectOperationalHostedInferenceProvider({
+      env: process.env,
+      gatewayCredential,
+    });
 
-    if (!gatewayAccess.available) {
+    if (!selectedProvider) {
       return json({
         ok: false,
         code: "gp2_inference_not_ready",
-        inferenceStatus: safeGatewayStatus(gatewayAccess.status),
+        inferenceStatus: "unavailable",
       }, 409);
     }
 

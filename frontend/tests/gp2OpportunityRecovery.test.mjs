@@ -87,17 +87,22 @@ test("Postgres recovery is workspace-scoped, dead-only, error-allowlisted, locke
   assert.deepEqual(calls[0].params.slice(0, 4), [WORKSPACE, "opportunity_evaluation", ["vercel_gateway_http_403"], 3]);
 });
 
-test("recovery route is owner-only, live-gates inference before requeue and restarts durable processing after response", () => {
+test("recovery route is owner-only, uses shared operational hosted inference selection and restarts durable processing after response", () => {
   const route = fs.readFileSync(path.join(ROOT, "app/api/gp2/recovery/route.js"), "utf8");
   assert.match(route, /requireOwnerAccess\(request\)/);
   assert.match(route, /readVercelRuntimeOidcToken\(request, process\.env\)/);
-  assert.match(route, /probeVercelGatewayAccess\(\{ credential \}\)/);
-  assert.match(route, /if \(!gatewayAccess\.available\)/);
+  assert.match(route, /selectOperationalHostedInferenceProvider/);
+  assert.match(route, /selectedProvider = await selectOperationalHostedInferenceProvider\(\{/);
+  assert.match(route, /env: process\.env,/);
+  assert.match(route, /gatewayCredential,/);
+  assert.match(route, /if \(!selectedProvider\)/);
   assert.match(route, /gp2_inference_not_ready/);
   assert.match(route, /requeueBlocked\(\{ limit: MAX_RECOVERY_JOBS \}\)/);
   assert.match(route, /after\(async \(\) =>/);
   assert.match(route, /createProductionSignalOpportunityWorker\(\{ origin \}\)/);
   assert.match(route, /await worker\.processNext\(\)/);
+  assert.doesNotMatch(route, /probeVercelGatewayAccess/);
+  assert.doesNotMatch(route, /if \(!gatewayAccess\.available\)/);
   assert.doesNotMatch(route, /credential["']\s*:/);
   assert.doesNotMatch(route, /statusCode/);
 });

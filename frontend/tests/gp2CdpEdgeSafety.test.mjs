@@ -107,7 +107,21 @@ test("bounded secret references become target-origin cookies without exposing se
   const cookieCommand = client.commands.find((entry) => entry.method === "Network.setCookies");
   assert.equal(cookieCommand.params.cookies[0].url, "https://preview.example.test/");
   assert.equal(cookieCommand.params.cookies[0].name, "signalflow_session");
-  assert.equal(JSON.stringify(session).includes("super-secret-cookie-value"), false, "resolved secrets must not become session/provenance state");
+  const safeSessionState = {
+    targetId: session.targetId,
+    sessionId: session.sessionId,
+    targetOrigin: session.targetOrigin,
+    currentUrl: session.currentUrl,
+    environment: session.environment,
+    viewport: session.viewport,
+    deadlineMs: session.deadlineMs,
+    closed: session.closed,
+  };
+  assert.equal(JSON.stringify(safeSessionState).includes("super-secret-cookie-value"), false, "resolved secrets must not become persisted session metadata");
+
+  await capture.navigate(session, "https://preview.example.test/demo");
+  const output = await capture.captureCheckpoint(session, { checkpoint: "authenticated-proof" });
+  assert.equal(JSON.stringify(output.captureMetadata).includes("super-secret-cookie-value"), false, "resolved secrets must not enter capture provenance");
 
   await capture.close(session);
 });

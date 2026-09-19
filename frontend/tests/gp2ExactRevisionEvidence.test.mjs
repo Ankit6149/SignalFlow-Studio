@@ -308,3 +308,69 @@ test("durable opportunity worker refreshes evidence before inference and retries
   assert.equal(continuationCalls, continuationCallsBeforeFailure, "opportunity inference must not run after exact evidence preparation fails");
   assert.equal(failed.at(-1).input.errorCode, "github_evidence_revision_mismatch");
 });
+
+
+test("generic repository enrichment failure retries safely without deactivating source authority or entering opportunity inference", async () => {
+  const connection = activeConnection();
+  const signal = githubSignal();
+  const signalRepository = createMemoryContentSignalRepository([signal]);
+  const connectionRepository = createMemorySourceConnectionRepository([connection]);
+  let continuationCalls = 0;
+  const failed = [];
+  const job = {
+    jobId: "signal-opportunity:signal-gp2-enrichment-failure",
+    workspaceId: WORKSPACE,
+    signalId: signal.signalId,
+    status: "processing",
+  };
+  const jobs = {
+    async claimNext() { return job; },
+    async complete() { throw new Error("unexpected completion"); },
+    async fail(jobId, input) {
+      failed.push({ jobId, input });
+      return { ...job, status: "pending", lastErrorCode: input.errorCode };
+    },
+  };
+
+  const refresh = createGithubSignalEvidenceRefreshApplication({
+    workspaceId: WORKSPACE,
+    contentSignalRepository: signalRepository,
+    sourceConnectionRepository: connectionRepository,
+    githubRepositoryBootstrapApplication: {
+      async bootstrapRepository() {
+        const error = new Error("bounded repository enrichment unavailable");
+        error.code = "github_repository_enrichment_unavailable";
+        throw error;
+      },
+    },
+  });
+
+  const worker = createSignalOpportunityWorkerApplication({
+    opportunityJobRepository: jobs,
+    async createEvidenceRefreshApplication() {
+      return refresh;
+    },
+    async createContinuationApplication() {
+      return {
+        async continueToOpportunity() {
+          continuationCalls += 1;
+          return { opportunity: { opportunityId: "should-not-exist", recommendation: "post" } };
+        },
+      };
+    },
+    clock: clock(),
+  });
+
+  const result = await worker.processNext();
+  assert.equal(result.status, "retry_scheduled");
+  assert.equal(result.errorCode, "github_repository_enrichment_unavailable");
+  assert.equal(continuationCalls, 0, "opportunity inference must not run when repository enrichment fails");
+  assert.equal(failed.length, 1);
+  assert.equal(failed[0].input.errorCode, "github_repository_enrichment_unavailable");
+
+  const persistedConnection = await connectionRepository.get(CONNECTION);
+  assert.equal(persistedConnection.status, SOURCE_CONNECTION_STATUSES.ACTIVE);
+  assert.equal(persistedConnection.verifiedAt, NOW);
+  assert.equal(persistedConnection.installationRef, "77");
+  assert.equal(persistedConnection.resourceScopes[0].enabled, true);
+});

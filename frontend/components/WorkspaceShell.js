@@ -5,6 +5,7 @@ import Link from "next/link";
 import BrandMark from "./BrandMark";
 import GithubSourceConnectionPanel from "./GithubSourceConnectionPanel";
 import Gp2ReadinessPanel from "./Gp2ReadinessPanel";
+import Gp2TracePanel from "./Gp2TracePanel";
 import OwnerSessionUnlockPanel from "./OwnerSessionUnlockPanel";
 import styles from "./WorkspaceShell.module.css";
 
@@ -145,7 +146,7 @@ export default function WorkspaceShell({ activeItem, children, onNavigate, statu
               description="Direct-create work can stay usable, but GitHub-connected opportunities and reviews need your private owner session. Unlock here and continue on the same page."
             />
           )}
-          {activeItem === "connections" && <><GithubSourceConnectionPanel /><Gp2ReadinessPanel /></>}
+          {activeItem === "connections" && <><GithubSourceConnectionPanel /><Gp2ReadinessPanel /><Gp2TracePanel /></>}
           {children}
         </main>
       </div>

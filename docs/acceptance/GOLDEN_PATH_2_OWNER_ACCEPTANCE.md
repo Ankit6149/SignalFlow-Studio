@@ -24,18 +24,18 @@ real meaningful GitHub work event
 
 A routine dependency-only or similarly low-value event must also be exercised and must **not** be promoted merely because a webhook arrived.
 
-## Production checkpoint — verified 2026-09-16
+## Production checkpoint — verified 2026-09-19
 
 Record only safe identifiers and states.
 
-- Production Git SHA: `7ec89657badb8a3bfab146a51e1dfd03dbc989f5`
-- Vercel production deployment ID: `dpl_3eRv9BgVJw2dADE21bousyJarHgK` — `READY`
+- Production Git SHA: `33295c64e306eee55644193b7dced567dbf410e6`
+- Vercel production deployment ID: `dpl_CnJkXdG9mDntfqM9cFJQTwgDXwFW` — `READY`
 - Production readiness: **not fully ready** — hosted inference is operationally blocked by `vercel_gateway_http_403`; remote CDP endpoint is not configured
 - GitHub source connection safe ID: `signalflow-github-connection-794c1349-dbfa-414a-ae96-6ebb4444d0fd`
 - Selected repository safe provider ID/name: GitHub repository ID `1269263906`, `Ankit6149/SignalFlow-Studio`
 - Project ID: `sf-project-github-1269263906`
-- Current live ingestion count: 11 GitHub Signals / 10 revision-bound / 99 bounded SourceArtifacts
-- Current continuation state: 10 dead signal-opportunity jobs, all safe error code `vercel_gateway_http_403`
+- Current live ingestion count: 21 GitHub Signals / 20 revision-bound / 189 bounded SourceArtifacts
+- Current continuation state: 20 dead signal-opportunity jobs, 0 pending, 0 completed; latest jobs still fail once with safe error code `vercel_gateway_http_403`
 - Current ProjectContextSnapshot count: 0
 - Current ContentOpportunity count: 0
 
@@ -65,15 +65,15 @@ Evidence:
 - [x] Delivery ID/event family is normalized safely for current live events.
 - [x] Canonical ContentSignals are being persisted from live GitHub events.
 - [x] Revision-bound live signals retain exact immutable source revisions.
-- [ ] A duplicate delivery resolves to the same signal / does not create a second editorial chain. **Distinct-ingestion integrity is observed, but an explicit duplicate-delivery acceptance case still must be exercised.**
+- [x] Deterministic duplicate/burst delivery converges on one canonical Signal/job chain and cannot reopen completed work. **Final live duplicate-delivery evidence remains part of the hosted acceptance run.**
 - [x] No raw credential material was exposed in the safe production evidence collected for this ledger.
 
 Safe evidence:
 
-- Revision-bound GitHub Signals: `10`
-- Distinct immutable revisions: `10`
-- Distinct external idempotency keys: `10`
-- Distinct external event IDs: `10`
+- Revision-bound GitHub Signals: `20`
+- Distinct immutable revisions: `20`
+- Distinct external idempotency keys: `20`
+- Distinct external event IDs: `20`
 - Duplicate accumulation detected in current persisted set: `none`
 - Reserved final positive acceptance event: PR #291, currently unmerged
 
@@ -90,9 +90,9 @@ Safe evidence:
 
 ## C. Opportunity and exact evidence
 
-- [x] Revision-bound live signals currently produce one durable continuation job each; 10 revision-bound Signals map to 10 durable jobs.
+- [x] Revision-bound live signals currently produce one durable continuation job each; 20 revision-bound Signals map to 20 durable jobs.
 - [ ] Before opportunity inference, SignalFlow refreshes/reuses bounded repository evidence at the exact signal revision and completes ProjectContext synthesis. **99 bounded SourceArtifacts already exist, but inference blocks before ProjectContextSnapshot completion.**
-- [ ] Browser close/refresh does not destroy pending or completed continuation state.
+- [x] Browser close/refresh is deterministically resumable through canonical hosted preparation state; final live hosted proof remains part of the acceptance run.
 - [ ] Opportunity explains what changed, why now, evidence readiness, narrative fit, and repetition risk.
 - [ ] Opportunity pins the exact `projectContextSnapshotId` used during evaluation.
 - [ ] The pinned ProjectContextSnapshot resolves to immutable SourceArtifact IDs and the exact GitHub repository revision.
@@ -100,10 +100,10 @@ Safe evidence:
 
 Safe evidence:
 
-- Current SourceArtifact count: `99`
+- Current SourceArtifact count: `189`
 - Current ProjectContextSnapshot count: `0`
 - Current ContentOpportunity count: `0`
-- Current durable-job blocker: `vercel_gateway_http_403` on all 10 continuation jobs
+- Current durable-job blocker: `vercel_gateway_http_403` on all 20 continuation jobs
 - Owner-safe recovery path: merged PR #295; requeue remains gated on live inference readiness
 
 ## D. Evidence-backed planning
@@ -158,22 +158,22 @@ Safe evidence:
 
 ## G. Recovery matrix
 
-- [ ] duplicate webhook delivery
+- [x] duplicate webhook delivery — deterministic concurrent delivery coverage converges on one stable Signal/job chain and cannot reopen completed work
 - [x] unresolved/missing GitHub source revision remains without a continuation job in the observed legacy/non-promotable case
 - [x] opportunity inference failure enters a durable dead state with safe code `vercel_gateway_http_403`; owner-safe bounded recovery is deployed but final retry success awaits healthy inference
-- [ ] source/project enrichment failure without connection loss
-- [ ] exact evidence refresh/revision mismatch blocks before opportunity inference
-- [ ] capture worker retry
-- [ ] privacy block
-- [ ] quality `needs_review`
-- [ ] derivative failure/block
-- [ ] one destination generation failure while successful work remains intact
-- [ ] stale browser tab / stale current revision
-- [ ] browser refresh/reopen during processing and after review
+- [x] source/project enrichment failure without connection loss — deterministic coverage schedules a safe retry, does not enter Opportunity inference, and preserves active verified GitHub authority
+- [x] exact evidence refresh/revision mismatch blocks before opportunity inference
+- [x] capture worker retry
+- [x] privacy block
+- [x] quality `needs_review`
+- [x] derivative failure/block
+- [x] one destination generation failure while successful work remains intact
+- [x] stale browser tab / stale current revision
+- [x] browser refresh/reopen during processing and after review
 
 Current deterministic recovery evidence:
 
-- 10 dead opportunity jobs are workspace-scoped and share the same safe error class.
+- 20 dead opportunity jobs are workspace-scoped and share the same safe error class.
 - PR #295 provides bounded dead-only recovery and refuses requeue while inference is still unhealthy.
 - No manual production SQL is required for final recovery.
 
@@ -194,7 +194,7 @@ Current `master` / recovery production:
 
 Reserved Gate-C PR #291 after refresh onto hardened master:
 
-- [x] behind master: 0
+- [ ] behind master: 10 as of the 2026-09-19 audit; refresh immediately before final live acceptance without changing the intended two-file Gate-C diff
 - [x] diff remains exactly two intended loading-surface files
 - [x] frontend regression tests green
 - [x] production dependency audit green

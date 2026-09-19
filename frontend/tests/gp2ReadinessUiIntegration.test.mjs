@@ -88,8 +88,10 @@ test("Vercel GP2 readiness blocks GitHub on the owner lock without duplicating t
 test("Connections workspace puts the user action before technical readiness details", () => {
   const shell = read("components/WorkspaceShell.js");
   assert.match(shell, /import Gp2ReadinessPanel from "\.\/Gp2ReadinessPanel"/);
-  assert.match(shell, /activeItem === "connections" && <><GithubSourceConnectionPanel \/><Gp2ReadinessPanel \/><\/>/);
+  assert.match(shell, /import Gp2TracePanel from "\.\/Gp2TracePanel"/);
+  assert.match(shell, /activeItem === "connections" && <><GithubSourceConnectionPanel \/><Gp2ReadinessPanel \/><Gp2TracePanel \/><\/>/);
   assert.ok(shell.indexOf("<GithubSourceConnectionPanel />") < shell.indexOf("<Gp2ReadinessPanel />"));
+  assert.ok(shell.indexOf("<Gp2ReadinessPanel />") < shell.indexOf("<Gp2TracePanel />"));
 });
 
 test("browser readiness panel uses protected safe contract and keeps technical checks secondary", () => {

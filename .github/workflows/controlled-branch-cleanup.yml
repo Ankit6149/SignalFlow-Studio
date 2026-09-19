@@ -1,0 +1,75 @@
+name: Controlled branch cleanup
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    if: ${{ startsWith(github.event.head_commit.message, 'Run controlled branch cleanup') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete stale branches and verify survivors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const keep = new Set([
+              "master",
+              "feat/refine-workspace-loader-gate-c-20260915",
+              "feat/editorial-execution-layer",
+            ]);
+
+            const { owner, repo } = context.repo;
+            const sameRepo = `${owner}/${repo}`;
+
+            const openPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            for (const pull of openPulls) {
+              if (pull.head?.repo?.full_name === sameRepo && pull.head?.ref) {
+                keep.add(pull.head.ref);
+              }
+            }
+
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            const deleted = [];
+            for (const branch of branches) {
+              if (keep.has(branch.name) || branch.protected) continue;
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `heads/${branch.name}`,
+              });
+              deleted.push(branch.name);
+            }
+
+            const remaining = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            const unexpected = remaining
+              .filter((branch) => !keep.has(branch.name) && !branch.protected)
+              .map((branch) => branch.name);
+
+            core.info(`Deleted ${deleted.length} stale branches: ${deleted.join(", ")}`);
+            core.info(`Remaining branches: ${remaining.map((branch) => branch.name).join(", ")}`);
+
+            if (unexpected.length) {
+              core.setFailed(`Unexpected stale branches remain: ${unexpected.join(", ")}`);
+            }

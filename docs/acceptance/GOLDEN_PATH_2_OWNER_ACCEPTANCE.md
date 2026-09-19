@@ -24,18 +24,18 @@ real meaningful GitHub work event
 
 A routine dependency-only or similarly low-value event must also be exercised and must **not** be promoted merely because a webhook arrived.
 
-## Production checkpoint — verified 2026-09-19
+## Production checkpoint — verified 2026-09-20 (pre-handoff-doc merge baseline)
 
 Record only safe identifiers and states.
 
-- Production Git SHA: `33295c64e306eee55644193b7dced567dbf410e6`
-- Vercel production deployment ID: `dpl_CnJkXdG9mDntfqM9cFJQTwgDXwFW` — `READY`
+- Production Git SHA: `fe192c4f1bd42cc7f2b0b456eb58a5837db0b3c3`
+- Vercel production deployment ID: `dpl_3MXL3qkTTqtqCtNPnXq2xmLp9KdL` — `READY`
 - Production readiness: **not fully ready** — hosted inference is operationally blocked by `vercel_gateway_http_403`; remote CDP endpoint is not configured
 - GitHub source connection safe ID: `signalflow-github-connection-794c1349-dbfa-414a-ae96-6ebb4444d0fd`
 - Selected repository safe provider ID/name: GitHub repository ID `1269263906`, `Ankit6149/SignalFlow-Studio`
 - Project ID: `sf-project-github-1269263906`
-- Current live ingestion count: 21 GitHub Signals / 20 revision-bound / 189 bounded SourceArtifacts
-- Current continuation state: 20 dead signal-opportunity jobs, 0 pending, 0 completed; latest jobs still fail once with safe error code `vercel_gateway_http_403`
+- Current live ingestion count: 25 GitHub Signals / 24 revision-bound / 225 bounded SourceArtifacts
+- Current continuation state: 24 dead signal-opportunity jobs, 0 pending, 0 completed; all 24 currently share safe error code `vercel_gateway_http_403`
 - Current ProjectContextSnapshot count: 0
 - Current ContentOpportunity count: 0
 
@@ -70,12 +70,12 @@ Evidence:
 
 Safe evidence:
 
-- Revision-bound GitHub Signals: `20`
-- Distinct immutable revisions: `20`
-- Distinct external idempotency keys: `20`
-- Distinct external event IDs: `20`
+- Revision-bound GitHub Signals: `24`
+- Distinct immutable revisions: `24`
+- Distinct external idempotency keys: `24`
+- Distinct external event IDs: `24`
 - Duplicate accumulation detected in current persisted set: `none`
-- Reserved final positive acceptance event: PR #291, currently unmerged
+- Reserved final positive acceptance event: PR #315, currently open/unmerged; it supersedes auto-closed #291
 
 ### Noise event
 
@@ -90,8 +90,8 @@ Safe evidence:
 
 ## C. Opportunity and exact evidence
 
-- [x] Revision-bound live signals currently produce one durable continuation job each; 20 revision-bound Signals map to 20 durable jobs.
-- [ ] Before opportunity inference, SignalFlow refreshes/reuses bounded repository evidence at the exact signal revision and completes ProjectContext synthesis. **99 bounded SourceArtifacts already exist, but inference blocks before ProjectContextSnapshot completion.**
+- [x] Revision-bound live signals currently produce one durable continuation job each; 24 revision-bound Signals map to 24 durable jobs.
+- [ ] Before opportunity inference, SignalFlow refreshes/reuses bounded repository evidence at the exact signal revision and completes ProjectContext synthesis. **225 bounded SourceArtifacts already exist, but inference blocks before ProjectContextSnapshot completion.**
 - [x] Browser close/refresh is deterministically resumable through canonical hosted preparation state; final live hosted proof remains part of the acceptance run.
 - [ ] Opportunity explains what changed, why now, evidence readiness, narrative fit, and repetition risk.
 - [ ] Opportunity pins the exact `projectContextSnapshotId` used during evaluation.
@@ -100,10 +100,10 @@ Safe evidence:
 
 Safe evidence:
 
-- Current SourceArtifact count: `189`
+- Current SourceArtifact count: `225`
 - Current ProjectContextSnapshot count: `0`
 - Current ContentOpportunity count: `0`
-- Current durable-job blocker: `vercel_gateway_http_403` on all 20 continuation jobs
+- Current durable-job blocker: `vercel_gateway_http_403` on all 24 continuation jobs
 - Owner-safe recovery path: merged PR #295; requeue remains gated on live inference readiness
 
 ## D. Evidence-backed planning
@@ -173,7 +173,7 @@ Safe evidence:
 
 Current deterministic recovery evidence:
 
-- 20 dead opportunity jobs are workspace-scoped and share the same safe error class.
+- 24 dead opportunity jobs are workspace-scoped and share the same safe error class.
 - PR #295 provides bounded dead-only recovery and refuses requeue while inference is still unhealthy.
 - No manual production SQL is required for final recovery.
 
@@ -192,17 +192,20 @@ Current `master` / recovery production:
 - [x] Vercel production READY after merge
 - [x] current runtime-error-cluster inspection showed no unresolved production error cluster during the recovery deployment audit window
 
-Reserved Gate-C PR #291 after refresh onto hardened master:
+Reserved Gate-C PR #315 on current master:
 
-- [ ] behind master: 10 as of the 2026-09-19 audit; refresh immediately before final live acceptance without changing the intended two-file Gate-C diff
-- [x] diff remains exactly two intended loading-surface files
+- [x] #291 was auto-closed during controlled branch cleanup and is superseded by #315
+- [x] #315 is behind master: 0 at the 2026-09-20 pre-handoff checkpoint
+- [x] diff remains exactly two intended loading-surface files: `frontend/app/loading.js` and `frontend/app/state.module.css`
+- [x] current #315 head: `8b652cfe029975535fd9522d73a5af21b39505aa`
 - [x] frontend regression tests green
 - [x] production dependency audit green
 - [x] Next.js production build green
 - [x] Python tests green
 - [x] MCP tests green
-- [x] Vercel preview READY at refreshed commit `770a0284ebad79f387b592b331e9d3dcc1971d4a`
-- [ ] merge #291 only after inference and CDP are operational for the live acceptance run
+- [x] current #315 Vercel preview READY
+- [ ] merge #315 only after inference and CDP are operational for the live acceptance run
+- [ ] if master changes first, refresh #315 while preserving the exact two-file Gate-C intent and rerun all gates
 - [ ] final post-merge `master` CI green for Gate C
 - [ ] final Vercel production READY on the exact Gate-C merged SHA
 - [ ] final post-deploy runtime/data inspection clean or understood
@@ -212,7 +215,7 @@ Reserved Gate-C PR #291 after refresh onto hardened master:
 1. Hosted inference: production AI Gateway generation currently returns HTTP 403. SignalFlow's raw OpenAI-compatible Gateway call follows Vercel's documented Bearer/OIDC contract, so treat this as an authorization/account condition unless a later credential-backed probe proves otherwise.
 2. Remote screenshot execution: production still needs an approved WSS CDP endpoint, plus `SIGNALFLOW_CDP_BROWSER_AUTH_TOKEN` only if that provider requires bearer auth.
 
-Do not merge #291, replay GitHub history, create manual Opportunities, or manually modify dead jobs while either blocker remains.
+Do not merge #315, replay GitHub history, create manual Opportunities, or manually modify dead jobs while either blocker remains.
 
 ## Closing rule
 

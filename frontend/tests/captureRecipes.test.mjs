@@ -236,3 +236,71 @@ test("privacy rules fail closed before screenshot output is persisted", async ()
   assert.equal((await captureRepository.getJob("capture-job-private")).status, "failed");
   assert.equal((await assetRepository.list()).length, 0);
 });
+
+
+test("retryable browser crash reschedules the same capture job and later succeeds without duplicate output", async () => {
+  const recipe = activeRecipe();
+  const captureRepository = createMemoryCaptureRepository({ recipes: [recipe] });
+  const durableJobs = createMemoryDurableJobPort();
+  const assetRepository = createMemoryAssetRepository();
+  const blobStorage = createMemoryBlobStorage();
+  let nowMs = Date.parse(T0);
+  const time = {
+    now() {
+      nowMs += 20_000;
+      return new Date(nowMs).toISOString();
+    },
+  };
+  const pair = createCaptureJob({
+    captureJobId: "capture-job-retry",
+    jobId: "job-retry",
+    recipe,
+    captureKind: "screenshot",
+    requestedCheckpoint: "hero",
+    idempotencyKey: "capture-job-retry-v1",
+    createdAt: time.now(),
+  });
+  await captureRepository.upsertJob(pair.captureJob);
+  await enqueueDurableJob(durableJobs, pair.durableJob);
+
+  const baseWorker = createDeterministicCaptureWorkerAdapter({ visibleSelectors: ["#app"] });
+  let captureAttempts = 0;
+  const worker = {
+    ...baseWorker,
+    async captureCheckpoint(session, step) {
+      captureAttempts += 1;
+      if (captureAttempts === 1) {
+        const error = new Error("simulated browser crash");
+        error.code = "browser_crash";
+        throw error;
+      }
+      return baseWorker.captureCheckpoint(session, step);
+    },
+  };
+
+  const application = createCaptureExecutionApplication({
+    durableJobRepository: durableJobs,
+    captureRepository,
+    captureWorkerAdapter: worker,
+    assetRepository,
+    blobStorage,
+    clock: time,
+    idService: createDeterministicIdService("capture-retry"),
+    environment: "demo",
+    leaseOwner: "worker-retry",
+  });
+
+  await assert.rejects(() => application.runNext(), (error) => error.code === "browser_crash");
+  const afterFailure = await durableJobs.get("job-retry");
+  assert.equal(afterFailure.status, JOB_STATUSES.RETRYING);
+  assert.equal(afterFailure.lastError.code, "browser_crash");
+  assert.equal((await assetRepository.list()).length, 0);
+
+  const result = await application.runNext();
+  assert.equal(result.durableJob.status, JOB_STATUSES.SUCCEEDED);
+  assert.equal(result.captureJob.status, "succeeded");
+  assert.equal(result.assets.length, 1);
+  assert.equal(captureAttempts, 2);
+  assert.equal((await assetRepository.list()).length, 1);
+  assert.deepEqual(result.durableJob.outputRefs, [result.assets[0].assetId]);
+});

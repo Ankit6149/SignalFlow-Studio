@@ -1,4 +1,5 @@
 import { generateText } from "./generateText";
+import { malformedProviderResponse, ProviderError } from "./providerErrors.mjs";
 
 /**
  * Executes a prompt, requests JSON, and performs robust string-to-JSON repairs.
@@ -7,7 +8,14 @@ export async function generateJSON({ provider, prompt, modelOverride = null, con
   const rawText = await generateText({ provider, prompt, modelOverride, config });
   
   if (!rawText || typeof rawText !== "string") {
-    throw new Error("Model returned empty or non-string response.");
+    throw new ProviderError({
+      code: "provider_empty_response",
+      message: "The model provider returned no usable output.",
+      provider,
+      model: modelOverride || "",
+      retryable: true,
+      recoveryAction: "retry_destination",
+    });
   }
 
   // Attempt standard parsing first
@@ -47,10 +55,10 @@ export async function generateJSON({ provider, prompt, modelOverride = null, con
       try {
         return JSON.parse(relaxedJson);
       } catch (err2) {
-        throw new Error(`JSON Repair failed. Raw content: ${rawText.substring(0, 200)}...`);
+        throw malformedProviderResponse({ provider, model: modelOverride || "" });
       }
     }
   }
 
-  throw new Error(`Model response did not contain a valid JSON structure. Raw start: ${rawText.substring(0, 150)}`);
+  throw malformedProviderResponse({ provider, model: modelOverride || "" });
 }

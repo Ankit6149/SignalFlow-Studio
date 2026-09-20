@@ -56,7 +56,7 @@ const uniqueFiles = new Map();
 
 for (const traceFile of traceFiles) {
   const trace = JSON.parse(await fs.readFile(traceFile, "utf8"));
-  const resolvedFiles = Array.from(new Set((trace.files || []).map((entry) => path.resolve(path.dirname(traceFile), entry)));
+  const resolvedFiles = Array.from(new Set((trace.files || []).map((entry) => path.resolve(path.dirname(traceFile), entry))));
   resolvedFiles.push(traceFile.replace(/\.nft\.json$/, ""));
   const packageBytes = new Map();
   let tracedBytes = 0;

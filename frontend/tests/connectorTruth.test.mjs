@@ -131,9 +131,10 @@ test("session without verified provider identity is not connected", () => {
   assert.deepEqual(status.publishCapabilities, []);
 });
 
-test("status route and review UI preserve manual/unverified/expired truth", async () => {
-  const [statusRoute, page, callbackRoute] = await Promise.all([
+test("status, publish boundary, and review UI preserve connector truth", async () => {
+  const [statusRoute, publishRoute, page, callbackRoute] = await Promise.all([
     readFile(new URL("../app/api/social/status/route.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/publish/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/page.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/social/callback/[platform]/route.js", import.meta.url), "utf8"),
   ]);
@@ -141,6 +142,10 @@ test("status route and review UI preserve manual/unverified/expired truth", asyn
   assert.match(statusRoute, /scopeStatus:\s*connection\.scopeStatus/);
   assert.match(statusRoute, /publishCapabilities:\s*connection\.publishCapabilities/);
   assert.match(statusRoute, /canPublishText:\s*Boolean\(connection\.canPublishText\)/);
+  assert.match(statusRoute, /connectionId:\s*connection\.connectionId/);
+  assert.match(statusRoute, /verifiedAt:\s*connection\.verifiedAt/);
+  assert.match(statusRoute, /expiresAt:\s*connection\.expiresAt/);
+  assert.doesNotMatch(statusRoute, /access_token|refresh_token/);
   assert.match(statusRoute, /scopeStatus:\s*"manual_only"/);
   assert.match(statusRoute, /publishCapabilities:\s*\[\]/);
   assert.match(statusRoute, /canPublishText:\s*false/);
@@ -151,6 +156,14 @@ test("status route and review UI preserve manual/unverified/expired truth", asyn
   assert.match(page, /Direct capabilities:/);
   assert.match(page, /Connected · limited/);
   assert.match(page, /Verified · text/);
+  assert.match(page, /Last verified:/);
+  assert.match(page, /Expiry:/);
+
+  assert.match(publishRoute, /!status\.connected \|\| !status\.verified \|\| !tokenSession/);
+  assert.match(publishRoute, /if \(status\.expired\)/);
+  assert.match(publishRoute, /status\.scopeStatus !== "verified" \|\| !status\.canPublishText/);
+  assert.match(publishRoute, /status: "insufficient_scope"/);
+  assert.match(publishRoute, /status: "expired"/);
 
   assert.match(callbackRoute, /throw oauthFailure\("social_identity_verification_failed"/);
   assert.match(callbackRoute, /createTokenSession\(platformId, tokenData, profile\)/);

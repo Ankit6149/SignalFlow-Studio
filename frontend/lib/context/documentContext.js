@@ -34,8 +34,14 @@ export function compileWorkspaceContext({
   if (!linksContext || linksContext.length === 0) {
     missingContext.push("Documentation or public product links are missing.");
   }
-  if (!mediaItems || mediaItems.length === 0) {
-    missingContext.push("Screenshots or demo recordings are missing.");
+  const mediaCategories = Array.isArray(mediaItems)
+    ? mediaItems.map((item) => String(item?.category || item?.type || "").toLowerCase())
+    : [];
+  const hasProductVisualEvidence = mediaCategories.some((category) =>
+    ["screenshot", "product image", "screen recording", "image", "video"].includes(category),
+  );
+  if (!hasProductVisualEvidence) {
+    missingContext.push("Screenshots, product images, or demo recordings are missing.");
   }
 
   // Parse repo tech stack / features if present

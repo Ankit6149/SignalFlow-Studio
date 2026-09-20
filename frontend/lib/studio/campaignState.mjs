@@ -33,6 +33,7 @@ function createChannelState({
   retryCount = 0,
   failureClass = "",
   providerError = null,
+  qualityRiskAccepted = false,
 } = {}) {
   const generated = text(generatedContent);
   const current = text(currentContent);
@@ -47,6 +48,7 @@ function createChannelState({
     retryCount: Number.isInteger(retryCount) ? retryCount : Number(retryCount || 0),
     failureClass: String(failureClass || ""),
     providerError: providerError ? clone(providerError) : null,
+    qualityRiskAccepted: Boolean(qualityRiskAccepted),
   };
 }
 
@@ -159,6 +161,7 @@ export function campaignReducer(state, action) {
             status: previousStatus.status === "failed" ? "needs_review" : previousStatus.status || "needs_review",
             edited: nextText !== generated,
             approved: false,
+            qualityRiskAccepted: false,
           },
         },
         revision: state.revision + 1,
@@ -170,11 +173,17 @@ export function campaignReducer(state, action) {
       if (!channel || !state.posts[channel]) return state;
       const previous = state.channelStates[channel] || {};
       if (previous.approved) return state;
+      const unresolvedQuality = previous.status === "needs_review" && !previous.qualityRiskAccepted;
+      if (unresolvedQuality && action.acceptRisk !== true) return state;
       return {
         ...state,
         channelStates: {
           ...state.channelStates,
-          [channel]: { ...previous, approved: true },
+          [channel]: {
+            ...previous,
+            approved: true,
+            qualityRiskAccepted: unresolvedQuality ? true : Boolean(previous.qualityRiskAccepted),
+          },
         },
         revision: state.revision + 1,
       };
@@ -189,7 +198,7 @@ export function campaignReducer(state, action) {
         ...state,
         channelStates: {
           ...state.channelStates,
-          [channel]: { ...previous, approved: false, status: "needs_review" },
+          [channel]: { ...previous, approved: false, status: "needs_review", qualityRiskAccepted: false },
         },
         revision: state.revision + 1,
       };
@@ -208,6 +217,7 @@ export function campaignReducer(state, action) {
             ...(state.channelStates[channel] || {}),
             edited: false,
             approved: false,
+            qualityRiskAccepted: false,
             status: state.channelStates[channel]?.status === "failed" ? "needs_review" : state.channelStates[channel]?.status || "generated",
           },
         },

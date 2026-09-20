@@ -163,7 +163,7 @@ export const metadata = {
       "Stay in the work. SignalFlow handles the useful middle between what happened and the judgment only you should make.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/opengraph-static.jpg",
         width: 1200,
         height: 630,
         alt: "SignalFlow Studio content operating system — built around Signals, evidence, judgment, and exact approval",
@@ -175,7 +175,7 @@ export const metadata = {
     title: "SignalFlow Studio — Content Operating System",
     description:
       "Signals, connected work, narrative planning, and exact review — with judgment kept in your hands.",
-    images: ["/opengraph-image"],
+    images: ["/opengraph-static.jpg"],
   },
   robots: {
     index: true,

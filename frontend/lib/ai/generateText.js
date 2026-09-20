@@ -8,9 +8,11 @@ import { generateOllama } from "./providers/ollama";
 import { generateLMStudio } from "./providers/lmstudio";
 import { generateCustomOpenAI } from "./providers/customOpenAI";
 import { resolveOutputTokenBudget } from "./outputBudget.mjs";
+import { normalizeProviderError } from "./providerErrors.mjs";
 
 /**
  * Route a raw text request to the selected provider.
+ * All adapter failures cross this boundary as one safe ProviderError contract.
  */
 export async function generateText({ provider, prompt, modelOverride = null, config = {} }) {
   const p = (provider || "prompt").trim().toLowerCase();
@@ -19,26 +21,33 @@ export async function generateText({ provider, prompt, modelOverride = null, con
     maxTokens: resolveOutputTokenBudget(prompt, config.maxTokens),
   };
 
-  switch (p) {
-    case "vercel_gateway":
-      return await generateVercelGateway(prompt, modelOverride, resolvedConfig);
-    case "openai":
-      return await generateOpenAI(prompt, modelOverride, resolvedConfig);
-    case "claude":
-      return await generateClaude(prompt, modelOverride, resolvedConfig);
-    case "gemini":
-      return await generateGemini(prompt, modelOverride, resolvedConfig);
-    case "groq":
-      return await generateGroq(prompt, modelOverride, resolvedConfig);
-    case "openrouter":
-      return await generateOpenRouter(prompt, modelOverride, resolvedConfig);
-    case "ollama":
-      return await generateOllama(prompt, modelOverride, resolvedConfig);
-    case "lmstudio":
-      return await generateLMStudio(prompt, modelOverride, resolvedConfig);
-    case "custom":
-      return await generateCustomOpenAI(prompt, modelOverride, resolvedConfig);
-    default:
-      throw new Error(`Text generation not supported for provider mode: "${provider}"`);
+  try {
+    switch (p) {
+      case "vercel_gateway":
+        return await generateVercelGateway(prompt, modelOverride, resolvedConfig);
+      case "openai":
+        return await generateOpenAI(prompt, modelOverride, resolvedConfig);
+      case "claude":
+        return await generateClaude(prompt, modelOverride, resolvedConfig);
+      case "gemini":
+        return await generateGemini(prompt, modelOverride, resolvedConfig);
+      case "groq":
+        return await generateGroq(prompt, modelOverride, resolvedConfig);
+      case "openrouter":
+        return await generateOpenRouter(prompt, modelOverride, resolvedConfig);
+      case "ollama":
+        return await generateOllama(prompt, modelOverride, resolvedConfig);
+      case "lmstudio":
+        return await generateLMStudio(prompt, modelOverride, resolvedConfig);
+      case "custom":
+        return await generateCustomOpenAI(prompt, modelOverride, resolvedConfig);
+      default:
+        throw new Error(`Text generation not supported for provider mode: "${provider}"`);
+    }
+  } catch (error) {
+    throw normalizeProviderError(error, {
+      provider: p,
+      model: modelOverride || "",
+    });
   }
 }

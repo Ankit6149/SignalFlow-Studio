@@ -1316,6 +1316,35 @@
   overflow-wrap: anywhere;
 }
 
+.app-shell .direct-publish-panel {
+  grid-area: route;
+  width: min(100%, 46rem);
+}
+
+.app-shell .direct-publish-panel__body {
+  padding-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app-shell .direct-publish-panel__body > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.app-shell .direct-publish-panel__body strong,
+.app-shell .direct-publish-panel__body span {
+  overflow-wrap: anywhere;
+}
+
+.app-shell .direct-publish-panel__body span {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
 .app-shell .review-workspace > .publishing-route-link {
   grid-area: route;
   justify-self: start;

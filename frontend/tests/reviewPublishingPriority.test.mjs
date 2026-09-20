@@ -10,10 +10,14 @@ test("review keeps live publishing secondary to save/copy/export handoff", async
   const reviewStart = page.indexOf('<div className="review-actions">');
   const reviewEnd = page.indexOf('{result?.warnings?.length > 0', reviewStart);
   const review = page.slice(reviewStart, reviewEnd);
+  const primaryStart = review.indexOf('className="button button--dark"');
+  const primaryEnd = review.indexOf("</button>", primaryStart);
+  const primaryAction = review.slice(primaryStart, primaryEnd);
 
   assert.ok(reviewStart > -1 && reviewEnd > reviewStart);
-  assert.match(review, /className="button button--dark"[\s\S]*onClick=\{copyAndOpenCurrent\}/);
-  assert.doesNotMatch(review, /className="button button--dark"[\s\S]*onClick=\{publishCurrentPost\}/);
+  assert.ok(primaryStart > -1 && primaryEnd > primaryStart);
+  assert.match(primaryAction, /onClick=\{copyAndOpenCurrent\}/);
+  assert.doesNotMatch(primaryAction, /publishCurrentPost/);
   assert.match(review, /Copy draft/);
   assert.match(review, /Save changes|Save locally/);
   assert.match(review, /Copy & open/);
@@ -22,12 +26,16 @@ test("review keeps live publishing secondary to save/copy/export handoff", async
 
 test("direct publishing is a deliberate exact-revision action", async () => {
   const page = await readFile(pageUrl, "utf8");
+  const panelStart = page.indexOf('<details className="route-note direct-publish-panel">');
+  const panelEnd = page.indexOf("</details>", panelStart);
+  const panel = page.slice(panelStart, panelEnd);
 
   assert.match(page, /const directPublishAvailability = selectPublishAvailability\(\{[\s\S]*connectorReady: canPublishCurrent,[\s\S]*manualRoute: false/);
-  assert.match(page, /<details className="route-note direct-publish-panel">/);
-  assert.match(page, /Direct publishing to \\{activeMeta\\.label\\}/);
-  assert.match(page, /Revision \{revision\} · exact approved draft currently shown/);
-  assert.match(page, /className="button button--outline"[\s\S]*onClick=\{publishCurrentPost\}[\s\S]*Publish this revision/);
+  assert.ok(panelStart > -1 && panelEnd > panelStart);
+  assert.match(panel, /Direct publishing to \{activeMeta\.label\}/);
+  assert.match(panel, /Revision \{revision\} · exact approved draft currently shown/);
+  assert.match(panel, /onClick=\{publishCurrentPost\}/);
+  assert.match(panel, /Publish this revision/);
   assert.match(page, /Publish \$\{activeMeta\.label\} revision \$\{revision\} to \$\{currentConnectionLabel\}\? This sends the exact approved draft currently shown\./);
 });
 

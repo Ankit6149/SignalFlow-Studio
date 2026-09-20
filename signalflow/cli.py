@@ -1,16 +1,19 @@
+"""Narrow developer utilities for SignalFlow.
+
+The production product is the Next.js application.  This CLI intentionally
+contains only local repository/media utilities; it is not a second generation
+API, model server, or launch pipeline.
+"""
+
 import argparse
-import json
 import sys
 from pathlib import Path
-from signalflow.ingestion.walker import DirectoryWalker
-from signalflow.ingestion.snr import SNRScorer
+
 from signalflow.compositor.image_renderer import ImageRenderer
 from signalflow.compositor.terminal_recorder import TerminalRecorder
-from signalflow.launchkit import create_launch_kit, create_notes_kit, create_research_kit
-from signalflow.model.adapter import CloudStubAdapter, LocalRESTAdapter
+from signalflow.ingestion.snr import SNRScorer
+from signalflow.ingestion.walker import DirectoryWalker
 from signalflow.native import find_rust_renderer, render_code_via_rust
-from signalflow.orchestrator import run_pipeline
-import uvicorn
 
 
 def cmd_scan(args):
@@ -19,12 +22,9 @@ def cmd_scan(args):
         print(f"Path not found: {root}")
         sys.exit(2)
 
-    walker = DirectoryWalker(root)
-    files = list(walker.walk())
-
-    scorer = SNRScorer()
-    scored = scorer.score_files(files)
-    scored_sorted = sorted(scored.items(), key=lambda t: t[1], reverse=True)
+    files = list(DirectoryWalker(root).walk())
+    scored = SNRScorer().score_files(files)
+    scored_sorted = sorted(scored.items(), key=lambda item: item[1], reverse=True)
 
     print(f"Scanned {len(files)} files; top {args.top} by SNR:\n")
     for path, score in scored_sorted[: args.top]:
@@ -34,6 +34,7 @@ def cmd_scan(args):
 def cmd_render(args):
     code = Path(args.file).read_text(encoding="utf-8")
     out_path = Path(args.out)
+
     if find_rust_renderer() is not None:
         try:
             out = render_code_via_rust(code, out_path)
@@ -42,70 +43,19 @@ def cmd_render(args):
         except Exception:
             pass
 
-    renderer = ImageRenderer()
-    out = renderer.render_code(code, lexer_name=args.lexer, out_path=out_path)
+    out = ImageRenderer().render_code(code, lexer_name=args.lexer, out_path=out_path)
     print(f"Wrote code image to: {out}")
 
 
 def cmd_record(args):
-    cmds = args.commands
-    recorder = TerminalRecorder()
-    out = recorder.record(cmds, Path(args.out))
+    out = TerminalRecorder().record(args.commands, Path(args.out))
     print(f"Wrote terminal video to: {out}")
 
 
-def cmd_stub_generate(args):
-    # Prefer local REST adapter; fall back to cloud stub
-    payload = {"CoreTokens": Path(args.file).read_text(encoding="utf-8")}
-    try:
-        adapter = LocalRESTAdapter()
-        adapter.initialize({"base_url": args.base_url} if hasattr(args, 'base_url') else {})
-        text = adapter.generate_post_text("", payload, args.target)
-    except Exception:
-        adapter = CloudStubAdapter()
-        text = adapter.generate_post_text("", payload, args.target)
-    print(text)
-
-
-def cmd_launch_kit(args):
-    if args.research_url or args.document_text or args.document_path:
-        result = create_research_kit(
-            research_url=args.research_url,
-            document_text=args.document_text or (Path(args.notes_file).read_text(encoding="utf-8") if args.notes_file else ""),
-            document_path=Path(args.document_path) if args.document_path else None,
-            out_dir=Path(args.out_dir),
-            project_name=args.project_name,
-            audience=args.audience,
-            channels=args.channel,
-            generator=args.generator,
-        )
-    elif args.notes_file:
-        result = create_notes_kit(
-            notes=Path(args.notes_file).read_text(encoding="utf-8"),
-            out_dir=Path(args.out_dir),
-            project_name=args.project_name,
-            audience=args.audience,
-            channels=args.channel,
-            generator=args.generator,
-        )
-    else:
-        result = create_launch_kit(
-            repo=Path(args.repo),
-            out_dir=Path(args.out_dir),
-            project_name=args.project_name,
-            audience=args.audience,
-            top_n=args.top,
-            channels=args.channel,
-            generator=args.generator,
-        )
-    printable = {key: value for key, value in result.items() if key != "image_base64"}
-    for highlight in printable.get("highlights", []):
-        highlight.pop("absolute_path", None)
-    print(json.dumps(printable, indent=2))
-
-
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="SignalFlow - Orchestrator CLI")
+    parser = argparse.ArgumentParser(
+        description="SignalFlow local utility CLI (scan/render/record only)"
+    )
     sub = parser.add_subparsers(dest="cmd")
 
     p_scan = sub.add_parser("scan")
@@ -118,35 +68,13 @@ def main(argv=None):
     p_render.add_argument("--out", required=False, default="out.png")
 
     p_record = sub.add_parser("record")
-    p_record.add_argument("--commands", nargs="+", required=True, help="Commands to run sequentially (shell)")
+    p_record.add_argument(
+        "--commands",
+        nargs="+",
+        required=True,
+        help="Commands to run sequentially (shell)",
+    )
     p_record.add_argument("--out", required=False, default="out.mp4")
-
-    p_stub = sub.add_parser("stub-generate")
-    p_stub.add_argument("--file", required=True)
-    p_stub.add_argument("--target", required=True)
-    p_stub.add_argument("--base-url", required=False, help="Local model server base URL, e.g. http://127.0.0.1:8000")
-
-    p_pipeline = sub.add_parser("pipeline")
-    p_pipeline.add_argument("--repo", required=True, help="Repository path to ingest")
-    p_pipeline.add_argument("--out-dir", required=False, default="pipeline-output", help="Output folder for pipeline artifacts")
-    p_pipeline.add_argument("--top", type=int, default=5, help="Top N candidate files")
-
-    p_launch = sub.add_parser("launch-kit")
-    p_launch.add_argument("--repo", required=False, default=".", help="Repository path to turn into a launch kit")
-    p_launch.add_argument("--notes-file", required=False, help="Text/Markdown file with notes, code, changelog, or launch context")
-    p_launch.add_argument("--research-url", required=False, default="", help="Research URL to include as context")
-    p_launch.add_argument("--document-text", required=False, default="", help="Pasted research/document text")
-    p_launch.add_argument("--document-path", required=False, default="", help="Local document path, e.g. .md, .txt, or .pdf metadata")
-    p_launch.add_argument("--out-dir", required=False, default="pipeline-output", help="Output folder for launch kits")
-    p_launch.add_argument("--project-name", required=False, default="", help="Public project name")
-    p_launch.add_argument("--audience", required=False, default="", help="Audience to write for")
-    p_launch.add_argument("--channel", action="append", default=[], help="Output channel format: linkedin, x, instagram, blog, newsletter, release_notes")
-    p_launch.add_argument("--generator", required=False, default="local", help="Generator path: local, api, slm, or chatbot")
-    p_launch.add_argument("--top", type=int, default=5, help="Number of highlights to include")
-
-    p_serve = sub.add_parser("serve")
-    p_serve.add_argument("--host", default="127.0.0.1")
-    p_serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
     if args.cmd == "scan":
@@ -155,15 +83,6 @@ def main(argv=None):
         cmd_render(args)
     elif args.cmd == "record":
         cmd_record(args)
-    elif args.cmd == "stub-generate":
-        cmd_stub_generate(args)
-    elif args.cmd == "pipeline":
-        run_pipeline(Path(args.repo), Path(args.out_dir), args.top)
-    elif args.cmd == "launch-kit":
-        cmd_launch_kit(args)
-    elif args.cmd == "serve":
-        # Run FastAPI model stub via uvicorn
-        uvicorn.run("signalflow.model.server:app", host=args.host, port=args.port, log_level="info")
     else:
         parser.print_help()
 

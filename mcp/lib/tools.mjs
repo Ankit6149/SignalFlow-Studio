@@ -211,30 +211,48 @@ export async function executeTool(name, args = {}, options = {}) {
       })
       : { assets: [], sourceArtifacts: [], processingRecords: [] };
 
-    const data = await signalFlowRequest("/api/launch_kit", {
-      ...options,
-      method: "POST",
-      provider,
-      providerBaseUrl: args.baseUrl,
-      timeoutMs: 240000,
-      body: {
-        project_name: projectName,
-        notes,
-        audience: String(args.audience || "Founders, builders, and early users").trim(),
-        docs_url: String(args.links || "").trim(),
-        repo: String(args.repository || "").trim(),
-        channels,
-        output_types: ["posts", "media_plan", "markdown", "json"],
-        generator: provider,
-        providerModelName: String(args.modelName || "").trim(),
-        providerBaseUrl: String(args.baseUrl || "").trim(),
-        document_text: Array.isArray(args.documentText) ? args.documentText : [],
-        assets: canonicalSources.assets,
-        source_artifacts: canonicalSources.sourceArtifacts,
-        processing_records: canonicalSources.processingRecords,
-        media_items: canonicalSources.sourceArtifacts.map((artifact) => projectGenerationMediaItem(artifact)),
-      },
-    });
+    let data;
+    try {
+      data = await signalFlowRequest("/api/launch_kit", {
+        ...options,
+        method: "POST",
+        provider,
+        providerBaseUrl: args.baseUrl,
+        timeoutMs: 240000,
+        body: {
+          project_name: projectName,
+          notes,
+          audience: String(args.audience || "Founders, builders, and early users").trim(),
+          docs_url: String(args.links || "").trim(),
+          repo: String(args.repository || "").trim(),
+          channels,
+          output_types: ["posts", "media_plan", "markdown", "json"],
+          generator: provider,
+          providerModelName: String(args.modelName || "").trim(),
+          providerBaseUrl: String(args.baseUrl || "").trim(),
+          document_text: Array.isArray(args.documentText) ? args.documentText : [],
+          assets: canonicalSources.assets,
+          source_artifacts: canonicalSources.sourceArtifacts,
+          processing_records: canonicalSources.processingRecords,
+          media_items: canonicalSources.sourceArtifacts.map((artifact) => projectGenerationMediaItem(artifact)),
+        },
+      });
+    } catch (error) {
+      if (error?.signalFlowData && typeof error.signalFlowData === "object") {
+        const structured = error.signalFlowData;
+        const message = structured.providerError?.message
+          || (structured.code === "strategy_quality_blocked"
+            ? "SignalFlow blocked destination generation because the strategy needs review."
+            : structured.error)
+          || "SignalFlow could not create this campaign.";
+        return {
+          content: textContent(message),
+          structuredContent: structured,
+          isError: true,
+        };
+      }
+      throw error;
+    }
 
     const generated = Object.entries(data.generation_status || {})
       .filter(([, status]) => ["generated", "regenerated", "needs_review"].includes(status?.status))

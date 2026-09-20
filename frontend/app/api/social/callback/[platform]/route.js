@@ -71,7 +71,7 @@ export async function GET(request, { params }) {
   try {
     const tokenData = await exchangeCodeForToken(platformId, platform, code, stateData);
     const profile = await fetchUserProfile(platformId, platform, tokenData.access_token);
-    const tokenSession = createTokenSession(tokenData, profile);
+    const tokenSession = createTokenSession(platformId, tokenData, profile);
 
     return buildRedirect(
       request,
@@ -132,38 +132,56 @@ async function fetchUserProfile(platformId, platform, accessToken) {
     headers["User-Agent"] = "SignalFlowStudio/1.0";
   }
 
+  let response;
   try {
-    const response = await fetch(platform.profileUrl, { headers });
-    if (!response.ok) {
-      return { name: "Unknown", username: "unknown", id: "" };
-    }
-
-    const data = await response.json();
-    switch (platformId) {
-      case "linkedin":
-        return {
-          name: data.name || `${data.given_name || ""} ${data.family_name || ""}`.trim(),
-          username: data.email || data.sub || "",
-          id: data.sub || "",
-        };
-      case "x":
-        return {
-          name: data.data?.name || "",
-          username: data.data?.username || "",
-          id: data.data?.id || "",
-        };
-      case "reddit":
-        return {
-          name: data.name || "",
-          username: `u/${data.name || ""}`,
-          id: data.id || "",
-        };
-      default:
-        return { name: "Unknown", username: "unknown", id: "" };
-    }
+    response = await fetch(platform.profileUrl, { headers });
   } catch {
-    return { name: "Connected User", username: "", id: "" };
+    throw oauthFailure("social_identity_verification_failed");
   }
+
+  if (!response.ok) {
+    throw oauthFailure("social_identity_verification_failed", response.status);
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw oauthFailure("social_identity_verification_failed");
+  }
+
+  let profile;
+  switch (platformId) {
+    case "linkedin":
+      profile = {
+        name: data.name || `${data.given_name || ""} ${data.family_name || ""}`.trim(),
+        username: data.email || data.sub || "",
+        id: data.sub || "",
+      };
+      break;
+    case "x":
+      profile = {
+        name: data.data?.name || "",
+        username: data.data?.username || "",
+        id: data.data?.id || "",
+      };
+      break;
+    case "reddit":
+      profile = {
+        name: data.name || "",
+        username: `u/${data.name || ""}`,
+        id: data.id || "",
+      };
+      break;
+    default:
+      throw oauthFailure("social_identity_verification_failed");
+  }
+
+  if (!String(profile.id || "").trim()) {
+    throw oauthFailure("social_identity_verification_failed");
+  }
+
+  return profile;
 }
 
 function buildRedirect(request, status, message, cookies = []) {

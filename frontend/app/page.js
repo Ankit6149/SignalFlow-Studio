@@ -264,6 +264,23 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function providerRecoveryMessage(providerError) {
+  const action = String(providerError?.recoveryAction || "");
+  const messages = {
+    replace_key: "Replace or re-check the provider credential, then retry.",
+    check_permissions: "Check provider permissions or workspace access before retrying.",
+    check_billing: "Check provider billing or credits before retrying.",
+    check_quota: "The provider quota is exhausted; restore quota or choose another route.",
+    wait_then_retry: "Wait for the provider rate limit to clear, then retry deliberately.",
+    choose_model: "Choose a model that exists for this provider.",
+    retry_destination: "Retry the affected destination; successful destinations remain unchanged.",
+    retry_or_choose_model: "Retry once, then choose another model if the response contract still fails.",
+    choose_provider: "Choose a supported provider route.",
+    retry_or_contact_owner: "Retry once. If it persists, inspect owner/server diagnostics using the correlation ID.",
+  };
+  return messages[action] || "";
+}
+
 function createClientId(kind) {
   const randomId = globalThis.crypto?.randomUUID?.()
     || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -377,6 +394,7 @@ export default function Home() {
   const [documentText, setDocumentText] = useState([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
+  const [strategyReview, setStrategyReview] = useState(null);
   const [library, setLibrary] = useState([]);
   const [currentCampaignId, setCurrentCampaignId] = useState("");
   const [regenerationDialogOpen, setRegenerationDialogOpen] = useState(false);
@@ -723,6 +741,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   }
 
   function updateForm(key, value) {
+    setStrategyReview(null);
     setForm((previous) => ({ ...previous, [key]: value }));
   }
 
@@ -754,6 +773,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   }
 
   function toggleChannel(channelId) {
+    setStrategyReview(null);
     setChannels((previous) => {
       if (previous.includes(channelId)) {
         return previous.length === 1 ? previous : previous.filter((item) => item !== channelId);
@@ -836,6 +856,7 @@ ${extractedText}`);
       });
     }
 
+    setStrategyReview(null);
     setFiles((previous) => [...previous, ...nextFiles]);
     setDocumentText((previous) => [...previous, ...nextText]);
 
@@ -850,6 +871,7 @@ ${extractedText}`);
   }
 
   function removeFile(index) {
+    setStrategyReview(null);
     const target = files[index];
     setFiles((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
     if (target?.extracted) {
@@ -906,8 +928,13 @@ ${extractedText}`);
     });
 
     const data = await readJsonResponse(response, "SignalFlow returned an unreadable generation response.");
+    if (data.code === "strategy_quality_blocked" && data.strategy_review) {
+      return { strategyBlocked: true, data };
+    }
     if (!response.ok || data.ok === false) {
-      throw new Error(data.error || "SignalFlow could not generate this campaign.");
+      const generationError = new Error(data.providerError?.message || data.error || "SignalFlow could not generate this campaign.");
+      generationError.providerError = data.providerError || null;
+      throw generationError;
     }
     const accepted = acceptGenerationResponse({ response: data, requestedChannels });
     const nextGenerationRun = createGenerationRun({
@@ -923,7 +950,18 @@ ${extractedText}`);
     setBusy(true);
     setMessage(null);
     try {
-      const { accepted, nextGenerationRun, data } = await requestGeneration(channels);
+      const generation = await requestGeneration(channels);
+      if (generation.strategyBlocked) {
+        setStrategyReview(generation.data.strategy_review);
+        setStage("destinations");
+        setMessage({
+          type: "warning",
+          text: "Strategy needs review before any destination drafts are generated. No draft content was created or replaced.",
+        });
+        return;
+      }
+      const { accepted, nextGenerationRun, data } = generation;
+      setStrategyReview(null);
       dispatchCampaign({
         type: "ACCEPT_GENERATION",
         payload: {
@@ -941,7 +979,8 @@ ${extractedText}`);
           : `Campaign generated with ${data.providerUsed || provider.label}. Review and approve each destination before publishing.`,
       });
     } catch (error) {
-      setMessage({ type: "error", text: error.message });
+      const recovery = providerRecoveryMessage(error.providerError);
+      setMessage({ type: "error", text: [error.message, recovery].filter(Boolean).join(" ") });
     } finally {
       setBusy(false);
     }
@@ -959,7 +998,18 @@ ${extractedText}`);
     setBusy(true);
     setMessage(null);
     try {
-      const { accepted, nextGenerationRun, data } = await requestGeneration(targetChannels);
+      const generation = await requestGeneration(targetChannels);
+      if (generation.strategyBlocked) {
+        setStrategyReview(generation.data.strategy_review);
+        setStage("destinations");
+        setMessage({
+          type: "warning",
+          text: "The rebuilt strategy still needs review. Existing drafts and edits were left unchanged.",
+        });
+        return;
+      }
+      const { accepted, nextGenerationRun, data } = generation;
+      setStrategyReview(null);
       const archivedAt = new Date().toISOString();
       dispatchCampaign({
         type: "APPLY_REGENERATION",
@@ -985,10 +1035,36 @@ ${extractedText}`);
               : "The previous campaign version was archived and all selected destinations were regenerated.",
       });
     } catch (error) {
-      setMessage({ type: "error", text: `${error.message} Existing drafts and edits were not changed.` });
+      const recovery = providerRecoveryMessage(error.providerError);
+      setMessage({
+        type: "error",
+        text: [error.message, recovery, "Existing drafts and edits were not changed."].filter(Boolean).join(" "),
+      });
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleDraftApproval() {
+    const current = channelStates[activeChannel] || {};
+    if (current.approved) {
+      dispatchCampaign({ type: "MARK_CHANNEL_NEEDS_REVIEW", channel: activeChannel });
+      return;
+    }
+
+    if (current.status === "needs_review" && !current.qualityRiskAccepted) {
+      const issueSummary = Array.isArray(current.issues) && current.issues.length
+        ? current.issues.slice(0, 3).join("\n• ")
+        : "One or more quality checks remain unresolved.";
+      const accepted = window.confirm(
+        `This draft still needs review:\n\n• ${issueSummary}\n\nApprove anyway and accept responsibility for these unresolved issues?`,
+      );
+      if (!accepted) return;
+      dispatchCampaign({ type: "MARK_CHANNEL_APPROVED", channel: activeChannel, acceptRisk: true });
+      return;
+    }
+
+    dispatchCampaign({ type: "MARK_CHANNEL_APPROVED", channel: activeChannel });
   }
 
   function handleGenerationAction() {
@@ -1786,6 +1862,39 @@ async function exportZip() {
                 </p>
               </aside>
 
+              {stage === "destinations" && strategyReview && (
+                <section className="strategy-review-panel" role="alert" aria-labelledby="strategy-review-title">
+                  <div>
+                    <span>Strategy quality gate</span>
+                    <h3 id="strategy-review-title">
+                      {strategyReview.status === "failed" ? "Strategy failed validation." : "Strategy needs review."}
+                    </h3>
+                    <p>No destination drafts were generated from this strategy. Fix the source/model inputs or deliberately rebuild it.</p>
+                  </div>
+                  <ul>
+                    {(strategyReview.issues || []).map((item, index) => (
+                      <li key={item.code || index}>
+                        <code>{item.code || "strategy.review"}</code>
+                        <span>{item.message || String(item)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="strategy-review-panel__actions">
+                    <button type="button" className="button button--outline" onClick={() => setStage("source")}>
+                      Review source
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--dark"
+                      onClick={handleGenerationAction}
+                      disabled={busy || !composeReady}
+                    >
+                      Rebuild strategy
+                    </button>
+                  </div>
+                </section>
+              )}
+
               {stage === "destinations" ? (
                 <div className="output-empty">
                   <div className="compose-readiness">
@@ -1944,17 +2053,38 @@ async function exportZip() {
                       <div><dt>Generation run</dt><dd>{channelStates[activeChannel]?.generationRunId || generationRun?.generationRunId || "Not tracked"}</dd></div>
                     </dl>
 
+                    {(channelStates[activeChannel]?.issues || []).length > 0 && (
+                      <div className="draft-quality-issues" role={channelStates[activeChannel]?.status === "needs_review" ? "alert" : "status"}>
+                        <strong>{channelStates[activeChannel]?.status === "needs_review" ? "Unresolved quality issues" : "Generation notes"}</strong>
+                        <ul>
+                          {channelStates[activeChannel].issues.map((issue, index) => (
+                            <li key={channelStates[activeChannel]?.issueCodes?.[index] || index}>
+                              {channelStates[activeChannel]?.issueCodes?.[index] && <code>{channelStates[activeChannel].issueCodes[index]}</code>}
+                              <span>{issue}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {channelStates[activeChannel]?.providerError && (
+                          <p>
+                            Recovery: {providerRecoveryMessage(channelStates[activeChannel].providerError) || "Retry deliberately or inspect provider diagnostics."}
+                            {channelStates[activeChannel].providerError.correlationId ? ` Reference ${channelStates[activeChannel].providerError.correlationId}.` : ""}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="draft-state-actions" aria-label={`${activeMeta.label} draft state actions`}>
                       <button
                         type="button"
                         className={channelStates[activeChannel]?.approved ? "is-approved" : ""}
-                        onClick={() => dispatchCampaign({
-                          type: channelStates[activeChannel]?.approved ? "MARK_CHANNEL_NEEDS_REVIEW" : "MARK_CHANNEL_APPROVED",
-                          channel: activeChannel,
-                        })}
+                        onClick={handleDraftApproval}
                         disabled={!currentPost || isCampaignStale}
                       >
-                        {channelStates[activeChannel]?.approved ? "Return to review" : "Mark approved"}
+                        {channelStates[activeChannel]?.approved
+                          ? "Return to review"
+                          : channelStates[activeChannel]?.status === "needs_review"
+                            ? "Accept issues & approve"
+                            : "Mark approved"}
                       </button>
                       <button
                         type="button"

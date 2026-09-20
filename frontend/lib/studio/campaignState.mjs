@@ -28,6 +28,11 @@ function createChannelState({
   status = "generated",
   approved = false,
   generationRunId = "",
+  issues = [],
+  issueCodes = [],
+  retryCount = 0,
+  failureClass = "",
+  providerError = null,
 } = {}) {
   const generated = text(generatedContent);
   const current = text(currentContent);
@@ -37,6 +42,11 @@ function createChannelState({
     edited,
     approved: Boolean(approved && !edited),
     generationRunId: String(generationRunId || ""),
+    issues: Array.isArray(issues) ? clone(issues) : [],
+    issueCodes: Array.isArray(issueCodes) ? clone(issueCodes) : [],
+    retryCount: Number.isInteger(retryCount) ? retryCount : Number(retryCount || 0),
+    failureClass: String(failureClass || ""),
+    providerError: providerError ? clone(providerError) : null,
   };
 }
 
@@ -47,12 +57,20 @@ function createChannelStates({ requestedChannels = [], posts = {}, result = {}, 
     ...Object.keys(posts || {}),
   ].map((channel) => String(channel || "").trim()).filter(Boolean)));
 
-  return Object.fromEntries(channels.map((channel) => [channel, createChannelState({
-    generatedContent: posts[channel] || "",
-    currentContent: posts[channel] || "",
-    status: qualityState(result, channel, posts[channel] ? "generated" : "failed"),
-    generationRunId: generationRun?.generationRunId || "",
-  })]));
+  return Object.fromEntries(channels.map((channel) => {
+    const generationStatus = result?.generation_status?.[channel] || {};
+    return [channel, createChannelState({
+      generatedContent: posts[channel] || "",
+      currentContent: posts[channel] || "",
+      status: qualityState(result, channel, posts[channel] ? "generated" : "failed"),
+      generationRunId: generationRun?.generationRunId || "",
+      issues: generationStatus.issues,
+      issueCodes: generationStatus.issueCodes,
+      retryCount: generationStatus.retryCount,
+      failureClass: generationStatus.failureClass,
+      providerError: generationStatus.providerError,
+    })];
+  }));
 }
 
 function archiveSnapshot(state, { archiveId, createdAt, reason }) {
@@ -241,18 +259,31 @@ export function campaignReducer(state, action) {
         if (typeof payload.posts?.[channel] === "string" && payload.posts[channel].trim()) {
           nextPosts[channel] = payload.posts[channel];
           nextGeneratedPosts[channel] = payload.posts[channel];
+          const generationStatus = payload.result?.generation_status?.[channel] || {};
           nextChannelStates[channel] = createChannelState({
             generatedContent: payload.posts[channel],
             currentContent: payload.posts[channel],
             status,
             generationRunId: payload.generationRun?.generationRunId || "",
+            issues: generationStatus.issues,
+            issueCodes: generationStatus.issueCodes,
+            retryCount: generationStatus.retryCount,
+            failureClass: generationStatus.failureClass,
+            providerError: generationStatus.providerError,
           });
           changed = true;
         } else if (status === "failed") {
+          const generationStatus = payload.result?.generation_status?.[channel] || {};
+          const previous = nextChannelStates[channel] || {};
           nextChannelStates[channel] = {
-            ...(nextChannelStates[channel] || {}),
+            ...previous,
             status: "failed",
             approved: false,
+            issues: Array.isArray(generationStatus.issues) ? clone(generationStatus.issues) : previous.issues || [],
+            issueCodes: Array.isArray(generationStatus.issueCodes) ? clone(generationStatus.issueCodes) : previous.issueCodes || [],
+            retryCount: Number(generationStatus.retryCount ?? previous.retryCount ?? 0),
+            failureClass: String(generationStatus.failureClass || previous.failureClass || ""),
+            providerError: generationStatus.providerError ? clone(generationStatus.providerError) : previous.providerError || null,
           };
           changed = true;
         }

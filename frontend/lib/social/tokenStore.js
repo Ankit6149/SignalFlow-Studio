@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { SOCIAL_PLATFORMS } from "./socialConfig.js";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
@@ -95,20 +96,49 @@ export function clearOAuthStateCookie() {
   return serializeCookie(OAUTH_STATE_COOKIE, "", 0);
 }
 
-export function createTokenSession(tokenData, profile = {}) {
+export function normalizeGrantedScopes(scope) {
+  const values = Array.isArray(scope)
+    ? scope
+    : String(scope || "").split(/[\s,]+/);
+
+  return Array.from(new Set(
+    values
+      .map((value) => String(value || "").trim())
+      .filter(Boolean),
+  )).sort();
+}
+
+function stableConnectionId(platform, profileId) {
+  const id = String(profileId || "").trim();
+  if (!id) return "";
+  return crypto
+    .createHash("sha256")
+    .update(`${String(platform || "").toLowerCase()}:${id}`)
+    .digest("hex")
+    .slice(0, 24);
+}
+
+export function createTokenSession(platform, tokenData, profile = {}) {
+  const now = Date.now();
+  const profileId = String(profile.id || "").trim();
+  const grantedScopes = normalizeGrantedScopes(tokenData.scope);
+
   return {
     access_token: tokenData.access_token,
     refresh_token: tokenData.refresh_token || "",
     token_type: tokenData.token_type || "Bearer",
     scope: tokenData.scope || "",
+    granted_scopes: grantedScopes,
     expires_at: tokenData.expires_in
-      ? Date.now() + Number(tokenData.expires_in) * 1000
+      ? now + Number(tokenData.expires_in) * 1000
       : null,
-    connected_at: Date.now(),
+    connected_at: now,
+    verified_at: profileId ? now : null,
+    connection_id: stableConnectionId(platform, profileId),
     profile: {
       name: profile.name || "",
       username: profile.username || "",
-      id: profile.id || "",
+      id: profileId,
     },
   };
 }
@@ -141,12 +171,14 @@ export function isTokenExpired(session) {
 }
 
 export function updateTokenSession(session, newTokenData) {
+  const nextScope = newTokenData.scope || session.scope || "";
   return {
     ...session,
     access_token: newTokenData.access_token || session.access_token,
     refresh_token: newTokenData.refresh_token || session.refresh_token || "",
     token_type: newTokenData.token_type || session.token_type || "Bearer",
-    scope: newTokenData.scope || session.scope || "",
+    scope: nextScope,
+    granted_scopes: normalizeGrantedScopes(nextScope),
     expires_at: newTokenData.expires_in
       ? Date.now() + Number(newTokenData.expires_in) * 1000
       : session.expires_at || null,
@@ -154,17 +186,62 @@ export function updateTokenSession(session, newTokenData) {
 }
 
 export function getConnectionStatus(request, platform) {
-  const session = readTokenSession(request, platform);
+  const platformId = String(platform || "").toLowerCase();
+  const config = SOCIAL_PLATFORMS[platformId] || null;
+  const session = readTokenSession(request, platformId);
+
   if (!session) {
-    return { connected: false };
+    return {
+      connected: false,
+      verified: false,
+      expired: false,
+      profile: null,
+      connectionId: "",
+      connectedAt: null,
+      verifiedAt: null,
+      expiresAt: null,
+      hasRefreshToken: false,
+      requiredScopes: [...(config?.scopes || [])],
+      grantedScopes: [],
+      missingScopes: [...(config?.scopes || [])],
+      scopeStatus: "not_connected",
+      publishCapabilities: [],
+      canPublishText: false,
+    };
   }
 
+  const grantedScopes = session.granted_scopes?.length
+    ? normalizeGrantedScopes(session.granted_scopes)
+    : normalizeGrantedScopes(session.scope);
+  const requiredScopes = [...(config?.scopes || [])].sort();
+  const missingScopes = requiredScopes.filter((scope) => !grantedScopes.includes(scope));
+  const expired = isTokenExpired(session);
+  const verified = Boolean(session.profile?.id);
+  const scopeStatus = grantedScopes.length === 0
+    ? "unverified"
+    : missingScopes.length > 0
+      ? "insufficient"
+      : "verified";
+  const publishCapabilities = verified && !expired && scopeStatus === "verified"
+    ? [...(config?.publishCapabilities || [])]
+    : [];
+
   return {
-    connected: true,
+    connected: verified,
+    verified,
     profile: session.profile || {},
+    connectionId: session.connection_id || stableConnectionId(platformId, session.profile?.id),
     connectedAt: session.connected_at || null,
-    expired: isTokenExpired(session),
+    verifiedAt: session.verified_at || (verified ? session.connected_at || null : null),
+    expiresAt: session.expires_at || null,
+    expired,
     hasRefreshToken: Boolean(session.refresh_token),
+    requiredScopes,
+    grantedScopes,
+    missingScopes,
+    scopeStatus,
+    publishCapabilities,
+    canPublishText: publishCapabilities.includes("text"),
   };
 }
 

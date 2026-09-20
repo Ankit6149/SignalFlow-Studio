@@ -31,11 +31,37 @@ export async function POST(request) {
 
     const status = getConnectionStatus(request, platform);
     const tokenSession = readTokenSession(request, platform);
-    if (!status.connected || !tokenSession) {
+    if (!status.connected || !status.verified || !tokenSession) {
       return new Response(JSON.stringify({
         ok: false,
         status: "not_connected",
-        error: `Your ${platform} account is not connected in this browser. Connect it from the Connections page first.`,
+        error: `Your ${platform} account identity is not verified in this browser. Connect it from the Connections page first.`,
+        manualInstruction: "Copy the approved draft and publish it manually.",
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (status.expired) {
+      return new Response(JSON.stringify({
+        ok: false,
+        status: "expired",
+        error: `Your ${platform} authorization expired. Reconnect it before publishing.`,
+        manualInstruction: "Copy the approved draft and publish it manually.",
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (status.scopeStatus !== "verified" || !status.canPublishText) {
+      return new Response(JSON.stringify({
+        ok: false,
+        status: "insufficient_scope",
+        error: status.missingScopes?.length
+          ? `Your ${platform} connection is missing required publishing permissions: ${status.missingScopes.join(", ")}.`
+          : `Your ${platform} connection has not verified direct text publishing capability.`,
         manualInstruction: "Copy the approved draft and publish it manually.",
       }), {
         status: 200,

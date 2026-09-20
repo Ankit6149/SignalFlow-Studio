@@ -18,6 +18,26 @@ import {
 } from "./channelGeneration.mjs";
 
 const DEFAULT_CHANNELS = ["linkedin", "x", "instagram", "reddit", "newsletter"];
+const DEFAULT_DESTINATION_CONCURRENCY = 2;
+
+export async function mapWithConcurrency(items, worker, concurrency = DEFAULT_DESTINATION_CONCURRENCY) {
+  const values = Array.isArray(items) ? items : [];
+  if (!values.length) return [];
+  const limit = Math.max(1, Math.min(values.length, Number(concurrency) || DEFAULT_DESTINATION_CONCURRENCY));
+  const results = new Array(values.length);
+  let cursor = 0;
+
+  async function runLane() {
+    while (cursor < values.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(values[index], index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => runLane()));
+  return results;
+}
 
 function slug(value) {
   return String(value || "signalflow-campaign")
@@ -445,7 +465,7 @@ export async function generateStudioPackage(inputs) {
 
     pkg.posts = emptyPackagePosts();
 
-    let generatedDestinations = await Promise.all(channels.map((channel) => generateDestination({
+    let generatedDestinations = await mapWithConcurrency(channels, (channel) => generateDestination({
       channel,
       context,
       campaignBrief: pkg,
@@ -453,7 +473,7 @@ export async function generateStudioPackage(inputs) {
       provider: generator,
       modelOverride,
       config,
-    })));
+    }), config.destinationConcurrency);
 
     const generatedDraftMap = Object.fromEntries(
       generatedDestinations
@@ -466,7 +486,7 @@ export async function generateStudioPackage(inputs) {
     });
 
     if (duplicateTargets.length) {
-      const revised = await Promise.all(duplicateTargets.map((target) => reviseDuplicateDestination({
+      const revised = await mapWithConcurrency(duplicateTargets, (target) => reviseDuplicateDestination({
         target,
         generatedDestinations,
         context,
@@ -475,7 +495,7 @@ export async function generateStudioPackage(inputs) {
         provider: generator,
         modelOverride,
         config,
-      })));
+      }), config.destinationConcurrency);
       const replacements = new Map(revised.filter(Boolean).map((item) => [item.channel, item]));
       generatedDestinations = generatedDestinations.map((item) => replacements.get(item.channel) || item);
     }

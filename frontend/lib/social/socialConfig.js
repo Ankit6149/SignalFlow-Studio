@@ -22,6 +22,7 @@ export const SOCIAL_PLATFORMS = {
     tokenExpiry: 60 * 24 * 60 * 60,
     postMaxLength: 3000,
     supportsMedia: true,
+    publishCapabilities: ["text"],
     postEndpoint: "https://api.linkedin.com/rest/posts",
     setupUrl: "https://www.linkedin.com/developers/apps",
     setupSteps: [
@@ -50,6 +51,7 @@ export const SOCIAL_PLATFORMS = {
     postMaxLength: 280,
     threadMaxLength: 25,
     supportsMedia: true,
+    publishCapabilities: ["text", "thread"],
     postEndpoint: "https://api.x.com/2/tweets",
     setupUrl: "https://developer.x.com/en/portal/dashboard",
     setupSteps: [
@@ -77,6 +79,7 @@ export const SOCIAL_PLATFORMS = {
     tokenExpiry: 60 * 60,
     postMaxLength: 40000,
     supportsMedia: false,
+    publishCapabilities: ["text"],
     postEndpoint: "https://oauth.reddit.com/api/submit",
     setupUrl: "https://www.reddit.com/prefs/apps",
     setupSteps: [
@@ -142,6 +145,7 @@ export function getAllPlatformStatus() {
       scopes: [...platform.scopes],
       postMaxLength: platform.postMaxLength,
       supportsMedia: platform.supportsMedia,
+      publishCapabilities: [...(platform.publishCapabilities || [])],
       setupUrl: platform.setupUrl,
       setupSteps: platform.setupSteps.map((step) =>
         step.replace("{callbackUrl}", callbackUrl),

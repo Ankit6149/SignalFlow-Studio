@@ -44,6 +44,20 @@ export const ASSET_TYPES = Object.freeze({
   OTHER: "other",
 });
 
+export const MEDIA_SOURCE_CATEGORIES = Object.freeze({
+  SCREENSHOT: "screenshot",
+  PRODUCT_IMAGE: "product image",
+  SCREEN_RECORDING: "screen recording",
+  IMAGE: "image",
+  VIDEO: "video",
+  AUDIO: "audio",
+  DOCUMENT: "document",
+  CODE: "code",
+  DATA: "data",
+  ARCHIVE: "archive",
+  OTHER: "other",
+});
+
 export const SOURCE_USABILITY_STATES = Object.freeze({
   USABLE_EVIDENCE: "usable_evidence",
   REFERENCE_ONLY: "reference_only",
@@ -969,6 +983,57 @@ export function sourceArtifactSnapshotReference(input, context = {}) {
   });
 }
 
+export function normalizeMediaSourceCategory(input = {}) {
+  const sourceKind = text(input.sourceKind).toLowerCase();
+  const mimeType = text(input.mimeType || input.type).toLowerCase();
+  const assetType = text(input.assetType).toLowerCase();
+  const descriptor = [
+    input.originalName,
+    input.name,
+    input.description,
+    input.userMetadata?.description,
+    ...(Array.isArray(input.userMetadata?.tags) ? input.userMetadata.tags : []),
+  ].map((value) => text(value).toLowerCase()).filter(Boolean).join(" ");
+
+  if (
+    sourceKind === SOURCE_KINDS.SCREENSHOT ||
+    ((mimeType.startsWith("image/") || assetType === ASSET_TYPES.IMAGE) &&
+      /\b(screen\s*shot|screenshot|screen\s*capture)\b/.test(descriptor))
+  ) {
+    return MEDIA_SOURCE_CATEGORIES.SCREENSHOT;
+  }
+
+  if (
+    sourceKind === SOURCE_KINDS.RECORDING ||
+    ((mimeType.startsWith("video/") || assetType === ASSET_TYPES.VIDEO) &&
+      /\b(screen\s*record(?:ing)?|screencast|screen\s*capture|walkthrough)\b/.test(descriptor))
+  ) {
+    return MEDIA_SOURCE_CATEGORIES.SCREEN_RECORDING;
+  }
+
+  if (
+    (mimeType.startsWith("image/") || assetType === ASSET_TYPES.IMAGE) &&
+    /\b(product|mockup|hero|interface|ui)\b/.test(descriptor)
+  ) {
+    return MEDIA_SOURCE_CATEGORIES.PRODUCT_IMAGE;
+  }
+
+  if (mimeType.startsWith("image/") || assetType === ASSET_TYPES.IMAGE) return MEDIA_SOURCE_CATEGORIES.IMAGE;
+  if (mimeType.startsWith("video/") || assetType === ASSET_TYPES.VIDEO) return MEDIA_SOURCE_CATEGORIES.VIDEO;
+  if (mimeType.startsWith("audio/") || assetType === ASSET_TYPES.AUDIO) return MEDIA_SOURCE_CATEGORIES.AUDIO;
+  if (assetType === ASSET_TYPES.CODE) return MEDIA_SOURCE_CATEGORIES.CODE;
+  if (assetType === ASSET_TYPES.DATA) return MEDIA_SOURCE_CATEGORIES.DATA;
+  if (assetType === ASSET_TYPES.ARCHIVE) return MEDIA_SOURCE_CATEGORIES.ARCHIVE;
+  if (
+    assetType === ASSET_TYPES.DOCUMENT ||
+    mimeType.startsWith("text/") ||
+    /application\/(pdf|msword|vnd\.)/.test(mimeType)
+  ) {
+    return MEDIA_SOURCE_CATEGORIES.DOCUMENT;
+  }
+  return MEDIA_SOURCE_CATEGORIES.OTHER;
+}
+
 export function projectGenerationMediaItem(input, context = {}) {
   const artifact = migrateLegacySourceArtifact(input, context);
   return portableClone({
@@ -976,6 +1041,8 @@ export function projectGenerationMediaItem(input, context = {}) {
     sourceArtifactVersionId: artifact.sourceArtifactVersionId,
     name: artifact.originalName,
     type: artifact.mimeType,
+    mimeType: artifact.mimeType,
+    category: normalizeMediaSourceCategory(artifact),
     size: artifact.byteSize,
     description: artifact.userMetadata.description,
     usabilityState: artifact.usability.state,

@@ -62,7 +62,7 @@ function renderMedia(mediaItems) {
   const media = safeList(mediaItems);
   if (!media.length) return "No media references were supplied.";
   return media.map((item, index) => {
-    const type = sanitizeInput(item?.type || item?.category || "asset");
+    const type = sanitizeInput(item?.category || item?.type || "asset");
     const name = sanitizeInput(item?.name || `Asset ${index + 1}`);
     const description = sanitizeInput(item?.description || "Metadata reference only.");
     return `${index + 1}. [${type.toUpperCase()}] ${name} — ${description}`;

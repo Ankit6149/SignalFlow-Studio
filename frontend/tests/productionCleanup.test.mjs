@@ -76,3 +76,31 @@ test("unsupported Playwright capture is absent from the production graph", async
   assert.match(legacyFlow, /useRecorder/);
   assert.match(legacyFlow, /fetch\("\/api\/launch_kit"/);
 });
+
+
+test("placeholder experimental API routes stay out of the production route graph", async () => {
+  const retiredRoutes = [
+    "app/api/generate_post/route.js",
+    "app/api/generate_presentation/route.js",
+    "app/api/render_code/route.js",
+    "app/api/run_pipeline/route.js",
+  ];
+
+  for (const relative of retiredRoutes) {
+    assert.equal(
+      await exists(path.join(frontendRoot, relative)),
+      false,
+      `retired placeholder route returned: ${relative}`,
+    );
+  }
+
+  const activeFiles = [
+    ...await sourceFiles(path.join(frontendRoot, "app")),
+    ...await sourceFiles(path.join(frontendRoot, "components")),
+    ...await sourceFiles(path.join(frontendRoot, "lib")),
+  ];
+  const activeSource = (await Promise.all(activeFiles.map((file) => readFile(file, "utf8")))).join("\n");
+
+  assert.doesNotMatch(activeSource, /Experimental\/Internal API route\. Not for main UI workflow\./);
+  assert.doesNotMatch(activeSource, /\[Standalone \$\{target\}\]/);
+});

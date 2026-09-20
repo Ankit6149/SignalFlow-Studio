@@ -9,6 +9,7 @@ import { assertModelGenerationProvider } from "./generationPolicy.mjs";
 import { evaluateStrategyQuality, STRATEGY_QUALITY_STATES } from "./strategyQuality.mjs";
 import { duplicateRevisionTargets } from "./crossChannelQuality.mjs";
 import { normalizeProviderError, providerErrorPayload } from "./providerErrors.mjs";
+import { mapWithConcurrency } from "./generationConcurrency.mjs";
 import {
   CHANNEL_CONTRACTS,
   assessChannelDraft,
@@ -18,26 +19,6 @@ import {
 } from "./channelGeneration.mjs";
 
 const DEFAULT_CHANNELS = ["linkedin", "x", "instagram", "reddit", "newsletter"];
-const DEFAULT_DESTINATION_CONCURRENCY = 2;
-
-export async function mapWithConcurrency(items, worker, concurrency = DEFAULT_DESTINATION_CONCURRENCY) {
-  const values = Array.isArray(items) ? items : [];
-  if (!values.length) return [];
-  const limit = Math.max(1, Math.min(values.length, Number(concurrency) || DEFAULT_DESTINATION_CONCURRENCY));
-  const results = new Array(values.length);
-  let cursor = 0;
-
-  async function runLane() {
-    while (cursor < values.length) {
-      const index = cursor;
-      cursor += 1;
-      results[index] = await worker(values[index], index);
-    }
-  }
-
-  await Promise.all(Array.from({ length: limit }, () => runLane()));
-  return results;
-}
 
 function slug(value) {
   return String(value || "signalflow-campaign")

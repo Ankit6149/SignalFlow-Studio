@@ -1,16 +1,8 @@
-# Core Python dependencies (optional for full features):
-# - Pillow: image handling
-# - Pygments: syntax highlighting
-# - reportlab: PDF generation for presentations
-# - markdown2: markdown parsing
-# FFmpeg is required on PATH for terminal recording to produce MP4/GIF
+# Narrow optional Python utility dependencies.
+# The production application and inference APIs live in frontend/.
+# FFmpeg is required on PATH for terminal recording to produce MP4/GIF.
 Pillow
 Pygments
 reportlab
 markdown2
-fastapi
-uvicorn
-pydantic
-requests
 pytest
-

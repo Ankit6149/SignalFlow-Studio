@@ -553,3 +553,70 @@
     flex-wrap: wrap;
   }
 }
+
+
+/* Generation quality decisions */
+.app-shell .strategy-review-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--app-line);
+  border-radius: 1rem;
+  background: var(--app-surface);
+}
+
+.app-shell .strategy-review-panel > div:first-child {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.app-shell .strategy-review-panel > div:first-child > span,
+.app-shell .draft-quality-issues > strong {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell .strategy-review-panel h3,
+.app-shell .strategy-review-panel p,
+.app-shell .draft-quality-issues p {
+  margin: 0;
+}
+
+.app-shell .strategy-review-panel ul,
+.app-shell .draft-quality-issues ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.app-shell .strategy-review-panel li,
+.app-shell .draft-quality-issues li {
+  min-width: 0;
+}
+
+.app-shell .strategy-review-panel li code,
+.app-shell .draft-quality-issues li code {
+  display: inline-block;
+  margin-right: 0.45rem;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .strategy-review-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.app-shell .draft-quality-issues {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--app-line);
+  border-radius: 0.8rem;
+  background: var(--app-surface-muted);
+}

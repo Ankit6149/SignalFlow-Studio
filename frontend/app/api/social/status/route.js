@@ -22,19 +22,33 @@ export async function GET(request) {
       result[key] = {
         ...config,
         connected: connection.connected,
+        verified: connection.verified,
+        connectionId: connection.connectionId || "",
         profile: connection.profile || null,
         connectedAt: connection.connectedAt || null,
+        verifiedAt: connection.verifiedAt || null,
+        expiresAt: connection.expiresAt || null,
         expired: connection.expired || false,
         hasRefreshToken: connection.hasRefreshToken || false,
+        requiredScopes: connection.requiredScopes || [],
+        grantedScopes: connection.grantedScopes || [],
+        missingScopes: connection.missingScopes || [],
+        scopeStatus: connection.scopeStatus || "not_connected",
+        publishCapabilities: connection.publishCapabilities || [],
+        canPublishText: Boolean(connection.canPublishText),
         readiness: {
           ...config.readiness,
           authorization: connection.expired
             ? "expired"
-            : connection.connected
-              ? "ready"
-              : "pending",
+            : !connection.verified
+              ? "unverified"
+              : connection.scopeStatus === "insufficient"
+                ? "insufficient_scope"
+                : connection.scopeStatus === "unverified"
+                  ? "scope_unverified"
+                  : "ready",
           refreshTest: connection.hasRefreshToken ? "available_for_live_test" : "required",
-          publishTest: "required",
+          publishTest: connection.canPublishText ? "available_for_live_test" : "blocked",
           rejectionTest: "required",
         },
       };
@@ -51,6 +65,10 @@ export async function GET(request) {
       reason: "Instagram publishing requires a Meta Business account and hosted media URLs. Use the approved manual draft until that media pipeline is configured.",
       supportsMedia: true,
       postMaxLength: 2200,
+      verified: false,
+      scopeStatus: "manual_only",
+      publishCapabilities: [],
+      canPublishText: false,
     };
 
     result.hackernews = {
@@ -64,6 +82,10 @@ export async function GET(request) {
       reason: "Hacker News has no official posting API. Submit the approved draft manually.",
       supportsMedia: false,
       postMaxLength: null,
+      verified: false,
+      scopeStatus: "manual_only",
+      publishCapabilities: [],
+      canPublishText: false,
     };
 
     result.blog = {
@@ -77,6 +99,10 @@ export async function GET(request) {
       reason: "Blog publishing depends on your CMS. Use the exported Markdown file.",
       supportsMedia: true,
       postMaxLength: null,
+      verified: false,
+      scopeStatus: "manual_only",
+      publishCapabilities: [],
+      canPublishText: false,
     };
 
     result.newsletter = {
@@ -90,6 +116,10 @@ export async function GET(request) {
       reason: "Newsletter sending depends on your email provider. Copy or export the approved content.",
       supportsMedia: true,
       postMaxLength: null,
+      verified: false,
+      scopeStatus: "manual_only",
+      publishCapabilities: [],
+      canPublishText: false,
     };
 
     result.release_notes = {
@@ -103,6 +133,10 @@ export async function GET(request) {
       reason: "Release notes are exported as Markdown for GitHub Releases or your changelog.",
       supportsMedia: false,
       postMaxLength: null,
+      verified: false,
+      scopeStatus: "manual_only",
+      publishCapabilities: [],
+      canPublishText: false,
     };
 
     return new Response(JSON.stringify({ platforms: result }), {

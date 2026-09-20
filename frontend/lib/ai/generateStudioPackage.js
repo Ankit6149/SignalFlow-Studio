@@ -6,6 +6,9 @@ import { generateJSON } from "./generateJSON";
 import { buildMarkdown } from "../export/markdown";
 import { PROVIDERS } from "./types";
 import { assertModelGenerationProvider } from "./generationPolicy.mjs";
+import { evaluateStrategyQuality, STRATEGY_QUALITY_STATES } from "./strategyQuality.mjs";
+import { duplicateRevisionTargets } from "./crossChannelQuality.mjs";
+import { normalizeProviderError, providerErrorPayload } from "./providerErrors.mjs";
 import {
   CHANNEL_CONTRACTS,
   assessChannelDraft,
@@ -233,6 +236,11 @@ async function generateDestination({
       },
     };
   } catch (error) {
+    const providerError = normalizeProviderError(error, {
+      provider,
+      model: modelOverride || "",
+    });
+    const safeError = providerErrorPayload(providerError);
     return {
       channel,
       packageKey,
@@ -240,8 +248,85 @@ async function generateDestination({
       status: {
         status: "failed",
         attempts: firstDraft ? 1 : 0,
+        retryCount: 0,
         qualityScore: firstQuality?.score ?? null,
-        issues: [`Destination generation failed: ${error.message}`],
+        issues: [safeError.message],
+        issueCodes: [safeError.code],
+        failureClass: safeError.code,
+        providerError: safeError,
+      },
+    };
+  }
+}
+
+async function reviseDuplicateDestination({
+  target,
+  generatedDestinations,
+  context,
+  campaignBrief,
+  generationInputs,
+  provider,
+  modelOverride,
+  config,
+}) {
+  const current = generatedDestinations.find((item) => item.channel === target.channel);
+  if (!current || current.status.status === "failed") return current;
+
+  try {
+    const revisedRaw = await generateJSON({
+      provider,
+      prompt: buildChannelPrompt({
+        channel: target.channel,
+        context,
+        campaignBrief,
+        previousDraft: current.draft,
+        qualityIssues: [target.guidance],
+      }),
+      modelOverride,
+      config,
+    });
+    const revisedDraft = normalizeDestinationDraft(revisedRaw, target.channel, generationInputs);
+    const quality = assessChannelDraft(target.channel, revisedDraft, {
+      projectName: campaignBrief?.project?.name || generationInputs.projectName,
+      sourceContext: context,
+    });
+
+    return {
+      ...current,
+      draft: revisedDraft,
+      status: {
+        ...current.status,
+        status: quality.valid ? "regenerated" : "needs_review",
+        attempts: Number(current.status.attempts || 0) + 1,
+        retryCount: Number(current.status.retryCount || 0) + 1,
+        qualityScore: quality.score,
+        issues: quality.issues,
+        issueCodes: quality.issues?.length ? ["cross_channel_duplicate"] : [],
+        metrics: quality.metrics,
+        duplicateCheck: target,
+      },
+    };
+  } catch (error) {
+    const providerError = normalizeProviderError(error, {
+      provider,
+      model: modelOverride || "",
+    });
+    const safeError = providerErrorPayload(providerError);
+    return {
+      ...current,
+      status: {
+        ...current.status,
+        status: "needs_review",
+        attempts: Number(current.status.attempts || 0) + 1,
+        retryCount: Number(current.status.retryCount || 0) + 1,
+        issues: [
+          target.guidance,
+          `Duplicate repair could not complete: ${safeError.message}`,
+        ],
+        issueCodes: ["cross_channel_duplicate", safeError.code],
+        failureClass: safeError.code,
+        providerError: safeError,
+        duplicateCheck: target,
       },
     };
   }
@@ -328,9 +413,39 @@ export async function generateStudioPackage(inputs) {
 
     const pkg = normalizePackage(rawBrief, generationInputs, { allowTemplateFallback: false });
     pkg.strategy.destinationAngles = rawBrief?.strategy?.destinationAngles || {};
+    const strategyQuality = evaluateStrategyQuality({
+      rawBrief,
+      package: pkg,
+      selectedChannels: channels,
+      sourceContext: context,
+    });
+
+    if (strategyQuality.status !== STRATEGY_QUALITY_STATES.COMPLETE) {
+      return {
+        ok: false,
+        code: "strategy_quality_blocked",
+        providerUsed: generator,
+        fallbackUsed: false,
+        strategy_review: {
+          status: strategyQuality.status,
+          issues: strategyQuality.issues,
+          issueCodes: strategyQuality.issueCodes,
+          package: {
+            project: pkg.project,
+            context: pkg.context,
+            strategy: pkg.strategy,
+          },
+        },
+        warnings: Array.from(new Set([
+          ...contextWarnings,
+          ...strategyQuality.issues.map((item) => item.message),
+        ])),
+      };
+    }
+
     pkg.posts = emptyPackagePosts();
 
-    const generatedDestinations = await Promise.all(channels.map((channel) => generateDestination({
+    let generatedDestinations = await Promise.all(channels.map((channel) => generateDestination({
       channel,
       context,
       campaignBrief: pkg,
@@ -339,6 +454,31 @@ export async function generateStudioPackage(inputs) {
       modelOverride,
       config,
     })));
+
+    const generatedDraftMap = Object.fromEntries(
+      generatedDestinations
+        .filter((item) => item && item.status.status !== "failed")
+        .map((item) => [item.channel, item.draft]),
+    );
+    const duplicateTargets = duplicateRevisionTargets({
+      generatedDrafts: generatedDraftMap,
+      requestedChannels: channels,
+    });
+
+    if (duplicateTargets.length) {
+      const revised = await Promise.all(duplicateTargets.map((target) => reviseDuplicateDestination({
+        target,
+        generatedDestinations,
+        context,
+        campaignBrief: pkg,
+        generationInputs,
+        provider: generator,
+        modelOverride,
+        config,
+      })));
+      const replacements = new Map(revised.filter(Boolean).map((item) => [item.channel, item]));
+      generatedDestinations = generatedDestinations.map((item) => replacements.get(item.channel) || item);
+    }
 
     const generationStatus = {};
     const generationWarnings = [];
@@ -361,7 +501,9 @@ export async function generateStudioPackage(inputs) {
       mode: "staged_agent",
       provider: generator,
       model: modelOverride,
-      strategyStatus: "generated",
+      strategyStatus: "complete",
+      strategyQuality,
+      duplicateRevisionTargets: duplicateTargets,
       destinations: generationStatus,
     };
 
@@ -410,7 +552,9 @@ export async function generateStudioPackage(inputs) {
       },
     };
   } catch (error) {
-    throw new Error(`${providerMeta.label} campaign generation failed: ${error.message}`);
-
+    throw normalizeProviderError(error, {
+      provider: generator,
+      model: modelOverride || "",
+    });
   }
 }

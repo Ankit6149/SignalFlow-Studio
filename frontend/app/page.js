@@ -412,6 +412,11 @@ export default function Home() {
   const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
   const currentConnection = connections[activeChannel] || null;
+  const currentConnectionLabel =
+    currentConnection?.profile?.username ||
+    currentConnection?.profile?.name ||
+    currentConnection?.profile?.displayName ||
+    "No connected account";
   const currentSourceSnapshot = useMemo(
     () =>
       createGenerationSourceSnapshot(
@@ -508,6 +513,14 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     isOverLimit,
     connectorReady: canPublishCurrent,
     manualRoute: Boolean(activeMeta.openUrl || !OFFICIAL_CONNECTORS.has(activeChannel)),
+  });
+  const directPublishAvailability = selectPublishAvailability({
+    channelStatus: activeChannelStatus,
+    isStale: isCampaignStale,
+    hasContent: Boolean(currentPost),
+    isOverLimit,
+    connectorReady: canPublishCurrent,
+    manualRoute: false,
   });
 
   useEffect(() => {
@@ -1274,7 +1287,7 @@ async function exportZip() {
       options = { subreddit, title };
     }
 
-    if (!window.confirm(`Publish this approved draft to ${activeMeta.label}?`)) return;
+    if (!window.confirm(`Publish ${activeMeta.label} revision ${revision} to ${currentConnectionLabel}? This sends the exact approved draft currently shown.`)) return;
 
     setBusy(true);
     setMessage(null);
@@ -2026,25 +2039,47 @@ async function exportZip() {
                     </div>
                     <button
                       className="button button--dark"
-                      onClick={publishCurrentPost}
+                      onClick={copyAndOpenCurrent}
                       disabled={busy || !publishAvailability.ready}
                       title={publishAvailability.reason || undefined}
                     >
                       {!publishAvailability.ready
                         ? channelStates[activeChannel]?.approved
-                          ? "Action unavailable"
+                          ? "Handoff unavailable"
                           : "Approve to continue"
-                        : canPublishCurrent
-                          ? "Publish approved draft"
-                          : activeMeta.openUrl
-                            ? `Copy & open ${activeMeta.label}`
-                            : "Copy approved draft"}
+                        : activeMeta.openUrl
+                          ? `Copy & open ${activeMeta.label}`
+                          : "Copy approved draft"}
                       <ArrowIcon />
                     </button>
                     {!publishAvailability.ready && (
                       <p className="review-action-reason" role="status">{publishAvailability.reason}</p>
                     )}
                   </div>
+
+                  {OFFICIAL_CONNECTORS.has(activeChannel) && (
+                    <details className="route-note direct-publish-panel">
+                      <summary>Direct publishing to {activeMeta.label}</summary>
+                      <div className="direct-publish-panel__body">
+                        <div>
+                          <strong>{currentConnectionLabel}</strong>
+                          <span>Revision {revision} · exact approved draft currently shown</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="button button--outline"
+                          onClick={publishCurrentPost}
+                          disabled={busy || !directPublishAvailability.ready}
+                          title={directPublishAvailability.reason || undefined}
+                        >
+                          Publish this revision
+                        </button>
+                        {!directPublishAvailability.ready && (
+                          <p className="review-action-reason" role="status">{directPublishAvailability.reason}</p>
+                        )}
+                      </div>
+                    </details>
+                  )}
 
                   {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (
                     <button

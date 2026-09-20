@@ -437,6 +437,9 @@ export default function Home() {
   const canPublishCurrent = Boolean(
     campaignFreshness.canUseCurrentGeneration &&
       currentConnection?.connected &&
+      currentConnection?.verified &&
+      currentConnection?.canPublishText &&
+      currentConnection?.scopeStatus === "verified" &&
       !currentConnection?.expired &&
       !currentConnection?.manualOnly,
   );
@@ -479,7 +482,11 @@ export default function Home() {
 const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   const composeReady = sourceAndChannelsReady && providerReadiness.ready;
   const connectedOfficialCount = Array.from(OFFICIAL_CONNECTORS).filter(
-    (id) => connections[id]?.connected && !connections[id]?.expired,
+    (id) =>
+      connections[id]?.connected &&
+      connections[id]?.verified &&
+      connections[id]?.canPublishText &&
+      !connections[id]?.expired,
   ).length;
   const reviewIndex = Math.max(0, channels.indexOf(activeChannel));
   const sourceArtifactSummary = files.reduce((summary, file) => {
@@ -2321,16 +2328,30 @@ async function exportZip() {
               {Array.from(OFFICIAL_CONNECTORS).map((platformId) => {
                 const status = connections[platformId] || {};
                 const inspected = Boolean(accessToken && Object.keys(connections).length > 0);
-                const ready = Boolean(inspected && status.configured && status.connected && !status.expired);
+                const ready = Boolean(
+                  inspected &&
+                    status.configured &&
+                    status.connected &&
+                    status.verified &&
+                    status.scopeStatus === "verified" &&
+                    status.canPublishText &&
+                    !status.expired,
+                );
                 const readinessLabel = connectionsLoading
                   ? "Checking"
                   : !inspected
                     ? "Unlock to inspect"
                     : ready
-                      ? "Authorized"
-                      : status.configured
-                        ? "Needs authorization"
-                        : "Needs credentials";
+                      ? "Ready for text"
+                      : status.expired
+                        ? "Expired"
+                        : status.scopeStatus === "insufficient"
+                          ? "Missing scope"
+                          : status.connected && !status.canPublishText
+                            ? "Capability blocked"
+                            : status.configured
+                              ? "Needs authorization"
+                              : "Needs credentials";
                 return (
                   <article key={platformId} className="connector-readiness__card">
                     <header>
@@ -2339,11 +2360,35 @@ async function exportZip() {
                     </header>
                     <ul>
                       <li>Credentials: {!inspected ? "unlock and refresh to inspect" : status.configured ? "configured" : "missing in deployment"}</li>
+                      <li>
+                        Identity: {!inspected
+                          ? "not inspected"
+                          : status.verified
+                            ? status.profile?.username || status.profile?.name || "verified account"
+                            : "not verified"}
+                      </li>
                       <li>Authorization: {!inspected ? "not inspected" : status.expired ? "expired" : status.connected ? "active" : "not completed"}</li>
-                      <li>Refresh: {!inspected ? "not inspected" : status.hasRefreshToken ? "available" : "not yet verified"}</li>
-                      <li>Live post test: {status.readiness?.publishTest === "verified" ? "verified" : "required"}</li>
+                      <li>
+                        Scopes: {!inspected
+                          ? "not inspected"
+                          : status.scopeStatus === "verified"
+                            ? (status.grantedScopes || []).join(" · ") || "verified"
+                            : status.scopeStatus === "insufficient"
+                              ? `missing ${(status.missingScopes || []).join(", ")}`
+                              : "not verified"}
+                      </li>
+                      <li>
+                        Direct capabilities: {!inspected
+                          ? "not inspected"
+                          : (status.publishCapabilities || []).length
+                            ? status.publishCapabilities.join(" · ")
+                            : "none verified"}
+                      </li>
+                      <li>Expiry: {!inspected ? "not inspected" : status.expiresAt ? formatDate(status.expiresAt) : "provider did not supply an expiry"}</li>
+                      <li>Last verified: {!inspected ? "not inspected" : status.verifiedAt ? formatDate(status.verifiedAt) : "not verified"}</li>
+                      <li>Refresh token: {!inspected ? "not inspected" : status.hasRefreshToken ? "stored server-side" : "not available"}</li>
+                      <li>Live post verification: {status.readiness?.publishTest === "available_for_live_test" ? "still required" : "blocked until ready"}</li>
                       {status.callbackUrl && <li>Callback: <code>{status.callbackUrl}</code></li>}
-                      {status.scopes?.length > 0 && <li>Scopes: {status.scopes.join(" · ")}</li>}
                     </ul>
                   </article>
                 );
@@ -2355,14 +2400,21 @@ async function exportZip() {
             {CHANNELS.map((channel) => {
               const status = connections[channel.id];
               const official = OFFICIAL_CONNECTORS.has(channel.id);
-              const connected = Boolean(status?.connected && !status?.expired && !status?.manualOnly);
+              const connected = Boolean(status?.connected && status?.verified && !status?.expired && !status?.manualOnly);
+              const publishReady = Boolean(connected && status?.canPublishText && status?.scopeStatus === "verified");
               const canConnect = official && Boolean(status?.configured);
               let description = status?.reason;
 
-              if (!description && connected) {
-                description = `Connected as ${
+              if (!description && publishReady) {
+                description = `Verified as ${
                   status?.profile?.username || status?.profile?.name || "official account"
-                }.`;
+                }. Text publishing capability is available.`;
+              }
+              if (!description && connected && status?.scopeStatus === "insufficient") {
+                description = `Identity verified, but required publishing scopes are missing: ${(status?.missingScopes || []).join(", ") || "unknown scope"}.`;
+              }
+              if (!description && connected && !status?.canPublishText) {
+                description = "Identity verified, but direct text publishing is not currently authorized.";
               }
               if (!description && status?.expired) {
                 description = "The stored session expired. Reconnect this account.";
@@ -2395,14 +2447,16 @@ async function exportZip() {
                     <p>{description}</p>
                   </div>
                   <div className="connection-card__actions">
-                    <span className={connected ? "status-tag status-tag--ready" : "status-tag"}>
-                      {connected
-                        ? "Connected"
+                    <span className={publishReady ? "status-tag status-tag--ready" : "status-tag"}>
+                      {publishReady
+                        ? "Verified · text"
                         : status?.expired
                           ? "Expired"
-                          : official
-                            ? "Not connected"
-                            : "Export ready"}
+                          : connected
+                            ? "Connected · limited"
+                            : official
+                              ? "Not connected"
+                              : "Export ready"}
                     </span>
                     {connected && (
                       <button

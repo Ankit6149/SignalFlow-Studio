@@ -232,7 +232,7 @@ function positiveNumber(value) {
 
 export function hasVerifiedTimelineEvidence(context = {}) {
   return safeArray(context.mediaItems).some((item) => {
-    const type = String(item?.type || item?.category || item?.kind || "").toLowerCase();
+    const type = String(item?.category || item?.type || item?.kind || "").toLowerCase();
     const isVideo = /video|recording|walkthrough|screen.?capture/.test(type);
     if (!isVideo) return false;
 

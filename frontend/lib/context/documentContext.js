@@ -34,8 +34,14 @@ export function compileWorkspaceContext({
   if (!linksContext || linksContext.length === 0) {
     missingContext.push("Documentation or public product links are missing.");
   }
-  if (!mediaItems || mediaItems.length === 0) {
-    missingContext.push("Screenshots or demo recordings are missing.");
+  const mediaCategories = Array.isArray(mediaItems)
+    ? mediaItems.map((item) => String(item?.category || item?.type || "").toLowerCase())
+    : [];
+  const hasProductVisualEvidence = mediaCategories.some((category) =>
+    ["screenshot", "product image", "screen recording", "image", "video"].includes(category),
+  );
+  if (!hasProductVisualEvidence) {
+    missingContext.push("Screenshots, product images, or demo recordings are missing.");
   }
 
   // Parse repo tech stack / features if present
@@ -67,11 +73,11 @@ export function compileWorkspaceContext({
   }
 
   if (Array.isArray(mediaItems) && mediaItems.length) {
-    const logos = mediaItems.filter(m => (m.type || m.category) === "logo");
-    const recordings = mediaItems.filter(m => (m.type || m.category) === "screen recording");
-    const screenshots = mediaItems.filter(m => (m.type || m.category) === "screenshot");
-    const productImages = mediaItems.filter(m => (m.type || m.category) === "product image");
-    const docs = mediaItems.filter(m => (m.type || m.category) === "document" || (m.type || m.category) === "doc");
+    const logos = mediaItems.filter(m => (m.category || m.type) === "logo");
+    const recordings = mediaItems.filter(m => (m.category || m.type) === "screen recording");
+    const screenshots = mediaItems.filter(m => (m.category || m.type) === "screenshot");
+    const productImages = mediaItems.filter(m => (m.category || m.type) === "product image");
+    const docs = mediaItems.filter(m => (m.category || m.type) === "document" || (m.category || m.type) === "doc");
 
     if (logos.length) confirmedFacts.push(`User uploaded ${logos.length} brand logo asset(s).`);
     if (recordings.length) confirmedFacts.push(`User provided ${recordings.length} product screen recording demo(s).`);
@@ -92,7 +98,7 @@ export function compileWorkspaceContext({
   }
 
   // Compile media insights
-  const mediaNames = mediaItems.map(item => `${item.name} (${item.type || item.category || "media"})`);
+  const mediaNames = mediaItems.map(item => `${item.name} (${item.category || item.type || "media"})`);
   
   // Format summary content string
   let summary = `Product Name: ${projectName}\n`;

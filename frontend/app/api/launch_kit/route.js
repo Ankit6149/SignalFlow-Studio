@@ -13,6 +13,7 @@ import { ingestLocalRepo } from "../../../lib/context/localRepo";
 import { fetchUrlContent } from "../../../lib/context/linkFetcher";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
+import { ProviderError, providerErrorPayload } from "../../../lib/ai/providerErrors.mjs";
 
 const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
 
@@ -226,10 +227,23 @@ export async function POST(request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    if (error instanceof ProviderError) {
+      const providerError = providerErrorPayload(error);
+      return new Response(JSON.stringify({
+        ok: false,
+        error: providerError.message,
+        providerError,
+        warnings: [providerError.message],
+      }), {
+        status: providerError.httpStatus && providerError.httpStatus >= 400 ? providerError.httpStatus : 502,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({
       ok: false,
-      error: `Server failed to assemble kit: ${error.message}`,
-      warnings: [error.message],
+      error: "SignalFlow could not complete campaign generation.",
+      warnings: ["Campaign generation failed unexpectedly. Retry deliberately or inspect server diagnostics with the correlation context."],
     }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

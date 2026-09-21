@@ -22,21 +22,42 @@ function qualityState(result, channel, fallback = "generated") {
   return String(result?.generation_status?.[channel]?.status || fallback || "generated");
 }
 
+function qualityStatusForStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "failed") return "failed";
+  if (["generated", "regenerated"].includes(normalized)) return "complete";
+  return "needs_review";
+}
+
 function createChannelState({
   generatedContent = "",
   currentContent = "",
   status = "generated",
+  qualityStatus = "",
   approved = false,
   generationRunId = "",
+  issues = [],
+  issueCodes = [],
+  retryCount = 0,
+  failureClass = "",
+  providerError = null,
+  qualityRiskAccepted = false,
 } = {}) {
   const generated = text(generatedContent);
   const current = text(currentContent);
   const edited = current !== generated;
   return {
     status: String(status || "generated"),
+    qualityStatus: String(qualityStatus || qualityStatusForStatus(status)),
     edited,
     approved: Boolean(approved && !edited),
     generationRunId: String(generationRunId || ""),
+    issues: Array.isArray(issues) ? clone(issues) : [],
+    issueCodes: Array.isArray(issueCodes) ? clone(issueCodes) : [],
+    retryCount: Number.isInteger(retryCount) ? retryCount : Number(retryCount || 0),
+    failureClass: String(failureClass || ""),
+    providerError: providerError ? clone(providerError) : null,
+    qualityRiskAccepted: Boolean(qualityRiskAccepted),
   };
 }
 
@@ -47,12 +68,21 @@ function createChannelStates({ requestedChannels = [], posts = {}, result = {}, 
     ...Object.keys(posts || {}),
   ].map((channel) => String(channel || "").trim()).filter(Boolean)));
 
-  return Object.fromEntries(channels.map((channel) => [channel, createChannelState({
-    generatedContent: posts[channel] || "",
-    currentContent: posts[channel] || "",
-    status: qualityState(result, channel, posts[channel] ? "generated" : "failed"),
-    generationRunId: generationRun?.generationRunId || "",
-  })]));
+  return Object.fromEntries(channels.map((channel) => {
+    const generationStatus = result?.generation_status?.[channel] || {};
+    return [channel, createChannelState({
+      generatedContent: posts[channel] || "",
+      currentContent: posts[channel] || "",
+      status: qualityState(result, channel, posts[channel] ? "generated" : "failed"),
+      qualityStatus: generationStatus.qualityStatus,
+      generationRunId: generationRun?.generationRunId || "",
+      issues: generationStatus.issues,
+      issueCodes: generationStatus.issueCodes,
+      retryCount: generationStatus.retryCount,
+      failureClass: generationStatus.failureClass,
+      providerError: generationStatus.providerError,
+    })];
+  }));
 }
 
 function archiveSnapshot(state, { archiveId, createdAt, reason }) {
@@ -139,8 +169,10 @@ export function campaignReducer(state, action) {
           [channel]: {
             ...previousStatus,
             status: previousStatus.status === "failed" ? "needs_review" : previousStatus.status || "needs_review",
+            qualityStatus: "needs_review",
             edited: nextText !== generated,
             approved: false,
+            qualityRiskAccepted: false,
           },
         },
         revision: state.revision + 1,
@@ -152,11 +184,17 @@ export function campaignReducer(state, action) {
       if (!channel || !state.posts[channel]) return state;
       const previous = state.channelStates[channel] || {};
       if (previous.approved) return state;
+      const unresolvedQuality = previous.status === "needs_review" && !previous.qualityRiskAccepted;
+      if (unresolvedQuality && action.acceptRisk !== true) return state;
       return {
         ...state,
         channelStates: {
           ...state.channelStates,
-          [channel]: { ...previous, approved: true },
+          [channel]: {
+            ...previous,
+            approved: true,
+            qualityRiskAccepted: unresolvedQuality ? true : Boolean(previous.qualityRiskAccepted),
+          },
         },
         revision: state.revision + 1,
       };
@@ -171,7 +209,7 @@ export function campaignReducer(state, action) {
         ...state,
         channelStates: {
           ...state.channelStates,
-          [channel]: { ...previous, approved: false, status: "needs_review" },
+          [channel]: { ...previous, approved: false, status: "needs_review", qualityStatus: "needs_review", qualityRiskAccepted: false },
         },
         revision: state.revision + 1,
       };
@@ -190,7 +228,13 @@ export function campaignReducer(state, action) {
             ...(state.channelStates[channel] || {}),
             edited: false,
             approved: false,
+            qualityRiskAccepted: false,
             status: state.channelStates[channel]?.status === "failed" ? "needs_review" : state.channelStates[channel]?.status || "generated",
+            qualityStatus: qualityStatusForStatus(
+              state.channelStates[channel]?.status === "failed"
+                ? "needs_review"
+                : state.channelStates[channel]?.status || "generated",
+            ),
           },
         },
         revision: state.revision + 1,
@@ -241,18 +285,34 @@ export function campaignReducer(state, action) {
         if (typeof payload.posts?.[channel] === "string" && payload.posts[channel].trim()) {
           nextPosts[channel] = payload.posts[channel];
           nextGeneratedPosts[channel] = payload.posts[channel];
+          const generationStatus = payload.result?.generation_status?.[channel] || {};
           nextChannelStates[channel] = createChannelState({
             generatedContent: payload.posts[channel],
             currentContent: payload.posts[channel],
             status,
+            qualityStatus: generationStatus.qualityStatus,
             generationRunId: payload.generationRun?.generationRunId || "",
+            issues: generationStatus.issues,
+            issueCodes: generationStatus.issueCodes,
+            retryCount: generationStatus.retryCount,
+            failureClass: generationStatus.failureClass,
+            providerError: generationStatus.providerError,
           });
           changed = true;
         } else if (status === "failed") {
+          const generationStatus = payload.result?.generation_status?.[channel] || {};
+          const previous = nextChannelStates[channel] || {};
           nextChannelStates[channel] = {
-            ...(nextChannelStates[channel] || {}),
+            ...previous,
             status: "failed",
+            qualityStatus: "failed",
             approved: false,
+            qualityRiskAccepted: false,
+            issues: Array.isArray(generationStatus.issues) ? clone(generationStatus.issues) : previous.issues || [],
+            issueCodes: Array.isArray(generationStatus.issueCodes) ? clone(generationStatus.issueCodes) : previous.issueCodes || [],
+            retryCount: Number(generationStatus.retryCount ?? previous.retryCount ?? 0),
+            failureClass: String(generationStatus.failureClass || previous.failureClass || ""),
+            providerError: generationStatus.providerError ? clone(generationStatus.providerError) : previous.providerError || null,
           };
           changed = true;
         }

@@ -118,19 +118,37 @@ test("campaign tool forwards provider secrets from environment, not tool argumen
   assert.equal(calls[0].body.generator, "gemini");
 });
 
-test("API failures become MCP errors instead of fake campaign output", async () => {
+test("API failures become structured MCP errors instead of fake campaign output", async () => {
+  const providerError = {
+    code: "provider_invalid_credentials",
+    message: "OpenAI rejected or is missing the configured credentials.",
+    retryable: false,
+    recoveryAction: "replace_key",
+    httpStatus: 401,
+    provider: "openai",
+    model: "gpt-test",
+    correlationId: "provider-test-1",
+  };
   const fetchImpl = async () => new Response(
-    JSON.stringify({ ok: false, error: "Provider connection failed" }),
-    { status: 400, headers: { "Content-Type": "application/json" } },
+    JSON.stringify({
+      ok: false,
+      error: providerError.message,
+      providerError,
+      warnings: [providerError.message],
+    }),
+    { status: 401, headers: { "Content-Type": "application/json" } },
   );
 
-  await assert.rejects(
-    executeTool("signalflow_create_campaign", {
-      projectName: "SignalFlow",
-      notes: "A real product brief",
-      provider: "openai",
-      channels: ["blog"],
-    }, { fetchImpl, env: { SIGNALFLOW_BASE_URL: "https://signalflow.example" } }),
-    /provider connection failed/i,
-  );
+  const result = await executeTool("signalflow_create_campaign", {
+    projectName: "SignalFlow",
+    notes: "A real product brief",
+    provider: "openai",
+    channels: ["blog"],
+  }, { fetchImpl, env: { SIGNALFLOW_BASE_URL: "https://signalflow.example" } });
+
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /rejected or is missing/i);
+  assert.deepEqual(result.structuredContent.providerError, providerError);
+  assert.equal(result.structuredContent.ok, false);
+  assert.equal("posts" in result.structuredContent, false);
 });

@@ -156,10 +156,18 @@ test("YouTube quality gate requires timestamps when verified timeline evidence e
   assert.equal(result.metrics.requiresTimedChapters, true);
 });
 
-test("generation orchestration passes source evidence into both quality attempts", async () => {
+test("generation orchestration passes source evidence into every quality stage", async () => {
   const source = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
+  const channelQualityCalls = source.match(/assessChannelDraft\(/g) || [];
   const evidenceBindings = source.match(/sourceContext:\s*context/g) || [];
-  assert.equal(evidenceBindings.length, 2);
+
+  assert.equal(channelQualityCalls.length, 3);
+  assert.equal(
+    evidenceBindings.length,
+    channelQualityCalls.length + 1,
+    "each channel quality pass plus the strategy quality gate must receive normalized source evidence",
+  );
+  assert.match(source, /evaluateStrategyQuality\([\s\S]*?sourceContext:\s*context/);
 });
 
 test("Hacker News status uses the canonical active identifier", async () => {

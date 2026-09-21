@@ -30,7 +30,7 @@ function renderLinks(linksContext) {
 function renderMedia(mediaItems) {
   return safeArray(mediaItems)
     .slice(0, 16)
-    .map((item, index) => `${index + 1}. ${neutralize(item?.name || "Asset")} (${neutralize(item?.type || item?.category || "media")}) — ${neutralize(item?.description || "Metadata only")}`)
+    .map((item, index) => `${index + 1}. ${neutralize(item?.name || "Asset")} (${neutralize(item?.category || item?.type || "media")}) — ${neutralize(item?.description || "Metadata only")}`)
     .join("\n") || "No media references were supplied.";
 }
 

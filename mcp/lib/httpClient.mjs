@@ -69,7 +69,10 @@ export async function signalFlowRequest(path, {
       throw new Error(`SignalFlow returned an unreadable response (HTTP ${response.status}).`);
     }
     if (!response.ok || data.ok === false) {
-      throw new Error(data.error || `SignalFlow request failed (HTTP ${response.status}).`);
+      const requestError = new Error(data.error || data.providerError?.message || `SignalFlow request failed (HTTP ${response.status}).`);
+      requestError.signalFlowData = data;
+      requestError.httpStatus = response.status;
+      throw requestError;
     }
     return data;
   } catch (error) {

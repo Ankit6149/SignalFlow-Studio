@@ -21,6 +21,7 @@ export async function signalFlowRequest(path, {
   env = process.env,
   fetchImpl = globalThis.fetch,
   timeoutMs = 120000,
+  signal,
 } = {}) {
   if (typeof fetchImpl !== "function") {
     throw new Error("This Node runtime does not provide fetch(). Use Node 20 or newer.");
@@ -29,6 +30,9 @@ export async function signalFlowRequest(path, {
   const baseUrl = getSignalFlowBaseUrl(env);
   const accessKey = getSignalFlowAccessKey(env);
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(signal?.reason);
+  if (signal?.aborted) abortFromCaller();
+  else signal?.addEventListener?.("abort", abortFromCaller, { once: true });
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   const headers = { Accept: "application/json" };
@@ -82,5 +86,6 @@ export async function signalFlowRequest(path, {
     throw error;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener?.("abort", abortFromCaller);
   }
 }

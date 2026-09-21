@@ -107,10 +107,12 @@ export function normalizeProviderError(error, { provider = "", model = "" } = {}
   if (error instanceof ProviderError) return error;
   const classification = classify(error);
   return new ProviderError({
-    ...classification,
+    code: classification.code,
     message: safeMessage(classification.code, provider),
     provider,
     model,
+    retryable: classification.retryable,
+    recoveryAction: classification.action,
     httpStatus: integerStatus(error),
   });
 }

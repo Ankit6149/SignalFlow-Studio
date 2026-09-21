@@ -4,13 +4,16 @@ import assert from "node:assert/strict";
 import { createCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
 import { executeTool, TOOL_DEFINITIONS } from "../lib/tools.mjs";
 
-test("MCP exposes capabilities, provider status, provider test, and campaign creation tools", () => {
+test("MCP exposes blocking compatibility plus trackable campaign workflow tools", () => {
   assert.deepEqual(
     TOOL_DEFINITIONS.map((tool) => tool.name),
     [
       "signalflow_capabilities",
       "signalflow_provider_status",
       "signalflow_test_provider",
+      "signalflow_start_campaign",
+      "signalflow_campaign_status",
+      "signalflow_cancel_campaign",
       "signalflow_create_campaign",
     ],
   );
@@ -151,4 +154,76 @@ test("API failures become structured MCP errors instead of fake campaign output"
   assert.deepEqual(result.structuredContent.providerError, providerError);
   assert.equal(result.structuredContent.ok, false);
   assert.equal("posts" in result.structuredContent, false);
+});
+
+
+test("trackable campaign tools start, inspect, and cancel through the shared execution registry", async () => {
+  const calls = [];
+  const fakeRegistry = {
+    start(run, options) {
+      calls.push({ type: "start", run, options });
+      return {
+        id: "campaign-123",
+        status: "queued",
+        phase: "queued",
+        metadata: options.metadata,
+      };
+    },
+    get(jobId) {
+      calls.push({ type: "get", jobId });
+      return {
+        id: jobId,
+        status: "running",
+        phase: "generating",
+        progress: { completedDestinations: 1, totalDestinations: 2 },
+      };
+    },
+    cancel(jobId) {
+      calls.push({ type: "cancel", jobId });
+      return {
+        id: jobId,
+        status: "running",
+        phase: "cancelling",
+        cancellationRequested: true,
+      };
+    },
+  };
+
+  const started = await executeTool("signalflow_start_campaign", {
+    projectName: "SignalFlow",
+    notes: "Evidence",
+    provider: "gemini",
+    channels: ["linkedin", "x"],
+  }, { executionRegistry: fakeRegistry });
+
+  assert.equal(started.isError, false);
+  assert.equal(started.structuredContent.job.id, "campaign-123");
+  assert.deepEqual(calls[0].options.metadata.channels, ["linkedin", "x"]);
+
+  const status = await executeTool("signalflow_campaign_status", {
+    jobId: "campaign-123",
+  }, { executionRegistry: fakeRegistry });
+  assert.equal(status.structuredContent.job.status, "running");
+  assert.equal(status.structuredContent.job.progress.completedDestinations, 1);
+
+  const cancelled = await executeTool("signalflow_cancel_campaign", {
+    jobId: "campaign-123",
+  }, { executionRegistry: fakeRegistry });
+  assert.equal(cancelled.structuredContent.job.phase, "cancelling");
+  assert.equal(cancelled.structuredContent.job.cancellationRequested, true);
+});
+
+test("trackable campaign status fails safely for unknown job IDs", async () => {
+  const result = await executeTool("signalflow_campaign_status", {
+    jobId: "missing",
+  }, {
+    executionRegistry: {
+      get() { return null; },
+      cancel() { return null; },
+      start() { throw new Error("not used"); },
+    },
+  });
+
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.code, "campaign_job_not_found");
 });

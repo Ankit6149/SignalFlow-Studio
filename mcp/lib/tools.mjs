@@ -4,6 +4,7 @@ import {
   validateSourceGraph,
 } from "../../frontend/lib/domain/sourceArtifacts.mjs";
 import { signalFlowRequest } from "./httpClient.mjs";
+import { campaignExecutionRegistry } from "./executionRegistry.mjs";
 
 const CHANNELS = [
   "linkedin",
@@ -52,6 +53,55 @@ export const TOOL_DEFINITIONS = [
         modelName: { type: "string" },
         baseUrl: { type: "string" },
       },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_start_campaign",
+    description: "Start campaign generation as trackable MCP work and return immediately with a job ID. Use campaign status and cancel tools while generation continues.",
+    inputSchema: {
+      type: "object",
+      required: ["projectName", "notes", "provider", "channels"],
+      properties: {
+        projectName: { type: "string", minLength: 1 },
+        notes: { type: "string", minLength: 1 },
+        audience: { type: "string" },
+        links: { type: "string" },
+        repository: { type: "string" },
+        provider: { type: "string", enum: PROVIDERS },
+        modelName: { type: "string" },
+        baseUrl: { type: "string" },
+        channels: {
+          type: "array",
+          minItems: 1,
+          uniqueItems: true,
+          items: { type: "string", enum: CHANNELS },
+        },
+        documentText: { type: "array", items: { type: "string" } },
+        assets: { type: "array", items: { type: "object", additionalProperties: true } },
+        sourceArtifacts: { type: "array", items: { type: "object", additionalProperties: true } },
+        processingRecords: { type: "array", items: { type: "object", additionalProperties: true } },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_campaign_status",
+    description: "Inspect a trackable SignalFlow MCP campaign job without blocking unrelated MCP requests.",
+    inputSchema: {
+      type: "object",
+      required: ["jobId"],
+      properties: { jobId: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_cancel_campaign",
+    description: "Request cancellation of queued or active SignalFlow MCP campaign work.",
+    inputSchema: {
+      type: "object",
+      required: ["jobId"],
+      properties: { jobId: { type: "string", minLength: 1 } },
       additionalProperties: false,
     },
   },
@@ -183,6 +233,78 @@ export async function executeTool(name, args = {}, options = {}) {
       content: textContent(data.ok ? `${provider} connection succeeded.` : `${provider} connection failed.`),
       structuredContent: data,
       isError: !data.ok,
+    };
+  }
+
+  if (name === "signalflow_start_campaign") {
+    const projectName = requireString(args.projectName, "projectName");
+    const notes = requireString(args.notes, "notes");
+    const provider = requireProvider(args.provider);
+    const channels = requireChannels(args.channels);
+    const registry = options.executionRegistry || campaignExecutionRegistry;
+    const job = registry.start(async ({ signal, reportProgress }) => {
+      reportProgress({
+        phase: "generating",
+        completedDestinations: 0,
+        totalDestinations: channels.length,
+      });
+      return executeTool("signalflow_create_campaign", {
+        ...args,
+        projectName,
+        notes,
+        provider,
+        channels,
+      }, {
+        ...options,
+        signal,
+      });
+    }, {
+      metadata: {
+        projectName,
+        provider,
+        channels,
+      },
+    });
+    return {
+      content: textContent(`SignalFlow started campaign job ${job.id} for ${projectName}.`),
+      structuredContent: { ok: true, job },
+      isError: false,
+    };
+  }
+
+  if (name === "signalflow_campaign_status") {
+    const jobId = requireString(args.jobId, "jobId");
+    const registry = options.executionRegistry || campaignExecutionRegistry;
+    const job = registry.get(jobId);
+    if (!job) {
+      return {
+        content: textContent(`Unknown SignalFlow campaign job: ${jobId}.`),
+        structuredContent: { ok: false, code: "campaign_job_not_found", jobId },
+        isError: true,
+      };
+    }
+    return {
+      content: textContent(`SignalFlow campaign job ${job.id} is ${job.status} (${job.phase}).`),
+      structuredContent: { ok: true, job },
+      isError: job.status === "failed",
+    };
+  }
+
+  if (name === "signalflow_cancel_campaign") {
+    const jobId = requireString(args.jobId, "jobId");
+    const registry = options.executionRegistry || campaignExecutionRegistry;
+    const job = registry.cancel(jobId);
+    if (!job) {
+      return {
+        content: textContent(`Unknown SignalFlow campaign job: ${jobId}.`),
+        structuredContent: { ok: false, code: "campaign_job_not_found", jobId },
+        isError: true,
+      };
+    }
+    return {
+      content: textContent(`SignalFlow cancellation requested for campaign job ${job.id}.`),
+      structuredContent: { ok: true, job },
+      isError: false,
     };
   }
 

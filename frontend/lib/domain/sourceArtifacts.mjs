@@ -998,7 +998,7 @@ export function normalizeMediaSourceCategory(input = {}) {
   if (
     sourceKind === SOURCE_KINDS.SCREENSHOT ||
     ((mimeType.startsWith("image/") || assetType === ASSET_TYPES.IMAGE) &&
-      /\b(screen\s*shot|screenshot|screen\s*capture)\b/.test(descriptor))
+      /\b(screen[\s_-]*shot|screenshot|screen[\s_-]*capture)\b/.test(descriptor))
   ) {
     return MEDIA_SOURCE_CATEGORIES.SCREENSHOT;
   }
@@ -1006,7 +1006,7 @@ export function normalizeMediaSourceCategory(input = {}) {
   if (
     sourceKind === SOURCE_KINDS.RECORDING ||
     ((mimeType.startsWith("video/") || assetType === ASSET_TYPES.VIDEO) &&
-      /\b(screen\s*record(?:ing)?|screencast|screen\s*capture|walkthrough)\b/.test(descriptor))
+      /\b(screen[\s_-]*record(?:ing)?|screencast|screen[\s_-]*capture|walkthrough)\b/.test(descriptor))
   ) {
     return MEDIA_SOURCE_CATEGORIES.SCREEN_RECORDING;
   }

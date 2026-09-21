@@ -25,6 +25,10 @@ import {
   campaignReducer,
   createInitialCampaignState,
 } from "../lib/studio/campaignState.mjs";
+import {
+  REGENERATION_POLICIES,
+  regenerationTargets,
+} from "../lib/studio/regenerationPolicy.mjs";
 
 function validStrategyFixture() {
   const context = {
@@ -333,4 +337,24 @@ test("complete, needs_review, and failed quality states remain behaviorally dist
   });
   assert.equal(failed.channelStates.reddit.qualityStatus, "failed");
   assert.equal(failed.channelStates.reddit.approved, false);
+});
+
+
+test("failed destinations expose an isolated retry path without touching successful channels", async () => {
+  const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
+  assert.match(page, /\? "Generation failed"/);
+  assert.match(page, /\? "Retry destination" : "Regenerate this channel"/);
+  assert.match(page, /\["needs_review", "failed"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
+
+  const targets = regenerationTargets({
+    policy: REGENERATION_POLICIES.CHANNEL,
+    channels: ["linkedin", "x", "reddit"],
+    channelStates: {
+      linkedin: { status: "complete" },
+      x: { status: "failed" },
+      reddit: { status: "needs_review" },
+    },
+    activeChannel: "x",
+  });
+  assert.deepEqual(targets, ["x"]);
 });

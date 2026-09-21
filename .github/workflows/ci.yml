@@ -72,3 +72,13 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+      - name: Audit Vercel function traces
+        working-directory: frontend
+        run: npm run audit:function-traces
+      - name: Preserve function trace audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-trace-audit
+          path: frontend/function-trace-audit.json
+          if-no-files-found: error
+          retention-days: 7

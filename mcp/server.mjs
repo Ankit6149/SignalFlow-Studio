@@ -97,26 +97,29 @@ async function handleRequest(message) {
 }
 
 const input = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-let chain = Promise.resolve();
+const activeRequests = new Set();
 
 input.on("line", (line) => {
   if (!line.trim()) return;
-  chain = chain.then(async () => {
-    let message;
-    try {
-      message = JSON.parse(line);
-    } catch {
-      error(null, -32700, "Parse error.");
-      return;
-    }
-    await handleRequest(message);
-  }).catch((unexpectedError) => {
+
+  let message;
+  try {
+    message = JSON.parse(line);
+  } catch {
+    error(null, -32700, "Parse error.");
+    return;
+  }
+
+  const request = handleRequest(message).catch((unexpectedError) => {
     console.error("SignalFlow MCP request failure:", unexpectedError);
+  }).finally(() => {
+    activeRequests.delete(request);
   });
+  activeRequests.add(request);
 });
 
 input.on("close", () => {
-  void chain.finally(() => process.exit(0));
+  void Promise.allSettled([...activeRequests]).finally(() => process.exit(0));
 });
 
 process.on("SIGINT", () => input.close());

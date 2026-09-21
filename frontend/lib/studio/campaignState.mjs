@@ -22,10 +22,18 @@ function qualityState(result, channel, fallback = "generated") {
   return String(result?.generation_status?.[channel]?.status || fallback || "generated");
 }
 
+function qualityStatusForStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "failed") return "failed";
+  if (["generated", "regenerated"].includes(normalized)) return "complete";
+  return "needs_review";
+}
+
 function createChannelState({
   generatedContent = "",
   currentContent = "",
   status = "generated",
+  qualityStatus = "",
   approved = false,
   generationRunId = "",
   issues = [],
@@ -40,6 +48,7 @@ function createChannelState({
   const edited = current !== generated;
   return {
     status: String(status || "generated"),
+    qualityStatus: String(qualityStatus || qualityStatusForStatus(status)),
     edited,
     approved: Boolean(approved && !edited),
     generationRunId: String(generationRunId || ""),
@@ -65,6 +74,7 @@ function createChannelStates({ requestedChannels = [], posts = {}, result = {}, 
       generatedContent: posts[channel] || "",
       currentContent: posts[channel] || "",
       status: qualityState(result, channel, posts[channel] ? "generated" : "failed"),
+      qualityStatus: generationStatus.qualityStatus,
       generationRunId: generationRun?.generationRunId || "",
       issues: generationStatus.issues,
       issueCodes: generationStatus.issueCodes,
@@ -159,6 +169,7 @@ export function campaignReducer(state, action) {
           [channel]: {
             ...previousStatus,
             status: previousStatus.status === "failed" ? "needs_review" : previousStatus.status || "needs_review",
+            qualityStatus: "needs_review",
             edited: nextText !== generated,
             approved: false,
             qualityRiskAccepted: false,
@@ -198,7 +209,7 @@ export function campaignReducer(state, action) {
         ...state,
         channelStates: {
           ...state.channelStates,
-          [channel]: { ...previous, approved: false, status: "needs_review", qualityRiskAccepted: false },
+          [channel]: { ...previous, approved: false, status: "needs_review", qualityStatus: "needs_review", qualityRiskAccepted: false },
         },
         revision: state.revision + 1,
       };
@@ -219,6 +230,11 @@ export function campaignReducer(state, action) {
             approved: false,
             qualityRiskAccepted: false,
             status: state.channelStates[channel]?.status === "failed" ? "needs_review" : state.channelStates[channel]?.status || "generated",
+            qualityStatus: qualityStatusForStatus(
+              state.channelStates[channel]?.status === "failed"
+                ? "needs_review"
+                : state.channelStates[channel]?.status || "generated",
+            ),
           },
         },
         revision: state.revision + 1,
@@ -274,6 +290,7 @@ export function campaignReducer(state, action) {
             generatedContent: payload.posts[channel],
             currentContent: payload.posts[channel],
             status,
+            qualityStatus: generationStatus.qualityStatus,
             generationRunId: payload.generationRun?.generationRunId || "",
             issues: generationStatus.issues,
             issueCodes: generationStatus.issueCodes,
@@ -288,7 +305,9 @@ export function campaignReducer(state, action) {
           nextChannelStates[channel] = {
             ...previous,
             status: "failed",
+            qualityStatus: "failed",
             approved: false,
+            qualityRiskAccepted: false,
             issues: Array.isArray(generationStatus.issues) ? clone(generationStatus.issues) : previous.issues || [],
             issueCodes: Array.isArray(generationStatus.issueCodes) ? clone(generationStatus.issueCodes) : previous.issueCodes || [],
             retryCount: Number(generationStatus.retryCount ?? previous.retryCount ?? 0),

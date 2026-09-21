@@ -569,6 +569,10 @@ pytest -q
 
 A feature is not complete because it compiles. Its domain contract, authorization, failure/recovery behavior, truthful capability state, UX, accessibility, migration/rollback, security, provenance and end-to-end user journey must pass the acceptance criteria owned by its issue.
 
+## Support SignalFlow
+
+If SignalFlow is useful to you and you would like to support continued development and infrastructure, you can sponsor the project through the GitHub Sponsor button. Sponsorship is optional and does not affect access to the repository.
+
 ## Vercel
 
 Current frontend deployment configuration:

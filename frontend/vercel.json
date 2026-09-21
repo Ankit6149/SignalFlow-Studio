@@ -4,5 +4,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
+  "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
+  "git": {
+    "deploymentEnabled": {
+      "master": true,
+      "main": true,
+      "*": false
+    }
+  }
 }

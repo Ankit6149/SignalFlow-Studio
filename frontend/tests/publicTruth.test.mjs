@@ -19,7 +19,7 @@ const publicTruthFiles = [
   "frontend/public/llms.txt",
   "frontend/public/llms-full.txt",
   "frontend/app/privacy/page.js",
-  "frontend/app/opengraph-image.js",
+  "frontend/app/layout.js",
   "frontend/public/schema.jsonld",
 ];
 
@@ -43,6 +43,14 @@ test("public product surfaces do not advertise retired template or fallback gene
       assert.doesNotMatch(content, pattern, `${relative} contains an affirmative retired product claim`);
     }
   }
+});
+
+test("social preview metadata uses a static asset instead of a dynamic image function", () => {
+  const layout = read("frontend/app/layout.js");
+  assert.match(layout, /\/opengraph-static\.jpg/);
+  assert.equal(fs.existsSync(path.join(repoRoot, "frontend/public/opengraph-static.jpg")), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, "frontend/app/opengraph-image.js")), false);
+  assert.doesNotMatch(layout, /next\/og/);
 });
 
 test("root and deployed AI-context files remain identical", () => {

@@ -15,7 +15,7 @@ const globals = read("app/globals.css");
 const publicSurfaces = read("app/public-surfaces.css");
 const containment = read("app/ui-containment.css");
 const layout = read("app/layout.js");
-const openGraphImage = read("app/opengraph-image.js");
+const openGraphStaticPath = path.join(frontend, "public/opengraph-static.jpg");
 const manifest = read("public/manifest.webmanifest");
 const structuredDataText = read("public/schema.jsonld");
 const structuredData = JSON.parse(structuredDataText);
@@ -66,10 +66,11 @@ test("public discovery metadata matches the content operating system positioning
   const retiredPositioning = /One Brief, Every Channel|ONE BRIEF · EVERY CHANNEL|twelve editable destinations|complete review-ready campaign/i;
   assert.match(layout, /SignalFlow Studio — Content Operating System/);
   assert.match(layout, /approval-first content operating system/i);
-  assert.match(openGraphImage, /CONTENT OS · IN PROGRESS/);
+  assert.match(layout, /\/opengraph-static\.jpg/);
+  assert.equal(fs.existsSync(openGraphStaticPath), true);
   assert.match(manifestData.description, /approval-first content operating system/i);
   assert.match(serializedSchema, /content operating system/i);
-  for (const surface of [layout, openGraphImage, manifest, structuredDataText]) assert.doesNotMatch(surface, retiredPositioning);
+  for (const surface of [layout, manifest, structuredDataText]) assert.doesNotMatch(surface, retiredPositioning);
 });
 
 test("the landing design remains component-scoped and keeps its current narrative sections", () => {

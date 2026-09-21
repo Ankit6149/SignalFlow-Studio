@@ -122,6 +122,7 @@ function normalizeDestinationDraft(rawDraft, channel, generationInputs) {
 function statusForTemplate(channels) {
   return Object.fromEntries(channels.map((channel) => [channel, {
     status: "template_fallback",
+    qualityStatus: "needs_review",
     attempts: 0,
     qualityScore: null,
     issues: ["This destination uses deterministic template copy rather than model-generated editorial work."],
@@ -195,6 +196,7 @@ async function generateDestination({
         draft: firstDraft,
         status: {
           status: "generated",
+          qualityStatus: "complete",
           attempts: 1,
           qualityScore: firstQuality.score,
           issues: [],
@@ -230,6 +232,7 @@ async function generateDestination({
       draft: selectedDraft,
       status: {
         status: selectedQuality.valid ? "regenerated" : "needs_review",
+        qualityStatus: selectedQuality.valid ? "complete" : "needs_review",
         attempts: 2,
         qualityScore: selectedQuality.score,
         issues: selectedQuality.issues,
@@ -248,6 +251,7 @@ async function generateDestination({
       draft: emptyDestinationDraft(channel),
       status: {
         status: "failed",
+        qualityStatus: "failed",
         attempts: firstDraft ? 1 : 0,
         retryCount: 0,
         qualityScore: firstQuality?.score ?? null,
@@ -298,6 +302,7 @@ async function reviseDuplicateDestination({
       status: {
         ...current.status,
         status: quality.valid ? "regenerated" : "needs_review",
+        qualityStatus: quality.valid ? "complete" : "needs_review",
         attempts: Number(current.status.attempts || 0) + 1,
         retryCount: Number(current.status.retryCount || 0) + 1,
         qualityScore: quality.score,
@@ -318,6 +323,7 @@ async function reviseDuplicateDestination({
       status: {
         ...current.status,
         status: "needs_review",
+        qualityStatus: "needs_review",
         attempts: Number(current.status.attempts || 0) + 1,
         retryCount: Number(current.status.retryCount || 0) + 1,
         issues: [
@@ -481,6 +487,35 @@ export async function generateStudioPackage(inputs) {
       generatedDestinations = generatedDestinations.map((item) => replacements.get(item.channel) || item);
     }
 
+    const finalDraftMap = Object.fromEntries(
+      generatedDestinations
+        .filter((item) => item && item.status.status !== "failed")
+        .map((item) => [item.channel, item.draft]),
+    );
+    const unresolvedDuplicateTargets = duplicateRevisionTargets({
+      generatedDrafts: finalDraftMap,
+      requestedChannels: channels,
+    });
+
+    if (unresolvedDuplicateTargets.length) {
+      const unresolvedByChannel = new Map(unresolvedDuplicateTargets.map((target) => [target.channel, target]));
+      generatedDestinations = generatedDestinations.map((item) => {
+        const target = unresolvedByChannel.get(item.channel);
+        if (!target || item.status.status === "failed") return item;
+        return {
+          ...item,
+          status: {
+            ...item.status,
+            status: "needs_review",
+            qualityStatus: "needs_review",
+            issues: Array.from(new Set([...(item.status.issues || []), target.guidance])),
+            issueCodes: Array.from(new Set([...(item.status.issueCodes || []), "cross_channel_duplicate"])),
+            duplicateCheck: target,
+          },
+        };
+      });
+    }
+
     const generationStatus = {};
     const generationWarnings = [];
     for (const result of generatedDestinations) {
@@ -505,6 +540,7 @@ export async function generateStudioPackage(inputs) {
       strategyStatus: "complete",
       strategyQuality,
       duplicateRevisionTargets: duplicateTargets,
+      unresolvedDuplicateRevisionTargets: unresolvedDuplicateTargets,
       destinations: generationStatus,
     };
 

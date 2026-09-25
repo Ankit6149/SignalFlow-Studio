@@ -1,4 +1,5 @@
 import { PROVIDERS, getProviderApiKey } from "../types";
+import { createLinkedAbort, cancelledProviderRequestError } from "../requestAbort.mjs";
 
 /**
  * Calls Google Gemini REST API.
@@ -13,7 +14,7 @@ export async function generateGemini(prompt, modelOverride = null, config = {}) 
 
   // Attempt generating JSON response first
   try {
-    return await makeGeminiRequest(prompt, model, apiKey, true, config.maxTokens);
+    return await makeGeminiRequest(prompt, model, apiKey, true, config.maxTokens, config.signal);
   } catch (jsonErr) {
     const errorMsg = jsonErr.message || "";
     // If the error message suggests responseMimeType is not supported, or it is a 400 parameter error, retry in text mode
@@ -25,7 +26,7 @@ export async function generateGemini(prompt, modelOverride = null, config = {}) 
       errorMsg.includes("400")
     ) {
       try {
-        return await makeGeminiRequest(prompt, model, apiKey, false, config.maxTokens);
+        return await makeGeminiRequest(prompt, model, apiKey, false, config.maxTokens, config.signal);
       } catch (textErr) {
         throw new Error(`Gemini request failed: ${textErr.message}`);
       }
@@ -34,7 +35,7 @@ export async function generateGemini(prompt, modelOverride = null, config = {}) 
   }
 }
 
-async function makeGeminiRequest(prompt, model, apiKey, useJsonMode, maxTokens) {
+async function makeGeminiRequest(prompt, model, apiKey, useJsonMode, maxTokens, signal = null) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const body = {
@@ -57,8 +58,7 @@ async function makeGeminiRequest(prompt, model, apiKey, useJsonMode, maxTokens) 
     body.generationConfig.responseMimeType = "application/json";
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 50000);
+  const abort = createLinkedAbort({ signal, timeoutMs: 50_000 });
 
   let resp;
   try {
@@ -68,15 +68,16 @@ async function makeGeminiRequest(prompt, model, apiKey, useJsonMode, maxTokens) 
         "Content-Type": "application/json"
       },
       body: JSON.stringify(body),
-      signal: controller.signal
+      signal: abort.signal
     });
   } catch (err) {
     if (err.name === "AbortError") {
+      if (abort.cancelled()) throw cancelledProviderRequestError();
       throw new Error("Request to Gemini API timed out after 50 seconds.");
     }
     throw err;
   } finally {
-    clearTimeout(timeoutId);
+    abort.cleanup();
   }
 
   if (!resp.ok) {

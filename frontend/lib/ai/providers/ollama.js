@@ -1,4 +1,5 @@
 import { PROVIDERS } from "../types";
+import { createLinkedAbort, cancelledProviderRequestError } from "../requestAbort.mjs";
 
 /**
  * Calls local Ollama chat completions endpoint.
@@ -25,8 +26,7 @@ export async function generateOllama(prompt, modelOverride = null, config = {}) 
     temperature: 0.2
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 55000);
+  const abort = createLinkedAbort({ signal: config.signal, timeoutMs: 55_000 });
 
   try {
     const resp = await fetch(url, {
@@ -35,7 +35,7 @@ export async function generateOllama(prompt, modelOverride = null, config = {}) 
         "Content-Type": "application/json"
       },
       body: JSON.stringify(body),
-      signal: controller.signal
+      signal: abort.signal
     });
 
     if (!resp.ok) {
@@ -53,10 +53,11 @@ export async function generateOllama(prompt, modelOverride = null, config = {}) 
     return rawText;
   } catch (err) {
     if (err.name === "AbortError") {
+      if (abort.cancelled()) throw cancelledProviderRequestError();
       throw new Error("Local Ollama generation timed out after 55 seconds.");
     }
     throw err;
   } finally {
-    clearTimeout(timeoutId);
+    abort.cleanup();
   }
 }

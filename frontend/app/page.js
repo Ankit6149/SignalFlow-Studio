@@ -2054,8 +2054,17 @@ async function exportZip() {
                     </dl>
 
                     {(channelStates[activeChannel]?.issues || []).length > 0 && (
-                      <div className="draft-quality-issues" role={channelStates[activeChannel]?.status === "needs_review" ? "alert" : "status"}>
-                        <strong>{channelStates[activeChannel]?.status === "needs_review" ? "Unresolved quality issues" : "Generation notes"}</strong>
+                      <div
+                        className="draft-quality-issues"
+                        role={["needs_review", "failed"].includes(channelStates[activeChannel]?.status) ? "alert" : "status"}
+                      >
+                        <strong>
+                          {channelStates[activeChannel]?.status === "failed"
+                            ? "Generation failed"
+                            : channelStates[activeChannel]?.status === "needs_review"
+                              ? "Unresolved quality issues"
+                              : "Generation notes"}
+                        </strong>
                         <ul>
                           {channelStates[activeChannel].issues.map((issue, index) => (
                             <li key={channelStates[activeChannel]?.issueCodes?.[index] || index}>
@@ -2091,7 +2100,7 @@ async function exportZip() {
                         onClick={() => void performRegeneration(REGENERATION_POLICIES.CHANNEL, activeChannel)}
                         disabled={busy || !providerReadiness.ready}
                       >
-                        Regenerate this channel
+                        {channelStates[activeChannel]?.status === "failed" ? "Retry destination" : "Regenerate this channel"}
                       </button>
                       {channelStates[activeChannel]?.edited && generatedPosts[activeChannel] && (
                         <button

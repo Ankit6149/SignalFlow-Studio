@@ -7,7 +7,7 @@ export const GENERATION_LIMITS = Object.freeze({
   linksCount: 8,
   documentItems: 12,
   documentChars: 120_000,
-  totalTextContextChars: 180_000,
+  totalTextContextChars: 160_000,
   channels: 12,
   outputTypes: 8,
   sourceRecordsPerKind: 24,

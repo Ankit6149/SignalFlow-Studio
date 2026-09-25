@@ -288,7 +288,7 @@ test("save and reopen preserve failed destination recovery metadata even without
 
   const reopened = app.openCampaign(await app.getCampaign(saved.campaignId));
   assert.equal(reopened.posts.linkedin, "Successful LinkedIn draft.");
-  assert.equal(reopened.posts.x, "");
+  assert.equal(reopened.posts.x, undefined, "failed destination without content must reopen without a fabricated post");
   assert.equal(reopened.channelStates.x.status, "failed");
   assert.equal(reopened.channelStates.x.qualityStatus, "failed");
   assert.deepEqual(reopened.channelStates.x.issueCodes, ["provider_rate_limited"]);

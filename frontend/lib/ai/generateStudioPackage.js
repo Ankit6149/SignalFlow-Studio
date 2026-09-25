@@ -9,7 +9,7 @@ import { assertModelGenerationProvider } from "./generationPolicy.mjs";
 import { evaluateStrategyQuality, STRATEGY_QUALITY_STATES } from "./strategyQuality.mjs";
 import { duplicateRevisionTargets } from "./crossChannelQuality.mjs";
 import { normalizeProviderError, providerErrorPayload } from "./providerErrors.mjs";
-import { mapWithConcurrency } from "./generationConcurrency.mjs";
+import { mapDestinationsWithPolicy } from "./generationConcurrency.mjs";
 import {
   createGenerationExecutionBudget,
   estimateGenerationRequestBudget,
@@ -499,7 +499,7 @@ export async function generateStudioPackage(inputs) {
     progressReporter.queueDestinations();
     pkg.posts = emptyPackagePosts();
 
-    let generatedDestinations = await mapWithConcurrency(channels, (channel) => generateDestination({
+    let generatedDestinations = await mapDestinationsWithPolicy(channels, (channel) => generateDestination({
       channel,
       context,
       campaignBrief: pkg,
@@ -507,7 +507,11 @@ export async function generateStudioPackage(inputs) {
       provider: generator,
       modelOverride,
       config: executionConfig,
-    }), executionConfig.destinationConcurrency, { signal: executionConfig.signal });
+    }), {
+      isLocalProvider: localProvider,
+      configuredConcurrency: executionConfig.destinationConcurrency,
+      signal: executionConfig.signal,
+    });
 
     if (executionConfig.signal?.aborted) {
       progressReporter.cancelOutstanding();
@@ -529,7 +533,7 @@ export async function generateStudioPackage(inputs) {
     });
 
     if (duplicateTargets.length) {
-      const revised = await mapWithConcurrency(duplicateTargets, (target) => reviseDuplicateDestination({
+      const revised = await mapDestinationsWithPolicy(duplicateTargets, (target) => reviseDuplicateDestination({
         target,
         generatedDestinations,
         context,
@@ -538,7 +542,12 @@ export async function generateStudioPackage(inputs) {
         provider: generator,
         modelOverride,
         config: executionConfig,
-      }), executionConfig.destinationConcurrency, { signal: executionConfig.signal });
+      }), {
+        isLocalProvider: localProvider,
+        configuredConcurrency: executionConfig.destinationConcurrency,
+        signal: executionConfig.signal,
+        channelOf: (target) => target.channel,
+      });
       if (executionConfig.signal?.aborted) {
         progressReporter.cancelOutstanding();
         const cancelled = new Error("Generation request was cancelled.");

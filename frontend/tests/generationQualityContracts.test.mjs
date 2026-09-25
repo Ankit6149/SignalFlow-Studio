@@ -14,7 +14,11 @@ import {
   assessCrossChannelDuplicates,
   duplicateRevisionTargets,
 } from "../lib/ai/crossChannelQuality.mjs";
-import { mapWithConcurrency } from "../lib/ai/generationConcurrency.mjs";
+import {
+  mapWithConcurrency,
+  mapDestinationsWithPolicy,
+  resolveDestinationConcurrency,
+} from "../lib/ai/generationConcurrency.mjs";
 import { createLinkedAbort } from "../lib/ai/requestAbort.mjs";
 import {
   PROVIDER_ERROR_CODES,
@@ -135,7 +139,7 @@ test("strategy quality distinguishes complete, needs_review, and failed with sta
 test("strategy gate occurs before any destination generation lane starts", async () => {
   const source = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
   const gate = source.indexOf("strategyQuality.status !== STRATEGY_QUALITY_STATES.COMPLETE");
-  const destinationStart = source.indexOf("mapWithConcurrency(channels");
+  const destinationStart = source.indexOf("mapDestinationsWithPolicy(channels");
   assert.ok(gate >= 0, "strategy quality gate must exist");
   assert.ok(destinationStart >= 0, "destination orchestration must exist");
   assert.ok(gate < destinationStart, "strategy must be accepted before destination calls begin");
@@ -403,7 +407,7 @@ test("generation cancellation is propagated through API, providers, UI, and camp
   ];
 
   assert.match(routeSource, /signal: request\.signal/);
-  assert.match(packageSource, /\{ signal: executionConfig\.signal \}/);
+  assert.match(packageSource, /signal: executionConfig\.signal/);
   assert.match(pageSource, /Cancel generation/);
   assert.match(pageSource, /MARK_CHANNELS_CANCELLED/);
 
@@ -444,4 +448,62 @@ test("provider cancellation keeps a distinct safe error class", () => {
   assert.equal(normalized.retryable, true);
   assert.equal(normalized.recoveryAction, "retry_destination");
   assert.equal(normalized.httpStatus, 499);
+});
+
+
+test("destination scheduling respects provider ceilings and isolates long-form work", async () => {
+  assert.equal(resolveDestinationConcurrency({ isLocalProvider: false }), 2);
+  assert.equal(resolveDestinationConcurrency({ isLocalProvider: false, configuredConcurrency: 1 }), 1);
+  assert.equal(resolveDestinationConcurrency({ isLocalProvider: false, configuredConcurrency: 9 }), 2);
+  assert.equal(resolveDestinationConcurrency({ isLocalProvider: true }), 1);
+  assert.equal(resolveDestinationConcurrency({ isLocalProvider: true, configuredConcurrency: 4 }), 1);
+
+  const active = new Set();
+  let peak = 0;
+  const starts = [];
+  const result = await mapDestinationsWithPolicy(
+    ["linkedin", "x", "blog", "newsletter"],
+    async (channel) => {
+      active.add(channel);
+      peak = Math.max(peak, active.size);
+      starts.push({ channel, active: [...active] });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active.delete(channel);
+      return channel.toUpperCase();
+    },
+    { isLocalProvider: false },
+  );
+
+  assert.ok(peak <= 2, `hosted peak concurrency was ${peak}`);
+  const firstLongForm = starts.findIndex((item) => ["blog", "newsletter"].includes(item.channel));
+  assert.ok(firstLongForm >= 0);
+  assert.ok(
+    starts.slice(0, firstLongForm).every((item) => !["blog", "newsletter"].includes(item.channel)),
+    "long-form work should start only after the short-form phase completes",
+  );
+  assert.deepEqual(result, ["LINKEDIN", "X", "BLOG", "NEWSLETTER"]);
+});
+
+test("local provider destination scheduling stays sequential", async () => {
+  let active = 0;
+  let peak = 0;
+  await mapDestinationsWithPolicy(
+    ["linkedin", "x", "blog"],
+    async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 3));
+      active -= 1;
+    },
+    { isLocalProvider: true, configuredConcurrency: 4 },
+  );
+  assert.equal(peak, 1);
+});
+
+test("orchestration uses the provider-aware lane policy for initial and duplicate repair work", async () => {
+  const source = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
+  assert.match(source, /mapDestinationsWithPolicy\(channels/);
+  assert.match(source, /isLocalProvider: localProvider/);
+  assert.match(source, /mapDestinationsWithPolicy\(duplicateTargets/);
+  assert.match(source, /channelOf: \(target\) => target\.channel/);
 });

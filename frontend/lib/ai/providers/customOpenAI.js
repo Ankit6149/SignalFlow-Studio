@@ -1,4 +1,5 @@
 import { PROVIDERS, getProviderApiKey } from "../types";
+import { createLinkedAbort, cancelledProviderRequestError } from "../requestAbort.mjs";
 
 /**
  * Calls a custom user-configured OpenAI-compatible completions gateway.
@@ -36,8 +37,7 @@ export async function generateCustomOpenAI(prompt, modelOverride = null, config 
     temperature: 0.2
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 50000);
+  const abort = createLinkedAbort({ signal: config.signal, timeoutMs: 50_000 });
 
   let resp;
   try {
@@ -45,15 +45,16 @@ export async function generateCustomOpenAI(prompt, modelOverride = null, config 
       method: "POST",
       headers,
       body: JSON.stringify(body),
-      signal: controller.signal
+      signal: abort.signal
     });
   } catch (err) {
     if (err.name === "AbortError") {
+      if (abort.cancelled()) throw cancelledProviderRequestError();
       throw new Error("Request to custom OpenAI API timed out after 50 seconds.");
     }
     throw err;
   } finally {
-    clearTimeout(timeoutId);
+    abort.cleanup();
   }
 
   if (!resp.ok) {

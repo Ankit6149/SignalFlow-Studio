@@ -274,6 +274,7 @@ function providerRecoveryMessage(providerError) {
     wait_then_retry: "Wait for the provider rate limit to clear, then retry deliberately.",
     choose_model: "Choose a model that exists for this provider.",
     retry_destination: "Retry the affected destination; successful destinations remain unchanged.",
+    reduce_destinations: "Reduce the number of destinations or retry only the affected destination.",
     retry_or_choose_model: "Retry once, then choose another model if the response contract still fails.",
     choose_provider: "Choose a supported provider route.",
     retry_or_contact_owner: "Retry once. If it persists, inspect owner/server diagnostics using the correlation ID.",

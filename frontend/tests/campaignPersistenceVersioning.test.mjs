@@ -278,9 +278,10 @@ test("save and reopen preserve failed destination recovery metadata even without
   });
 
   const saved = await app.createCampaign(input);
-  assert.ok(saved.drafts.x, "failed destination should remain represented canonically");
-  assert.equal(saved.drafts.x.current.content, "");
-  assert.equal(saved.drafts.x.qualityState, "failed");
+  assert.equal(saved.drafts.x, undefined, "failed empty destination must not fabricate a content draft");
+  assert.equal(saved.channels.includes("x"), true);
+  assert.equal(saved.channelStates.x.status, "failed");
+  assert.equal(saved.channelStates.x.qualityStatus, "failed");
 
   const persistedText = JSON.stringify(saved);
   assert.doesNotMatch(persistedText, /rawResponse|must-not-persist|apiKey/);

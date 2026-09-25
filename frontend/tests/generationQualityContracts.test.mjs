@@ -484,6 +484,57 @@ test("destination scheduling respects provider ceilings and isolates long-form w
   assert.deepEqual(result, ["LINKEDIN", "X", "BLOG", "NEWSLETTER"]);
 });
 
+test("full twelve-destination hosted run respects the concurrency ceiling", async () => {
+  const destinations = [
+    "linkedin",
+    "x",
+    "instagram",
+    "facebook",
+    "threads",
+    "reddit",
+    "hackernews",
+    "youtube",
+    "tiktok",
+    "newsletter",
+    "blog",
+    "release_notes",
+  ];
+  let active = 0;
+  let peak = 0;
+  const started = [];
+  const completed = [];
+
+  const result = await mapDestinationsWithPolicy(
+    destinations,
+    async (channel) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      started.push(channel);
+      await new Promise((resolve) => setTimeout(resolve, 3));
+      completed.push(channel);
+      active -= 1;
+      return channel;
+    },
+    { isLocalProvider: false, configuredConcurrency: 12 },
+  );
+
+  assert.equal(result.length, 12);
+  assert.deepEqual(result, destinations);
+  assert.deepEqual(completed.sort(), [...destinations].sort());
+  assert.ok(peak <= 2, `twelve-destination hosted peak concurrency was ${peak}`);
+
+  const firstLongFormStart = started.findIndex((channel) =>
+    ["reddit", "youtube", "newsletter", "blog"].includes(channel),
+  );
+  assert.ok(firstLongFormStart >= 0, "long-form phase must run");
+  assert.ok(
+    started
+      .slice(0, firstLongFormStart)
+      .every((channel) => !["reddit", "youtube", "newsletter", "blog"].includes(channel)),
+    "all short-form destinations must start before the long-form phase",
+  );
+});
+
 test("local provider destination scheduling stays sequential", async () => {
   let active = 0;
   let peak = 0;

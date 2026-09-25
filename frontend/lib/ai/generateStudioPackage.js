@@ -11,6 +11,11 @@ import { duplicateRevisionTargets } from "./crossChannelQuality.mjs";
 import { normalizeProviderError, providerErrorPayload } from "./providerErrors.mjs";
 import { mapWithConcurrency } from "./generationConcurrency.mjs";
 import {
+  createGenerationExecutionBudget,
+  estimateGenerationRequestBudget,
+  generationRequestBudgetError,
+} from "./generationExecutionBudget.mjs";
+import {
   CHANNEL_CONTRACTS,
   assessChannelDraft,
   buildChannelPrompt,
@@ -181,7 +186,7 @@ async function generateDestination({
       provider,
       prompt: buildChannelPrompt({ channel, context, campaignBrief }),
       modelOverride,
-      config,
+      config: { ...config, requestKind: "destination_initial", destination: channel },
     });
     firstDraft = normalizeDestinationDraft(firstRaw, channel, generationInputs);
     firstQuality = assessChannelDraft(channel, firstDraft, {
@@ -215,7 +220,7 @@ async function generateDestination({
         qualityIssues: firstQuality.issues,
       }),
       modelOverride,
-      config,
+      config: { ...config, requestKind: "destination_revision", destination: channel },
     });
     const revisedDraft = normalizeDestinationDraft(revisedRaw, channel, generationInputs);
     const revisedQuality = assessChannelDraft(channel, revisedDraft, {
@@ -288,7 +293,7 @@ async function reviseDuplicateDestination({
         qualityIssues: [target.guidance],
       }),
       modelOverride,
-      config,
+      config: { ...config, requestKind: "duplicate_repair", destination: target.channel },
     });
     const revisedDraft = normalizeDestinationDraft(revisedRaw, target.channel, generationInputs);
     const quality = assessChannelDraft(target.channel, revisedDraft, {
@@ -409,13 +414,28 @@ export async function generateStudioPackage(inputs) {
   }
 
   const modelOverride = model_name || config?.modelName || providerMeta.defaultModel;
+  let requestBudget = config.requestBudget || null;
+  let requestBudgetPlan = null;
 
   try {
+    const hardRequestLimit = requestBudget?.maxRequests ?? config.maxProviderRequests;
+    requestBudgetPlan = estimateGenerationRequestBudget(channels.length, { maxRequests: hardRequestLimit });
+    if (!requestBudgetPlan.withinBudget) {
+      throw generationRequestBudgetError({
+        plannedMaxRequests: requestBudgetPlan.plannedMaxRequests,
+        maxRequests: requestBudgetPlan.hardMaxRequests,
+      });
+    }
+    requestBudget = requestBudget || createGenerationExecutionBudget({
+      maxRequests: requestBudgetPlan.hardMaxRequests,
+    });
+    const executionConfig = { ...config, requestBudget };
+
     const rawBrief = await generateJSON({
       provider: generator,
       prompt: campaignBriefPrompt,
       modelOverride,
-      config,
+      config: { ...executionConfig, requestKind: "strategy" },
     });
 
     const pkg = normalizePackage(rawBrief, generationInputs, { allowTemplateFallback: false });
@@ -433,6 +453,10 @@ export async function generateStudioPackage(inputs) {
         code: "strategy_quality_blocked",
         providerUsed: generator,
         fallbackUsed: false,
+        generation_execution: {
+          plan: requestBudgetPlan,
+          actual: requestBudget.snapshot(),
+        },
         strategy_review: {
           status: strategyQuality.status,
           issues: strategyQuality.issues,
@@ -459,10 +483,10 @@ export async function generateStudioPackage(inputs) {
       generationInputs,
       provider: generator,
       modelOverride,
-      config,
-    }), config.destinationConcurrency, { signal: config.signal });
+      config: executionConfig,
+    }), executionConfig.destinationConcurrency, { signal: executionConfig.signal });
 
-    if (config.signal?.aborted) {
+    if (executionConfig.signal?.aborted) {
       const cancelled = new Error("Generation request was cancelled.");
       cancelled.code = "provider_request_cancelled";
       cancelled.status = 499;
@@ -489,9 +513,9 @@ export async function generateStudioPackage(inputs) {
         generationInputs,
         provider: generator,
         modelOverride,
-        config,
-      }), config.destinationConcurrency, { signal: config.signal });
-      if (config.signal?.aborted) {
+        config: executionConfig,
+      }), executionConfig.destinationConcurrency, { signal: executionConfig.signal });
+      if (executionConfig.signal?.aborted) {
         const cancelled = new Error("Generation request was cancelled.");
         cancelled.code = "provider_request_cancelled";
         cancelled.status = 499;
@@ -547,6 +571,11 @@ export async function generateStudioPackage(inputs) {
       throw new Error(`Every selected destination failed: ${failedDestinations.map((item) => item.channel).join(", ")}.`);
     }
 
+    const generationExecution = {
+      plan: requestBudgetPlan,
+      actual: requestBudget.snapshot(),
+    };
+
     pkg.generation = {
       mode: "staged_agent",
       provider: generator,
@@ -555,6 +584,7 @@ export async function generateStudioPackage(inputs) {
       strategyQuality,
       duplicateRevisionTargets: duplicateTargets,
       unresolvedDuplicateRevisionTargets: unresolvedDuplicateTargets,
+      execution: generationExecution,
       destinations: generationStatus,
     };
 
@@ -570,6 +600,7 @@ export async function generateStudioPackage(inputs) {
       providerUsed: generator,
       fallbackUsed: false,
       partialFailureUsed,
+      generation_execution: generationExecution,
       generation_status: generationStatus,
       chatbot_prompt: campaignBriefPrompt,
       warnings: Array.from(new Set([...contextWarnings, ...generationWarnings])),

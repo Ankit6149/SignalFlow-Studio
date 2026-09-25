@@ -403,7 +403,7 @@ test("generation cancellation is propagated through API, providers, UI, and camp
   ];
 
   assert.match(routeSource, /signal: request\.signal/);
-  assert.match(packageSource, /\{ signal: config\.signal \}/);
+  assert.match(packageSource, /\{ signal: executionConfig\.signal \}/);
   assert.match(pageSource, /Cancel generation/);
   assert.match(pageSource, /MARK_CHANNELS_CANCELLED/);
 

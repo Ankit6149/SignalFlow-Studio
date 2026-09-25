@@ -7,6 +7,7 @@ const SAFE_CODES = Object.freeze({
   PAYMENT_REQUIRED: "provider_payment_required",
   TIMEOUT: "provider_timeout",
   CANCELLED: "provider_request_cancelled",
+  REQUEST_BUDGET_EXCEEDED: "generation_request_budget_exceeded",
   UNAVAILABLE: "provider_unavailable",
   MALFORMED_RESPONSE: "provider_malformed_response",
   EMPTY_RESPONSE: "provider_empty_response",
@@ -38,6 +39,9 @@ function classify(error) {
   }
   if (error?.code === "provider_request_cancelled") {
     return { code: SAFE_CODES.CANCELLED, retryable: true, action: "retry_destination" };
+  }
+  if (error?.code === "generation_request_budget_exceeded") {
+    return { code: SAFE_CODES.REQUEST_BUDGET_EXCEEDED, retryable: false, action: "reduce_destinations" };
   }
   if (error?.name === "AbortError" || /timed?\s*out|timeout/.test(message)) {
     return { code: SAFE_CODES.TIMEOUT, retryable: true, action: "retry_destination" };
@@ -86,6 +90,7 @@ function safeMessage(code, provider) {
     case SAFE_CODES.PAYMENT_REQUIRED: return `${label} requires billing or credits before generation can continue.`;
     case SAFE_CODES.TIMEOUT: return `${label} did not respond within the request limit.`;
     case SAFE_CODES.CANCELLED: return "Generation was cancelled before the provider request completed.";
+    case SAFE_CODES.REQUEST_BUDGET_EXCEEDED: return "Generation reached the configured provider-request budget. Reduce destinations or retry only the affected destination.";
     case SAFE_CODES.UNAVAILABLE: return `${label} is temporarily unavailable.`;
     case SAFE_CODES.MALFORMED_RESPONSE: return `${label} returned a response that could not be validated as the required JSON contract.`;
     case SAFE_CODES.EMPTY_RESPONSE: return `${label} returned no usable model output.`;

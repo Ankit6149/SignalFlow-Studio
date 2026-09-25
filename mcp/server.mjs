@@ -2,6 +2,7 @@
 
 import readline from "node:readline";
 import { executeTool, TOOL_DEFINITIONS } from "./lib/tools.mjs";
+import { campaignExecutionRegistry } from "./lib/executionRegistry.mjs";
 
 const SERVER_INFO = { name: "signalflow-studio", version: "0.1.0" };
 const SUPPORTED_PROTOCOLS = new Set([
@@ -32,7 +33,7 @@ function error(id, code, message, data) {
   });
 }
 
-async function handleRequest(message) {
+async function handleRequest(message, { signal = null } = {}) {
   if (!message || message.jsonrpc !== "2.0" || typeof message.method !== "string") {
     error(message?.id, -32600, "Invalid JSON-RPC request.");
     return;
@@ -82,7 +83,7 @@ async function handleRequest(message) {
       return;
     }
     try {
-      const toolResult = await executeTool(params.name, params.arguments || {});
+      const toolResult = await executeTool(params.name, params.arguments || {}, { signal });
       result(id, toolResult);
     } catch (toolError) {
       result(id, {
@@ -98,6 +99,8 @@ async function handleRequest(message) {
 
 const input = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 const activeRequests = new Set();
+const requestControllers = new Set();
+let shutdownStarted = false;
 
 input.on("line", (line) => {
   if (!line.trim()) return;
@@ -110,16 +113,38 @@ input.on("line", (line) => {
     return;
   }
 
-  const request = handleRequest(message).catch((unexpectedError) => {
+  const controller = new AbortController();
+  requestControllers.add(controller);
+  let request;
+  request = handleRequest(message, { signal: controller.signal }).catch((unexpectedError) => {
     console.error("SignalFlow MCP request failure:", unexpectedError);
   }).finally(() => {
     activeRequests.delete(request);
+    requestControllers.delete(controller);
   });
   activeRequests.add(request);
 });
 
+async function shutdown() {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+
+  for (const controller of requestControllers) controller.abort();
+
+  try {
+    await Promise.all([
+      campaignExecutionRegistry.shutdown({ timeoutMs: 2000 }),
+      Promise.allSettled([...activeRequests]),
+    ]);
+  } catch (shutdownError) {
+    console.error("SignalFlow MCP shutdown cleanup failed:", shutdownError);
+  } finally {
+    process.exit(0);
+  }
+}
+
 input.on("close", () => {
-  void Promise.allSettled([...activeRequests]).finally(() => process.exit(0));
+  void shutdown();
 });
 
 process.on("SIGINT", () => input.close());

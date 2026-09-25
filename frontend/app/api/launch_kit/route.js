@@ -14,6 +14,7 @@ import { fetchUrlContent } from "../../../lib/context/linkFetcher";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 import { ProviderError, providerErrorPayload } from "../../../lib/ai/providerErrors.mjs";
+import { readGenerationRequestBody } from "../../../lib/server/generationRequestBody.mjs";
 
 const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
 
@@ -24,7 +25,19 @@ export async function POST(request) {
   const isOwner = accessError === null;
 
   try {
-    const parsedBody = await request.json();
+    const parsedRequest = await readGenerationRequestBody(request);
+    if (!parsedRequest.ok) {
+      return new Response(JSON.stringify({
+        ok: false,
+        code: parsedRequest.code,
+        error: parsedRequest.error,
+        limitIssues: parsedRequest.issues,
+      }), {
+        status: parsedRequest.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const parsedBody = parsedRequest.body;
     const body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody)
       ? parsedBody
       : {};
@@ -66,8 +79,10 @@ export async function POST(request) {
     if (!validation.valid) {
       return new Response(JSON.stringify({
         ok: false,
-        error: "Validation failed",
+        code: validation.limitIssues.length ? "generation_limit_exceeded" : "validation_failed",
+        error: validation.limitIssues[0]?.message || "Validation failed",
         warnings: validation.errors,
+        limitIssues: validation.limitIssues,
       }), {
         status: 400,
         headers: { "Content-Type": "application/json" },

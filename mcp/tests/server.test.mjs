@@ -152,3 +152,89 @@ test("ping remains responsive while a blocking campaign tool is awaiting generat
   const generation = await waitForLine(lines, (message) => message.id === 11, 3000);
   assert.equal(generation.result.isError, false);
 });
+
+
+test("SIGTERM aborts blocking campaign HTTP work and exits cleanly", async (t) => {
+  let markStarted;
+  const requestStarted = new Promise((resolve) => { markStarted = resolve; });
+  let markClosed;
+  const requestClosed = new Promise((resolve) => { markClosed = resolve; });
+
+  const backend = createServer(async (request, response) => {
+    if (request.url === "/api/launch_kit" && request.method === "POST") {
+      for await (const _chunk of request) {
+        // Consume the body before holding the response open.
+      }
+      response.on("close", () => markClosed());
+      markStarted();
+      return;
+    }
+    response.writeHead(404, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: false, error: "not found" }));
+  });
+  await new Promise((resolve) => backend.listen(0, "127.0.0.1", resolve));
+  t.after(() => backend.close());
+  const address = backend.address();
+
+  const child = spawn(process.execPath, [serverPath], {
+    stdio: ["pipe", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      SIGNALFLOW_BASE_URL: `http://127.0.0.1:${address.port}`,
+      SIGNALFLOW_GEMINI_API_KEY: "test-provider-key",
+    },
+  });
+  t.after(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+  });
+
+  const lines = [];
+  const output = readline.createInterface({ input: child.stdout });
+  output.on("line", (line) => lines.push(JSON.parse(line)));
+
+  send(child, {
+    jsonrpc: "2.0",
+    id: 20,
+    method: "initialize",
+    params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } },
+  });
+  await waitForLine(lines, (message) => message.id === 20);
+  send(child, { jsonrpc: "2.0", method: "notifications/initialized", params: {} });
+
+  send(child, {
+    jsonrpc: "2.0",
+    id: 21,
+    method: "tools/call",
+    params: {
+      name: "signalflow_create_campaign",
+      arguments: {
+        projectName: "SignalFlow shutdown",
+        notes: "Evidence",
+        provider: "gemini",
+        channels: ["linkedin"],
+      },
+    },
+  });
+
+  await Promise.race([
+    requestStarted,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Backend generation request did not start.")), 2000)),
+  ]);
+  assert.equal(lines.some((message) => message.id === 21), false);
+
+  const exited = new Promise((resolve) => {
+    child.once("exit", (code, signal) => resolve({ code, signal }));
+  });
+  child.kill("SIGTERM");
+
+  const exitResult = await Promise.race([
+    exited,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("MCP server did not exit after SIGTERM.")), 3000)),
+  ]);
+  await Promise.race([
+    requestClosed,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Blocking campaign HTTP request was not aborted on shutdown.")), 1000)),
+  ]);
+
+  assert.equal(exitResult.code, 0);
+});

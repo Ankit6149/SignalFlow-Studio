@@ -25,6 +25,7 @@ export function createExecutionRegistry({
   const pending = [];
   const activeExecutionKeys = new Set();
   const concurrencyLimit = positiveInteger(maxConcurrent, DEFAULT_MAX_CONCURRENT_EXECUTIONS);
+  const idleWaiters = new Set();
   let activeCount = 0;
   let pumpScheduled = false;
 
@@ -53,10 +54,39 @@ export function createExecutionRegistry({
     return snapshot(job);
   }
 
+  function isIdle() {
+    return activeCount === 0 && pending.length === 0;
+  }
+
+  function notifyIdle() {
+    if (!isIdle()) return;
+    for (const waiter of [...idleWaiters]) {
+      clearTimeout(waiter.timeout);
+      idleWaiters.delete(waiter);
+      waiter.resolve(true);
+    }
+  }
+
+  function waitForIdle({ timeoutMs = 2000 } = {}) {
+    if (isIdle()) return Promise.resolve(true);
+    const timeout = positiveInteger(timeoutMs, 2000);
+    return new Promise((resolve) => {
+      const waiter = {
+        resolve,
+        timeout: setTimeout(() => {
+          idleWaiters.delete(waiter);
+          resolve(false);
+        }, timeout),
+      };
+      idleWaiters.add(waiter);
+    });
+  }
+
   function release(job) {
     activeCount = Math.max(0, activeCount - 1);
     if (job.executionKey) activeExecutionKeys.delete(job.executionKey);
     schedulePump();
+    notifyIdle();
   }
 
   async function runJob(job) {
@@ -159,6 +189,7 @@ export function createExecutionRegistry({
 
       void runJob(job);
     }
+    notifyIdle();
   }
 
   function schedulePump() {
@@ -230,6 +261,7 @@ export function createExecutionRegistry({
         error: null,
       });
       schedulePump();
+      notifyIdle();
       return cancelled;
     }
 
@@ -239,11 +271,35 @@ export function createExecutionRegistry({
     });
   }
 
+  function cancelAll() {
+    const snapshots = [];
+    for (const job of jobs.values()) {
+      if (["completed", "failed", "cancelled"].includes(job.status)) continue;
+      const cancelled = cancel(job.id);
+      if (cancelled) snapshots.push(cancelled);
+    }
+    notifyIdle();
+    return snapshots;
+  }
+
+  async function shutdown({ timeoutMs = 2000 } = {}) {
+    cancelAll();
+    const drained = await waitForIdle({ timeoutMs });
+    return Object.freeze({
+      drained,
+      activeCount,
+      queuedCount: pending.length,
+    });
+  }
+
   return {
     maxConcurrent: concurrencyLimit,
     start,
     get,
     cancel,
+    cancelAll,
+    waitForIdle,
+    shutdown,
   };
 }
 

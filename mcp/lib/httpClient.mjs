@@ -81,6 +81,11 @@ export async function signalFlowRequest(path, {
     return data;
   } catch (error) {
     if (error?.name === "AbortError") {
+      if (signal?.aborted) {
+        const cancelled = new Error("SignalFlow request was cancelled.");
+        cancelled.name = "AbortError";
+        throw cancelled;
+      }
       throw new Error(`SignalFlow request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
     }
     throw error;

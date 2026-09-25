@@ -370,7 +370,7 @@ test("failed destinations expose an isolated retry path without touching success
   const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
   assert.match(page, /\? "Generation failed"/);
   assert.match(page, /\? "Retry destination" : "Regenerate this channel"/);
-  assert.match(page, /\["needs_review", "failed"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
+  assert.match(page, /\["needs_review", "failed", "cancelled"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
 
   const targets = regenerationTargets({
     policy: REGENERATION_POLICIES.CHANNEL,

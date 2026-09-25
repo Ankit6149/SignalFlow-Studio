@@ -185,7 +185,7 @@ test("SIGTERM aborts blocking campaign HTTP work and exits cleanly", async (t) =
     },
   });
   t.after(() => {
-    if (!child.killed) child.kill("SIGKILL");
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
   });
 
   const lines = [];

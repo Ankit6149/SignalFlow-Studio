@@ -934,7 +934,7 @@ ${extractedText}`);
       return { strategyBlocked: true, data };
     }
     if (!response.ok || data.ok === false) {
-      const generationError = new Error(data.providerError?.message || data.error || "SignalFlow could not generate this campaign.");
+      const generationError = new Error(data.limitIssues?.[0]?.message || data.providerError?.message || data.error || "SignalFlow could not generate this campaign.");
       generationError.providerError = data.providerError || null;
       throw generationError;
     }

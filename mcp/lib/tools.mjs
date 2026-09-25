@@ -5,6 +5,7 @@ import {
 } from "../../frontend/lib/domain/sourceArtifacts.mjs";
 import { signalFlowRequest } from "./httpClient.mjs";
 import { campaignExecutionRegistry } from "./executionRegistry.mjs";
+import { GENERATION_LIMITS } from "../../frontend/lib/package/generationLimits.mjs";
 
 const CHANNELS = [
   "linkedin",
@@ -63,10 +64,10 @@ export const TOOL_DEFINITIONS = [
       type: "object",
       required: ["projectName", "notes", "provider", "channels"],
       properties: {
-        projectName: { type: "string", minLength: 1 },
-        notes: { type: "string", minLength: 1 },
-        audience: { type: "string" },
-        links: { type: "string" },
+        projectName: { type: "string", minLength: 1, maxLength: GENERATION_LIMITS.projectNameChars },
+        notes: { type: "string", minLength: 1, maxLength: GENERATION_LIMITS.notesChars },
+        audience: { type: "string", maxLength: GENERATION_LIMITS.audienceChars },
+        links: { type: "string", maxLength: GENERATION_LIMITS.linksChars },
         repository: { type: "string" },
         provider: { type: "string", enum: PROVIDERS },
         modelName: { type: "string" },
@@ -74,13 +75,30 @@ export const TOOL_DEFINITIONS = [
         channels: {
           type: "array",
           minItems: 1,
+          maxItems: GENERATION_LIMITS.channels,
           uniqueItems: true,
           items: { type: "string", enum: CHANNELS },
         },
-        documentText: { type: "array", items: { type: "string" } },
-        assets: { type: "array", items: { type: "object", additionalProperties: true } },
-        sourceArtifacts: { type: "array", items: { type: "object", additionalProperties: true } },
-        processingRecords: { type: "array", items: { type: "object", additionalProperties: true } },
+        documentText: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.documentItems,
+          items: { type: "string", maxLength: GENERATION_LIMITS.documentChars },
+        },
+        assets: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
+          items: { type: "object", additionalProperties: true },
+        },
+        sourceArtifacts: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
+          items: { type: "object", additionalProperties: true },
+        },
+        processingRecords: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
+          items: { type: "object", additionalProperties: true },
+        },
       },
       additionalProperties: false,
     },
@@ -112,12 +130,13 @@ export const TOOL_DEFINITIONS = [
       type: "object",
       required: ["projectName", "notes", "provider", "channels"],
       properties: {
-        projectName: { type: "string", minLength: 1 },
-        notes: { type: "string", minLength: 1 },
-        audience: { type: "string" },
+        projectName: { type: "string", minLength: 1, maxLength: GENERATION_LIMITS.projectNameChars },
+        notes: { type: "string", minLength: 1, maxLength: GENERATION_LIMITS.notesChars },
+        audience: { type: "string", maxLength: GENERATION_LIMITS.audienceChars },
         links: {
           description: "Public documentation, landing pages, or research URLs separated by spaces or new lines.",
           type: "string",
+          maxLength: GENERATION_LIMITS.linksChars,
         },
         repository: { type: "string" },
         provider: { type: "string", enum: PROVIDERS },
@@ -126,26 +145,31 @@ export const TOOL_DEFINITIONS = [
         channels: {
           type: "array",
           minItems: 1,
+          maxItems: GENERATION_LIMITS.channels,
           uniqueItems: true,
           items: { type: "string", enum: CHANNELS },
         },
         documentText: {
           type: "array",
-          items: { type: "string" },
+          maxItems: GENERATION_LIMITS.documentItems,
+          items: { type: "string", maxLength: GENERATION_LIMITS.documentChars },
         },
         assets: {
           description: "Canonical SignalFlow Asset records. Runtime file objects, credentials, temporary URLs, and local paths are rejected or excluded by the shared contract.",
           type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
           items: { type: "object", additionalProperties: true },
         },
         sourceArtifacts: {
           description: "Canonical SignalFlow SourceArtifact records linked to the supplied assets.",
           type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
           items: { type: "object", additionalProperties: true },
         },
         processingRecords: {
           description: "Canonical AssetProcessing records for derived outputs and extraction/transformation lineage.",
           type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
           items: { type: "object", additionalProperties: true },
         },
       },

@@ -11,6 +11,7 @@ test("MCP exposes blocking compatibility plus trackable campaign workflow tools"
       "signalflow_capabilities",
       "signalflow_provider_status",
       "signalflow_test_provider",
+      "signalflow_validate_campaign_input",
       "signalflow_start_campaign",
       "signalflow_campaign_status",
       "signalflow_cancel_campaign",
@@ -73,6 +74,53 @@ test("capability tool rejects incompatible server schema", async () => {
     }),
     /unsupported signalflow capability schema/i,
   );
+});
+
+test("campaign validation reuses shared limits without calling the backend", async () => {
+  let backendCalls = 0;
+  const valid = await executeTool("signalflow_validate_campaign_input", {
+    projectName: "SignalFlow",
+    notes: "Evidence-backed product update.",
+    channels: ["linkedin", "x"],
+  }, {
+    fetchImpl: async () => {
+      backendCalls += 1;
+      throw new Error("validation must not call the backend");
+    },
+  });
+
+  assert.equal(valid.isError, false);
+  assert.equal(valid.structuredContent.ok, true);
+  assert.deepEqual(valid.structuredContent.errors, []);
+  assert.equal(backendCalls, 0);
+
+  const tooLarge = await executeTool("signalflow_validate_campaign_input", {
+    projectName: "SignalFlow",
+    notes: "x".repeat(40_001),
+    channels: ["linkedin"],
+  });
+  assert.equal(tooLarge.isError, true);
+  assert.equal(tooLarge.structuredContent.ok, false);
+  assert.ok(
+    tooLarge.structuredContent.limitIssues.some((issue) =>
+      issue.code === "generation_limit.notes_chars" && issue.field === "notes"),
+  );
+});
+
+test("campaign validation fails safely for cross-workspace source graphs", async () => {
+  const result = await executeTool("signalflow_validate_campaign_input", {
+    notes: "Evidence",
+    channels: ["linkedin"],
+    assets: [
+      { schemaVersion: 1, assetId: "asset-a", workspaceId: "workspace-a", kind: "file", status: "ready" },
+      { schemaVersion: 1, assetId: "asset-b", workspaceId: "workspace-b", kind: "file", status: "ready" },
+    ],
+  });
+
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.ok, false);
+  assert.equal(result.structuredContent.sourceIssue.code, "cross_workspace_reference");
+  assert.match(result.structuredContent.sourceIssue.message, /different workspaces/i);
 });
 
 test("campaign tool refuses template generation", async () => {

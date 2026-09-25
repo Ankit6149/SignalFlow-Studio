@@ -6,6 +6,7 @@ import {
 import { signalFlowRequest } from "./httpClient.mjs";
 import { campaignExecutionRegistry } from "./executionRegistry.mjs";
 import { GENERATION_LIMITS } from "../../frontend/lib/package/generationLimits.mjs";
+import { validateGenerationInputs } from "../../frontend/lib/package/validatePackage.js";
 
 const CHANNELS = [
   "linkedin",
@@ -53,6 +54,47 @@ export const TOOL_DEFINITIONS = [
         provider: { type: "string", enum: PROVIDERS },
         modelName: { type: "string" },
         baseUrl: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_validate_campaign_input",
+    description: "Validate SignalFlow campaign inputs, shared generation limits, and canonical source relationships without calling a model or creating campaign work.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectName: { type: "string", maxLength: GENERATION_LIMITS.projectNameChars },
+        notes: { type: "string", maxLength: GENERATION_LIMITS.notesChars },
+        audience: { type: "string", maxLength: GENERATION_LIMITS.audienceChars },
+        links: { type: "string", maxLength: GENERATION_LIMITS.linksChars },
+        repository: { type: "string" },
+        channels: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.channels,
+          uniqueItems: true,
+          items: { type: "string", enum: CHANNELS },
+        },
+        documentText: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.documentItems,
+          items: { type: "string", maxLength: GENERATION_LIMITS.documentChars },
+        },
+        assets: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
+          items: { type: "object", additionalProperties: true },
+        },
+        sourceArtifacts: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
+          items: { type: "object", additionalProperties: true },
+        },
+        processingRecords: {
+          type: "array",
+          maxItems: GENERATION_LIMITS.sourceRecordsPerKind,
+          items: { type: "object", additionalProperties: true },
+        },
       },
       additionalProperties: false,
     },
@@ -206,6 +248,30 @@ function requireChannels(value) {
   return channels;
 }
 
+function canonicalizeMcpSources(args = {}) {
+  const rawAssets = Array.isArray(args.assets) ? args.assets : [];
+  const rawArtifacts = Array.isArray(args.sourceArtifacts) ? args.sourceArtifacts : [];
+  const rawProcessing = Array.isArray(args.processingRecords) ? args.processingRecords : [];
+  const declaredWorkspaces = Array.from(new Set([
+    ...rawAssets.map((item) => String(item?.workspaceId || "").trim()),
+    ...rawArtifacts.map((item) => String(item?.workspaceId || "").trim()),
+    ...rawProcessing.map((item) => String(item?.workspaceId || "").trim()),
+  ].filter(Boolean)));
+  if (declaredWorkspaces.length > 1) {
+    const error = new Error("Source records from different workspaces cannot be mixed in one MCP generation request.");
+    error.code = "cross_workspace_reference";
+    throw error;
+  }
+  return rawAssets.length || rawArtifacts.length || rawProcessing.length
+    ? validateSourceGraph({
+      workspaceId: declaredWorkspaces[0] || "mcp-workspace",
+      assets: rawAssets,
+      sourceArtifacts: rawArtifacts,
+      processingRecords: rawProcessing,
+    })
+    : { assets: [], sourceArtifacts: [], processingRecords: [] };
+}
+
 export async function executeTool(name, args = {}, options = {}) {
   if (name === "signalflow_capabilities") {
     const raw = await signalFlowRequest("/api/capabilities", options);
@@ -257,6 +323,61 @@ export async function executeTool(name, args = {}, options = {}) {
       content: textContent(data.ok ? `${provider} connection succeeded.` : `${provider} connection failed.`),
       structuredContent: data,
       isError: !data.ok,
+    };
+  }
+
+  if (name === "signalflow_validate_campaign_input") {
+    const channels = Array.isArray(args.channels)
+      ? Array.from(new Set(args.channels.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)))
+      : [];
+    const unknownChannels = channels.filter((channel) => !CHANNELS.includes(channel));
+    const validation = validateGenerationInputs({
+      project_name: String(args.projectName || ""),
+      notes: String(args.notes || ""),
+      audience: String(args.audience || ""),
+      docs_url: String(args.links || ""),
+      repo: String(args.repository || ""),
+      channels,
+      output_types: [],
+      document_text: Array.isArray(args.documentText) ? args.documentText : [],
+      assets: Array.isArray(args.assets) ? args.assets : [],
+      source_artifacts: Array.isArray(args.sourceArtifacts) ? args.sourceArtifacts : [],
+      processing_records: Array.isArray(args.processingRecords) ? args.processingRecords : [],
+    });
+    const errors = [...validation.errors];
+    if (unknownChannels.length) {
+      errors.push(`Unsupported destination channels: ${unknownChannels.join(", ")}.`);
+    }
+
+    let canonicalSources = { assets: [], sourceArtifacts: [], processingRecords: [] };
+    let sourceIssue = null;
+    try {
+      canonicalSources = canonicalizeMcpSources(args);
+    } catch (error) {
+      sourceIssue = {
+        code: String(error?.code || "invalid_source_contract"),
+        message: String(error?.message || "Source contract validation failed."),
+      };
+      errors.push(sourceIssue.message);
+    }
+
+    const ok = errors.length === 0;
+    return {
+      content: textContent(ok
+        ? "SignalFlow campaign input is valid and can proceed to generation."
+        : `SignalFlow campaign input needs correction: ${errors[0] || "validation failed"}`),
+      structuredContent: {
+        ok,
+        errors,
+        limitIssues: validation.limitIssues,
+        sourceIssue,
+        sourceSummary: {
+          assets: canonicalSources.assets.length,
+          sourceArtifacts: canonicalSources.sourceArtifacts.length,
+          processingRecords: canonicalSources.processingRecords.length,
+        },
+      },
+      isError: !ok,
     };
   }
 
@@ -337,25 +458,7 @@ export async function executeTool(name, args = {}, options = {}) {
     const notes = requireString(args.notes, "notes");
     const provider = requireProvider(args.provider);
     const channels = requireChannels(args.channels);
-    const rawAssets = Array.isArray(args.assets) ? args.assets : [];
-    const rawArtifacts = Array.isArray(args.sourceArtifacts) ? args.sourceArtifacts : [];
-    const rawProcessing = Array.isArray(args.processingRecords) ? args.processingRecords : [];
-    const declaredWorkspaces = Array.from(new Set([
-      ...rawAssets.map((item) => String(item?.workspaceId || "").trim()),
-      ...rawArtifacts.map((item) => String(item?.workspaceId || "").trim()),
-      ...rawProcessing.map((item) => String(item?.workspaceId || "").trim()),
-    ].filter(Boolean)));
-    if (declaredWorkspaces.length > 1) {
-      throw new Error("Source records from different workspaces cannot be mixed in one MCP generation request.");
-    }
-    const canonicalSources = rawAssets.length || rawArtifacts.length || rawProcessing.length
-      ? validateSourceGraph({
-        workspaceId: declaredWorkspaces[0] || "mcp-workspace",
-        assets: rawAssets,
-        sourceArtifacts: rawArtifacts,
-        processingRecords: rawProcessing,
-      })
-      : { assets: [], sourceArtifacts: [], processingRecords: [] };
+    const canonicalSources = canonicalizeMcpSources(args);
 
     let data;
     try {

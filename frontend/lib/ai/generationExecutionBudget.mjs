@@ -83,9 +83,11 @@ export function createGenerationExecutionBudget({
       byKind[entry.kind] = (byKind[entry.kind] || 0) + 1;
       maxOutputTokens += entry.maxOutputTokens;
     }
+    const retryRequests = (byKind.destination_revision || 0) + (byKind.duplicate_repair || 0);
     return Object.freeze({
       requestCount: entries.length,
       maxRequests: hardMaxRequests,
+      retryRequests,
       completedRequests: completed,
       failedRequests: failed,
       durationMs: Math.max(0, finishedAt - startedAt),

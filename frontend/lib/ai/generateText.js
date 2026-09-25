@@ -20,34 +20,47 @@ export async function generateText({ provider, prompt, modelOverride = null, con
     ...config,
     maxTokens: resolveOutputTokenBudget(prompt, config.maxTokens),
   };
+  let budgetTicket = null;
 
   try {
+    budgetTicket = config.requestBudget?.begin?.({
+      provider: p,
+      model: modelOverride || resolvedConfig.modelName || "",
+      kind: config.requestKind || "provider_request",
+      destination: config.destination || "",
+      maxOutputTokens: resolvedConfig.maxTokens,
+    }) || null;
+    let result;
     switch (p) {
       case "vercel_gateway":
-        return await generateVercelGateway(prompt, modelOverride, resolvedConfig);
+        result = await generateVercelGateway(prompt, modelOverride, resolvedConfig); break;
       case "openai":
-        return await generateOpenAI(prompt, modelOverride, resolvedConfig);
+        result = await generateOpenAI(prompt, modelOverride, resolvedConfig); break;
       case "claude":
-        return await generateClaude(prompt, modelOverride, resolvedConfig);
+        result = await generateClaude(prompt, modelOverride, resolvedConfig); break;
       case "gemini":
-        return await generateGemini(prompt, modelOverride, resolvedConfig);
+        result = await generateGemini(prompt, modelOverride, resolvedConfig); break;
       case "groq":
-        return await generateGroq(prompt, modelOverride, resolvedConfig);
+        result = await generateGroq(prompt, modelOverride, resolvedConfig); break;
       case "openrouter":
-        return await generateOpenRouter(prompt, modelOverride, resolvedConfig);
+        result = await generateOpenRouter(prompt, modelOverride, resolvedConfig); break;
       case "ollama":
-        return await generateOllama(prompt, modelOverride, resolvedConfig);
+        result = await generateOllama(prompt, modelOverride, resolvedConfig); break;
       case "lmstudio":
-        return await generateLMStudio(prompt, modelOverride, resolvedConfig);
+        result = await generateLMStudio(prompt, modelOverride, resolvedConfig); break;
       case "custom":
-        return await generateCustomOpenAI(prompt, modelOverride, resolvedConfig);
+        result = await generateCustomOpenAI(prompt, modelOverride, resolvedConfig); break;
       default:
         throw new Error(`Text generation not supported for provider mode: "${provider}"`);
     }
+    config.requestBudget?.finish?.(budgetTicket, { ok: true });
+    return result;
   } catch (error) {
-    throw normalizeProviderError(error, {
+    const normalized = normalizeProviderError(error, {
       provider: p,
       model: modelOverride || "",
     });
+    config.requestBudget?.finish?.(budgetTicket, { ok: false, errorCode: normalized.code });
+    throw normalized;
   }
 }

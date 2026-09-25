@@ -246,6 +246,7 @@ test("trackable campaign tools start, inspect, and cancel through the shared exe
 
   assert.equal(started.isError, false);
   assert.equal(started.structuredContent.job.id, "campaign-123");
+  assert.equal(calls[0].options.executionKey, "project:signalflow");
   assert.deepEqual(calls[0].options.metadata.channels, ["linkedin", "x"]);
 
   const status = await executeTool("signalflow_campaign_status", {

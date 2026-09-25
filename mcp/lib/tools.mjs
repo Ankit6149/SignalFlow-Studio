@@ -387,6 +387,7 @@ export async function executeTool(name, args = {}, options = {}) {
     const provider = requireProvider(args.provider);
     const channels = requireChannels(args.channels);
     const registry = options.executionRegistry || campaignExecutionRegistry;
+    const executionKey = `project:${projectName.trim().toLowerCase()}`;
     const job = registry.start(async ({ signal, reportProgress }) => {
       reportProgress({
         phase: "generating",
@@ -404,6 +405,7 @@ export async function executeTool(name, args = {}, options = {}) {
         signal,
       });
     }, {
+      executionKey,
       metadata: {
         projectName,
         provider,

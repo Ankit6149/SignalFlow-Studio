@@ -8,6 +8,7 @@ const SAFE_CODES = Object.freeze({
   TIMEOUT: "provider_timeout",
   CANCELLED: "provider_request_cancelled",
   REQUEST_BUDGET_EXCEEDED: "generation_request_budget_exceeded",
+  OUTPUT_TOKEN_BUDGET_EXCEEDED: "generation_output_token_budget_exceeded",
   UNAVAILABLE: "provider_unavailable",
   MALFORMED_RESPONSE: "provider_malformed_response",
   EMPTY_RESPONSE: "provider_empty_response",
@@ -42,6 +43,9 @@ function classify(error) {
   }
   if (error?.code === "generation_request_budget_exceeded") {
     return { code: SAFE_CODES.REQUEST_BUDGET_EXCEEDED, retryable: false, action: "reduce_destinations" };
+  }
+  if (error?.code === "generation_output_token_budget_exceeded") {
+    return { code: SAFE_CODES.OUTPUT_TOKEN_BUDGET_EXCEEDED, retryable: false, action: "reduce_destinations" };
   }
   if (error?.name === "AbortError" || /timed?\s*out|timeout/.test(message)) {
     return { code: SAFE_CODES.TIMEOUT, retryable: true, action: "retry_destination" };
@@ -91,6 +95,7 @@ function safeMessage(code, provider) {
     case SAFE_CODES.TIMEOUT: return `${label} did not respond within the request limit.`;
     case SAFE_CODES.CANCELLED: return "Generation was cancelled before the provider request completed.";
     case SAFE_CODES.REQUEST_BUDGET_EXCEEDED: return "Generation reached the configured provider-request budget. Reduce destinations or retry only the affected destination.";
+    case SAFE_CODES.OUTPUT_TOKEN_BUDGET_EXCEEDED: return "The planned model output exceeds SignalFlow's generation token budget. Reduce destinations or lower the requested output size.";
     case SAFE_CODES.UNAVAILABLE: return `${label} is temporarily unavailable.`;
     case SAFE_CODES.MALFORMED_RESPONSE: return `${label} returned a response that could not be validated as the required JSON contract.`;
     case SAFE_CODES.EMPTY_RESPONSE: return `${label} returned no usable model output.`;

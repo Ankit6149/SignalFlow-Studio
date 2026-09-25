@@ -15,6 +15,7 @@ import {
   estimateGenerationRequestBudget,
   generationRequestBudgetError,
 } from "./generationExecutionBudget.mjs";
+import { createGenerationProgressReporter } from "./generationProgress.mjs";
 import {
   CHANNEL_CONTRACTS,
   assessChannelDraft,
@@ -178,6 +179,7 @@ async function generateDestination({
 }) {
   const packageKey = packageKeyForChannel(channel);
   const projectName = campaignBrief?.project?.name || generationInputs.projectName;
+  config.progressReporter?.setDestination?.(channel, "generating");
   let firstDraft = null;
   let firstQuality = null;
 
@@ -195,6 +197,7 @@ async function generateDestination({
     });
 
     if (firstQuality.valid) {
+      config.progressReporter?.setDestination?.(channel, "complete");
       return {
         channel,
         packageKey,
@@ -210,6 +213,7 @@ async function generateDestination({
       };
     }
 
+    config.progressReporter?.setDestination?.(channel, "revising");
     const revisedRaw = await generateJSON({
       provider,
       prompt: buildChannelPrompt({
@@ -231,6 +235,7 @@ async function generateDestination({
     const selectedDraft = useRevision ? revisedDraft : firstDraft;
     const selectedQuality = useRevision ? revisedQuality : firstQuality;
 
+    config.progressReporter?.setDestination?.(channel, selectedQuality.valid ? "complete" : "needs_review");
     return {
       channel,
       packageKey,
@@ -250,6 +255,10 @@ async function generateDestination({
       model: modelOverride || "",
     });
     const safeError = providerErrorPayload(providerError);
+    config.progressReporter?.setDestination?.(
+      channel,
+      safeError.code === "provider_request_cancelled" ? "cancelled" : "failed",
+    );
     return {
       channel,
       packageKey,
@@ -282,6 +291,7 @@ async function reviseDuplicateDestination({
   const current = generatedDestinations.find((item) => item.channel === target.channel);
   if (!current || current.status.status === "failed") return current;
 
+  config.progressReporter?.setDestination?.(target.channel, "revising");
   try {
     const revisedRaw = await generateJSON({
       provider,
@@ -301,6 +311,7 @@ async function reviseDuplicateDestination({
       sourceContext: context,
     });
 
+    config.progressReporter?.setDestination?.(target.channel, quality.valid ? "complete" : "needs_review");
     return {
       ...current,
       draft: revisedDraft,
@@ -323,6 +334,10 @@ async function reviseDuplicateDestination({
       model: modelOverride || "",
     });
     const safeError = providerErrorPayload(providerError);
+    config.progressReporter?.setDestination?.(
+      target.channel,
+      safeError.code === "provider_request_cancelled" ? "cancelled" : "needs_review",
+    );
     return {
       ...current,
       status: {
@@ -387,6 +402,10 @@ export async function generateStudioPackage(inputs) {
   };
 
   const channels = selectedDestinationList(selectedChannels);
+  const progressReporter = createGenerationProgressReporter({
+    channels,
+    onProgress: config.onProgress,
+  });
   const context = buildUnifiedContext(generationInputs);
   const contextWarnings = Array.isArray(context.warnings) ? context.warnings : [];
   const campaignBriefPrompt = buildCampaignBriefPrompt(context);
@@ -429,8 +448,9 @@ export async function generateStudioPackage(inputs) {
     requestBudget = requestBudget || createGenerationExecutionBudget({
       maxRequests: requestBudgetPlan.hardMaxRequests,
     });
-    const executionConfig = { ...config, requestBudget };
+    const executionConfig = { ...config, requestBudget, progressReporter };
 
+    progressReporter.setStrategy("generating");
     const rawBrief = await generateJSON({
       provider: generator,
       prompt: campaignBriefPrompt,
@@ -448,6 +468,7 @@ export async function generateStudioPackage(inputs) {
     });
 
     if (strategyQuality.status !== STRATEGY_QUALITY_STATES.COMPLETE) {
+      progressReporter.setStrategy(strategyQuality.status);
       return {
         ok: false,
         code: "strategy_quality_blocked",
@@ -474,6 +495,8 @@ export async function generateStudioPackage(inputs) {
       };
     }
 
+    progressReporter.setStrategy("complete");
+    progressReporter.queueDestinations();
     pkg.posts = emptyPackagePosts();
 
     let generatedDestinations = await mapWithConcurrency(channels, (channel) => generateDestination({
@@ -487,6 +510,7 @@ export async function generateStudioPackage(inputs) {
     }), executionConfig.destinationConcurrency, { signal: executionConfig.signal });
 
     if (executionConfig.signal?.aborted) {
+      progressReporter.cancelOutstanding();
       const cancelled = new Error("Generation request was cancelled.");
       cancelled.code = "provider_request_cancelled";
       cancelled.status = 499;
@@ -516,6 +540,7 @@ export async function generateStudioPackage(inputs) {
         config: executionConfig,
       }), executionConfig.destinationConcurrency, { signal: executionConfig.signal });
       if (executionConfig.signal?.aborted) {
+        progressReporter.cancelOutstanding();
         const cancelled = new Error("Generation request was cancelled.");
         cancelled.code = "provider_request_cancelled";
         cancelled.status = 499;
@@ -571,6 +596,7 @@ export async function generateStudioPackage(inputs) {
       throw new Error(`Every selected destination failed: ${failedDestinations.map((item) => item.channel).join(", ")}.`);
     }
 
+    progressReporter.complete();
     const generationExecution = {
       plan: requestBudgetPlan,
       actual: requestBudget.snapshot(),

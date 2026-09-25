@@ -1,4 +1,4 @@
-import { createDomainRecord, stableStringify } from "../domain/contracts.mjs";
+import { createDomainRecord, portableClone, stableStringify } from "../domain/contracts.mjs";
 import { currentPostsFromCampaign } from "../domain/campaign.mjs";
 import { migrateCanonicalCampaign } from "../domain/campaignCompatibility.mjs";
 

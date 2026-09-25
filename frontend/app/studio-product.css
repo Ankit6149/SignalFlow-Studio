@@ -495,6 +495,50 @@
   background: var(--app-surface);
 }
 
+.app-shell .studio-actionbar__summary.has-progress {
+  flex: 1 1 32rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.app-shell .generation-progress-list {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.app-shell .generation-progress-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--app-line);
+  border-radius: 999px;
+  background: var(--app-surface-muted);
+  color: var(--app-muted);
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.app-shell .generation-progress-chip.is-generating,
+.app-shell .generation-progress-chip.is-revising {
+  color: var(--app-ink);
+}
+
+.app-shell .generation-progress-chip.is-complete {
+  color: var(--app-ink);
+  background: var(--app-surface);
+}
+
+.app-shell .generation-progress-chip.is-failed,
+.app-shell .generation-progress-chip.is-cancelled,
+.app-shell .generation-progress-chip.is-needs_review {
+  font-weight: 700;
+}
+
 @media (max-width: 68rem) {
   .app-shell .studio-page[data-stage="source"],
   .app-shell .studio-page[data-stage="destinations"] {

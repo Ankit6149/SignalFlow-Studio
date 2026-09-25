@@ -322,16 +322,25 @@ export function generatedPostsFromCampaign(campaign) {
 
 export function channelStatesFromCampaign(campaign) {
   const parsed = parseDomainRecord(campaign, "Campaign");
-  return Object.fromEntries(Object.entries(parsed.drafts || {}).map(([channel, draft]) => {
+  const persisted = cleanChannelStates(parsed.channelStates || {});
+  const channels = Array.from(new Set([
+    ...(Array.isArray(parsed.channels) ? parsed.channels : []),
+    ...Object.keys(persisted),
+    ...Object.keys(parsed.drafts || {}),
+  ]));
+  return Object.fromEntries(channels.map((channel) => {
+    const draft = parsed.drafts?.[channel] || null;
+    if (!draft) return [channel, cleanChannelState(persisted[channel] || {})];
     const generated = text(draft?.generated?.content, draft?.current?.content || "");
     const current = text(draft?.current?.content);
     return [channel, cleanChannelState({
+      ...(persisted[channel] || {}),
       ...(draft?.recoveryState || {}),
-      status: text(draft?.qualityState, draft?.recoveryState?.status || "generated"),
-      qualityStatus: text(draft?.qualityStatus || draft?.recoveryState?.qualityStatus),
+      status: text(draft?.qualityState, draft?.recoveryState?.status || persisted[channel]?.status || "generated"),
+      qualityStatus: text(draft?.qualityStatus || draft?.recoveryState?.qualityStatus || persisted[channel]?.qualityStatus),
       edited: current !== generated,
       approved: Boolean(draft?.approved),
-      generationRunId: text(draft?.generationRunId),
+      generationRunId: text(draft?.generationRunId || persisted[channel]?.generationRunId),
     })];
   }));
 }
@@ -355,6 +364,7 @@ export function createCampaignAggregate(input = {}) {
   const generatedPosts = input.generatedPosts || input.result?.posts || {};
   const statuses = cleanChannelStates(input.result?.generation_status || input.generationStatus || {});
   const draftStates = cleanChannelStates(input.channelStates || {});
+  const campaignChannelStates = {};
   const drafts = {};
 
   for (const channel of activeChannels) {
@@ -362,8 +372,8 @@ export function createCampaignAggregate(input = {}) {
     const generatedContent = text(generatedPosts[channel], currentContent);
     const existingDraft = input.existingDrafts?.[channel] || null;
     const draftState = cleanChannelState(draftStates[channel] || statuses[channel] || {}, existingDraft?.recoveryState || {});
-    const hasLifecycleState = Boolean(draftStates[channel] || statuses[channel] || existingDraft);
-    if (!currentContent && !generatedContent && !hasLifecycleState) continue;
+    campaignChannelStates[channel] = draftState;
+    if (!currentContent && !generatedContent) continue;
     drafts[channel] = createDraft({
       campaignId,
       channel,
@@ -397,8 +407,9 @@ export function createCampaignAggregate(input = {}) {
     projectId: input.projectId || null,
     title,
     status: text(input.status, "draft"),
-    channels: Object.keys(drafts),
+    channels: activeChannels,
     drafts,
+    channelStates: cleanChannelStates(campaignChannelStates),
     sourceSnapshot,
     generationRun,
     generationResult,

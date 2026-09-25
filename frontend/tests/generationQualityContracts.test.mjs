@@ -15,6 +15,7 @@ import {
   duplicateRevisionTargets,
 } from "../lib/ai/crossChannelQuality.mjs";
 import { mapWithConcurrency } from "../lib/ai/generationConcurrency.mjs";
+import { createLinkedAbort } from "../lib/ai/requestAbort.mjs";
 import {
   PROVIDER_ERROR_CODES,
   malformedProviderResponse,
@@ -193,6 +194,31 @@ test("destination concurrency stays bounded and preserves input ordering", async
   assert.deepEqual(result, [10, 20, 30, 40, 50]);
 });
 
+test("destination queue stops starting new work after cancellation", async () => {
+  const controller = new AbortController();
+  const started = [];
+  await mapWithConcurrency([1, 2, 3, 4, 5, 6], async (value) => {
+    started.push(value);
+    if (value === 1) controller.abort();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return value;
+  }, 2, { signal: controller.signal });
+
+  assert.ok(started.length <= 2, `started ${started.length} tasks after cancellation`);
+  assert.ok(started.includes(1));
+});
+
+test("linked provider abort distinguishes caller cancellation from timeout", async () => {
+  const controller = new AbortController();
+  const linked = createLinkedAbort({ signal: controller.signal, timeoutMs: 5_000 });
+  controller.abort();
+  await Promise.resolve();
+  assert.equal(linked.signal.aborted, true);
+  assert.equal(linked.cancelled(), true);
+  assert.equal(linked.timedOut(), false);
+  linked.cleanup();
+});
+
 test("provider failures normalize into safe actionable recovery contracts", () => {
   const cases = [
     [{ status: 401, message: "invalid api key sk-secret" }, PROVIDER_ERROR_CODES.INVALID_CREDENTIALS, false, "replace_key"],
@@ -344,7 +370,7 @@ test("failed destinations expose an isolated retry path without touching success
   const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
   assert.match(page, /\? "Generation failed"/);
   assert.match(page, /\? "Retry destination" : "Regenerate this channel"/);
-  assert.match(page, /\["needs_review", "failed"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
+  assert.match(page, /\["needs_review", "failed", "cancelled"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
 
   const targets = regenerationTargets({
     policy: REGENERATION_POLICIES.CHANNEL,
@@ -357,4 +383,65 @@ test("failed destinations expose an isolated retry path without touching success
     activeChannel: "x",
   });
   assert.deepEqual(targets, ["x"]);
+});
+
+
+test("generation cancellation is propagated through API, providers, UI, and campaign state", async () => {
+  const routeSource = await readFile(new URL("../app/api/launch_kit/route.js", import.meta.url), "utf8");
+  const packageSource = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
+  const pageSource = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
+  const providerPaths = [
+    "../lib/ai/providers/openai.js",
+    "../lib/ai/providers/claude.js",
+    "../lib/ai/providers/gemini.js",
+    "../lib/ai/providers/groq.js",
+    "../lib/ai/providers/openrouter.js",
+    "../lib/ai/providers/customOpenAI.js",
+    "../lib/ai/providers/ollama.js",
+    "../lib/ai/providers/lmstudio.js",
+    "../lib/ai/providers/vercelGateway.js",
+  ];
+
+  assert.match(routeSource, /signal: request\.signal/);
+  assert.match(packageSource, /\{ signal: config\.signal \}/);
+  assert.match(pageSource, /Cancel generation/);
+  assert.match(pageSource, /MARK_CHANNELS_CANCELLED/);
+
+  for (const providerPath of providerPaths) {
+    const providerSource = await readFile(new URL(providerPath, import.meta.url), "utf8");
+    assert.match(providerSource, /createLinkedAbort/);
+    assert.match(providerSource, /abort\.cancelled\(\)/);
+  }
+
+  let state = campaignReducer(createInitialCampaignState(), {
+    type: "ACCEPT_GENERATION",
+    payload: {
+      posts: { linkedin: "Existing draft" },
+      requestedChannels: ["linkedin"],
+      result: { generation_status: { linkedin: { status: "generated", qualityStatus: "complete" } } },
+      generationRun: { generationRunId: "run-before-cancel" },
+      activeChannel: "linkedin",
+    },
+  });
+  state = campaignReducer(state, { type: "MARK_CHANNELS_CANCELLED", channels: ["linkedin"] });
+  assert.equal(state.posts.linkedin, "Existing draft");
+  assert.equal(state.channelStates.linkedin.status, "cancelled");
+  assert.equal(state.channelStates.linkedin.qualityStatus, "needs_review");
+  assert.equal(state.channelStates.linkedin.approved, false);
+  assert.ok(state.channelStates.linkedin.issueCodes.includes("generation_cancelled"));
+});
+
+test("provider cancellation keeps a distinct safe error class", () => {
+  const error = new Error("cancelled");
+  error.name = "AbortError";
+  error.code = "provider_request_cancelled";
+  error.status = 499;
+  const normalized = providerErrorPayload(normalizeProviderError(error, {
+    provider: "test-provider",
+    model: "test-model",
+  }));
+  assert.equal(normalized.code, PROVIDER_ERROR_CODES.CANCELLED);
+  assert.equal(normalized.retryable, true);
+  assert.equal(normalized.recoveryAction, "retry_destination");
+  assert.equal(normalized.httpStatus, 499);
 });

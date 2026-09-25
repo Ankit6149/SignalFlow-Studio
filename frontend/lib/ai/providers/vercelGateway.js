@@ -1,4 +1,5 @@
 import { PROVIDERS, getProviderApiKey } from "../types.js";
+import { createLinkedAbort, cancelledProviderRequestError } from "../requestAbort.mjs";
 
 const GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/chat/completions";
 
@@ -38,8 +39,7 @@ export async function generateVercelGateway(prompt, modelOverride = null, config
     throw gatewayError("vercel_gateway_fetch_unavailable", "Vercel AI Gateway requires fetch().", 500);
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 50_000);
+  const abort = createLinkedAbort({ signal: config.signal, timeoutMs: 50_000 });
   let response;
   try {
     response = await fetchImpl(GATEWAY_URL, {
@@ -58,17 +58,18 @@ export async function generateVercelGateway(prompt, modelOverride = null, config
         temperature: 0.2,
         stream: false,
       }),
-      signal: controller.signal,
+      signal: abort.signal,
       cache: "no-store",
     });
   } catch (error) {
     if (error?.name === "AbortError") {
+      if (abort.cancelled()) throw cancelledProviderRequestError();
       throw gatewayError("vercel_gateway_timeout", "Vercel AI Gateway timed out after 50 seconds.", 504);
     }
     if (error?.code) throw error;
     throw gatewayError("vercel_gateway_request_error", "Vercel AI Gateway request failed before receiving a response.", 502);
   } finally {
-    clearTimeout(timeoutId);
+    abort.cleanup();
   }
 
   if (!response.ok) {

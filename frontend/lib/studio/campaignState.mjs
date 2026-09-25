@@ -215,6 +215,31 @@ export function campaignReducer(state, action) {
       };
     }
 
+    case "MARK_CHANNELS_CANCELLED": {
+      const channels = Array.from(new Set((Array.isArray(action.channels) ? action.channels : [])
+        .map((channel) => String(channel || "").trim())
+        .filter(Boolean)));
+      if (!channels.length) return state;
+      const nextChannelStates = { ...state.channelStates };
+      let changed = false;
+      for (const channel of channels) {
+        const previous = nextChannelStates[channel] || {};
+        nextChannelStates[channel] = {
+          ...previous,
+          status: "cancelled",
+          qualityStatus: "needs_review",
+          approved: false,
+          qualityRiskAccepted: false,
+          issues: Array.from(new Set([...(previous.issues || []), "Generation was cancelled. Existing draft content was preserved."])),
+          issueCodes: Array.from(new Set([...(previous.issueCodes || []), "generation_cancelled"])),
+        };
+        changed = true;
+      }
+      return changed
+        ? { ...state, channelStates: nextChannelStates, revision: state.revision + 1 }
+        : state;
+    }
+
     case "RESTORE_GENERATED": {
       const channel = String(action.channel || "").trim();
       const generated = state.generatedPosts[channel];

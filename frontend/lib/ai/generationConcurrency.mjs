@@ -1,6 +1,6 @@
 export const DEFAULT_DESTINATION_CONCURRENCY = 2;
 
-export async function mapWithConcurrency(items, worker, concurrency = DEFAULT_DESTINATION_CONCURRENCY) {
+export async function mapWithConcurrency(items, worker, concurrency = DEFAULT_DESTINATION_CONCURRENCY, { signal = null } = {}) {
   const values = Array.isArray(items) ? items : [];
   if (!values.length) return [];
   if (typeof worker !== "function") throw new TypeError("mapWithConcurrency requires a worker function.");
@@ -14,6 +14,7 @@ export async function mapWithConcurrency(items, worker, concurrency = DEFAULT_DE
 
   async function runLane() {
     while (cursor < values.length) {
+      if (signal?.aborted) break;
       const index = cursor;
       cursor += 1;
       results[index] = await worker(values[index], index);

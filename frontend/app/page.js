@@ -411,6 +411,7 @@ export default function Home() {
     reddit: { subreddit: "", title: "" },
   });
   const fileInputRef = useRef(null);
+  const generationAbortRef = useRef(null);
   const campaignApplication = useMemo(() => createBrowserCampaignApplication({
     getStorage: () => window.localStorage,
     key: LIBRARY_KEY,
@@ -880,7 +881,7 @@ ${extractedText}`);
     }
   }
 
-  async function requestGeneration(requestedChannels) {
+  async function requestGeneration(requestedChannels, signal = null) {
     if (!form.notes.trim() && !form.links.trim() && !form.repo.trim() && documentText.length === 0) {
       throw new Error("Add a brief, link, repository, or extractable text file before generating.");
     }
@@ -898,6 +899,7 @@ ${extractedText}`);
     const response = await fetch("/api/launch_kit", {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
+      signal,
       body: JSON.stringify({
         project_name: form.projectName.trim() || "Untitled campaign",
         notes: form.notes.trim(),
@@ -946,11 +948,29 @@ ${extractedText}`);
     return { accepted, nextGenerationRun, data };
   }
 
+  function beginGenerationRequest() {
+    const controller = new AbortController();
+    generationAbortRef.current = controller;
+    return controller;
+  }
+
+  function finishGenerationRequest(controller) {
+    if (generationAbortRef.current === controller) generationAbortRef.current = null;
+  }
+
+  function cancelGeneration() {
+    const controller = generationAbortRef.current;
+    if (!controller || controller.signal.aborted) return;
+    controller.abort();
+    setMessage({ type: "warning", text: "Cancelling generation. Existing drafts will remain unchanged." });
+  }
+
   async function generateInitialCampaign() {
+    const controller = beginGenerationRequest();
     setBusy(true);
     setMessage(null);
     try {
-      const generation = await requestGeneration(channels);
+      const generation = await requestGeneration(channels, controller.signal);
       if (generation.strategyBlocked) {
         setStrategyReview(generation.data.strategy_review);
         setStage("destinations");
@@ -979,9 +999,14 @@ ${extractedText}`);
           : `Campaign generated with ${data.providerUsed || provider.label}. Review and approve each destination before publishing.`,
       });
     } catch (error) {
+      if (error?.name === "AbortError") {
+        setMessage({ type: "warning", text: "Generation cancelled before completion. No campaign draft was replaced." });
+        return;
+      }
       const recovery = providerRecoveryMessage(error.providerError);
       setMessage({ type: "error", text: [error.message, recovery].filter(Boolean).join(" ") });
     } finally {
+      finishGenerationRequest(controller);
       setBusy(false);
     }
   }
@@ -995,10 +1020,11 @@ ${extractedText}`);
     }
 
     setRegenerationDialogOpen(false);
+    const controller = beginGenerationRequest();
     setBusy(true);
     setMessage(null);
     try {
-      const generation = await requestGeneration(targetChannels);
+      const generation = await requestGeneration(targetChannels, controller.signal);
       if (generation.strategyBlocked) {
         setStrategyReview(generation.data.strategy_review);
         setStage("destinations");
@@ -1035,12 +1061,21 @@ ${extractedText}`);
               : "The previous campaign version was archived and all selected destinations were regenerated.",
       });
     } catch (error) {
+      if (error?.name === "AbortError") {
+        dispatchCampaign({ type: "MARK_CHANNELS_CANCELLED", channels: targetChannels });
+        setMessage({
+          type: "warning",
+          text: "Generation cancelled. Existing drafts and edits were preserved; cancelled destinations can be retried.",
+        });
+        return;
+      }
       const recovery = providerRecoveryMessage(error.providerError);
       setMessage({
         type: "error",
         text: [error.message, recovery, "Existing drafts and edits were not changed."].filter(Boolean).join(" "),
       });
     } finally {
+      finishGenerationRequest(controller);
       setBusy(false);
     }
   }
@@ -2056,12 +2091,14 @@ async function exportZip() {
                     {(channelStates[activeChannel]?.issues || []).length > 0 && (
                       <div
                         className="draft-quality-issues"
-                        role={["needs_review", "failed"].includes(channelStates[activeChannel]?.status) ? "alert" : "status"}
+                        role={["needs_review", "failed", "cancelled"].includes(channelStates[activeChannel]?.status) ? "alert" : "status"}
                       >
                         <strong>
                           {channelStates[activeChannel]?.status === "failed"
                             ? "Generation failed"
-                            : channelStates[activeChannel]?.status === "needs_review"
+                            : channelStates[activeChannel]?.status === "cancelled"
+                              ? "Generation cancelled"
+                              : channelStates[activeChannel]?.status === "needs_review"
                               ? "Unresolved quality issues"
                               : "Generation notes"}
                         </strong>
@@ -2100,7 +2137,7 @@ async function exportZip() {
                         onClick={() => void performRegeneration(REGENERATION_POLICIES.CHANNEL, activeChannel)}
                         disabled={busy || !providerReadiness.ready}
                       >
-                        {channelStates[activeChannel]?.status === "failed" ? "Retry destination" : "Regenerate this channel"}
+                        {["failed", "cancelled"].includes(channelStates[activeChannel]?.status) ? "Retry destination" : "Regenerate this channel"}
                       </button>
                       {channelStates[activeChannel]?.edited && generatedPosts[activeChannel] && (
                         <button
@@ -2271,6 +2308,15 @@ async function exportZip() {
               <span>{provider.label}</span>
             </div>
             <div className="studio-actionbar__actions">
+              {busy && (
+                <button
+                  type="button"
+                  className="button button--outline"
+                  onClick={cancelGeneration}
+                >
+                  Cancel generation
+                </button>
+              )}
               {stage !== "source" && (
                 <button
                   type="button"

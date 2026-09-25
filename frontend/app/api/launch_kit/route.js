@@ -218,6 +218,7 @@ export async function POST(request) {
         baseUrl: providerBaseUrl,
         modelName: providerModelName,
         allowServerKey: isOwner,
+        signal: request.signal,
       },
     });
 

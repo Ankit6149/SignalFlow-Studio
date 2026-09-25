@@ -27,7 +27,9 @@ export function estimateGenerationRequestBudget(destinationCount, { maxRequests 
 }
 
 export function resolvePlannedOutputTokenLimit(value) {
-  const parsed = integer(value, DEFAULT_MAX_PLANNED_OUTPUT_TOKENS);
+  const parsed = value === null || value === undefined || value === ""
+    ? DEFAULT_MAX_PLANNED_OUTPUT_TOKENS
+    : integer(value, DEFAULT_MAX_PLANNED_OUTPUT_TOKENS);
   return Math.max(1, Math.min(MAX_PLANNED_OUTPUT_TOKENS, parsed));
 }
 

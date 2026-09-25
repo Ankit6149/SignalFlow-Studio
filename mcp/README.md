@@ -48,8 +48,13 @@ Provider secrets stay in the MCP process environment and are not part of tool ar
 
 ## Tools
 
-- `signalflow_provider_status`
-- `signalflow_test_provider`
-- `signalflow_create_campaign`
+- `signalflow_capabilities` — inspect deployment/session capability truth.
+- `signalflow_provider_status` — inspect configured model routes.
+- `signalflow_test_provider` — verify one configured model route.
+- `signalflow_validate_campaign_input` — validate shared generation limits and source relationships without model spend.
+- `signalflow_start_campaign` — start trackable campaign generation and return a job ID.
+- `signalflow_campaign_status` — inspect trackable campaign work.
+- `signalflow_cancel_campaign` — request cancellation of queued or active campaign work.
+- `signalflow_create_campaign` — blocking compatibility path for campaign generation.
 
-Campaign creation requires a real model provider. The MCP server does not expose or request the retired local template route.
+Campaign creation requires a real model provider. Validation does not call a model. The MCP server does not expose or request the retired local template route.

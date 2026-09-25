@@ -5,9 +5,14 @@ import { readFile } from "node:fs/promises";
 import {
   DEFAULT_MAX_PROVIDER_REQUESTS,
   MAX_PROVIDER_REQUESTS,
+  DEFAULT_MAX_PLANNED_OUTPUT_TOKENS,
+  MAX_PLANNED_OUTPUT_TOKENS,
   createGenerationExecutionBudget,
+  estimateGenerationOutputTokenBudget,
   estimateGenerationRequestBudget,
+  generationOutputTokenBudgetError,
   generationRequestBudgetError,
+  resolvePlannedOutputTokenLimit,
   resolveProviderRequestLimit,
 } from "../lib/ai/generationExecutionBudget.mjs";
 import {
@@ -30,6 +35,48 @@ test("request budget cannot be raised above the server hard ceiling", () => {
   const blocked = estimateGenerationRequestBudget(12, { maxRequests: 36 });
   assert.equal(blocked.withinBudget, false);
   assert.equal(blocked.plannedMaxRequests, 37);
+});
+
+test("twelve-destination output plan fits the hard token ceiling", () => {
+  const destinationPrompts = [
+    "180-350 word LinkedIn post",
+    "4-8 complete posts",
+    "180-350 word caption",
+    "180-350 word accessible update",
+    "80-170 word conversational post",
+    "450-900 word detailed Reddit post",
+    "300-650 word technical explanation",
+    "450-900 word description",
+    "100-220 word caption",
+    "500-1000 word newsletter",
+    "1200-2500 word Markdown article",
+    "precise grouped release notes",
+  ];
+  const plan = estimateGenerationOutputTokenBudget({
+    strategyPrompt: "campaign truth brief",
+    destinationPrompts,
+  });
+
+  assert.equal(plan.strategyMaxOutputTokens, 4200);
+  assert.equal(plan.plannedMaxOutputTokens, 110100);
+  assert.equal(plan.hardMaxOutputTokens, DEFAULT_MAX_PLANNED_OUTPUT_TOKENS);
+  assert.equal(MAX_PLANNED_OUTPUT_TOKENS, 120000);
+  assert.equal(plan.withinBudget, true);
+});
+
+test("planned output token ceiling cannot be raised by caller configuration", () => {
+  assert.equal(resolvePlannedOutputTokenLimit(null), DEFAULT_MAX_PLANNED_OUTPUT_TOKENS);
+  assert.equal(resolvePlannedOutputTokenLimit(999999), MAX_PLANNED_OUTPUT_TOKENS);
+
+  const blocked = estimateGenerationOutputTokenBudget({
+    strategyPrompt: "campaign truth brief",
+    destinationPrompts: Array.from({ length: 12 }, () => "180-350 word post"),
+    configuredMaxTokens: 8000,
+    maxPlannedOutputTokens: 999999,
+  });
+  assert.equal(blocked.hardMaxOutputTokens, MAX_PLANNED_OUTPUT_TOKENS);
+  assert.equal(blocked.plannedMaxOutputTokens, 296000);
+  assert.equal(blocked.withinBudget, false);
 });
 
 test("execution budget blocks another provider call after the hard request count", () => {
@@ -92,13 +139,34 @@ test("request budget failure normalizes without leaking internal generation cont
   assert.doesNotMatch(safe.message, /prompt|source text|private/i);
 });
 
+test("output token budget failure is safe and actionable", () => {
+  const raw = generationOutputTokenBudgetError({
+    plannedMaxOutputTokens: 128000,
+    maxOutputTokens: 120000,
+  });
+  const safe = providerErrorPayload(normalizeProviderError(raw, {
+    provider: "gemini",
+    model: "model-a",
+  }));
+  assert.equal(safe.code, PROVIDER_ERROR_CODES.OUTPUT_TOKEN_BUDGET_EXCEEDED);
+  assert.equal(safe.retryable, false);
+  assert.equal(safe.recoveryAction, "reduce_destinations");
+  assert.equal(safe.httpStatus, 422);
+  assert.match(safe.message, /output.*token budget/i);
+  assert.doesNotMatch(safe.message, /prompt|source text|private/i);
+});
+
 test("campaign generation plans before spend and records safe execution telemetry", async () => {
   const source = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
   const plan = source.indexOf("estimateGenerationRequestBudget(channels.length");
+  const tokenPlan = source.indexOf("estimateGenerationOutputTokenBudget({");
+  const tokenGuard = source.indexOf("generationOutputTokenBudgetError({");
   const budget = source.indexOf("createGenerationExecutionBudget({");
   const firstProviderCall = source.indexOf("const rawBrief = await generateJSON({");
   assert.ok(plan >= 0);
-  assert.ok(budget > plan);
+  assert.ok(tokenPlan > plan);
+  assert.ok(tokenGuard > tokenPlan);
+  assert.ok(budget > tokenGuard);
   assert.ok(firstProviderCall > budget);
   assert.match(source, /requestKind: "strategy"/);
   assert.match(source, /requestKind: "destination_initial"/);

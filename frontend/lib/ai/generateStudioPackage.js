@@ -12,7 +12,9 @@ import { normalizeProviderError, providerErrorPayload } from "./providerErrors.m
 import { mapDestinationsWithPolicy } from "./generationConcurrency.mjs";
 import {
   createGenerationExecutionBudget,
+  estimateGenerationOutputTokenBudget,
   estimateGenerationRequestBudget,
+  generationOutputTokenBudgetError,
   generationRequestBudgetError,
 } from "./generationExecutionBudget.mjs";
 import { createGenerationProgressReporter } from "./generationProgress.mjs";
@@ -438,13 +440,40 @@ export async function generateStudioPackage(inputs) {
 
   try {
     const hardRequestLimit = requestBudget?.maxRequests ?? config.maxProviderRequests;
-    requestBudgetPlan = estimateGenerationRequestBudget(channels.length, { maxRequests: hardRequestLimit });
-    if (!requestBudgetPlan.withinBudget) {
+    const requestPlan = estimateGenerationRequestBudget(channels.length, { maxRequests: hardRequestLimit });
+    if (!requestPlan.withinBudget) {
       throw generationRequestBudgetError({
-        plannedMaxRequests: requestBudgetPlan.plannedMaxRequests,
-        maxRequests: requestBudgetPlan.hardMaxRequests,
+        plannedMaxRequests: requestPlan.plannedMaxRequests,
+        maxRequests: requestPlan.hardMaxRequests,
       });
     }
+
+    const budgetCampaignBrief = generateLocalTemplatePackage(generationInputs);
+    const destinationBudgetPrompts = channels.map((channel) => buildChannelPrompt({
+      channel,
+      context,
+      campaignBrief: budgetCampaignBrief,
+    }));
+    const outputTokenPlan = estimateGenerationOutputTokenBudget({
+      strategyPrompt: campaignBriefPrompt,
+      destinationPrompts: destinationBudgetPrompts,
+      configuredMaxTokens: config.maxTokens,
+      maxPlannedOutputTokens: config.maxPlannedOutputTokens,
+    });
+    if (!outputTokenPlan.withinBudget) {
+      throw generationOutputTokenBudgetError({
+        plannedMaxOutputTokens: outputTokenPlan.plannedMaxOutputTokens,
+        maxOutputTokens: outputTokenPlan.hardMaxOutputTokens,
+      });
+    }
+
+    requestBudgetPlan = Object.freeze({
+      ...requestPlan,
+      strategyMaxOutputTokens: outputTokenPlan.strategyMaxOutputTokens,
+      destinationMaxOutputTokens: outputTokenPlan.destinationMaxOutputTokens,
+      plannedMaxOutputTokens: outputTokenPlan.plannedMaxOutputTokens,
+      hardMaxOutputTokens: outputTokenPlan.hardMaxOutputTokens,
+    });
     requestBudget = requestBudget || createGenerationExecutionBudget({
       maxRequests: requestBudgetPlan.hardMaxRequests,
     });

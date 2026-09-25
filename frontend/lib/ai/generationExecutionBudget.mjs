@@ -1,5 +1,9 @@
+import { resolveOutputTokenBudget } from "./outputBudget.mjs";
+
 export const DEFAULT_MAX_PROVIDER_REQUESTS = 40;
 export const MAX_PROVIDER_REQUESTS = 40;
+export const DEFAULT_MAX_PLANNED_OUTPUT_TOKENS = 120_000;
+export const MAX_PLANNED_OUTPUT_TOKENS = 120_000;
 
 function integer(value, fallback) {
   const parsed = Number(value);
@@ -20,6 +24,50 @@ export function estimateGenerationRequestBudget(destinationCount, { maxRequests 
     hardMaxRequests,
     withinBudget: plannedMaxRequests <= hardMaxRequests,
   });
+}
+
+export function resolvePlannedOutputTokenLimit(value) {
+  const parsed = value === null || value === undefined || value === ""
+    ? DEFAULT_MAX_PLANNED_OUTPUT_TOKENS
+    : integer(value, DEFAULT_MAX_PLANNED_OUTPUT_TOKENS);
+  return Math.max(1, Math.min(MAX_PLANNED_OUTPUT_TOKENS, parsed));
+}
+
+export function estimateGenerationOutputTokenBudget({
+  strategyPrompt = "",
+  destinationPrompts = [],
+  configuredMaxTokens = null,
+  maxPlannedOutputTokens = DEFAULT_MAX_PLANNED_OUTPUT_TOKENS,
+} = {}) {
+  const prompts = Array.isArray(destinationPrompts) ? destinationPrompts : [];
+  const strategyMaxOutputTokens = resolveOutputTokenBudget(strategyPrompt, configuredMaxTokens);
+  const destinationMaxOutputTokens = prompts.map((prompt) =>
+    resolveOutputTokenBudget(prompt, configuredMaxTokens));
+  const plannedMaxOutputTokens = strategyMaxOutputTokens
+    + destinationMaxOutputTokens.reduce((sum, tokens) => sum + (tokens * 3), 0);
+  const hardMaxOutputTokens = resolvePlannedOutputTokenLimit(maxPlannedOutputTokens);
+
+  return Object.freeze({
+    strategyMaxOutputTokens,
+    destinationMaxOutputTokens: Object.freeze([...destinationMaxOutputTokens]),
+    plannedMaxOutputTokens,
+    hardMaxOutputTokens,
+    withinBudget: plannedMaxOutputTokens <= hardMaxOutputTokens,
+  });
+}
+
+export function generationOutputTokenBudgetError({
+  plannedMaxOutputTokens = null,
+  maxOutputTokens = DEFAULT_MAX_PLANNED_OUTPUT_TOKENS,
+} = {}) {
+  const error = new Error(
+    plannedMaxOutputTokens
+      ? `This generation plan may reserve up to ${plannedMaxOutputTokens} output tokens, above the hard limit of ${maxOutputTokens}. Reduce destinations or lower the per-request output budget before generating.`
+      : `Generation reached the hard planned output-token limit of ${maxOutputTokens}. Reduce destinations or lower the per-request output budget.`,
+  );
+  error.code = "generation_output_token_budget_exceeded";
+  error.status = 422;
+  return error;
 }
 
 export function generationRequestBudgetError({ plannedMaxRequests = null, maxRequests = DEFAULT_MAX_PROVIDER_REQUESTS } = {}) {

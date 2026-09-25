@@ -4,6 +4,7 @@ const CHANNEL_LABELS = Object.freeze({
   edited: "Edited",
   needs_review: "Needs review",
   failed: "Generation failed",
+  cancelled: "Generation cancelled",
   stale: "Source changed",
   approved: "Approved",
   empty: "No draft",
@@ -15,7 +16,8 @@ function text(value) {
 
 export function selectChannelStatus({ channelState = {}, isStale = false, content = "" } = {}) {
   let key = "generated";
-  if (!text(content) && channelState.status === "failed") key = "failed";
+  if (channelState.status === "cancelled") key = "cancelled";
+  else if (!text(content) && channelState.status === "failed") key = "failed";
   else if (!text(content)) key = "empty";
   else if (isStale) key = "stale";
   else if (channelState.status === "failed") key = "failed";
@@ -27,7 +29,7 @@ export function selectChannelStatus({ channelState = {}, isStale = false, conten
   return {
     key,
     label: CHANNEL_LABELS[key],
-    isBlocked: ["failed", "stale", "empty"].includes(key),
+    isBlocked: ["failed", "cancelled", "stale", "empty"].includes(key),
     isApproved: Boolean(channelState.approved),
     isEdited: Boolean(channelState.edited),
   };
@@ -64,7 +66,8 @@ export function selectCampaignStatus({
   const editedCount = channelEntries.filter((item) => item.isEdited).length;
   const approvedCount = channelEntries.filter((item) => item.isApproved).length;
   const failedCount = channelEntries.filter((item) => item.key === "failed").length;
-  const needsReviewCount = channelEntries.filter((item) => !item.isApproved && ["generated", "regenerated", "needs_review", "edited"].includes(item.key)).length;
+  const cancelledCount = channelEntries.filter((item) => item.key === "cancelled").length;
+  const needsReviewCount = channelEntries.filter((item) => !item.isApproved && ["generated", "regenerated", "needs_review", "edited", "cancelled"].includes(item.key)).length;
 
   let campaignKey = "not_generated";
   let campaignLabel = "Not generated";
@@ -93,6 +96,7 @@ export function selectCampaignStatus({
     editedCount,
     approvedCount,
     failedCount,
+    cancelledCount,
     needsReviewCount,
     hasEditedDrafts: editedCount > 0,
     copyBlockedReason: isStale
@@ -117,6 +121,7 @@ export function selectPublishAvailability({
   if (isStale) return { ready: false, reason: "Source inputs changed. Regenerate before publishing." };
   if (!hasContent) return { ready: false, reason: "This destination has no usable draft." };
   if (channelStatus?.key === "failed") return { ready: false, reason: "Generation failed for this destination. Regenerate it before publishing." };
+  if (channelStatus?.key === "cancelled") return { ready: false, reason: "Generation was cancelled for this destination. Retry it before publishing." };
   if (!channelStatus?.isApproved) return { ready: false, reason: "Mark this draft approved before publishing or opening its handoff." };
   if (isOverLimit) return { ready: false, reason: "This draft exceeds the destination character guide." };
   if (!connectorReady && !manualRoute) return { ready: false, reason: "Connect the destination or use an available manual handoff." };

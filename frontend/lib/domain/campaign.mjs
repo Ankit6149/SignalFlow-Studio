@@ -13,6 +13,56 @@ function text(value, fallback = "") {
   return normalized || fallback;
 }
 
+function safeList(value, maxItems = 20, maxLength = 500) {
+  return Array.from(new Set((Array.isArray(value) ? value : [])
+    .map((item) => text(item).slice(0, maxLength))
+    .filter(Boolean)))
+    .slice(0, maxItems);
+}
+
+function safeProviderError(value = null) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const code = text(value.code).slice(0, 160);
+  const message = text(value.message).slice(0, 500);
+  const recoveryAction = text(value.recoveryAction).slice(0, 120);
+  const correlationId = text(value.correlationId).slice(0, 240);
+  const provider = text(value.provider).slice(0, 120);
+  const model = text(value.model).slice(0, 240);
+  const httpStatus = Number(value.httpStatus);
+  if (!code && !message && !recoveryAction && !correlationId) return null;
+  return portableClone({
+    code,
+    message,
+    retryable: value.retryable === true,
+    recoveryAction,
+    correlationId,
+    provider,
+    model,
+    httpStatus: Number.isInteger(httpStatus) ? httpStatus : null,
+  });
+}
+
+function cleanChannelState(state = {}, fallback = {}) {
+  const source = state && typeof state === "object" && !Array.isArray(state) ? state : {};
+  const prior = fallback && typeof fallback === "object" && !Array.isArray(fallback) ? fallback : {};
+  const status = text(source.status || prior.status, "generated");
+  const qualityStatus = text(source.qualityStatus || prior.qualityStatus);
+  const retryCount = Number(source.retryCount ?? prior.retryCount ?? 0);
+  return portableClone({
+    status,
+    qualityStatus,
+    edited: Boolean(source.edited ?? prior.edited),
+    approved: Boolean(source.approved ?? prior.approved),
+    generationRunId: text(source.generationRunId || prior.generationRunId),
+    issues: safeList(source.issues ?? prior.issues),
+    issueCodes: safeList(source.issueCodes ?? prior.issueCodes, 20, 160),
+    retryCount: Number.isFinite(retryCount) ? Math.max(0, Math.floor(retryCount)) : 0,
+    failureClass: text(source.failureClass || prior.failureClass).slice(0, 160),
+    providerError: safeProviderError(source.providerError || prior.providerError),
+    qualityRiskAccepted: Boolean(source.qualityRiskAccepted ?? prior.qualityRiskAccepted),
+  });
+}
+
 function canonicalChannel(value) {
   const channel = text(value).toLowerCase();
   if (["releasenotes", "release-notes", "release_notes"].includes(channel)) return "release_notes";
@@ -162,17 +212,20 @@ function createDraft({
 
   if (edited) pushUniqueRevision(history, generatedRevision);
 
+  const recoveryState = cleanChannelState(draftState || {}, existingDraft?.recoveryState || {});
   return createDomainRecord("ChannelDraft", {
     draftId: `draft-${fnv1a64(`${campaignId}:${channel}`)}`,
     campaignId,
     channel,
     qualityState: text(qualityState, "unknown"),
+    qualityStatus: recoveryState.qualityStatus,
     generated: generatedRevision,
     current: currentRevision,
     history,
     edited,
     approved: Boolean(draftState?.approved ?? existingDraft?.approved),
     generationRunId: text(draftState?.generationRunId || generationRunId || existingDraft?.generationRunId),
+    recoveryState,
     updatedAt,
   });
 }
@@ -203,12 +256,10 @@ function generationRunFrom(input) {
 
 function cleanChannelStates(value = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(Object.entries(value).map(([channel, state]) => [canonicalChannel(channel), {
-    status: text(state?.status, "generated"),
-    edited: Boolean(state?.edited),
-    approved: Boolean(state?.approved),
-    generationRunId: text(state?.generationRunId),
-  }]));
+  return Object.fromEntries(Object.entries(value).map(([channel, state]) => [
+    canonicalChannel(channel),
+    cleanChannelState(state),
+  ]));
 }
 
 function cleanEditorState(value = {}, fallback = {}) {
@@ -271,15 +322,26 @@ export function generatedPostsFromCampaign(campaign) {
 
 export function channelStatesFromCampaign(campaign) {
   const parsed = parseDomainRecord(campaign, "Campaign");
-  return Object.fromEntries(Object.entries(parsed.drafts || {}).map(([channel, draft]) => {
+  const persisted = cleanChannelStates(parsed.channelStates || {});
+  const channels = Array.from(new Set([
+    ...(Array.isArray(parsed.channels) ? parsed.channels : []),
+    ...Object.keys(persisted),
+    ...Object.keys(parsed.drafts || {}),
+  ]));
+  return Object.fromEntries(channels.map((channel) => {
+    const draft = parsed.drafts?.[channel] || null;
+    if (!draft) return [channel, cleanChannelState(persisted[channel] || {})];
     const generated = text(draft?.generated?.content, draft?.current?.content || "");
     const current = text(draft?.current?.content);
-    return [channel, {
-      status: text(draft?.qualityState, "generated"),
+    return [channel, cleanChannelState({
+      ...(persisted[channel] || {}),
+      ...(draft?.recoveryState || {}),
+      status: text(draft?.qualityState, draft?.recoveryState?.status || persisted[channel]?.status || "generated"),
+      qualityStatus: text(draft?.qualityStatus || draft?.recoveryState?.qualityStatus || persisted[channel]?.qualityStatus),
       edited: current !== generated,
       approved: Boolean(draft?.approved),
-      generationRunId: text(draft?.generationRunId),
-    }];
+      generationRunId: text(draft?.generationRunId || persisted[channel]?.generationRunId),
+    })];
   }));
 }
 
@@ -300,23 +362,27 @@ export function createCampaignAggregate(input = {}) {
   const activeChannels = channels.length ? channels : [DEFAULT_CHANNEL];
   const authoritativePosts = input.posts || {};
   const generatedPosts = input.generatedPosts || input.result?.posts || {};
-  const statuses = input.result?.generation_status || input.generationStatus || {};
+  const statuses = cleanChannelStates(input.result?.generation_status || input.generationStatus || {});
   const draftStates = cleanChannelStates(input.channelStates || {});
+  const campaignChannelStates = {};
   const drafts = {};
 
   for (const channel of activeChannels) {
     const currentContent = text(authoritativePosts[channel]);
     const generatedContent = text(generatedPosts[channel], currentContent);
+    const existingDraft = input.existingDrafts?.[channel] || null;
+    const draftState = cleanChannelState(draftStates[channel] || statuses[channel] || {}, existingDraft?.recoveryState || {});
+    campaignChannelStates[channel] = draftState;
     if (!currentContent && !generatedContent) continue;
     drafts[channel] = createDraft({
       campaignId,
       channel,
       currentContent,
       generatedContent,
-      qualityState: draftStates[channel]?.status || statuses[channel]?.status || input.existingDrafts?.[channel]?.qualityState,
+      qualityState: draftState.status || existingDraft?.qualityState,
       updatedAt,
-      existingDraft: input.existingDrafts?.[channel] || null,
-      draftState: draftStates[channel] || null,
+      existingDraft,
+      draftState,
       generationRunId: generationRun?.generationRunId || "",
     });
   }
@@ -341,8 +407,9 @@ export function createCampaignAggregate(input = {}) {
     projectId: input.projectId || null,
     title,
     status: text(input.status, "draft"),
-    channels: Object.keys(drafts),
+    channels: activeChannels,
     drafts,
+    channelStates: cleanChannelStates(campaignChannelStates),
     sourceSnapshot,
     generationRun,
     generationResult,
@@ -515,7 +582,7 @@ export function campaignToEditorState(input) {
 
 generation_status: {
   ...(campaign.generationResult?.generation_status || {}),
-  ...Object.fromEntries(Object.entries(channelStates).map(([channel, state]) => [channel, { status: state.status }])),
+  ...Object.fromEntries(Object.entries(channelStates).map(([channel, state]) => [channel, portableClone(state)])),
 },
     package: campaign.generationResult?.package
       ? { ...campaign.generationResult.package, posts: portableClone(campaign.generationResult?.structuredPosts || {}) }

@@ -1,4 +1,4 @@
-import { createDomainRecord, stableStringify } from "../domain/contracts.mjs";
+import { createDomainRecord, portableClone, stableStringify } from "../domain/contracts.mjs";
 import { currentPostsFromCampaign } from "../domain/campaign.mjs";
 import { migrateCanonicalCampaign } from "../domain/campaignCompatibility.mjs";
 
@@ -65,13 +65,22 @@ function packageContextMarkdown(pkg = {}) {
 
 function exportMetadata(campaign) {
   const qualityStates = Object.fromEntries(
-    campaign.channels.map((channel) => [channel, campaign.drafts[channel]?.qualityState || "unknown"]),
+    campaign.channels.map((channel) => [channel,
+      campaign.drafts[channel]?.qualityState
+      || campaign.channelStates?.[channel]?.qualityStatus
+      || campaign.channelStates?.[channel]?.status
+      || "unknown",
+    ]),
   );
   const approvalStates = Object.fromEntries(
-    campaign.channels.map((channel) => [channel, Boolean(campaign.drafts[channel]?.approved)]),
+    campaign.channels.map((channel) => [channel, Boolean(
+      campaign.drafts[channel]?.approved ?? campaign.channelStates?.[channel]?.approved,
+    )]),
   );
   const editedStates = Object.fromEntries(
-    campaign.channels.map((channel) => [channel, Boolean(campaign.drafts[channel]?.edited)]),
+    campaign.channels.map((channel) => [channel, Boolean(
+      campaign.drafts[channel]?.edited ?? campaign.channelStates?.[channel]?.edited,
+    )]),
   );
   return {
     campaignId: campaign.campaignId,
@@ -96,25 +105,27 @@ function exportMetadata(campaign) {
 export function projectCampaignExport(input) {
   const campaign = migrateCanonicalCampaign(input);
   const currentDrafts = Object.fromEntries(
-    campaign.channels.map((channel) => {
-      const draft = campaign.drafts[channel];
-      return [channel, {
-        draftId: draft.draftId,
-        channel,
-        content: draft.current.content,
-        origin: draft.current.origin,
-        generatedContent: draft.generated?.content || draft.current.content,
-        edited: Boolean(draft.edited),
-        approved: Boolean(draft.approved),
-        qualityState: draft.qualityState,
-        generationRunId: draft.generationRunId || null,
-        updatedAt: draft.updatedAt,
-        structuredDraft: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel),
-        structuredDraftOrigin: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel)
-          ? "generation_snapshot"
-          : null,
-      }];
-    }),
+    campaign.channels
+      .filter((channel) => Boolean(campaign.drafts[channel]))
+      .map((channel) => {
+        const draft = campaign.drafts[channel];
+        return [channel, {
+          draftId: draft.draftId,
+          channel,
+          content: draft.current.content,
+          origin: draft.current.origin,
+          generatedContent: draft.generated?.content || draft.current.content,
+          edited: Boolean(draft.edited),
+          approved: Boolean(draft.approved),
+          qualityState: draft.qualityState,
+          generationRunId: draft.generationRunId || null,
+          updatedAt: draft.updatedAt,
+          structuredDraft: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel),
+          structuredDraftOrigin: structuredPostForChannel(campaign.generationResult?.structuredPosts, channel)
+            ? "generation_snapshot"
+            : null,
+        }];
+      }),
   );
   const history = Object.fromEntries(
     campaign.channels
@@ -141,6 +152,7 @@ export function projectCampaignExport(input) {
       title: campaign.title,
       status: campaign.status,
       channels: campaign.channels,
+      channelStates: portableClone(campaign.channelStates || {}),
       sourceSnapshot: campaign.sourceSnapshot,
       generationRun: campaign.generationRun,
       editorState: campaign.editorState,
@@ -170,7 +182,7 @@ export function projectCampaignMarkdown(input) {
   content += "## Current channel drafts\n\n";
   for (const channel of campaign.channels) {
     content += `### ${label(channel)}\n\n`;
-    content += `${posts[channel]}\n\n`;
+    content += `${posts[channel] || `[No current ${label(channel)} draft]`}\n\n`;
     content += `*State: ${metadata.approvalStates[channel] ? "approved" : metadata.editedStates[channel] ? "edited" : metadata.qualityStates[channel]}*\n\n`;
   }
 

@@ -207,3 +207,95 @@ test("browser quota errors propagate so the UI can offer export recovery", async
   });
   await assert.rejects(() => app.createCampaign(campaignInput()), /Quota exceeded/);
 });
+
+
+test("save and reopen preserve failed destination recovery metadata even without a draft body", async () => {
+  const app = application();
+  const input = campaignInput({
+    channels: ["linkedin", "x"],
+    posts: {
+      linkedin: "Successful LinkedIn draft.",
+      x: "",
+    },
+    generatedPosts: {
+      linkedin: "Successful LinkedIn draft.",
+      x: "",
+    },
+    channelStates: {
+      linkedin: {
+        status: "generated",
+        qualityStatus: "complete",
+        edited: false,
+        approved: false,
+        generationRunId: "run-recovery",
+      },
+      x: {
+        status: "failed",
+        qualityStatus: "failed",
+        edited: false,
+        approved: false,
+        generationRunId: "run-recovery",
+        issues: ["The provider could not complete this destination."],
+        issueCodes: ["provider_rate_limited"],
+        retryCount: 2,
+        failureClass: "provider_rate_limited",
+        providerError: {
+          code: "provider_rate_limited",
+          message: "The provider is rate limiting requests.",
+          retryable: false,
+          recoveryAction: "wait_then_retry",
+          correlationId: "provider-safe-reference",
+          provider: "gemini",
+          model: "gemini-test",
+          httpStatus: 429,
+          rawResponse: "must-not-persist",
+          apiKey: "must-not-persist",
+        },
+      },
+    },
+    result: {
+      ...campaignInput().result,
+      generation_status: {
+        linkedin: { status: "generated", qualityStatus: "complete" },
+        x: {
+          status: "failed",
+          qualityStatus: "failed",
+          issues: ["The provider could not complete this destination."],
+          issueCodes: ["provider_rate_limited"],
+          retryCount: 2,
+          failureClass: "provider_rate_limited",
+        },
+      },
+      posts: {
+        linkedin: "Successful LinkedIn draft.",
+        x: "",
+      },
+    },
+    generationRun: {
+      ...campaignInput().generationRun,
+      generationRunId: "run-recovery",
+    },
+  });
+
+  const saved = await app.createCampaign(input);
+  assert.equal(saved.drafts.x, undefined, "failed empty destination must not fabricate a content draft");
+  assert.equal(saved.channels.includes("x"), true);
+  assert.equal(saved.channelStates.x.status, "failed");
+  assert.equal(saved.channelStates.x.qualityStatus, "failed");
+
+  const persistedText = JSON.stringify(saved);
+  assert.doesNotMatch(persistedText, /rawResponse|must-not-persist|apiKey/);
+
+  const reopened = app.openCampaign(await app.getCampaign(saved.campaignId));
+  assert.equal(reopened.posts.linkedin, "Successful LinkedIn draft.");
+  assert.equal(reopened.posts.x, undefined, "failed destination without content must reopen without a fabricated post");
+  assert.equal(reopened.channelStates.x.status, "failed");
+  assert.equal(reopened.channelStates.x.qualityStatus, "failed");
+  assert.deepEqual(reopened.channelStates.x.issueCodes, ["provider_rate_limited"]);
+  assert.equal(reopened.channelStates.x.retryCount, 2);
+  assert.equal(reopened.channelStates.x.failureClass, "provider_rate_limited");
+  assert.equal(reopened.channelStates.x.providerError.code, "provider_rate_limited");
+  assert.equal(reopened.channelStates.x.providerError.recoveryAction, "wait_then_retry");
+  assert.equal(reopened.channelStates.x.providerError.correlationId, "provider-safe-reference");
+  assert.equal(reopened.result.generation_status.x.providerError.code, "provider_rate_limited");
+});

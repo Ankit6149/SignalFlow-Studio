@@ -460,7 +460,15 @@ export async function generateStudioPackage(inputs) {
       provider: generator,
       modelOverride,
       config,
-    }), config.destinationConcurrency);
+    }), config.destinationConcurrency, { signal: config.signal });
+
+    if (config.signal?.aborted) {
+      const cancelled = new Error("Generation request was cancelled.");
+      cancelled.code = "provider_request_cancelled";
+      cancelled.status = 499;
+      throw cancelled;
+    }
+    generatedDestinations = generatedDestinations.filter(Boolean);
 
     const generatedDraftMap = Object.fromEntries(
       generatedDestinations
@@ -482,7 +490,13 @@ export async function generateStudioPackage(inputs) {
         provider: generator,
         modelOverride,
         config,
-      }), config.destinationConcurrency);
+      }), config.destinationConcurrency, { signal: config.signal });
+      if (config.signal?.aborted) {
+        const cancelled = new Error("Generation request was cancelled.");
+        cancelled.code = "provider_request_cancelled";
+        cancelled.status = 499;
+        throw cancelled;
+      }
       const replacements = new Map(revised.filter(Boolean).map((item) => [item.channel, item]));
       generatedDestinations = generatedDestinations.map((item) => replacements.get(item.channel) || item);
     }

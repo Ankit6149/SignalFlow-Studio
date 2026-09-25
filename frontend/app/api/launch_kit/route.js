@@ -18,6 +18,72 @@ import { readGenerationRequestBody } from "../../../lib/server/generationRequest
 
 const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
 
+function safeGenerationFailure(error) {
+  if (error instanceof ProviderError) {
+    const providerError = providerErrorPayload(error);
+    return {
+      ok: false,
+      error: providerError.message,
+      providerError,
+      warnings: [providerError.message],
+    };
+  }
+  return {
+    ok: false,
+    error: "SignalFlow could not complete campaign generation.",
+    warnings: ["Campaign generation failed unexpectedly. Retry deliberately or inspect server diagnostics with the correlation context."],
+  };
+}
+
+function streamGeneration({ generationInput, generationConfig, warnings }) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      let closed = false;
+      const write = (value) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
+        } catch {
+          closed = true;
+        }
+      };
+      Promise.resolve().then(async () => {
+        try {
+          const result = await generateStudioPackage({
+            ...generationInput,
+            config: {
+              ...generationConfig,
+              onProgress: (progress) => write({ type: "progress", progress }),
+            },
+          });
+          const allWarnings = Array.from(new Set([...warnings, ...(result.warnings || [])]));
+          write({ type: "result", data: { ...result, warnings: allWarnings } });
+        } catch (error) {
+          write({ type: "error", data: safeGenerationFailure(error) });
+        } finally {
+          if (!closed) {
+            closed = true;
+            try {
+              controller.close();
+            } catch {
+              // The browser may have cancelled the stream already.
+            }
+          }
+        }
+      });
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export const maxDuration = 60;
 
 export async function POST(request) {
@@ -214,7 +280,7 @@ export async function POST(request) {
     }
     void enableAutoCapture;
 
-    const result = await generateStudioPackage({
+    const generationInput = {
       projectName,
       notes,
       audience,
@@ -228,13 +294,22 @@ export async function POST(request) {
       model_name: providerModelName || modelName,
       model_endpoint: providerBaseUrl || modelEndpoint,
       appUrl,
-      config: {
-        apiKey: providerApiKey,
-        baseUrl: providerBaseUrl,
-        modelName: providerModelName,
-        allowServerKey: isOwner,
-        signal: request.signal,
-      },
+    };
+    const generationConfig = {
+      apiKey: providerApiKey,
+      baseUrl: providerBaseUrl,
+      modelName: providerModelName,
+      allowServerKey: isOwner,
+      signal: request.signal,
+    };
+
+    if (request.headers.get("accept")?.includes("application/x-ndjson")) {
+      return streamGeneration({ generationInput, generationConfig, warnings });
+    }
+
+    const result = await generateStudioPackage({
+      ...generationInput,
+      config: generationConfig,
     });
 
     const allWarnings = Array.from(new Set([...warnings, ...(result.warnings || [])]));
@@ -243,25 +318,12 @@ export async function POST(request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    if (error instanceof ProviderError) {
-      const providerError = providerErrorPayload(error);
-      return new Response(JSON.stringify({
-        ok: false,
-        error: providerError.message,
-        providerError,
-        warnings: [providerError.message],
-      }), {
-        status: providerError.httpStatus && providerError.httpStatus >= 400 ? providerError.httpStatus : 502,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({
-      ok: false,
-      error: "SignalFlow could not complete campaign generation.",
-      warnings: ["Campaign generation failed unexpectedly. Retry deliberately or inspect server diagnostics with the correlation context."],
-    }), {
-      status: 500,
+    const failure = safeGenerationFailure(error);
+    const status = error instanceof ProviderError
+      ? (error.httpStatus && error.httpStatus >= 400 ? error.httpStatus : 502)
+      : 500;
+    return new Response(JSON.stringify(failure), {
+      status,
       headers: { "Content-Type": "application/json" },
     });
   }

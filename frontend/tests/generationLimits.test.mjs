@@ -121,10 +121,12 @@ test("launch kit applies body and field limits before provider generation", asyn
   const route = await readFile(new URL("../app/api/launch_kit/route.js", import.meta.url), "utf8");
   const readIndex = route.indexOf("readGenerationRequestBody(request)");
   const validateIndex = route.indexOf("validateGenerationInputs(body)");
-  const generateIndex = route.indexOf("generateStudioPackage({");
+  const streamedGenerationIndex = route.indexOf("return streamGeneration({", validateIndex);
+  const jsonGenerationIndex = route.indexOf("const result = await generateStudioPackage({", validateIndex);
   assert.ok(readIndex >= 0);
   assert.ok(validateIndex > readIndex);
-  assert.ok(generateIndex > validateIndex);
+  assert.ok(streamedGenerationIndex > validateIndex);
+  assert.ok(jsonGenerationIndex > validateIndex);
   assert.match(route, /status: parsedRequest\.status/);
   assert.match(route, /limitIssues: validation\.limitIssues/);
 });

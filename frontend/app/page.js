@@ -207,6 +207,58 @@ async function readJsonResponse(response, fallbackMessage) {
   throw new Error(response.ok ? fallbackMessage : `${fallbackMessage} (HTTP ${response.status})`);
 }
 
+async function readGenerationResponse(response, onProgress, fallbackMessage) {
+  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+  if (!contentType.includes("application/x-ndjson") || !response.body) {
+    return readJsonResponse(response, fallbackMessage);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalData = null;
+
+  const processLine = (line) => {
+    if (!line.trim()) return;
+    const event = safeJsonParse(line, null);
+    if (!event || typeof event !== "object") throw new Error(fallbackMessage);
+    if (event.type === "progress" && event.progress) {
+      onProgress?.(event.progress);
+      return;
+    }
+    if ((event.type === "result" || event.type === "error") && event.data) {
+      finalData = event.data;
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) processLine(line);
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) processLine(buffer);
+
+  if (finalData && typeof finalData === "object") return finalData;
+  throw new Error(fallbackMessage);
+}
+
+function generationProgressLabel(status) {
+  const labels = {
+    queued: "Queued",
+    generating: "Generating",
+    revising: "Revising",
+    complete: "Complete",
+    needs_review: "Needs review",
+    failed: "Failed",
+    cancelled: "Cancelled",
+  };
+  return labels[String(status || "")] || "Preparing";
+}
+
 function downloadText(filename, value, type = "text/plain") {
   const blob = new Blob([value], { type });
   const url = URL.createObjectURL(blob);
@@ -394,6 +446,7 @@ export default function Home() {
   const [files, setFiles] = useState([]);
   const [documentText, setDocumentText] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(null);
   const [message, setMessage] = useState(null);
   const [strategyReview, setStrategyReview] = useState(null);
   const [library, setLibrary] = useState([]);
@@ -729,6 +782,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     setFiles([]);
     setDocumentText([]);
     setPublishOptions({ reddit: { subreddit: "", title: "" } });
+    setGenerationProgress(null);
     setMessage(null);
     navigateSection("studio");
   }
@@ -899,7 +953,10 @@ ${extractedText}`);
     });
     const response = await fetch("/api/launch_kit", {
       method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
+      headers: authHeaders({
+        "Content-Type": "application/json",
+        Accept: "application/x-ndjson",
+      }),
       signal,
       body: JSON.stringify({
         project_name: form.projectName.trim() || "Untitled campaign",
@@ -930,7 +987,11 @@ ${extractedText}`);
       }),
     });
 
-    const data = await readJsonResponse(response, "SignalFlow returned an unreadable generation response.");
+    const data = await readGenerationResponse(
+      response,
+      setGenerationProgress,
+      "SignalFlow returned an unreadable generation response.",
+    );
     if (data.code === "strategy_quality_blocked" && data.strategy_review) {
       return { strategyBlocked: true, data };
     }
@@ -950,6 +1011,7 @@ ${extractedText}`);
   }
 
   function beginGenerationRequest() {
+    setGenerationProgress(null);
     const controller = new AbortController();
     generationAbortRef.current = controller;
     return controller;
@@ -963,6 +1025,9 @@ ${extractedText}`);
     const controller = generationAbortRef.current;
     if (!controller || controller.signal.aborted) return;
     controller.abort();
+    setGenerationProgress((previous) => previous
+      ? { ...previous, phase: "cancelled", status: "cancelled" }
+      : previous);
     setMessage({ type: "warning", text: "Cancelling generation. Existing drafts will remain unchanged." });
   }
 
@@ -2301,12 +2366,41 @@ async function exportZip() {
           </div>
 
           <div className="studio-actionbar" id="campaign-command">
-            <div className="studio-actionbar__summary">
-              <span>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}</span>
-              <i />
-              <span>{channels.length} destinations</span>
-              <i />
-              <span>{provider.label}</span>
+            <div
+              className={`studio-actionbar__summary ${busy && generationProgress ? "has-progress" : ""}`}
+              role={busy && generationProgress ? "status" : undefined}
+              aria-live={busy && generationProgress ? "polite" : undefined}
+              aria-atomic={busy && generationProgress ? "true" : undefined}
+            >
+              {busy && generationProgress ? (
+                <>
+                  <span>
+                    {generationProgress.phase === "strategy"
+                      ? `Strategy · ${generationProgressLabel(generationProgress.strategy)}`
+                      : generationProgress.phase === "cancelled"
+                        ? "Generation · Cancelling"
+                        : `Destinations · ${generationProgress.completedDestinations || 0}/${generationProgress.totalDestinations || channels.length} complete`}
+                  </span>
+                  <i />
+                  <span>{provider.label}</span>
+                  <div className="generation-progress-list" aria-label="Destination generation progress">
+                    {Object.entries(generationProgress.destinations || {}).map(([channelId, status]) => (
+                      <span className={`generation-progress-chip is-${status}`} key={channelId}>
+                        <PlatformIcon platform={channelId} size={13} />
+                        {channelMeta(channelId).label} · {generationProgressLabel(status)}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}</span>
+                  <i />
+                  <span>{channels.length} destinations</span>
+                  <i />
+                  <span>{provider.label}</span>
+                </>
+              )}
             </div>
             <div className="studio-actionbar__actions">
               {busy && (

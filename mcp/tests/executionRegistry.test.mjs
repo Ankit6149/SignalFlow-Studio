@@ -212,3 +212,39 @@ test("failed execution releases its slot for later queued work", async () => {
   assert.equal(secondStarted, true);
   assert.equal(registry.get(second.id).status, "completed");
 });
+
+
+test("execution registry shutdown cancels active and queued work then drains", async () => {
+  let nextId = 0;
+  let queuedStarted = false;
+  const registry = createExecutionRegistry({
+    maxConcurrent: 1,
+    idFactory: () => `campaign-shutdown-${++nextId}`,
+  });
+
+  const active = registry.start(({ signal }) => new Promise((resolve, reject) => {
+    signal.addEventListener("abort", () => {
+      const error = new Error("shutdown cancelled");
+      error.name = "AbortError";
+      reject(error);
+    }, { once: true });
+  }), { executionKey: "project:active" });
+
+  const queued = registry.start(async () => {
+    queuedStarted = true;
+    return { ok: true };
+  }, { executionKey: "project:queued" });
+
+  await tick();
+  assert.equal(registry.get(active.id).status, "running");
+  assert.equal(registry.get(queued.id).status, "queued");
+
+  const shutdown = await registry.shutdown({ timeoutMs: 1000 });
+
+  assert.equal(shutdown.drained, true);
+  assert.equal(shutdown.activeCount, 0);
+  assert.equal(shutdown.queuedCount, 0);
+  assert.equal(registry.get(active.id).status, "cancelled");
+  assert.equal(registry.get(queued.id).status, "cancelled");
+  assert.equal(queuedStarted, false);
+});

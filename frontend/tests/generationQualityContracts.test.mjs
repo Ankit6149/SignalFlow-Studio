@@ -139,7 +139,7 @@ test("strategy quality distinguishes complete, needs_review, and failed with sta
 test("strategy gate occurs before any destination generation lane starts", async () => {
   const source = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
   const gate = source.indexOf("strategyQuality.status !== STRATEGY_QUALITY_STATES.COMPLETE");
-  const destinationStart = source.indexOf("mapWithConcurrency(channels");
+  const destinationStart = source.indexOf("mapDestinationsWithPolicy(channels");
   assert.ok(gate >= 0, "strategy quality gate must exist");
   assert.ok(destinationStart >= 0, "destination orchestration must exist");
   assert.ok(gate < destinationStart, "strategy must be accepted before destination calls begin");
@@ -407,7 +407,7 @@ test("generation cancellation is propagated through API, providers, UI, and camp
   ];
 
   assert.match(routeSource, /signal: request\.signal/);
-  assert.match(packageSource, /\{ signal: executionConfig\.signal \}/);
+  assert.match(packageSource, /signal: executionConfig\.signal/);
   assert.match(pageSource, /Cancel generation/);
   assert.match(pageSource, /MARK_CHANNELS_CANCELLED/);
 

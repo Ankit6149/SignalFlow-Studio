@@ -60,11 +60,12 @@ test("stdio server enforces lifecycle, initializes, and lists SignalFlow tools",
   send(child, { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
 
   const toolList = await waitForLine(lines, (message) => message.id === 2);
-  assert.equal(toolList.result.tools.length, 8);
+  assert.equal(toolList.result.tools.length, 9);
   assert.equal(toolList.result.tools[0].name, "signalflow_capabilities");
   assert.equal(toolList.result.tools[3].name, "signalflow_validate_campaign_input");
-  assert.equal(toolList.result.tools[4].name, "signalflow_start_campaign");
-  assert.equal(toolList.result.tools[7].name, "signalflow_create_campaign");
+  assert.equal(toolList.result.tools[4].name, "signalflow_build_strategy");
+  assert.equal(toolList.result.tools[5].name, "signalflow_start_campaign");
+  assert.equal(toolList.result.tools[8].name, "signalflow_create_campaign");
 
   send(child, {
     jsonrpc: "2.0",

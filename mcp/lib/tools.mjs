@@ -100,6 +100,19 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "signalflow_build_strategy",
+    description: "Build or refresh the canonical hosted NarrativeStrategy for an existing SignalFlow opportunity through the same owner-authorized planning service used by the web workspace.",
+    inputSchema: {
+      type: "object",
+      required: ["opportunityId"],
+      properties: {
+        opportunityId: { type: "string", minLength: 1 },
+        refresh: { type: "boolean" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "signalflow_start_campaign",
     description: "Start campaign generation as trackable MCP work and return immediately with a job ID. Use campaign status and cancel tools while generation continues.",
     inputSchema: {
@@ -379,6 +392,42 @@ export async function executeTool(name, args = {}, options = {}) {
       },
       isError: !ok,
     };
+  }
+
+  if (name === "signalflow_build_strategy") {
+    const opportunityId = requireString(args.opportunityId, "opportunityId");
+    try {
+      const data = await signalFlowRequest("/api/planning", {
+        ...options,
+        method: "POST",
+        body: {
+          action: "build_strategy",
+          opportunityId,
+          refresh: args.refresh === true,
+        },
+        timeoutMs: 70000,
+      });
+      const strategy = data.strategy || data.plan?.strategy || null;
+      return {
+        content: textContent(
+          strategy?.narrativeStrategyId
+            ? `SignalFlow built NarrativeStrategy ${strategy.narrativeStrategyId} revision ${strategy.strategyRevision || 1} for opportunity ${opportunityId}.`
+            : `SignalFlow completed strategy planning for opportunity ${opportunityId}.`,
+        ),
+        structuredContent: data,
+        isError: false,
+      };
+    } catch (error) {
+      if (error?.signalFlowData && typeof error.signalFlowData === "object") {
+        const structured = error.signalFlowData;
+        return {
+          content: textContent(structured.error || "SignalFlow could not build this opportunity strategy."),
+          structuredContent: structured,
+          isError: true,
+        };
+      }
+      throw error;
+    }
   }
 
   if (name === "signalflow_start_campaign") {

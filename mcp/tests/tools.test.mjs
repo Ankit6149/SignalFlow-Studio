@@ -12,6 +12,7 @@ test("MCP exposes blocking compatibility plus trackable campaign workflow tools"
       "signalflow_provider_status",
       "signalflow_test_provider",
       "signalflow_validate_campaign_input",
+      "signalflow_build_strategy",
       "signalflow_start_campaign",
       "signalflow_campaign_status",
       "signalflow_cancel_campaign",
@@ -121,6 +122,77 @@ test("campaign validation fails safely for cross-workspace source graphs", async
   assert.equal(result.structuredContent.ok, false);
   assert.equal(result.structuredContent.sourceIssue.code, "cross_workspace_reference");
   assert.match(result.structuredContent.sourceIssue.message, /different workspaces/i);
+});
+
+test("strategy tool delegates to the owner-authorized hosted planning contract", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options, body: JSON.parse(options.body) });
+    return new Response(JSON.stringify({
+      ok: true,
+      workspaceId: "owner-workspace",
+      opportunityId: "opportunity-123",
+      strategy: {
+        kind: "NarrativeStrategy",
+        narrativeStrategyId: "strategy-123",
+        strategyRevision: 2,
+        status: "proposed",
+      },
+      plan: {
+        strategy: {
+          kind: "NarrativeStrategy",
+          narrativeStrategyId: "strategy-123",
+          strategyRevision: 2,
+          status: "proposed",
+        },
+        contentPiece: null,
+        variants: [],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+
+  const result = await executeTool("signalflow_build_strategy", {
+    opportunityId: "opportunity-123",
+    refresh: true,
+  }, {
+    fetchImpl,
+    env: {
+      SIGNALFLOW_BASE_URL: "https://signalflow.example",
+      SIGNALFLOW_ACCESS_KEY: "owner-workspace-key",
+    },
+  });
+
+  assert.equal(result.isError, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://signalflow.example/api/planning");
+  assert.equal(calls[0].options.method, "POST");
+  assert.equal(calls[0].options.headers["x-signalflow-access-key"], "owner-workspace-key");
+  assert.deepEqual(calls[0].body, {
+    action: "build_strategy",
+    opportunityId: "opportunity-123",
+    refresh: true,
+  });
+  assert.equal(result.structuredContent.strategy.narrativeStrategyId, "strategy-123");
+  assert.match(result.content[0].text, /strategy-123 revision 2/i);
+});
+
+test("strategy tool preserves structured owner authorization failures", async () => {
+  const fetchImpl = async () => new Response(JSON.stringify({
+    ok: false,
+    code: "owner_access_required",
+    error: "Owner access is required for hosted planning.",
+  }), { status: 401, headers: { "Content-Type": "application/json" } });
+
+  const result = await executeTool("signalflow_build_strategy", {
+    opportunityId: "opportunity-123",
+  }, {
+    fetchImpl,
+    env: { SIGNALFLOW_BASE_URL: "https://signalflow.example" },
+  });
+
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.code, "owner_access_required");
+  assert.match(result.content[0].text, /owner access/i);
 });
 
 test("campaign tool refuses template generation", async () => {

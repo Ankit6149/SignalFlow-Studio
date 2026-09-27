@@ -16,6 +16,8 @@ test("MCP exposes blocking compatibility plus trackable campaign workflow tools"
       "signalflow_generate_destination",
       "signalflow_retry_destination",
       "signalflow_edit_destination",
+      "signalflow_get_review_bundle",
+      "signalflow_export_campaign",
       "signalflow_start_campaign",
       "signalflow_campaign_status",
       "signalflow_cancel_campaign",
@@ -273,6 +275,107 @@ test("destination retry preserves canonical stale-revision failures", async () =
   assert.equal(result.isError, true);
   assert.equal(result.structuredContent.code, "stale_revision_context");
   assert.match(result.content[0].text, /stale/i);
+});
+
+test("review bundle retrieval uses the canonical hosted review GET contract", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      ok: true,
+      contentPieceId: "content-piece-1",
+      bundle: {
+        contentPiece: { contentPieceId: "content-piece-1" },
+        variants: [
+          { platformVariantId: "variant-linkedin", destination: "linkedin" },
+          { platformVariantId: "variant-x", destination: "x" },
+        ],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+
+  const result = await executeTool("signalflow_get_review_bundle", {
+    contentPieceId: "content-piece-1",
+  }, {
+    fetchImpl,
+    env: {
+      SIGNALFLOW_BASE_URL: "https://signalflow.example",
+      SIGNALFLOW_ACCESS_KEY: "owner-workspace-key",
+    },
+  });
+
+  assert.equal(result.isError, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://signalflow.example/api/platform-review?contentPieceId=content-piece-1");
+  assert.equal(calls[0].options.headers["x-signalflow-access-key"], "owner-workspace-key");
+  assert.equal(result.structuredContent.bundle.variants.length, 2);
+  assert.match(result.content[0].text, /2 destination variants/i);
+});
+
+test("campaign export reuses the canonical deterministic export application", async () => {
+  const campaign = {
+    schemaVersion: 2,
+    kind: "Campaign",
+    campaignId: "campaign-export-1",
+    title: "SignalFlow export",
+    status: "draft",
+    channels: ["linkedin"],
+    drafts: {
+      linkedin: {
+        schemaVersion: 2,
+        kind: "ChannelDraft",
+        draftId: "draft-linkedin",
+        channel: "linkedin",
+        current: {
+          revisionId: "revision-current",
+          content: "Authoritative LinkedIn copy.",
+          origin: "generated",
+          createdAt: "2026-09-27T10:00:00.000Z",
+        },
+        generated: {
+          revisionId: "revision-generated",
+          content: "Authoritative LinkedIn copy.",
+          origin: "generated",
+          createdAt: "2026-09-27T10:00:00.000Z",
+        },
+        history: [],
+        edited: false,
+        approved: false,
+        qualityState: "complete",
+        generationRunId: "run-export-1",
+        updatedAt: "2026-09-27T10:00:00.000Z",
+      },
+    },
+    channelStates: { linkedin: { status: "generated", qualityStatus: "complete" } },
+    sourceSnapshot: null,
+    generationRun: { generationRunId: "run-export-1", provider: "gemini", model: "test" },
+    editorState: { revision: 1, savedRevision: 1, exportedRevision: 0 },
+    brief: {},
+    warnings: [],
+    providerUsed: "gemini",
+    modelUsed: "test",
+    createdAt: "2026-09-27T10:00:00.000Z",
+    updatedAt: "2026-09-27T10:00:00.000Z",
+    generationResult: { package: null, structuredPosts: {} },
+  };
+
+  const markdown = await executeTool("signalflow_export_campaign", {
+    format: "markdown",
+    campaign,
+  });
+  assert.equal(markdown.isError, false);
+  assert.equal(markdown.structuredContent.filename, "signalflow-export.md");
+  assert.equal(markdown.structuredContent.mimeType, "text/markdown");
+  assert.match(markdown.content[0].text, /Authoritative LinkedIn copy/);
+
+  const json = await executeTool("signalflow_export_campaign", {
+    format: "json",
+    campaign,
+  });
+  assert.equal(json.isError, false);
+  assert.equal(json.structuredContent.filename, "signalflow-export.json");
+  assert.equal(json.structuredContent.projection.campaign.campaignId, "campaign-export-1");
+  assert.match(json.content[0].text, /campaign-export-1/);
 });
 
 test("campaign tool refuses template generation", async () => {

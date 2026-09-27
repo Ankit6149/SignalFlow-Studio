@@ -113,6 +113,47 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "signalflow_generate_destination",
+    description: "Generate the current canonical revision for one existing hosted PlatformVariant through SignalFlow's owner-authorized review service.",
+    inputSchema: {
+      type: "object",
+      required: ["platformVariantId"],
+      properties: {
+        platformVariantId: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_retry_destination",
+    description: "Regenerate one existing hosted PlatformVariant while requiring the exact current revision ID to prevent stale retries.",
+    inputSchema: {
+      type: "object",
+      required: ["platformVariantId", "expectedCurrentRevisionId"],
+      properties: {
+        platformVariantId: { type: "string", minLength: 1 },
+        expectedCurrentRevisionId: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_edit_destination",
+    description: "Edit the exact current revision of one hosted PlatformVariant using the same stale-revision guard as the web review surface.",
+    inputSchema: {
+      type: "object",
+      required: ["platformVariantId", "expectedCurrentRevisionId"],
+      properties: {
+        platformVariantId: { type: "string", minLength: 1 },
+        expectedCurrentRevisionId: { type: "string", minLength: 1 },
+        content: { type: "string" },
+        segments: { type: "array", items: { type: "string" } },
+        format: { type: ["string", "null"] },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "signalflow_start_campaign",
     description: "Start campaign generation as trackable MCP work and return immediately with a job ID. Use campaign status and cancel tools while generation continues.",
     inputSchema: {
@@ -422,6 +463,115 @@ export async function executeTool(name, args = {}, options = {}) {
         const structured = error.signalFlowData;
         return {
           content: textContent(structured.error || "SignalFlow could not build this opportunity strategy."),
+          structuredContent: structured,
+          isError: true,
+        };
+      }
+      throw error;
+    }
+  }
+
+  if (name === "signalflow_generate_destination") {
+    const platformVariantId = requireString(args.platformVariantId, "platformVariantId");
+    try {
+      const data = await signalFlowRequest("/api/platform-review", {
+        ...options,
+        method: "POST",
+        body: { action: "generate_variant", platformVariantId },
+        timeoutMs: 70000,
+      });
+      const revision = data.revision || null;
+      return {
+        content: textContent(
+          revision?.platformVariantRevisionId
+            ? `SignalFlow generated revision ${revision.platformVariantRevisionId} for destination variant ${platformVariantId}.`
+            : `SignalFlow generated the current revision for destination variant ${platformVariantId}.`,
+        ),
+        structuredContent: data,
+        isError: false,
+      };
+    } catch (error) {
+      if (error?.signalFlowData && typeof error.signalFlowData === "object") {
+        const structured = error.signalFlowData;
+        return {
+          content: textContent(structured.error || "SignalFlow could not generate this destination."),
+          structuredContent: structured,
+          isError: true,
+        };
+      }
+      throw error;
+    }
+  }
+
+  if (name === "signalflow_retry_destination") {
+    const platformVariantId = requireString(args.platformVariantId, "platformVariantId");
+    const expectedCurrentRevisionId = requireString(args.expectedCurrentRevisionId, "expectedCurrentRevisionId");
+    try {
+      const data = await signalFlowRequest("/api/platform-review", {
+        ...options,
+        method: "POST",
+        body: {
+          action: "regenerate_variant",
+          platformVariantId,
+          expectedCurrentRevisionId,
+        },
+        timeoutMs: 70000,
+      });
+      const revision = data.revision || null;
+      return {
+        content: textContent(
+          revision?.platformVariantRevisionId
+            ? `SignalFlow regenerated destination variant ${platformVariantId} as revision ${revision.platformVariantRevisionId}.`
+            : `SignalFlow regenerated destination variant ${platformVariantId}.`,
+        ),
+        structuredContent: data,
+        isError: false,
+      };
+    } catch (error) {
+      if (error?.signalFlowData && typeof error.signalFlowData === "object") {
+        const structured = error.signalFlowData;
+        return {
+          content: textContent(structured.error || "SignalFlow could not retry this destination."),
+          structuredContent: structured,
+          isError: true,
+        };
+      }
+      throw error;
+    }
+  }
+
+  if (name === "signalflow_edit_destination") {
+    const platformVariantId = requireString(args.platformVariantId, "platformVariantId");
+    const expectedCurrentRevisionId = requireString(args.expectedCurrentRevisionId, "expectedCurrentRevisionId");
+    try {
+      const data = await signalFlowRequest("/api/platform-review", {
+        ...options,
+        method: "POST",
+        body: {
+          action: "edit_revision",
+          platformVariantId,
+          expectedCurrentRevisionId,
+          content: String(args.content ?? ""),
+          segments: Array.isArray(args.segments) ? args.segments.map((item) => String(item ?? "")) : [],
+          format: args.format == null ? null : String(args.format),
+        },
+        timeoutMs: 70000,
+      });
+      const revision = data.revision || null;
+      return {
+        content: textContent(
+          revision?.platformVariantRevisionId
+            ? `SignalFlow saved destination revision ${revision.platformVariantRevisionId} for ${platformVariantId}.`
+            : `SignalFlow saved the current destination revision for ${platformVariantId}.`,
+        ),
+        structuredContent: data,
+        isError: false,
+      };
+    } catch (error) {
+      if (error?.signalFlowData && typeof error.signalFlowData === "object") {
+        const structured = error.signalFlowData;
+        return {
+          content: textContent(structured.error || "SignalFlow could not edit this destination."),
           structuredContent: structured,
           isError: true,
         };

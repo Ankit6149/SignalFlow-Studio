@@ -53,6 +53,9 @@ Provider secrets stay in the MCP process environment and are not part of tool ar
 - `signalflow_test_provider` — verify one configured model route.
 - `signalflow_validate_campaign_input` — validate shared generation limits and source relationships without model spend.
 - `signalflow_build_strategy` — build or refresh the canonical hosted NarrativeStrategy for an existing opportunity through the owner-authorized planning service.
+- `signalflow_generate_destination` — generate one canonical hosted destination revision.
+- `signalflow_retry_destination` — regenerate one destination while guarding the exact current revision ID.
+- `signalflow_edit_destination` — edit the exact current destination revision through the hosted review service.
 - `signalflow_start_campaign` — start trackable campaign generation and return a job ID.
 - `signalflow_campaign_status` — inspect trackable campaign work.
 - `signalflow_cancel_campaign` — request cancellation of queued or active campaign work.

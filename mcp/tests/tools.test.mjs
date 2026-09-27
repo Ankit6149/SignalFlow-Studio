@@ -13,6 +13,9 @@ test("MCP exposes blocking compatibility plus trackable campaign workflow tools"
       "signalflow_test_provider",
       "signalflow_validate_campaign_input",
       "signalflow_build_strategy",
+      "signalflow_generate_destination",
+      "signalflow_retry_destination",
+      "signalflow_edit_destination",
       "signalflow_start_campaign",
       "signalflow_campaign_status",
       "signalflow_cancel_campaign",
@@ -193,6 +196,83 @@ test("strategy tool preserves structured owner authorization failures", async ()
   assert.equal(result.isError, true);
   assert.equal(result.structuredContent.code, "owner_access_required");
   assert.match(result.content[0].text, /owner access/i);
+});
+
+test("destination workflow tools delegate to canonical hosted review actions", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push({ url, options, body });
+    return new Response(JSON.stringify({
+      ok: true,
+      revision: {
+        kind: "PlatformVariantRevision",
+        platformVariantRevisionId: `revision-${calls.length}`,
+        platformVariantId: body.platformVariantId,
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const options = {
+    fetchImpl,
+    env: {
+      SIGNALFLOW_BASE_URL: "https://signalflow.example",
+      SIGNALFLOW_ACCESS_KEY: "owner-workspace-key",
+    },
+  };
+
+  const generated = await executeTool("signalflow_generate_destination", {
+    platformVariantId: "variant-1",
+  }, options);
+  const retried = await executeTool("signalflow_retry_destination", {
+    platformVariantId: "variant-1",
+    expectedCurrentRevisionId: "revision-1",
+  }, options);
+  const edited = await executeTool("signalflow_edit_destination", {
+    platformVariantId: "variant-1",
+    expectedCurrentRevisionId: "revision-2",
+    content: "Owner-edited destination copy.",
+    segments: ["Part 1", "Part 2"],
+    format: "thread",
+  }, options);
+
+  assert.equal(generated.isError, false);
+  assert.equal(retried.isError, false);
+  assert.equal(edited.isError, false);
+  assert.deepEqual(calls.map((item) => item.url), [
+    "https://signalflow.example/api/platform-review",
+    "https://signalflow.example/api/platform-review",
+    "https://signalflow.example/api/platform-review",
+  ]);
+  assert.deepEqual(calls.map((item) => item.body.action), [
+    "generate_variant",
+    "regenerate_variant",
+    "edit_revision",
+  ]);
+  assert.equal(calls[1].body.expectedCurrentRevisionId, "revision-1");
+  assert.equal(calls[2].body.expectedCurrentRevisionId, "revision-2");
+  assert.equal(calls[2].body.content, "Owner-edited destination copy.");
+  assert.deepEqual(calls[2].body.segments, ["Part 1", "Part 2"]);
+  assert.equal(calls[0].options.headers["x-signalflow-access-key"], "owner-workspace-key");
+});
+
+test("destination retry preserves canonical stale-revision failures", async () => {
+  const fetchImpl = async () => new Response(JSON.stringify({
+    ok: false,
+    code: "stale_revision_context",
+    error: "This hosted review surface is stale because a newer current revision exists.",
+  }), { status: 409, headers: { "Content-Type": "application/json" } });
+
+  const result = await executeTool("signalflow_retry_destination", {
+    platformVariantId: "variant-1",
+    expectedCurrentRevisionId: "revision-old",
+  }, {
+    fetchImpl,
+    env: { SIGNALFLOW_BASE_URL: "https://signalflow.example" },
+  });
+
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.code, "stale_revision_context");
+  assert.match(result.content[0].text, /stale/i);
 });
 
 test("campaign tool refuses template generation", async () => {

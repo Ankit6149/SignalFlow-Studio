@@ -1,83 +1,129 @@
-# Discoverability Checklist
+# Discoverability and Public Product Truth
 
-Use this page when preparing the GitHub repository and project site for search, AI answer engines, and people browsing GitHub.
+Use this document when editing GitHub metadata, public crawler files, answer-engine context, or landing-page search copy.
 
-## GitHub About Section
+Public discoverability must describe the **current product truth** while clearly distinguishing the larger Content Operating System direction from features that are not yet accepted.
 
-Recommended description:
+## Canonical positioning
 
-> Local-first autoposting workspace that turns one description, data, screenshots, and screen recordings into formatted social media posting packages.
+Recommended repository description:
+
+> Approval-first content operating system for turning meaningful work into evidence-backed content opportunities, exact review decisions, and reusable communication context.
 
 Recommended website:
 
-> Add your deployed app URL after deployment.
+> https://signal-flow-studio.vercel.app/
 
-Recommended topics:
+Recommended GitHub topics:
 
 ```text
 signalflow-studio
-signalflow
-ai
-social-media
-social-media-automation
-autoposting
-content-automation
-post-generator
-screen-recording
-screenshot
-gif-generator
+content-operating-system
+content-operations
+content-signals
+approval-first
+narrative-planning
 creator-tools
 developer-marketing
-devrel
-local-first
+github-integration
+review-workflow
 nextjs
 open-source
+local-first
+bring-your-own-ai
+mcp
 ```
 
-## GitHub Search Keywords
+Do not reintroduce obsolete primary positioning such as `autoposting`, `post-generator`, `gif-generator`, or `fastapi` unless those terms again describe a supported first-class product surface.
 
-Use these phrases naturally in README, release notes, issues, and examples:
+## Useful search language
 
-- AI social media automation
-- autoposting tool
-- social media post generator
-- screenshot to social post
-- screen recording to GIF
-- local-first content automation
-- formatted posting package
-- developer marketing automation
-- launch post generator
-- social media workflow automation
+Use these phrases naturally where they truthfully fit:
 
-## Project Site Files
+- content operating system
+- approval-first content workflow
+- turn GitHub work into content opportunities
+- evidence-backed content planning
+- exact revision review and approval
+- content signals and narrative planning
+- developer content workflow
+- review-before-publish content automation
+- bring-your-own AI content workflow
+- local-first content workflow
 
-Keep these files available at the site root after deployment:
+Avoid SEO copy that implies SignalFlow already provides:
 
-- `/robots.txt`
-- `/llms.txt`
-- `/llms-full.txt` if the hosting setup supports it
-- `/schema.jsonld`
+- unattended autoposting;
+- universal scheduled publishing;
+- broad verified social connectors;
+- complete automatic media production;
+- cross-device collaborative workspaces;
+- every planned Content OS surface.
 
-The repository includes root copies for GitHub readers and `frontend/public/` copies for the Next.js app. The app also injects the JSON-LD schema into the page layout so crawlers can read it without separately fetching `/schema.jsonld`.
+## Public truth hierarchy
 
-## README Structure
+Before changing a material public capability claim, check in this order:
 
-For better search and answer-engine understanding, keep the README structure close to:
+1. deployed production/runtime evidence;
+2. current `master`;
+3. `docs/CAPABILITY_MATRIX.md`;
+4. `docs/CURRENT_EXECUTION_STATE.md`;
+5. acceptance evidence;
+6. README/landing copy.
 
-1. One-line product promise.
-2. Who it is for.
-3. What it generates.
-4. Screenshots or GIF demo.
-5. Quick start.
-6. Supported channels.
-7. Safety and official publishing policy.
-8. Roadmap and good first issues.
+A roadmap issue or architecture document is not a shipped-capability source.
 
-## Star-Friendly Repository Tasks
+## Public crawler and answer-engine files
 
-- Add a short demo GIF to the top of the README.
-- Add screenshots of the autopilot flow.
-- Pin 3-5 good first issues.
-- Add GitHub topics from the list above.
-- Add a concise repository description.
-- Publish a first release with a clear title and demo assets.
+The deployable canonical copies live in `frontend/public/`:
+
+- `robots.txt`
+- `llms.txt`
+- `llms-full.txt`
+- `schema.jsonld`
+
+Root copies exist for repository readers and are synchronized mirrors. Use:
+
+```bash
+cd frontend
+npm run sync:public-metadata
+npm run audit:public-metadata
+```
+
+The CI audit must fail when a root mirror drifts from its deployable canonical file.
+
+## README structure
+
+Keep the public README oriented around:
+
+1. concise product promise;
+2. current implementation versus product direction;
+3. accepted/current owner workflows;
+4. exact capability boundaries;
+5. architecture and trust principles;
+6. quick start;
+7. verification;
+8. roadmap/acceptance links.
+
+Avoid making the compatibility Campaign/Create path look like the permanent product architecture.
+
+## Visual/demo evidence
+
+Public screenshots or demos should show real product surfaces and label future concepts clearly.
+
+Do not present a mock, future workflow, placeholder analytics state, or planned automation as a production screenshot.
+
+## Repository metadata review
+
+During each release/hygiene checkpoint, verify:
+
+- GitHub description;
+- homepage URL;
+- topics;
+- README opening;
+- `frontend/public/schema.jsonld`;
+- `frontend/public/llms.txt`;
+- `frontend/public/llms-full.txt`;
+- landing metadata/copy.
+
+All of them should describe the same product.

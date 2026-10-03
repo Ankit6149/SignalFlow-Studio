@@ -11,10 +11,16 @@ const serverPath = path.resolve(currentDir, "../server.mjs");
 
 function waitForLine(lines, predicate, timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timed out waiting for MCP response.")), timeoutMs);
+    let settled = false;
+    const timeout = setTimeout(() => {
+      settled = true;
+      reject(new Error("Timed out waiting for MCP response."));
+    }, timeoutMs);
     const check = () => {
+      if (settled) return;
       const match = lines.find(predicate);
       if (match) {
+        settled = true;
         clearTimeout(timeout);
         resolve(match);
         return;

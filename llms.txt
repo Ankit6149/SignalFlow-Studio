@@ -16,6 +16,7 @@ The older manual campaign builder remains available as a compatibility/Create fo
 - Versioned capability discovery at `/api/capabilities`.
 - Real model-provider adapters subject to deployment/session policy.
 - Deterministic Markdown/JSON export.
+- Canonical Asset, SourceArtifact, and AssetProcessing records across supported source and persistence boundaries.
 - Portable browser archive/import/recovery for supported Campaign state.
 - MCP tools for capability/provider checks, validation, hosted strategy, destination generate/retry/edit, review retrieval, trackable campaign work, cancellation, and deterministic export.
 - Official connector code paths for LinkedIn, X, and Reddit where genuinely configured and verified.

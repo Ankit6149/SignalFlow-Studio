@@ -6,7 +6,6 @@ import {
   projectCampaignJson,
   projectCampaignMarkdown,
 } from "../export/campaignExport.mjs";
-import { buildCampaignZipExport } from "../export/campaignZip.mjs";
 
 export function resolveExportCampaign(body = {}) {
   if (body.campaign) return migrateLegacyCampaign(body.campaign);
@@ -35,5 +34,6 @@ export function createJsonExport(body) {
 }
 
 export async function createZipExport(body) {
+  const { buildCampaignZipExport } = await import("../export/campaignZip.mjs");
   return buildCampaignZipExport(resolveExportCampaign(body));
 }

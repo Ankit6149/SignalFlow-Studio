@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
+import { campaignInput } from "../../frontend/tests/campaignFixtures.mjs";
 import { executeTool, TOOL_DEFINITIONS } from "../lib/tools.mjs";
 
 test("MCP exposes blocking compatibility plus trackable campaign workflow tools", () => {
@@ -16,6 +17,8 @@ test("MCP exposes blocking compatibility plus trackable campaign workflow tools"
       "signalflow_generate_destination",
       "signalflow_retry_destination",
       "signalflow_edit_destination",
+      "signalflow_get_review_bundle",
+      "signalflow_export_campaign",
       "signalflow_start_campaign",
       "signalflow_campaign_status",
       "signalflow_cancel_campaign",
@@ -273,6 +276,66 @@ test("destination retry preserves canonical stale-revision failures", async () =
   assert.equal(result.isError, true);
   assert.equal(result.structuredContent.code, "stale_revision_context");
   assert.match(result.content[0].text, /stale/i);
+});
+
+test("review bundle retrieval uses the canonical hosted review GET contract", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      ok: true,
+      contentPieceId: "content-piece-1",
+      bundle: {
+        contentPiece: { contentPieceId: "content-piece-1" },
+        variants: [
+          { platformVariantId: "variant-linkedin", destination: "linkedin" },
+          { platformVariantId: "variant-x", destination: "x" },
+        ],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+
+  const result = await executeTool("signalflow_get_review_bundle", {
+    contentPieceId: "content-piece-1",
+  }, {
+    fetchImpl,
+    env: {
+      SIGNALFLOW_BASE_URL: "https://signalflow.example",
+      SIGNALFLOW_ACCESS_KEY: "owner-workspace-key",
+    },
+  });
+
+  assert.equal(result.isError, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://signalflow.example/api/platform-review?contentPieceId=content-piece-1");
+  assert.equal(calls[0].options.headers["x-signalflow-access-key"], "owner-workspace-key");
+  assert.equal(result.structuredContent.bundle.variants.length, 2);
+  assert.match(result.content[0].text, /2 destination variants/i);
+});
+
+test("campaign export reuses the canonical deterministic export application", async () => {
+  const campaign = campaignInput({ title: "SignalFlow export" });
+
+  const markdown = await executeTool("signalflow_export_campaign", {
+    format: "markdown",
+    campaign,
+  });
+  assert.equal(markdown.isError, false);
+  assert.equal(markdown.structuredContent.filename, "signalflow-export.md");
+  assert.equal(markdown.structuredContent.mimeType, "text/markdown");
+  assert.match(markdown.content[0].text, /Edited LinkedIn draft — authoritative/);
+
+  const json = await executeTool("signalflow_export_campaign", {
+    format: "json",
+    campaign,
+  });
+  assert.equal(json.isError, false);
+  assert.equal(json.structuredContent.filename, "signalflow-export.json");
+  assert.equal(
+    json.structuredContent.projection.campaign.currentDrafts.linkedin.content,
+    "Edited LinkedIn draft — authoritative.",
+  );
+  assert.match(json.content[0].text, /Edited LinkedIn draft — authoritative/);
 });
 
 test("campaign tool refuses template generation", async () => {

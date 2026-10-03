@@ -56,6 +56,8 @@ Provider secrets stay in the MCP process environment and are not part of tool ar
 - `signalflow_generate_destination` — generate one canonical hosted destination revision.
 - `signalflow_retry_destination` — regenerate one destination while guarding the exact current revision ID.
 - `signalflow_edit_destination` — edit the exact current destination revision through the hosted review service.
+- `signalflow_get_review_bundle` — retrieve canonical hosted review state for a ContentPiece.
+- `signalflow_export_campaign` — create deterministic Markdown or JSON from supplied canonical Campaign/package state.
 - `signalflow_start_campaign` — start trackable campaign generation and return a job ID.
 - `signalflow_campaign_status` — inspect trackable campaign work.
 - `signalflow_cancel_campaign` — request cancellation of queued or active campaign work.

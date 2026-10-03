@@ -1,5 +1,9 @@
 import { parseCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
 import {
+  createJsonExport,
+  createMarkdownExport,
+} from "../../frontend/lib/application/exportApplication.mjs";
+import {
   projectGenerationMediaItem,
   validateSourceGraph,
 } from "../../frontend/lib/domain/sourceArtifacts.mjs";
@@ -150,6 +154,38 @@ export const TOOL_DEFINITIONS = [
         segments: { type: "array", items: { type: "string" } },
         format: { type: ["string", "null"] },
       },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_get_review_bundle",
+    description: "Retrieve the canonical hosted review bundle for one ContentPiece through the same owner-authorized review service used by the web workspace.",
+    inputSchema: {
+      type: "object",
+      required: ["contentPieceId"],
+      properties: {
+        contentPieceId: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "signalflow_export_campaign",
+    description: "Create deterministic Markdown or JSON from a supplied canonical Campaign or compatible generated package using SignalFlow's shared export application.",
+    inputSchema: {
+      type: "object",
+      required: ["format"],
+      properties: {
+        format: { type: "string", enum: ["markdown", "json"] },
+        campaign: { type: "object", additionalProperties: true },
+        package: { type: "object", additionalProperties: true },
+        projectName: { type: "string" },
+        metadata: { type: "object", additionalProperties: true },
+      },
+      anyOf: [
+        { required: ["campaign"] },
+        { required: ["package"] },
+      ],
       additionalProperties: false,
     },
   },
@@ -578,6 +614,63 @@ export async function executeTool(name, args = {}, options = {}) {
       }
       throw error;
     }
+  }
+
+  if (name === "signalflow_get_review_bundle") {
+    const contentPieceId = requireString(args.contentPieceId, "contentPieceId");
+    try {
+      const data = await signalFlowRequest(
+        `/api/platform-review?contentPieceId=${encodeURIComponent(contentPieceId)}`,
+        { ...options, timeoutMs: 30000 },
+      );
+      const variantCount = Array.isArray(data.bundle?.variants) ? data.bundle.variants.length : 0;
+      return {
+        content: textContent(
+          `SignalFlow retrieved review bundle ${contentPieceId} with ${variantCount} destination variant${variantCount === 1 ? "" : "s"}.`,
+        ),
+        structuredContent: data,
+        isError: false,
+      };
+    } catch (error) {
+      if (error?.signalFlowData && typeof error.signalFlowData === "object") {
+        const structured = error.signalFlowData;
+        return {
+          content: textContent(structured.error || "SignalFlow could not retrieve this review bundle."),
+          structuredContent: structured,
+          isError: true,
+        };
+      }
+      throw error;
+    }
+  }
+
+  if (name === "signalflow_export_campaign") {
+    const format = requireString(args.format, "format").toLowerCase();
+    if (!["markdown", "json"].includes(format)) {
+      throw new Error(`Unsupported export format: ${format}.`);
+    }
+    const body = {
+      ...(args.campaign ? { campaign: args.campaign } : {}),
+      ...(args.package ? { package: args.package } : {}),
+      ...(args.projectName ? { projectName: String(args.projectName) } : {}),
+      ...(args.metadata ? { metadata: args.metadata } : {}),
+    };
+    const projection = format === "markdown"
+      ? createMarkdownExport(body)
+      : createJsonExport(body);
+    return {
+      content: textContent(projection.content),
+      structuredContent: {
+        ok: true,
+        format,
+        filename: projection.filename,
+        mimeType: projection.mimeType,
+        ...(format === "json" && projection.projection
+          ? { projection: projection.projection }
+          : {}),
+      },
+      isError: false,
+    };
   }
 
   if (name === "signalflow_start_campaign") {

@@ -42,53 +42,45 @@ Documentation must keep those two truths separate.
 
 ### Current implemented foundation
 
-The current product can:
+Current implementation truth is split by capability rather than one blanket “local” or “cloud” label.
 
-- accept a campaign/source brief;
-- ingest supported public links and GitHub repository context within current safety/implementation limits;
+Implemented foundations include:
+
+- manual ContentSignal intake/lifecycle and the accepted browser-local owner Golden Path 1;
+- browser-local owner Identity/Voice/Boundary, Opportunity/angle, NarrativeStrategy, ContentPiece, LinkedIn/X revision, evidence/authenticity review, exact approval, StyleMemory, and NarrativeMemory foundations;
+- owner-scoped hosted GitHub SourceConnection/event ingestion plus Postgres-backed ContentSignal, ProjectContext, ContentOpportunity, planning/revision, exact-review, opportunity-job, and private Asset persistence paths where configured;
+- real configured model-provider routes subject to deployment/session policy;
+- the compatibility/manual Campaign/Create workflow with stable IDs, edit-safe drafts, local save/recovery, deterministic Markdown/JSON export, and portable browser archives;
 - accept supported browser file inputs and canonical source/asset records;
-- capture, edit, ignore, snooze, archive, restore, and recover browser-local manual `ContentSignal` records at `/signals` without first creating a Campaign or invoking AI;
-- evaluate an active manual `ContentSignal` through the bounded opportunity task into a browser-local persisted `ContentOpportunity`, then review why-now, LinkedIn/X fit, 3–5 narrative directions, or a custom `Something else…` direction at `/plan`;
-- create and version browser-local explicit Identity, Desired Perception, Voice, Boundary, LinkedIn/X Platform Expression, and optional Project Guidance records at `/voice`, including immutable `IdentityContextSnapshot` records for exact downstream generation context;
-- move a manual Signal through persisted Opportunity/angle selection, approved NarrativeStrategy, canonical ContentPiece, destination-specific immutable LinkedIn/X revisions, separate evidence/authenticity checks, immutable owner edits/regeneration, and exact per-revision approve/reject decisions in `/plan`;
-- use real configured model-provider routes;
-- generate destination-specific campaign drafts;
-- preserve stable campaign IDs and edit-safe draft history;
-- keep one authoritative current draft per destination;
-- invalidate approval after relevant edits;
-- save browser-local campaigns;
-- export deterministic Markdown/JSON;
-- prepare/validate portable browser archives;
-- expose capability discovery;
-- use the existing MCP package for supported operations;
-- expose official OAuth/publishing code paths for LinkedIn, X, and Reddit where genuinely configured and verified.
+- canonical Asset/SourceArtifact/AssetProcessing records;
+- versioned capability discovery at `/api/capabilities`;
+- MCP tools for capability/provider checks, source validation, hosted strategy, destination generate/retry/edit, review retrieval, trackable campaign work, cancellation, and deterministic export;
+- official connector code paths for LinkedIn, X, and Reddit where genuinely configured and verified.
+
+### Compatibility/manual Campaign invariants
+
+The retained compatibility/manual Campaign path still preserves **stable Campaign IDs and edit-safe draft history**, keeps one **authoritative current draft** per destination, invalidates approval after relevant edits, and projects deterministic exports from current canonical state.
+
+The **browser portable archive/import/export exists** as an explicit user-driven recovery path through versioned `.signalflow.json` archives. There is **no production cloud Campaign database/account workspace/cross-device sync yet**; the newer hosted Content OS record stores do not change that Campaign-specific boundary.
+
+SignalFlow also continues to **expose capability discovery** at `/api/capabilities` so clients can distinguish deployment configuration, session access, and unsupported capabilities.
 
 ### Not yet implemented as production capabilities
 
-The repository must **not** claim the following are already available until their issues and acceptance evidence are complete:
+Do not present these as finished production capabilities:
 
-- automatic ContentSignal ingestion from connected work events and automatic opportunity evaluation/ranking across connected sources;
-- complete NarrativeMemory/identity-aware opportunity evaluation across historical content;
-- automatic identity inference, explainable StyleMemory learning, and NarrativeMemory learning from historical edits/publications;
-- a `Today` decision inbox;
-- editorial cadence planning;
-- provider-neutral Inference Fabric/Private Hybrid/local intelligence;
-- automatic media-intent/AssetRole/AssetUsePolicy interpretation;
-- automatic media-format recommendation;
-- image editing/generation/compositing through the target media architecture;
-- deterministic carousel production;
-- uploaded-footage Reel/Short editing;
-- multimodal natural-language Direct Create convergence;
-- media rights/face/voice/audio trust enforcement;
-- automatic browser screenshot/demo capture workers;
-- deterministic motion-video rendering;
-- durable background jobs for the full pipeline;
-- hosted cloud database/object storage/account workspaces;
-- cross-device sync/collaboration;
-- production-ready scheduled publishing;
-- broad production-grade social connectors beyond verified capabilities;
-- automatic analytics/performance learning;
+- Golden Path 2 as a fully accepted real GitHub-event → opportunity → automatic evidence → exact owner-review journey;
+- broad automatic opportunity intelligence across arbitrary connected sources;
+- general hosted Campaign autosave, account/workspace management, cross-device sync, or collaboration;
+- an always-on worker merely because durable job state exists in Postgres;
+- broad automatic image editing/generation/composition, carousel production, uploaded-footage editing, or deterministic motion-video rendering;
+- complete media-rights/face/voice/audio trust enforcement;
+- durable editorial calendar + exact-revision scheduled publication (GP3);
+- broad credential-backed production connector coverage;
+- multi-tenant SaaS/billing breadth;
 - unreviewed global autoposting.
+
+Some underlying records, adapters, and bounded worker/capture foundations for later capabilities already exist. Code/configuration presence is weaker than credential-backed or owner-acceptance evidence.
 
 Future architecture in `docs/` is a build contract, **not a capability claim**.
 
@@ -479,47 +471,45 @@ The target Inference Fabric may reuse one strong provider/model initially but mu
 
 Today:
 
-- saved campaigns are browser-local;
-- manual ContentSignal history is also browser-local under the versioned signal repository and survives refresh/reopen;
-- ContentSignal history is not yet part of the portable campaign archive or cloud sync;
-- there is no production cloud campaign database/account workspace/cross-device sync yet;
-- canonical Campaign, Asset, SourceArtifact, AssetProcessing and transfer contracts exist;
-- browser portable archive/import/export exists;
-- production hosted object storage and durable background job infrastructure are not yet implemented;
-- target media-intent/image/carousel/video-edit records are documented but not yet implemented.
+- general Campaign save/recovery remains browser-local;
+- portable Campaign archive/import/export remains explicit and browser-driven;
+- owner-scoped hosted records can use Postgres/Neon for GitHub SourceConnections, connected ContentSignals, ProjectContext, ContentOpportunities, planning/revisions, exact review state, durable opportunity-job state, and private Asset metadata/blob persistence where configured;
+- those hosted record stores do **not** imply general Campaign cloud autosave, account/workspace management, collaboration, or silent cross-device sync;
+- database-backed job state does **not** imply an always-on worker;
+- capability configuration is not equivalent to production acceptance.
 
-Future cloud persistence must implement application/domain ports rather than placing database/object-store/media-provider logic directly into React components.
+Future cloud persistence must continue to implement application/domain ports rather than placing database/object-store/media-provider logic directly into React components.
 
 ## Current source and asset truth
 
-Implemented foundations include canonical versioned Asset/SourceArtifact/AssetProcessing records and browser-side handling for supported inputs.
+Implemented foundations include canonical versioned Asset/SourceArtifact/AssetProcessing records, browser-side handling for supported inputs, owner-scoped hosted private Asset persistence where configured, bounded CaptureRecipe/CaptureJob contracts, and screenshot execution/quality/derivative foundations used by the active GP2 work.
 
-Still incomplete/planned include:
+Still incomplete or not broadly accepted include:
 
 - hardened remote URL ingestion across all source paths;
-- full source-health diagnostics;
-- remote evidence version/revalidation;
-- OCR/transcription/visual-analysis processors;
-- durable cloud asset storage;
+- complete source-health diagnostics and remote evidence revalidation;
+- general OCR/transcription/visual-analysis processors;
 - acknowledged full extension screenshot/recording ingestion;
-- media role/use-policy/rights contracts;
+- broad media role/use-policy/rights enforcement;
 - image edit/generation/composition;
 - carousel rendering;
 - uploaded-footage editing;
-- automated capture-worker production.
+- complete live automatic capture-worker acceptance across the GP2 journey.
 
 See the capability/source/media docs and open issues for exact status.
 
 ## Current MCP role
 
-The `mcp/` package remains useful as an **agent-control interface**.
+The supported `mcp/` package is an **agent-control interface** over canonical SignalFlow services.
 
-The long-term architecture distinguishes:
+Current MCP work includes capability/provider inspection, source/input validation, hosted strategy planning, one-destination generation/retry/edit, review-bundle retrieval, trackable campaign start/status/cancel, and deterministic Markdown/JSON export. Browser-local saved Campaign retrieval is not invented as a hosted capability.
+
+The architecture still distinguishes:
 
 - GitHub App/webhooks or other source connectors → ongoing event/signal ingestion;
-- MCP → AI-agent commands/queries over SignalFlow's canonical application services.
+- MCP → AI-agent commands/queries over SignalFlow application services.
 
-MCP must not bypass media-use/privacy/approval rules.
+MCP must not bypass source, privacy, approval, authorization, or cost-control rules.
 
 ## Quick start
 

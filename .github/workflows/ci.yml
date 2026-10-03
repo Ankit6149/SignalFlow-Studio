@@ -58,6 +58,9 @@ jobs:
         run: |
           set -o pipefail
           npm run gp2:preflight 2>&1 | tee -a frontend-test-output.log
+      - name: Verify public metadata parity
+        working-directory: frontend
+        run: npm run metadata:check
       - name: Preserve frontend test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

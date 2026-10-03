@@ -17,7 +17,7 @@
       "url": "https://signal-flow-studio.vercel.app",
       "name": "SignalFlow Studio",
       "alternateName": "SignalFlow",
-      "description": "An approval-first content operating system built around Signals, narrative judgment, evidence, exact revision approval, and durable connected-source context.",
+      "description": "An approval-first content operating system built around Signals, narrative judgment, evidence, exact revision approval, and reusable communication context.",
       "publisher": {
         "@id": "https://signal-flow-studio.vercel.app/#organization"
       },
@@ -43,7 +43,7 @@
       "creator": {
         "@id": "https://signal-flow-studio.vercel.app/#organization"
       },
-      "description": "SignalFlow captures meaningful work as Signals, evaluates whether it is worth communicating, resolves narrative direction with Voice and evidence, and returns exact review decisions to the user. Manual owner workflows and a durable GitHub-connected source and planning spine are implemented today; media production, generalized destination-by-form planning, durable publication, and confirmed-public memory continue behind the same canonical records.",
+      "description": "SignalFlow turns manual thoughts and authorized work evidence into reviewable content opportunities, narrative plans, and exact destination revisions. Golden Path 1 is accepted for the owner workflow; GitHub-connected Golden Path 2 remains an active end-to-end acceptance gate.",
       "keywords": [
         "content operating system",
         "content operations",
@@ -56,13 +56,13 @@
       ],
       "featureList": [
         "Capture manual ContentSignals without requiring an AI call",
-        "Connect verified GitHub repositories with bounded exact-revision context",
-        "Create durable hosted ProjectContext, Signals, and Opportunities from connected repository work",
-        "Continue connected Opportunities into durable Voice, NarrativeStrategy, and ContentPiece planning",
+        "Evaluate explainable ContentOpportunities and owner-selected narrative directions",
+        "Maintain versioned Voice, identity boundaries, StyleMemory, and internal NarrativeMemory in the owner path",
+        "Persist configured owner-scoped connected-source and content-intelligence records through hosted Postgres adapters",
+        "Plan NarrativeStrategy, ContentPiece, and destination revisions through canonical application services",
         "Review LinkedIn and X through immutable revisions with evidence and authenticity checks",
         "Approve one exact visible revision and invalidate approval after later edits or regeneration",
-        "Preserve browser-local NarrativeMemory and explainable StyleMemory in the accepted owner path",
-        "Route inference through provider-neutral tasks with explicit privacy constraints",
+        "Expose canonical SignalFlow workflows through MCP without duplicating product state",
         "Keep silence and deliberate destination omission as valid outcomes"
       ],
       "offers": {
@@ -78,18 +78,18 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What can I use SignalFlow for today?",
+          "name": "What is SignalFlow?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "SignalFlow can capture manual ContentSignals, connect verified GitHub repository context into hosted Signals and Opportunities, continue connected Opportunities into durable Voice and NarrativeStrategy planning, and run the accepted exact-review path for LinkedIn and X. The legacy campaign builder remains compatibility-only while canonical Direct Create is rebuilt on the same Content OS records."
+            "text": "SignalFlow is an approval-first content operating system designed to reduce the operational work between meaningful work and audience communication while keeping judgment, explicit boundaries, and exact approval with the user."
           }
         },
         {
           "@type": "Question",
-          "name": "What is SignalFlow?",
+          "name": "What can I use SignalFlow for today?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "SignalFlow is an approval-first content operating system. It is designed to reduce the operational work between meaningful work and audience communication while keeping judgment, explicit boundaries, and exact approval with the user."
+            "text": "The accepted owner path can capture manual Signals, evaluate opportunities, plan a narrative, create exact LinkedIn and X revisions, apply evidence and authenticity checks, and support exact owner review. Hosted GitHub/source, project-context, planning, review, job-state, and private-asset foundations also exist when configured, while the complete GitHub-to-automatic-evidence Golden Path is still under acceptance."
           }
         },
         {
@@ -97,7 +97,7 @@
           "name": "Does SignalFlow publish without approval?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Approval is bound to an exact visible revision. A changed or regenerated draft requires judgment again, and publication is kept separate from preparation until the external outcome is confirmed."
+            "text": "No. Approval is bound to an exact visible revision. A changed or regenerated revision requires judgment again, and external publication success is not claimed until a destination confirms it."
           }
         },
         {
@@ -105,7 +105,7 @@
           "name": "Where is current state stored?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The accepted personal owner path still uses browser-local recovery for some records, while GitHub source connections, ProjectContext, Signals, Opportunities, Identity, NarrativeStrategy, and ContentPiece continuity are being moved into the hosted relational path. SignalFlow does not describe prepared content as publicly published until an external publication is confirmed."
+            "text": "Manual Campaigns remain browser-local. Configured hosted owner workflows also use durable Postgres-backed record families for connected sources, Signals, ProjectContext, Opportunities, planning, review, opportunity-job state, and private Assets. Those hosted records do not imply general cloud Campaign autosave, cross-device Campaign sync, or collaboration."
           }
         },
         {
@@ -113,7 +113,7 @@
           "name": "Can I bring my own model provider?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "SignalFlow has a provider-neutral inference boundary and supports configured hosted, bring-your-own, local, and compatible custom routes where the active deployment can reach them. Privacy policy is part of routing and protected context must fail closed instead of silently falling back to a weaker route."
+            "text": "SignalFlow supports configured hosted, bring-your-own, local, and compatible custom model routes where the active deployment and privacy policy allow them. Runtime capability discovery determines what is available to a session."
           }
         }
       ]

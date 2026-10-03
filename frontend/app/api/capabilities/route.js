@@ -86,6 +86,7 @@ export async function GET(request) {
       : !publicHosted;
     const providers = buildProviderCapabilities({ profile, isOwner: ownerAuthorized });
     const canReadLocalFiles = !publicHosted && process.env.SIGNALFLOW_ALLOW_LOCAL_REPO === "true";
+    const databaseConfigured = Boolean(String(process.env.DATABASE_URL || "").trim());
 
     const snapshot = createCapabilitySnapshot({
       productVersion: process.env.npm_package_version || "0.2.0",
@@ -111,6 +112,15 @@ export async function GET(request) {
         backgroundJobs: false,
         autosave: false,
         collaboration: false,
+        hostedRecords: {
+          connectedSources: databaseConfigured,
+          contentIntelligence: databaseConfigured,
+          planning: databaseConfigured,
+          review: databaseConfigured,
+          opportunityJobs: databaseConfigured,
+          privateAssets: databaseConfigured,
+          privateAssetProvider: databaseConfigured ? "postgres" : "",
+        },
       },
       extension: {
         bridgeReady: false,

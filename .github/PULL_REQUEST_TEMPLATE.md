@@ -1,28 +1,54 @@
-## Base / Linear linkage
+## Issue linkage
 
-<!-- Choose the one line that matches this PR and delete the others. -->
-<!-- `Fixes ARC-123` = this PR fully completes that Linear outcome when merged. -->
-<!-- `Part of ARC-123` = this PR contributes to the outcome but must NOT close it. -->
-<!-- `No Linear issue — <reason>` = maintenance that genuinely does not need Base tracking. -->
+<!--
+Use the repository issue that owns this change.
+- `Closes #123` only when this PR fully completes that issue.
+- `Part of #123` when the issue remains open after merge.
+- For maintenance without an issue, explain why creating another tracker item would add noise.
+-->
 
-Part of ARC-
+Part of #
 
 ## Outcome
 
-<!-- Describe the concrete product/engineering outcome, not just files changed. -->
+<!-- Describe the concrete product/engineering outcome. Do not summarize only filenames. -->
+
+## Scope boundary
+
+<!-- State what this PR intentionally does NOT change. Keep unrelated feature families out. -->
 
 ## Current-truth impact
 
-<!-- Does this change capability truth, architecture truth, rollout state, or owner acceptance? Update canonical docs if required. -->
+Check every applicable truth layer:
+
+- [ ] No capability/runtime claim changes
+- [ ] `docs/CAPABILITY_MATRIX.md` updated when capability truth changes
+- [ ] `docs/CURRENT_EXECUTION_STATE.md` updated when execution/deployment/acceptance truth changes
+- [ ] README/public/AI metadata updated when public product truth changes
+- [ ] GitHub issue body updated when prior scope/status is now stale
+
+<!-- Planned ≠ coded ≠ merged ≠ deployed ≠ accepted. Say which level this PR reaches. -->
 
 ## Validation
 
-<!-- Exact tests/checks/runtime evidence. Do not claim a complete capability from a merged implementation slice alone. -->
+Record exact evidence, not “tested locally”.
 
-- [ ] Relevant checks pass
-- [ ] Current capability/public-truth docs remain accurate
-- [ ] Owner/release acceptance remains explicit when still required
+- [ ] Relevant focused tests pass
+- [ ] Normal repository CI passes
+- [ ] Frontend production dependency audit passes when frontend dependencies change
+- [ ] Production build passes when runtime/frontend behavior changes
+- [ ] No Playwright dependency or Playwright-based capture path was introduced
+- [ ] Security/privacy/source-provenance boundaries were rechecked where relevant
+
+## Deployment / acceptance
+
+<!-- A green PR or preview is not production acceptance. -->
+
+- [ ] Deployment verification is not required for this change
+- [ ] Or: exact deployed SHA / runtime evidence is recorded
+- [ ] Owner/user acceptance evidence is recorded when the owning issue requires it
+- [ ] External credential/provider/connector/capture verification remains explicitly open when not proven
 
 ## Remaining work / blockers
 
-<!-- Write `None` only if the linked Linear outcome is actually complete. Otherwise state what still prevents completion. -->
+<!-- Write `None` only if the linked issue is genuinely complete after this PR. Otherwise state the exact remainder. -->

@@ -85,6 +85,67 @@ test("hosted member contract remains non-owner and cloud features reflect config
   assert.equal(snapshot.capabilities.ownerTools.available, false);
 });
 
+test("hosted record capabilities distinguish deployment configuration from owner access", () => {
+  const anonymous = createCapabilitySnapshot({
+    profile: DEPLOYMENT_PROFILES.HOSTED,
+    publicHosted: true,
+    session: {
+      authenticated: false,
+      role: "anonymous",
+    },
+    cloud: {
+      hostedRecords: {
+        connectedSources: true,
+        contentIntelligence: true,
+        planning: true,
+        review: true,
+        opportunityJobs: true,
+        privateAssets: true,
+        privateAssetProvider: "postgres",
+      },
+    },
+  });
+
+  assert.equal(anonymous.capabilities.persistence.cloudDatabase.available, false);
+  assert.equal(anonymous.capabilities.persistence.hostedRecords.connectedSources.available, false);
+  assert.equal(anonymous.capabilities.persistence.hostedRecords.connectedSources.configured, true);
+  assert.equal(anonymous.capabilities.persistence.hostedRecords.connectedSources.access, "owner");
+  assert.match(anonymous.capabilities.persistence.hostedRecords.connectedSources.reason, /restricted to an authenticated owner/i);
+
+  const owner = createCapabilitySnapshot({
+    profile: DEPLOYMENT_PROFILES.HOSTED,
+    publicHosted: true,
+    session: {
+      authenticated: true,
+      role: "owner",
+      canUseOwnerTools: true,
+    },
+    cloud: {
+      hostedRecords: {
+        connectedSources: true,
+        contentIntelligence: true,
+        planning: true,
+        review: true,
+        opportunityJobs: true,
+        privateAssets: true,
+        privateAssetProvider: "postgres",
+      },
+    },
+  });
+
+  assert.equal(owner.capabilities.persistence.cloudDatabase.available, false);
+  assert.equal(owner.capabilities.persistence.backgroundJobs.available, false);
+  assert.equal(owner.capabilities.persistence.hostedRecords.connectedSources.available, true);
+  assert.equal(owner.capabilities.persistence.hostedRecords.contentIntelligence.available, true);
+  assert.equal(owner.capabilities.persistence.hostedRecords.planning.available, true);
+  assert.equal(owner.capabilities.persistence.hostedRecords.review.available, true);
+  assert.equal(owner.capabilities.persistence.hostedRecords.opportunityJobs.available, true);
+  assert.match(owner.capabilities.persistence.hostedRecords.opportunityJobs.reason, /does not imply an always-on background worker/i);
+  assert.equal(owner.capabilities.persistence.hostedRecords.privateAssets.available, true);
+  assert.equal(owner.capabilities.persistence.hostedRecords.privateAssets.provider, "postgres");
+  assert.equal(owner.capabilities.persistence.hostedRecords.privateAssets.verification, "runtime_configuration");
+});
+
 test("hosted owner can use declared owner and configured server routes", () => {
   const providers = structuredClone(baseProviders);
   providers.custom.available = true;
@@ -178,11 +239,14 @@ test("missing known capability fields degrade safely to unavailable", () => {
   const raw = createCapabilitySnapshot();
   delete raw.capabilities.exports.markdown;
   delete raw.capabilities.persistence.cloudDatabase;
+  delete raw.capabilities.persistence.hostedRecords.review;
 
   const parsed = parseCapabilitySnapshot(raw);
   assert.equal(parsed.capabilities.exports.markdown.available, false);
   assert.equal(parsed.capabilities.persistence.cloudDatabase.available, false);
+  assert.equal(parsed.capabilities.persistence.hostedRecords.review.available, false);
   assert.match(parsed.capabilities.exports.markdown.reason, /not declared/i);
+  assert.match(parsed.capabilities.persistence.hostedRecords.review.reason, /not declared/i);
 });
 
 test("unsupported capability schema versions are rejected", () => {

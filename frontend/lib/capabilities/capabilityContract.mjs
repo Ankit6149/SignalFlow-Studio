@@ -93,7 +93,29 @@ export function createCapabilitySnapshot({
   const collaboration = Boolean(cloud.collaboration);
   const autosave = Boolean(cloud.autosave && cloudDatabase);
   const localProfile = normalizedProfile !== DEPLOYMENT_PROFILES.HOSTED;
+  const hostedProfile = normalizedProfile === DEPLOYMENT_PROFILES.HOSTED;
+  const hostedRecords = cloud.hostedRecords && typeof cloud.hostedRecords === "object"
+    ? cloud.hostedRecords
+    : {};
   const extensionBridgeReady = Boolean(extension.bridgeReady);
+
+  function hostedOwnerRecordCapability(configured, label, availableReason, details = {}) {
+    const runtimeConfigured = Boolean(configured);
+    const available = Boolean(hostedProfile && isOwner && runtimeConfigured);
+    const reason = !hostedProfile
+      ? `${label} is a hosted capability and is not used by this deployment profile.`
+      : !runtimeConfigured
+        ? `${label} is not configured for this deployment.`
+        : !isOwner
+          ? `${label} is configured for this deployment but restricted to an authenticated owner session.`
+          : availableReason;
+    return capability(available, reason, {
+      configured: runtimeConfigured,
+      access: "owner",
+      verification: "runtime_configuration",
+      ...details,
+    });
+  }
 
   const providerMap = Object.fromEntries(
     Object.entries(providers).map(([id, provider]) => {
@@ -198,6 +220,39 @@ export function createCapabilitySnapshot({
             ? "Workspace collaboration is available."
             : "Multi-user collaboration is not enabled in this deployment.",
         ),
+        hostedRecords: {
+          connectedSources: hostedOwnerRecordCapability(
+            hostedRecords.connectedSources,
+            "Hosted connected-source persistence",
+            "Durable hosted SourceConnection and connected-source Signal records are configured for this owner session.",
+          ),
+          contentIntelligence: hostedOwnerRecordCapability(
+            hostedRecords.contentIntelligence,
+            "Hosted content-intelligence persistence",
+            "Durable hosted ContentSignal, ProjectContext, and ContentOpportunity records are configured for this owner session.",
+          ),
+          planning: hostedOwnerRecordCapability(
+            hostedRecords.planning,
+            "Hosted planning persistence",
+            "Durable hosted NarrativeStrategy, ContentPiece, PlatformVariant, and revision records are configured for this owner session.",
+          ),
+          review: hostedOwnerRecordCapability(
+            hostedRecords.review,
+            "Hosted review persistence",
+            "Durable hosted exact-review records are configured for this owner session.",
+          ),
+          opportunityJobs: hostedOwnerRecordCapability(
+            hostedRecords.opportunityJobs,
+            "Durable opportunity-job state",
+            "Durable database-backed opportunity-job state is configured for this owner session. This does not imply an always-on background worker.",
+          ),
+          privateAssets: hostedOwnerRecordCapability(
+            hostedRecords.privateAssets,
+            "Hosted private Asset persistence",
+            "Private hosted Asset metadata and blob persistence are configured for this owner session.",
+            { provider: text(hostedRecords.privateAssetProvider, "postgres") },
+          ),
+        },
       },
       transfer: {
         portableArchive: capability(
@@ -346,6 +401,7 @@ export function parseCapabilitySnapshot(value) {
 
   const fallbackReason = "This capability was not declared by the connected SignalFlow deployment.";
   const persistence = value.capabilities?.persistence || {};
+  const hostedRecords = persistence.hostedRecords || {};
   const models = value.capabilities?.models || {};
   const sources = value.capabilities?.sources || {};
   const extension = value.capabilities?.extension || {};
@@ -395,6 +451,14 @@ export function parseCapabilitySnapshot(value) {
         backgroundJobs: normalizeCapability(persistence.backgroundJobs, fallbackReason),
         autosave: normalizeCapability(persistence.autosave, fallbackReason),
         collaboration: normalizeCapability(persistence.collaboration, fallbackReason),
+        hostedRecords: {
+          connectedSources: normalizeCapability(hostedRecords.connectedSources, fallbackReason),
+          contentIntelligence: normalizeCapability(hostedRecords.contentIntelligence, fallbackReason),
+          planning: normalizeCapability(hostedRecords.planning, fallbackReason),
+          review: normalizeCapability(hostedRecords.review, fallbackReason),
+          opportunityJobs: normalizeCapability(hostedRecords.opportunityJobs, fallbackReason),
+          privateAssets: normalizeCapability(hostedRecords.privateAssets, fallbackReason),
+        },
       },
       transfer: {
         portableArchive: normalizeCapability(transfer.portableArchive, fallbackReason),

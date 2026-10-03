@@ -18,6 +18,8 @@
 >
 > Planned ≠ coded ≠ merged ≠ deployed ≠ accepted.
 
+> `docs/NEXT_CHAT_HANDOFF.md` is a retired historical pointer, not current execution authority.
+
 ## Current checkpoint
 
 | Item | Current state |

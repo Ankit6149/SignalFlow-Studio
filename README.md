@@ -57,7 +57,15 @@ Implemented foundations include:
 - MCP tools for capability/provider checks, source validation, hosted strategy, destination generate/retry/edit, review retrieval, trackable campaign work, cancellation, and deterministic export;
 - official connector code paths for LinkedIn, X, and Reddit where genuinely configured and verified.
 
-### Still incomplete or not yet accepted
+### Compatibility/manual Campaign invariants
+
+The retained compatibility/manual Campaign path still preserves **stable Campaign IDs and edit-safe draft history**, keeps one **authoritative current draft** per destination, invalidates approval after relevant edits, and projects deterministic exports from current canonical state.
+
+The **browser portable archive/import/export exists** as an explicit user-driven recovery path through versioned `.signalflow.json` archives. There is **no production cloud Campaign database/account workspace/cross-device sync yet**; the newer hosted Content OS record stores do not change that Campaign-specific boundary.
+
+SignalFlow also continues to **expose capability discovery** at `/api/capabilities` so clients can distinguish deployment configuration, session access, and unsupported capabilities.
+
+### Not yet implemented as production capabilities
 
 Do not present these as finished production capabilities:
 

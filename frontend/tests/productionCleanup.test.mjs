@@ -29,6 +29,7 @@ async function exists(filePath) {
 test("legacy bearer-token migration is fully retired in favor of the HTTP-only session", async () => {
   const layout = await readFile(path.join(frontendRoot, "app/layout.js"), "utf8");
   const page = await readFile(path.join(frontendRoot, "app/page.js"), "utf8");
+  const studioApiClient = await readFile(path.join(frontendRoot, "lib/studio/studioApiClient.mjs"), "utf8");
   const sessionRoute = await readFile(path.join(frontendRoot, "app/api/session/route.js"), "utf8");
   const activeFiles = [
     ...await sourceFiles(path.join(frontendRoot, "app")),
@@ -44,8 +45,10 @@ test("legacy bearer-token migration is fully retired in favor of the HTTP-only s
   assert.doesNotMatch(activeSource, /signalflow_owner_token|signalflow_owner_cookie_synced|data\.token/);
   assert.match(sessionRoute, /Set-Cookie/);
   assert.doesNotMatch(sessionRoute, /JSON\.stringify\(\{\s*token\s*:/s);
-  assert.match(page, /body:\s*JSON\.stringify\(\{\s*access_key:\s*ownerKey\.trim\(\)/s);
-  assert.match(page, /function authHeaders\(extra = \{\}\) \{\s*return \{ \.\.\.extra \};\s*\}/s);
+  assert.match(page, /unlockOwnerApiSession\(ownerKey\)/);
+  assert.doesNotMatch(page, /function authHeaders|fetch\(/);
+  assert.match(studioApiClient, /access_key:\s*String\(accessKey \|\| ""\)\.trim\(\)/);
+  assert.match(studioApiClient, /"\/api\/session"/);
 });
 
 test("unsupported Playwright capture is absent from the production graph", async () => {

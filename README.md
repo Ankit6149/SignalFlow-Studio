@@ -51,6 +51,7 @@ Implemented foundations include:
 - owner-scoped hosted GitHub SourceConnection/event ingestion plus Postgres-backed ContentSignal, ProjectContext, ContentOpportunity, planning/revision, exact-review, opportunity-job, and private Asset persistence paths where configured;
 - real configured model-provider routes subject to deployment/session policy;
 - the compatibility/manual Campaign/Create workflow with stable IDs, edit-safe drafts, local save/recovery, deterministic Markdown/JSON export, and portable browser archives;
+- accept supported browser file inputs and canonical source/asset records;
 - canonical Asset/SourceArtifact/AssetProcessing records;
 - versioned capability discovery at `/api/capabilities`;
 - MCP tools for capability/provider checks, source validation, hosted strategy, destination generate/retry/edit, review retrieval, trackable campaign work, cancellation, and deterministic export;

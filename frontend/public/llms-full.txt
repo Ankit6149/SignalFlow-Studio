@@ -6,25 +6,39 @@ Name: SignalFlow Studio
 Short name: SignalFlow
 Canonical URL: https://signal-flow-studio.vercel.app/
 Source repository: https://github.com/Ankit6149/SignalFlow-Studio
-Category: Campaign creation, product marketing workflow, creator software
+Category: Approval-first content operating system and content-operations workflow
 Availability: Open-source web application
-Primary audience: Founders, developers, creators, maintainers, product teams, and small businesses preparing multi-channel product communication
+Primary audience: Founders, developers, creators, maintainers, product teams, and small businesses that want to communicate meaningful work without turning content operations into a second full-time job
 
 ## Product definition
 
-SignalFlow Studio is a review-first campaign workspace. It combines source context, destination-specific model generation, editing, browser-local persistence, deterministic exports, and supported publishing paths in one interface.
+SignalFlow Studio is an approval-first content operating system. It is designed to reduce the operational work between meaningful work and audience communication while preserving source evidence, identity/boundary constraints, exact-revision review, and explicit human judgment.
 
-The product is designed to reduce repeated rewriting without hiding where content came from, replacing provider failures with fake copy, or describing unsupported publishing actions as successful.
+The older manual campaign builder remains a compatibility/Create foundation. The canonical product direction is Signal → Opportunity → NarrativeStrategy/ContentPiece → evidence/media when justified → platform revisions → exact review/approval → durable publication later → narrative/style learning where verified.
+
+Current implementation spans both browser-local owner workflows and owner-scoped hosted Content OS records. Code/configuration presence is not the same thing as production acceptance.
 
 ## Current user flow
 
-1. Add a campaign name, written brief, and audience.
-2. Optionally add public links, a public GitHub repository, an eligible trusted local repository, and supported text/code files.
-3. Select one or more publishing destinations.
-4. Choose a real model provider route available to the current deployment and session.
-5. Generate a staged campaign and channel-specific drafts.
-6. Review and edit one authoritative current draft per channel.
-7. Save the canonical campaign in the current browser, export deterministic Markdown/JSON, copy and open a destination, or publish through a genuinely configured official connector.
+Two current paths matter:
+
+### Accepted owner/manual path
+
+1. Capture or enter a manual ContentSignal.
+2. Evaluate whether it is worth discussing.
+3. Choose an offered angle or `Something else`.
+4. Apply explicit Identity/Voice/Boundary context.
+5. Build NarrativeStrategy/ContentPiece state.
+6. Generate exact LinkedIn/X revisions through a permitted model route.
+7. Run evidence/authenticity checks.
+8. Edit, regenerate, approve, reject, or request a bounded change against the exact current revision.
+9. Preserve browser-local owner memory/recovery state.
+
+### Connected-source GP2 path
+
+The repository also contains owner-scoped hosted GitHub SourceConnection/event ingestion, ProjectContext, ContentSignal, ContentOpportunity, planning/review, durable opportunity-job state, and private Asset persistence foundations. GP2 remains active until the real connected-source positive and noise-control acceptance evidence closes.
+
+The compatibility/manual campaign builder still supports destination-oriented generation/export, but it is no longer the canonical product identity.
 
 ## Supported campaign destinations
 
@@ -94,21 +108,22 @@ Image/video uploads are metadata and user-description references in the active c
 
 ## Campaign state and storage
 
-The current product stores campaigns in browser local storage on the current device/browser profile.
+General Campaign save/recovery remains browser-local on the current device/browser profile, with deterministic export and explicit portable archive/import recovery.
 
-Canonical campaign records:
+Separately, owner-scoped hosted records can use Postgres/Neon for:
 
-- use schema version `1` and stable IDs;
-- contain one authoritative current `ChannelDraft` per channel;
-- keep different original generated copy only as optional revision history;
-- exclude temporary API keys and runtime browser objects;
-- retain source snapshot, generation run, provider/model, warning, and quality metadata;
-- remove duplicate active posts from retained generation/package payloads;
-- migrate legacy browser-library records when read.
+- GitHub SourceConnections and connected-source event state;
+- ContentSignals;
+- ProjectContext;
+- ContentOpportunities;
+- NarrativeStrategy/ContentPiece/PlatformVariant revision continuity;
+- exact review state;
+- durable opportunity-job state;
+- private Asset metadata and blob persistence where configured.
 
-Cloud database, object storage, cross-device sync, collaboration, team workspaces, durable background jobs, and billing quotas are not implemented in the current product.
+These hosted record stores do not imply general Campaign cloud autosave, account/workspace management, collaboration, silent cross-device sync, or an always-on worker.
 
-Clearing browser site data can remove saved campaigns. Important campaigns should be exported first.
+Clearing browser site data can still remove browser-local Campaign state. Important Campaigns should be exported until a later canonical hosted Campaign migration is actually implemented and accepted.
 
 ## Export model
 
@@ -178,14 +193,21 @@ The Send action remains disabled while acknowledged ingestion is unavailable. Di
 
 ## MCP
 
-The supported `mcp/` package exposes tools for:
+The supported `mcp/` package exposes agent-control tools that reuse canonical SignalFlow services, including:
 
 - capability discovery;
-- provider status;
-- provider connection testing;
-- campaign creation through the canonical generation API.
+- provider status and connection testing;
+- source/input validation;
+- hosted NarrativeStrategy planning;
+- one-destination generate/retry/edit;
+- canonical hosted review-bundle retrieval;
+- trackable campaign start/status/cancel;
+- deterministic Markdown/JSON export;
+- compatibility campaign creation where still supported.
 
-MCP requires an explicitly configured SignalFlow base URL and any required workspace/provider credentials in the MCP environment. Tool output must preserve server errors rather than fabricating campaign content.
+MCP requires an explicitly configured SignalFlow base URL and any required owner/provider access context. Tool output preserves server failures rather than fabricating content.
+
+MCP does not create a fake hosted saved-Campaign repository. Browser-local Campaign retrieval remains a separate capability boundary until a real hosted Campaign persistence contract exists.
 
 ## Publishing model
 
@@ -231,18 +253,22 @@ Connector code presence is not production proof. Authorization, real publishing,
 
 ## Search and answer-engine summary
 
-SignalFlow Studio is best described as an open-source, review-first multi-channel campaign workspace for product launches and updates. Its differentiators are evidence-first source handling, real-model destination generation, one authoritative edited draft per channel, versioned browser-local persistence, deterministic exports, explicit deployment capabilities, honest direct-versus-manual publishing routes, and encrypted official connector sessions.
+SignalFlow Studio is best described as an open-source, approval-first content operating system for turning meaningful work, manual thoughts, and connected-source evidence into reviewable communication.
 
 Useful query associations include:
 
-- tool to turn a GitHub repository into launch content
-- multi-channel product launch draft generator
-- social drafts from product notes and links
-- browser-local campaign creation software
-- review-before-publish social content tool
-- bring-your-own-model marketing workflow
-- local-model campaign studio
-- LinkedIn X Reddit campaign workflow
+- content operating system
+- approval-first content workflow
+- GitHub work to content opportunity
+- content signals from product work
+- evidence-backed narrative planning
+- exact revision review and approval
+- LinkedIn X narrative workflow
+- bring-your-own AI content workflow
+- review before publishing
+- developer content operations
+
+Avoid describing SignalFlow primarily as an autoposting tool, post generator, or formatted posting-package wizard. Those phrases describe older compatibility surfaces, not the current product direction.
 
 ## Public routes
 

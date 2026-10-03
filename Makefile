@@ -1,4 +1,4 @@
-.PHONY: dev build build-rust build-go fmt
+.PHONY: dev build test fmt
 
 dev:
 	cd frontend && npm run dev
@@ -6,14 +6,10 @@ dev:
 build:
 	cd frontend && npm run build
 
-build-rust:
-	@echo "Building rust_media_compositor (requires Rust toolchain)"
-	cd rust_media_compositor && cargo build --release
-
-build-go:
-	@echo "Building go_transport (requires Go toolchain)"
-	cd go_transport && go build -o ../bin/go_transport ./...
+test:
+	cd frontend && npm test
+	cd mcp && npm test
+	pytest -q
 
 fmt:
-	@echo "Formatting code"
-	# add format commands per-language as needed
+	@echo "Formatting is intentionally tool-specific; no repository-wide formatter is configured."

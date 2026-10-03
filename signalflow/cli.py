@@ -13,7 +13,6 @@ from signalflow.compositor.image_renderer import ImageRenderer
 from signalflow.compositor.terminal_recorder import TerminalRecorder
 from signalflow.ingestion.snr import SNRScorer
 from signalflow.ingestion.walker import DirectoryWalker
-from signalflow.native import find_rust_renderer, render_code_via_rust
 
 
 def cmd_scan(args):
@@ -34,14 +33,6 @@ def cmd_scan(args):
 def cmd_render(args):
     code = Path(args.file).read_text(encoding="utf-8")
     out_path = Path(args.out)
-
-    if find_rust_renderer() is not None:
-        try:
-            out = render_code_via_rust(code, out_path)
-            print(f"Wrote code image via Rust renderer to: {out}")
-            return
-        except Exception:
-            pass
 
     out = ImageRenderer().render_code(code, lexer_name=args.lexer, out_path=out_path)
     print(f"Wrote code image to: {out}")

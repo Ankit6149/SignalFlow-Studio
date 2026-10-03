@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createCapabilitySnapshot } from "../../frontend/lib/capabilities/capabilityContract.mjs";
+import { campaignInput } from "../../frontend/tests/campaignFixtures.mjs";
 import { executeTool, TOOL_DEFINITIONS } from "../lib/tools.mjs";
 
 test("MCP exposes blocking compatibility plus trackable campaign workflow tools", () => {
@@ -313,51 +314,7 @@ test("review bundle retrieval uses the canonical hosted review GET contract", as
 });
 
 test("campaign export reuses the canonical deterministic export application", async () => {
-  const campaign = {
-    schemaVersion: 2,
-    kind: "Campaign",
-    campaignId: "campaign-export-1",
-    title: "SignalFlow export",
-    status: "draft",
-    channels: ["linkedin"],
-    drafts: {
-      linkedin: {
-        schemaVersion: 2,
-        kind: "ChannelDraft",
-        draftId: "draft-linkedin",
-        channel: "linkedin",
-        current: {
-          revisionId: "revision-current",
-          content: "Authoritative LinkedIn copy.",
-          origin: "generated",
-          createdAt: "2026-09-27T10:00:00.000Z",
-        },
-        generated: {
-          revisionId: "revision-generated",
-          content: "Authoritative LinkedIn copy.",
-          origin: "generated",
-          createdAt: "2026-09-27T10:00:00.000Z",
-        },
-        history: [],
-        edited: false,
-        approved: false,
-        qualityState: "complete",
-        generationRunId: "run-export-1",
-        updatedAt: "2026-09-27T10:00:00.000Z",
-      },
-    },
-    channelStates: { linkedin: { status: "generated", qualityStatus: "complete" } },
-    sourceSnapshot: null,
-    generationRun: { generationRunId: "run-export-1", provider: "gemini", model: "test" },
-    editorState: { revision: 1, savedRevision: 1, exportedRevision: 0 },
-    brief: {},
-    warnings: [],
-    providerUsed: "gemini",
-    modelUsed: "test",
-    createdAt: "2026-09-27T10:00:00.000Z",
-    updatedAt: "2026-09-27T10:00:00.000Z",
-    generationResult: { package: null, structuredPosts: {} },
-  };
+  const campaign = campaignInput({ title: "SignalFlow export" });
 
   const markdown = await executeTool("signalflow_export_campaign", {
     format: "markdown",
@@ -366,7 +323,7 @@ test("campaign export reuses the canonical deterministic export application", as
   assert.equal(markdown.isError, false);
   assert.equal(markdown.structuredContent.filename, "signalflow-export.md");
   assert.equal(markdown.structuredContent.mimeType, "text/markdown");
-  assert.match(markdown.content[0].text, /Authoritative LinkedIn copy/);
+  assert.match(markdown.content[0].text, /Edited LinkedIn draft — authoritative/);
 
   const json = await executeTool("signalflow_export_campaign", {
     format: "json",
@@ -374,8 +331,11 @@ test("campaign export reuses the canonical deterministic export application", as
   });
   assert.equal(json.isError, false);
   assert.equal(json.structuredContent.filename, "signalflow-export.json");
-  assert.equal(json.structuredContent.projection.campaign.campaignId, "campaign-export-1");
-  assert.match(json.content[0].text, /campaign-export-1/);
+  assert.equal(
+    json.structuredContent.projection.campaign.currentDrafts.linkedin.content,
+    "Edited LinkedIn draft — authoritative.",
+  );
+  assert.match(json.content[0].text, /Edited LinkedIn draft — authoritative/);
 });
 
 test("campaign tool refuses template generation", async () => {

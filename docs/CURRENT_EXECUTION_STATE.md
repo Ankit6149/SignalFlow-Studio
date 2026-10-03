@@ -23,8 +23,8 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current master SHA | `32b45e7cc07a0feec17bb23cc5f72ee3b2e29d3d` |
-| Current master change | #339 — hosted review retrieval + deterministic MCP export |
+| Latest functional/code checkpoint | `32b45e7cc07a0feec17bb23cc5f72ee3b2e29d3d` — #339 hosted review retrieval + deterministic MCP export |
+| Execution-state note | This documentation revision follows that code checkpoint; use `master` itself for the exact current ref SHA |
 | Production SHA | `8a3cb236dd1b228652643e9f4d5fa8baf60cf251` |
 | Production deployment | `dpl_jA3K3KXbbCf66n8mEESLVK9xybPs` — READY |
 | Production change | #337 — hosted strategy planning through MCP |

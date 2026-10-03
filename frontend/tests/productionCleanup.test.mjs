@@ -55,7 +55,6 @@ test("unsupported Playwright capture is absent from the production graph", async
   const packageManifest = JSON.parse(await readFile(path.join(frontendRoot, "package.json"), "utf8"));
   const packageLock = JSON.parse(await readFile(path.join(frontendRoot, "package-lock.json"), "utf8"));
   const page = await readFile(path.join(frontendRoot, "app/page.js"), "utf8");
-  const legacyFlow = await readFile(path.join(frontendRoot, "components/ContentPackageCreationFlow.js"), "utf8");
   const activeFiles = [
     ...await sourceFiles(path.join(frontendRoot, "app")),
     ...await sourceFiles(path.join(frontendRoot, "components")),
@@ -73,8 +72,39 @@ test("unsupported Playwright capture is absent from the production graph", async
   assert.doesNotMatch(activeSource, /captureAppScreenshot|\/api\/capture\/app|from\s+["']playwright["']/);
   assert.doesNotMatch(activeSource, /Remote Playwright Screenshot|Screenshot capture skipped/i);
   assert.match(page, /async function handleFiles\(event\)/);
-  assert.match(legacyFlow, /useRecorder/);
-  assert.match(legacyFlow, /fetch\("\/api\/launch_kit"/);
+});
+
+
+test("retired pre-Content-OS UI surfaces stay absent from the production tree", async () => {
+  const retiredPaths = [
+    "components/ContentPackageCreationFlow.js",
+    "components/ProjectManager.js",
+    "components/SettingsManager.js",
+    "components/ContentLibrary.js",
+    "components/Sidebar.js",
+    "components/Dashboard.js",
+    "hooks/useRecorder.js",
+  ];
+
+  for (const relative of retiredPaths) {
+    assert.equal(
+      await exists(path.join(frontendRoot, relative)),
+      false,
+      `retired legacy UI surface returned: ${relative}`,
+    );
+  }
+
+  const activeFiles = [
+    ...await sourceFiles(path.join(frontendRoot, "app")),
+    ...await sourceFiles(path.join(frontendRoot, "components")),
+    ...await sourceFiles(path.join(frontendRoot, "lib")),
+  ];
+  const activeSource = (await Promise.all(activeFiles.map((file) => readFile(file, "utf8")))).join("\n");
+
+  assert.doesNotMatch(
+    activeSource,
+    /ContentPackageCreationFlow|ProjectManager|SettingsManager|ContentLibrary/,
+  );
 });
 
 

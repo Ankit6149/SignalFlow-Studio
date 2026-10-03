@@ -99,10 +99,14 @@ test("launch kit keeps JSON compatibility and streams progress only when request
 
 test("Studio consumes live progress with JSON fallback and accessible status semantics", async () => {
   const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
-  assert.match(page, /Accept: "application\/x-ndjson"/);
-  assert.match(page, /readGenerationResponse\(/);
-  assert.match(page, /response\.body\.getReader\(\)/);
-  assert.match(page, /event\.type === "progress"/);
+  const client = await readFile(new URL("../lib/studio/studioApiClient.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(page, /fetch\(/);
+  assert.match(page, /generateStudioCampaign\(/);
+  assert.match(page, /onProgress: setGenerationProgress/);
+  assert.match(client, /Accept: "application\/x-ndjson"/);
+  assert.match(client, /readGenerationResponse\(/);
+  assert.match(client, /response\.body\.getReader\(\)/);
+  assert.match(client, /event\.type === "progress"/);
   assert.match(page, /setGenerationProgress/);
   assert.match(page, /className="generation-progress-list"/);
   assert.match(page, /aria-label="Destination generation progress"/);

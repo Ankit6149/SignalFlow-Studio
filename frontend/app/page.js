@@ -44,6 +44,17 @@ import {
 } from "../lib/domain/sourceArtifacts.mjs";
 import { parseCapabilitySnapshot } from "../lib/capabilities/capabilityContract.mjs";
 import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
+import {
+  disconnectSocial as disconnectSocialAccount,
+  generateCampaign as generateStudioCampaign,
+  getCapabilities as getStudioCapabilities,
+  getOwnerSession as getOwnerApiSession,
+  getSocialStatus as getSocialConnectionStatus,
+  lockOwnerSession as lockOwnerApiSession,
+  publishPost as publishStudioPost,
+  testProviderRoute as testStudioProviderRoute,
+  unlockOwnerSession as unlockOwnerApiSession,
+} from "../lib/studio/studioApiClient.mjs";
 
 const LIBRARY_KEY = "signalflow_recovery_library";
 const OFFICIAL_CONNECTORS = new Set(["linkedin", "x", "reddit"]);
@@ -191,60 +202,6 @@ const PROVIDERS = [
   { id: "ollama", label: "Ollama", hint: "Use a reachable Ollama endpoint in local or trusted self-hosted deployments." },
   { id: "lmstudio", label: "LM Studio", hint: "Use a reachable LM Studio endpoint in local or trusted self-hosted deployments." },
 ];
-
-function safeJsonParse(value, fallback) {
-  try {
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-async function readJsonResponse(response, fallbackMessage) {
-  const text = await response.text();
-  const parsed = safeJsonParse(text, null);
-  if (parsed && typeof parsed === "object") return parsed;
-  throw new Error(response.ok ? fallbackMessage : `${fallbackMessage} (HTTP ${response.status})`);
-}
-
-async function readGenerationResponse(response, onProgress, fallbackMessage) {
-  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-  if (!contentType.includes("application/x-ndjson") || !response.body) {
-    return readJsonResponse(response, fallbackMessage);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let finalData = null;
-
-  const processLine = (line) => {
-    if (!line.trim()) return;
-    const event = safeJsonParse(line, null);
-    if (!event || typeof event !== "object") throw new Error(fallbackMessage);
-    if (event.type === "progress" && event.progress) {
-      onProgress?.(event.progress);
-      return;
-    }
-    if ((event.type === "result" || event.type === "error") && event.data) {
-      finalData = event.data;
-    }
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) processLine(line);
-  }
-  buffer += decoder.decode();
-  if (buffer.trim()) processLine(buffer);
-
-  if (finalData && typeof finalData === "object") return finalData;
-  throw new Error(fallbackMessage);
-}
 
 function generationProgressLabel(status) {
   const labels = {
@@ -677,8 +634,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   async function refreshProviderStatus() {
     setProviderStatusLoading(true);
     try {
-      const response = await fetch("/api/capabilities", { cache: "no-store" });
-      const raw = await readJsonResponse(response, "SignalFlow could not read deployment capabilities.");
+      const { response, data: raw } = await getStudioCapabilities();
       if (!response.ok) throw new Error(raw.error || "SignalFlow could not read deployment capabilities.");
       const data = parseCapabilitySnapshot(raw);
       const statuses = data.capabilities.models.providers;
@@ -721,17 +677,12 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     }
     setProviderTest({ status: "testing", message: "Testing model route…" });
     try {
-      const response = await fetch("/api/provider_test", {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          provider: form.provider,
-          modelName: form.model.trim(),
-          baseUrl: form.baseUrl.trim(),
-          temporaryApiKey: form.apiKey.trim(),
-        }),
+      const { response, data } = await testStudioProviderRoute({
+        provider: form.provider,
+        modelName: form.model.trim(),
+        baseUrl: form.baseUrl.trim(),
+        temporaryApiKey: form.apiKey.trim(),
       });
-      const data = await readJsonResponse(response, "SignalFlow returned an unreadable provider test response.");
       if (!response.ok || !data.ok) throw new Error(data.error || "Model route test failed.");
       setProviderTest({ status: "success", message: data.message || "Model route connected successfully." });
       void refreshProviderStatus();
@@ -742,16 +693,11 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
   async function syncOwnerSession() {
     try {
-      const response = await fetch("/api/session");
-      const data = await readJsonResponse(response, "SignalFlow could not verify the owner session.");
+      const { data } = await getOwnerApiSession();
       setAccessToken(data.authenticated ? "cookie-session" : "");
     } catch {
       setAccessToken("");
     }
-  }
-
-  function authHeaders(extra = {}) {
-    return { ...extra };
   }
 
   function setStage(nextStage) {
@@ -951,47 +897,36 @@ ${extractedText}`);
       files,
       documentText,
     });
-    const response = await fetch("/api/launch_kit", {
-      method: "POST",
-      headers: authHeaders({
-        "Content-Type": "application/json",
-        Accept: "application/x-ndjson",
-      }),
+    const { response, data } = await generateStudioCampaign({
+      project_name: form.projectName.trim() || "Untitled campaign",
+      notes: form.notes.trim(),
+      audience: form.audience.trim(),
+      docs_url: form.links.trim(),
+      repo: form.repo.trim(),
+      channels: requestedChannels,
+      output_types: ["posts", "media_plan", "markdown", "json"],
+      generator: form.provider,
+      providerApiKey: form.apiKey.trim(),
+      providerModelName: form.model.trim(),
+      providerBaseUrl: form.baseUrl.trim(),
+      document_text: documentText,
+      assets: files.map((file) => file.asset).filter(Boolean),
+      source_artifacts: files.map((file) => file.sourceArtifact).filter(Boolean),
+      media_items: files.map((file) => projectGenerationMediaItem(
+        file.sourceArtifact || {
+          ...file,
+          assetId: file.asset?.assetId || file.assetId,
+        },
+        {
+          workspaceId: file.sourceArtifact?.workspaceId || file.asset?.workspaceId || "browser-local",
+          campaignId: file.sourceArtifact?.campaignId || file.asset?.campaignId || currentCampaignId || null,
+          now: file.sourceArtifact?.createdAt || file.asset?.createdAt || file.createdAt || new Date(0).toISOString(),
+        },
+      )),
+    }, {
       signal,
-      body: JSON.stringify({
-        project_name: form.projectName.trim() || "Untitled campaign",
-        notes: form.notes.trim(),
-        audience: form.audience.trim(),
-        docs_url: form.links.trim(),
-        repo: form.repo.trim(),
-        channels: requestedChannels,
-        output_types: ["posts", "media_plan", "markdown", "json"],
-        generator: form.provider,
-        providerApiKey: form.apiKey.trim(),
-        providerModelName: form.model.trim(),
-        providerBaseUrl: form.baseUrl.trim(),
-        document_text: documentText,
-        assets: files.map((file) => file.asset).filter(Boolean),
-        source_artifacts: files.map((file) => file.sourceArtifact).filter(Boolean),
-        media_items: files.map((file) => projectGenerationMediaItem(
-          file.sourceArtifact || {
-            ...file,
-            assetId: file.asset?.assetId || file.assetId,
-          },
-          {
-            workspaceId: file.sourceArtifact?.workspaceId || file.asset?.workspaceId || "browser-local",
-            campaignId: file.sourceArtifact?.campaignId || file.asset?.campaignId || currentCampaignId || null,
-            now: file.sourceArtifact?.createdAt || file.asset?.createdAt || file.createdAt || new Date(0).toISOString(),
-          },
-        )),
-      }),
+      onProgress: setGenerationProgress,
     });
-
-    const data = await readGenerationResponse(
-      response,
-      setGenerationProgress,
-      "SignalFlow returned an unreadable generation response.",
-    );
     if (data.code === "strategy_quality_blocked" && data.strategy_review) {
       return { strategyBlocked: true, data };
     }
@@ -1476,17 +1411,12 @@ async function exportZip() {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/publish", {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          platform: activeChannel,
-          content: currentPost,
-          projectName: form.projectName,
-          options,
-        }),
+      const { data } = await publishStudioPost({
+        platform: activeChannel,
+        content: currentPost,
+        projectName: form.projectName,
+        options,
       });
-      const data = await readJsonResponse(response, "SignalFlow returned an unreadable publishing response.");
       if (!data.ok) throw new Error(data.error || "The platform did not confirm publication.");
       setMessage({
         type: "success",
@@ -1503,9 +1433,8 @@ async function exportZip() {
   async function refreshConnections() {
     setConnectionsLoading(true);
     try {
-      const response = await fetch("/api/social/status", { headers: authHeaders() });
+      const { response, data } = await getSocialConnectionStatus();
       if (!response.ok) throw new Error("Owner access is required to inspect official connectors.");
-      const data = await readJsonResponse(response, "SignalFlow returned an unreadable connector response.");
       setConnections(data.platforms || {});
     } catch {
       setConnections({});
@@ -1530,12 +1459,7 @@ async function exportZip() {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/social/disconnect", {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ platform }),
-      });
-      const data = await readJsonResponse(response, "SignalFlow returned an unreadable disconnect response.");
+      const { response, data } = await disconnectSocialAccount(platform);
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "Could not disconnect this account.");
       }
@@ -1553,12 +1477,7 @@ async function exportZip() {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_key: ownerKey.trim() }),
-      });
-      const data = await readJsonResponse(response, "SignalFlow returned an unreadable session response.");
+      const { response, data } = await unlockOwnerApiSession(ownerKey);
       if (!response.ok) throw new Error(data.error || "The owner key was not accepted.");
       setAccessToken(data.authenticated ? "cookie-session" : "");
           setOwnerKey("");
@@ -1574,7 +1493,7 @@ async function exportZip() {
   }
 
   async function lockOwnerSession() {
-    await fetch("/api/session", { method: "DELETE" }).catch(() => null);
+    await lockOwnerApiSession().catch(() => null);
     setAccessToken("");
     setConnections({});
     setMessage({ type: "success", text: "Owner session closed." });

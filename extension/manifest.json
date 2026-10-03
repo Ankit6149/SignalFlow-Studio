@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SignalFlow Studio Clip Helper",
   "version": "1.0",
-  "description": "Quickly record screen walkthroughs or capture mockups and send details to SignalFlow Studio.",
+  "description": "Experimental SignalFlow capability-handshake scaffold. Durable context ingestion, screenshots, and recording are not yet available.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -16,8 +16,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ]
     }
   ]
 }

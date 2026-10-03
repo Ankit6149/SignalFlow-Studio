@@ -1,19 +1,54 @@
-# SignalFlow Studio Extension Scaffold
+# SignalFlow Studio Browser Extension — Experimental Scaffold
 
-This folder contains a minimal Chrome Extension scaffold that can be loaded into your browser to capture tab urls and walkthrough notes, passing them directly to the SignalFlow Studio web workspace.
+> **Status: experimental / not production capture.**
+>
+> This directory is a developer-only Chromium extension scaffold for capability discovery and future deliberate context delivery. It is not a released capture client and must not be described as durable ingestion, screenshot capture, recording, or offline upload.
 
-## How to Install (Local Developer Mode)
+## What works today
 
-1. Open **Google Chrome** (or any Chromium browser).
-2. Navigate to `chrome://extensions/` by typing it into your URL bar.
-3. Toggle the **Developer mode** switch in the top-right corner of the page.
-4. Click on the **Load unpacked** button in the top-left.
-5. Select this `extension` directory from your local filesystem.
-6. The extension is now loaded! You can pin it from your extensions toolbar.
+The extension can:
 
-## How It Works
+- store a SignalFlow Studio URL;
+- find an already-open compatible Studio tab;
+- request the versioned SignalFlow capability snapshot through the page bridge;
+- show truthful ready/blocked/error states;
+- read the current active-tab URL for the owner's note.
 
-1. Keep SignalFlow Studio running at `http://localhost:3000`.
-2. Browse to any website or documentation tab.
-3. Open the extension, type a few notes about what to highlight, and click **Send**.
-4. The content script bridges the note back to the active SignalFlow tab and populates a new generation draft context automatically.
+## What deliberately does not work yet
+
+The extension does **not** currently provide:
+
+- acknowledged durable context ingestion;
+- screenshot capture;
+- region/full-page capture;
+- tab/window/screen recording;
+- capture review, annotation, or redaction;
+- offline retry/upload queues;
+- browser-store release packaging or acceptance proof.
+
+The current page bridge returns `acknowledged: false` for context dispatch. The background service therefore treats delivery as failed, and the Send action remains blocked unless the runtime capability contract explicitly declares extension delivery available.
+
+Dispatching a DOM/tab message is not considered durable delivery.
+
+## Local development
+
+1. Run SignalFlow Studio locally.
+2. Open a Chromium browser and visit `chrome://extensions/`.
+3. Enable Developer mode.
+4. Choose **Load unpacked** and select this `extension` directory.
+5. Open SignalFlow Studio in a browser tab.
+6. Open the extension and point it at that Studio URL.
+7. Use the capability status only to verify the handshake.
+
+Do not use this scaffold as evidence that extension ingestion or capture is shipped.
+
+## Product ownership
+
+Capability truth is owned by:
+
+- `frontend/app/api/capabilities/route.js`;
+- `frontend/lib/capabilities/capabilityContract.mjs`;
+- `docs/CAPABILITY_MATRIX.md`;
+- the extension issues under #78–#85.
+
+Any future extension implementation must preserve least-privilege permissions, explicit user initiation, privacy/redaction review where relevant, durable acknowledgement, retry/idempotency, and version compatibility.

@@ -1,6 +1,6 @@
 export const metadata = {
   title: "Privacy",
-  description: "How SignalFlow Studio handles campaign data, model keys, uploaded text, and social connector sessions.",
+  description: "How SignalFlow Studio handles browser-local campaigns, hosted owner records, model providers, source evidence, assets, and connector sessions.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -28,9 +28,10 @@ export default function PrivacyPage() {
         <section>
           <h2>Plain-language summary</h2>
           <p>
-            SignalFlow Studio is designed around reviewable, browser-local campaign work. Saved campaigns use a
-            versioned local record in the browser you are using. The hosted application processes the information
-            needed to generate a campaign, but it does not silently publish content or sell personal data.
+            SignalFlow Studio is designed around reviewable, exact-revision work. Manual Campaign saves remain
+            browser-local, while configured owner workflows may also use durable hosted records for connected
+            sources, Signals, ProjectContext, Opportunities, planning, review, job state, and private Assets. These
+            scopes are distinct, and SignalFlow does not silently publish content or sell personal data.
           </p>
         </section>
 
@@ -86,12 +87,15 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>Current cloud and extension boundaries</h2>
+          <h2>Current hosted, job, and extension boundaries</h2>
           <p>
-            SignalFlow does not currently provide a cloud campaign database, cross-device synchronization,
-            collaboration, durable background jobs, or hosted asset storage. The browser extension can verify a
-            compatible Studio capability document, but acknowledged capture ingestion, screenshots, and recordings
-            are not implemented. A browser message is not treated as durable delivery.
+            Configured owner-only hosted paths can persist connected-source, content-intelligence, planning, review,
+            opportunity-job, and private Asset records. This does not mean SignalFlow provides general cloud
+            Campaign autosave, cross-device Campaign synchronization, multi-user collaboration, or an always-on
+            worker for every job type. Runtime capability discovery determines the exact session/deployment state.
+            The browser extension can verify a compatible Studio capability document, but acknowledged extension
+            capture delivery is not yet a completed product capability. A browser message is not treated as durable
+            delivery.
           </p>
         </section>
 
@@ -107,11 +111,11 @@ export default function PrivacyPage() {
         <section>
           <h2>Deletion and control</h2>
           <ul>
-            <li>Delete individual campaigns from the local library.</li>
-            <li>Clear the complete browser-local library from Settings.</li>
-            <li>Disconnect an official social connector from the Connections page.</li>
-            <li>Close the owner session from Settings.</li>
-            <li>Clear site data in your browser to remove browser-held SignalFlow data.</li>
+            <li>Delete individual browser-local campaigns where the current Library exposes that control.</li>
+            <li>Clear browser-held SignalFlow data from the relevant local controls or browser site data.</li>
+            <li>Disconnect or revoke configured source/destination connections through the available connection controls.</li>
+            <li>Close the owner session from Settings where that deployment exposes the control.</li>
+            <li>Use the repository issue/security channels for correction or deletion questions about hosted records without posting credentials or sensitive content publicly.</li>
           </ul>
         </section>
 

@@ -1,44 +1,39 @@
 # SignalFlow Studio
 
-> SignalFlow Studio is an open-source, review-first campaign workspace that turns product notes, public links, GitHub repository context, and supported text/code files into editable drafts for twelve publishing destinations.
+> SignalFlow Studio is an open-source, approval-first content operating system for turning meaningful work, manual thoughts, and connected-source evidence into reviewable communication while keeping final judgment with the user.
 
-## Current product
+## Current product truth
 
-Users add evidence, select destinations, choose a real model provider route, generate, review one authoritative current draft per channel, and then save locally, export, copy/open a destination, or use a genuinely configured official connector.
+SignalFlow has an accepted browser-local owner Golden Path 1 and an active, not-yet-accepted Golden Path 2 around real GitHub work → ContentSignal → ProjectContext/Opportunity → planning → exact LinkedIn/X review → automatic evidence where justified.
 
-## Implemented capabilities
+The older manual campaign builder remains available as a compatibility/Create foundation, but it is not the permanent product architecture.
 
-- Drafts for LinkedIn, X, Instagram, Facebook, Threads, Reddit, Hacker News, YouTube, TikTok, newsletters, blogs, and release notes.
-- Context extraction from public links, public GitHub repositories, and supported browser-readable files.
-- Gemini, OpenAI, Claude, OpenRouter, Groq, custom OpenAI-compatible, Ollama, and LM Studio adapters subject to deployment/session capability.
-- Versioned browser-local campaign saving and legacy migration.
-- Canonical Asset, SourceArtifact, and AssetProcessing records across browser upload, campaign freshness, API, MCP, persistence, and portable transfer.
-- Explicit `.signalflow.json` archive preparation, SHA-256 validation, browser import preview, Skip/Copy/Replace conflicts, transfer reports, resume, and rollback.
-- Deterministic Markdown/JSON export from one authoritative current draft per channel.
-- Official connector code paths for LinkedIn, X, and Reddit with explicit review and destination-API-confirmed success.
-- Manual copy/export/open workflows for other destinations.
-- A versioned hosted/local/self-hosted capability endpoint at `/api/capabilities`.
-- MCP capability/provider/generation tools through the supported `mcp/` package.
+## Implemented foundations
+
+- Manual ContentSignal intake and lifecycle.
+- Browser-local owner opportunity/angle, identity/Voice, NarrativeStrategy, ContentPiece, LinkedIn/X revision, evidence/authenticity review, exact approve/reject, StyleMemory and NarrativeMemory foundations in the accepted owner path.
+- Owner-scoped hosted GitHub SourceConnection/event ingestion and Postgres-backed ContentSignal, ProjectContext, ContentOpportunity, planning/revision, review, opportunity-job, and private Asset persistence paths where configured.
+- Versioned capability discovery at `/api/capabilities`.
+- Real model-provider adapters subject to deployment/session policy.
+- Deterministic Markdown/JSON export.
+- Portable browser archive/import/recovery for supported Campaign state.
+- MCP tools for capability/provider checks, validation, hosted strategy, destination generate/retry/edit, review retrieval, trackable campaign work, cancellation, and deterministic export.
+- Official connector code paths for LinkedIn, X, and Reddit where genuinely configured and verified.
 
 ## Important boundaries
 
-- Campaign generation requires a real model route; retired template, offline, prompt-only, and substitute fallback output are rejected.
-- Server-configured providers and connector administration may require an authenticated owner session.
-- Remote URLs remain unverified/reference-only until the hardened fetch boundary is implemented; complete source diagnostics, remote revalidation, processing adapters, and retention/deletion jobs are not implemented.
-- Portable transfer is explicit and browser-local today; a production hosted destination and silent synchronization are not implemented.
-- Archive creation excludes provider/OAuth/session secrets, signed/private references, private endpoints, and local filesystem paths with a safe exclusion manifest.
-- Saved campaigns are currently browser-local; cloud database, cross-device sync, collaboration, durable jobs, and billing quotas are not implemented.
-- Image/video uploads are metadata references in the active route, not automatic visual understanding.
-- The browser extension can perform a capability handshake, but acknowledged ingestion, screenshots, recordings, and upload queues are not implemented.
-- Direct publishing is not available for every destination and is reported successful only after the destination API confirms it.
-- Generated drafts require factual, brand, accessibility, legal, and compliance review before use.
+- General Campaign cloud autosave/workspaces/collaboration are not implied by the hosted Content OS record stores.
+- Database-backed durable job state does not by itself mean an always-on background worker exists.
+- GP2 is not complete until the real connected-source positive and noise-control acceptance evidence closes #167.
+- Automatic screenshot/media production has bounded implementation foundations but still requires live acceptance for the active GP2 journey.
+- Broad carousel/video/image-generation production, collaboration, multi-tenant SaaS breadth, and durable GP3 publication remain later/incomplete capabilities.
+- Direct publishing success is claimed only after the destination API confirms it.
+- Planned architecture in `docs/` is not a shipped-capability claim.
 
 ## Canonical links
 
 - Product: https://signal-flow-studio.vercel.app/
 - Full AI context: https://signal-flow-studio.vercel.app/llms-full.txt
-- Privacy: https://signal-flow-studio.vercel.app/privacy
-- Terms: https://signal-flow-studio.vercel.app/terms
-- Structured data: https://signal-flow-studio.vercel.app/schema.jsonld
-- Sitemap: https://signal-flow-studio.vercel.app/sitemap.xml
+- Capability truth: https://github.com/Ankit6149/SignalFlow-Studio/blob/master/docs/CAPABILITY_MATRIX.md
+- Current execution: https://github.com/Ankit6149/SignalFlow-Studio/blob/master/docs/CURRENT_EXECUTION_STATE.md
 - Source code: https://github.com/Ankit6149/SignalFlow-Studio

@@ -1,83 +1,112 @@
-# Discoverability Checklist
+# Discoverability and Public Product Truth
 
-Use this page when preparing the GitHub repository and project site for search, AI answer engines, and people browsing GitHub.
+Use this document when aligning the GitHub repository, public site, crawler metadata, release notes, and AI-answer-engine context.
 
-## GitHub About Section
+Public positioning must follow the same capability truth as the product. Do not optimize discoverability by reviving the retired “autoposting/post generator” description.
 
-Recommended description:
+## Canonical positioning
 
-> Local-first autoposting workspace that turns one description, data, screenshots, and screen recordings into formatted social media posting packages.
+Recommended GitHub description:
+
+> Approval-first content operating system that turns meaningful work and connected signals into evidence-backed, reviewable communication.
 
 Recommended website:
 
-> Add your deployed app URL after deployment.
+> https://signal-flow-studio.vercel.app/
 
 Recommended topics:
 
 ```text
 signalflow-studio
-signalflow
-ai
-social-media
-social-media-automation
-autoposting
-content-automation
-post-generator
-screen-recording
-screenshot
-gif-generator
+content-operating-system
+content-operations
+content-signals
+approval-first
+narrative-planning
 creator-tools
-developer-marketing
-devrel
-local-first
+developer-tools
+github-integration
+bring-your-own-ai
 nextjs
 open-source
+local-first
 ```
 
-## GitHub Search Keywords
+Avoid using obsolete primary topics such as `autoposting`, `post-generator`, `gif-generator`, or `fastapi` unless the repository once again intentionally ships and centers those products.
 
-Use these phrases naturally in README, release notes, issues, and examples:
+## Search and answer-engine language
 
-- AI social media automation
-- autoposting tool
-- social media post generator
-- screenshot to social post
-- screen recording to GIF
-- local-first content automation
-- formatted posting package
-- developer marketing automation
-- launch post generator
-- social media workflow automation
+Use these phrases naturally when they accurately describe the current product or explicitly labelled direction:
 
-## Project Site Files
+- content operating system
+- approval-first content workflow
+- content signals from product work
+- GitHub work to content opportunity
+- evidence-backed content planning
+- exact revision review and approval
+- narrative planning for LinkedIn and X
+- bring-your-own AI content workflow
+- review before publishing
+- developer content operations
 
-Keep these files available at the site root after deployment:
+Do not market planned capabilities as already available. In particular, broad automatic media production, durable scheduled publication, collaboration, and fully accepted GP2/GP3 journeys require their own acceptance evidence.
 
-- `/robots.txt`
-- `/llms.txt`
-- `/llms-full.txt` if the hosting setup supports it
-- `/schema.jsonld`
+## Current public truth
 
-The repository includes root copies for GitHub readers and `frontend/public/` copies for the Next.js app. The app also injects the JSON-LD schema into the page layout so crawlers can read it without separately fetching `/schema.jsonld`.
+The public narrative may state that SignalFlow:
 
-## README Structure
+- captures manual ContentSignals;
+- has an accepted browser-local owner Golden Path 1;
+- has owner-scoped hosted GitHub/source, ProjectContext, Opportunity, planning, review, opportunity-job and private-Asset persistence paths where configured;
+- supports exact revision review workflows for LinkedIn/X;
+- exposes capability discovery and an MCP client surface;
+- retains the legacy/manual Studio flow as a compatibility/Create foundation.
 
-For better search and answer-engine understanding, keep the README structure close to:
+It should state that GP2 is still active until the real GitHub-event → opportunity → automatic evidence → exact owner-review acceptance ledger closes.
 
-1. One-line product promise.
-2. Who it is for.
-3. What it generates.
-4. Screenshots or GIF demo.
-5. Quick start.
-6. Supported channels.
-7. Safety and official publishing policy.
-8. Roadmap and good first issues.
+## Public metadata files
 
-## Star-Friendly Repository Tasks
+The deployed Next.js copies are under `frontend/public/`.
 
-- Add a short demo GIF to the top of the README.
-- Add screenshots of the autopilot flow.
-- Pin 3-5 good first issues.
-- Add GitHub topics from the list above.
-- Add a concise repository description.
-- Publish a first release with a clear title and demo assets.
+Repository-root copies exist for GitHub readers. They must not drift semantically from the deployed copies:
+
+- `robots.txt`
+- `llms.txt`
+- `llms-full.txt`
+- `schema.jsonld`
+
+When one copy changes, update or mechanically verify its paired copy in the same PR.
+
+## README structure
+
+Keep the root README oriented around:
+
+1. product promise and problem;
+2. current capability truth versus product direction;
+3. canonical lifecycle;
+4. approval/identity/evidence principles;
+5. setup and deployment modes;
+6. verified current source/model/MCP/connector boundaries;
+7. current execution/roadmap links.
+
+Avoid presenting twelve-channel generation breadth as the product’s primary identity.
+
+## Release/publication discipline
+
+Before publishing a release or changing repository metadata:
+
+- compare claims with `docs/CAPABILITY_MATRIX.md`;
+- check `docs/CURRENT_EXECUTION_STATE.md`;
+- use exact deployed production SHA when making production claims;
+- distinguish configured/code-present from credential-backed accepted;
+- keep future architecture labelled as direction/in development.
+
+## Repository presentation checklist
+
+- concise GitHub description aligned with Content OS positioning;
+- current website URL;
+- current topics;
+- product screenshot/demo only when it represents the current interface;
+- pinned active issues rather than old planning generations;
+- release notes linked to exact merged SHA and acceptance state;
+- Sponsor button remains optional and separate from capability/access claims.

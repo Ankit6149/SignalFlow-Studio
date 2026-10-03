@@ -3,75 +3,117 @@
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://github.com/Ankit6149/SignalFlow-Studio#organization",
+      "@id": "https://signal-flow-studio.vercel.app/#organization",
       "name": "SignalFlow Studio",
-      "url": "https://github.com/Ankit6149/SignalFlow-Studio"
+      "url": "https://signal-flow-studio.vercel.app",
+      "logo": "https://signal-flow-studio.vercel.app/icon.svg",
+      "sameAs": [
+        "https://github.com/Ankit6149/SignalFlow-Studio"
+      ]
     },
     {
-      "@type": ["SoftwareApplication", "WebApplication"],
-      "@id": "https://github.com/Ankit6149/SignalFlow-Studio#software",
+      "@type": "WebSite",
+      "@id": "https://signal-flow-studio.vercel.app/#website",
+      "url": "https://signal-flow-studio.vercel.app",
       "name": "SignalFlow Studio",
+      "alternateName": "SignalFlow",
+      "description": "An approval-first content operating system built around Signals, narrative judgment, evidence, exact revision approval, and reusable communication context.",
+      "publisher": {
+        "@id": "https://signal-flow-studio.vercel.app/#organization"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": [
+        "SoftwareApplication",
+        "WebApplication"
+      ],
+      "@id": "https://signal-flow-studio.vercel.app/#software",
+      "name": "SignalFlow Studio",
+      "alternateName": "SignalFlow",
       "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "AI social media automation",
+      "applicationSubCategory": "Content operating system and approval-first communication workflow",
       "operatingSystem": "Web",
-      "url": "https://github.com/Ankit6149/SignalFlow-Studio",
+      "browserRequirements": "Requires a modern browser with JavaScript enabled.",
+      "url": "https://signal-flow-studio.vercel.app",
       "codeRepository": "https://github.com/Ankit6149/SignalFlow-Studio",
+      "downloadUrl": "https://github.com/Ankit6149/SignalFlow-Studio",
       "isAccessibleForFree": true,
       "license": "https://github.com/Ankit6149/SignalFlow-Studio/blob/master/LICENSE",
       "creator": {
-        "@id": "https://github.com/Ankit6149/SignalFlow-Studio#organization"
+        "@id": "https://signal-flow-studio.vercel.app/#organization"
       },
-      "description": "SignalFlow Studio is a local-first AI social media automation workspace that turns one description, data, screenshots, and screen recordings into formatted posting packages for selected social media accounts.",
+      "description": "SignalFlow turns manual thoughts and authorized work evidence into reviewable content opportunities, narrative plans, and exact destination revisions. Golden Path 1 is accepted for the owner workflow; GitHub-connected Golden Path 2 remains an active end-to-end acceptance gate.",
       "keywords": [
-        "AI social media automation",
-        "autoposting",
-        "social media post generator",
-        "screen recording to social post",
-        "screenshot to social post",
-        "formatted posting package",
-        "creator tools",
-        "developer marketing",
-        "local-first"
+        "content operating system",
+        "content operations",
+        "approval-first publishing",
+        "content signals",
+        "GitHub content workflow",
+        "narrative planning",
+        "exact revision approval",
+        "bring your own AI model"
       ],
       "featureList": [
-        "Generate formatted posts for selected social media accounts",
-        "Create visual media plans for screenshots, screen recordings, GIFs, and cards",
-        "Capture screenshots and screen recordings in the web app",
-        "Generate Markdown and JSON posting packages",
-        "Prepare reviewable publishing handoff through manual exports, webhooks, or official APIs"
+        "Capture manual ContentSignals without requiring an AI call",
+        "Evaluate explainable ContentOpportunities and owner-selected narrative directions",
+        "Maintain versioned Voice, identity boundaries, StyleMemory, and internal NarrativeMemory in the owner path",
+        "Persist configured owner-scoped connected-source and content-intelligence records through hosted Postgres adapters",
+        "Plan NarrativeStrategy, ContentPiece, and destination revisions through canonical application services",
+        "Review LinkedIn and X through immutable revisions with evidence and authenticity checks",
+        "Approve one exact visible revision and invalidate approval after later edits or regeneration",
+        "Expose canonical SignalFlow workflows through MCP without duplicating product state",
+        "Keep silence and deliberate destination omission as valid outcomes"
       ],
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/OnlineOnly"
       }
     },
     {
       "@type": "FAQPage",
-      "@id": "https://github.com/Ankit6149/SignalFlow-Studio#faq",
+      "@id": "https://signal-flow-studio.vercel.app/#faq",
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What is SignalFlow Studio?",
+          "name": "What is SignalFlow?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "SignalFlow Studio is an open-source autoposting workspace that turns one description, data, screenshots, and screen recordings into formatted posting packages for selected social media accounts."
+            "text": "SignalFlow is an approval-first content operating system designed to reduce the operational work between meaningful work and audience communication while keeping judgment, explicit boundaries, and exact approval with the user."
           }
         },
         {
           "@type": "Question",
-          "name": "Does SignalFlow Studio need a separate backend?",
+          "name": "What can I use SignalFlow for today?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. SignalFlow Studio is designed as one hosted Next.js app with UI, generation routes, media capture, and package formatting together."
+            "text": "The accepted owner path can capture manual Signals, evaluate opportunities, plan a narrative, create exact LinkedIn and X revisions, apply evidence and authenticity checks, and support exact owner review. Hosted GitHub/source, project-context, planning, review, job-state, and private-asset foundations also exist when configured, while the complete GitHub-to-automatic-evidence Golden Path is still under acceptance."
           }
         },
         {
           "@type": "Question",
-          "name": "What can SignalFlow Studio generate?",
+          "name": "Does SignalFlow publish without approval?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It generates platform-specific post drafts, visual media plans, generated cards, model prompts, Markdown exports, JSON summaries, and safe publishing handoff metadata."
+            "text": "No. Approval is bound to an exact visible revision. A changed or regenerated revision requires judgment again, and external publication success is not claimed until a destination confirms it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where is current state stored?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Manual Campaigns remain browser-local. Configured hosted owner workflows also use durable Postgres-backed record families for connected sources, Signals, ProjectContext, Opportunities, planning, review, opportunity-job state, and private Assets. Those hosted records do not imply general cloud Campaign autosave, cross-device Campaign sync, or collaboration."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I bring my own model provider?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SignalFlow supports configured hosted, bring-your-own, local, and compatible custom model routes where the active deployment and privacy policy allow them. Runtime capability discovery determines what is available to a session."
           }
         }
       ]

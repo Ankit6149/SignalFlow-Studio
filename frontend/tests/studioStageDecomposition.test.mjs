@@ -31,10 +31,12 @@ test("Source stage is an explicit presentation boundary", () => {
 
 test("canonical source presentation policy is separate from the page controller", () => {
   const page = read("app/StudioRootController.js");
+  const sourceController = read("lib/studio/useCampaignSourceController.js");
   const presentation = read("lib/studio/sourcePresentation.mjs");
 
-  assert.match(page, /sourceFilePresentation/);
-  assert.doesNotMatch(page, /const SOURCE_STATE_PRESENTATION/);
+  assert.match(page, /useCampaignSourceController\(/);
+  assert.doesNotMatch(page, /sourceFilePresentation|const SOURCE_STATE_PRESENTATION/);
+  assert.match(sourceController, /sourceFilePresentation/);
   assert.match(presentation, /SOURCE_STATE_PRESENTATION/);
   assert.match(presentation, /sourceArtifactVersionId/);
   assert.match(presentation, /Legacy source/);

@@ -8,7 +8,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const frontend = path.resolve(here, "..");
 const read = (relativePath) => fs.readFileSync(path.join(frontend, relativePath), "utf8");
 
-const page = read("app/page.js");
+const page = read("app/StudioRootController.js");
 const landing = read("components/LandingPage.js");
 const styles = read("components/LandingPage.module.css");
 const globals = read("app/globals.css");

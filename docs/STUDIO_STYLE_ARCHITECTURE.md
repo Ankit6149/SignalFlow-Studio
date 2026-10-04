@@ -13,7 +13,7 @@ This document defines the production cascade and the ownership boundary for ever
 1. `globals.css` — reset/tokens, root viewport containment, scrollbar behavior, shared primitives, and typography.
 2. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
 3. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
-4. `responsive-studio.css` — bounded responsive Studio/content behavior still awaiting consolidation into owning layers. Header/navigation plus Library/Connections/Settings responsive authority has moved into `app-workspace.css`.
+4. `responsive-studio.css` — bounded responsive Studio/content behavior still awaiting consolidation into owning layers. Header/navigation, Library/Connections/Settings, and secondary page-frame/heading responsive authority has moved into `app-workspace.css`.
 5. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
 
 Review freshness/source-change, campaign status, draft status, and version-history appearance no longer participate in the root cascade; they are owned by `frontend/components/ReviewStage.module.css`. Canonical SourceArtifact usability/version state appearance is owned by `frontend/components/SourceStage.module.css`. Regeneration-dialog appearance is owned by `frontend/components/RegenerationDialog.module.css`.

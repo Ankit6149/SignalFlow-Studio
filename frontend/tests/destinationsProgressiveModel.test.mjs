@@ -4,6 +4,7 @@ import test from "node:test";
 
 const pageUrl = new URL("../app/page.js", import.meta.url);
 const destinationsUrl = new URL("../components/DestinationsStage.js", import.meta.url);
+const providerControllerUrl = new URL("../lib/studio/useProviderRouteController.js", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
 const decisionUrl = new URL("../app/studio-product.css", import.meta.url);
 
@@ -21,9 +22,10 @@ test("Destinations exposes Core, All, and Clear selection shortcuts", async () =
 });
 
 test("first-run credentials stay in the primary route while overrides remain Advanced", async () => {
-  const [page, destinations] = await Promise.all([
+  const [page, destinations, providerController] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(destinationsUrl, "utf8"),
+    readFile(providerControllerUrl, "utf8"),
   ]);
   const core = destinations.indexOf('<div className="model-route-core">');
   const primaryKey = destinations.indexOf('providerCredentialPlacement === "primary"');
@@ -40,7 +42,8 @@ test("first-run credentials stay in the primary route while overrides remain Adv
   assert.ok(advancedKey > details && advancedKey < detailsClose);
   assert.ok(modelOverride > details && modelOverride < detailsClose);
   assert.ok(connectionTest > detailsClose);
-  assert.match(page, /getProviderCredentialPlacement\(\{[\s\S]*provider:\s*form\.provider[\s\S]*providerStatuses\[form\.provider\]/);
+  assert.match(page, /useProviderRouteController\(\{ form, setForm \}\)/);
+  assert.match(providerController, /getProviderCredentialPlacement\(\{[\s\S]*provider:\s*form\.provider[\s\S]*providerStatuses\[form\.provider\]/);
   assert.match(destinations, /No server credential is available for this route\.[\s\S]*browser session/);
   assert.match(destinations, /<summary>[\s\S]*Advanced model settings[\s\S]*<\/summary>/);
   assert.doesNotMatch(destinations, /!\['ollama', 'lmstudio'\]\.includes\(form\.provider\) && \([\s\S]*Temporary API key/);

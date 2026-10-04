@@ -14,6 +14,7 @@ import {
   selectAcceptedFiles,
 } from "../lib/studio/clientReliability.mjs";
 import {
+  createGenerationSourceSnapshot,
   getCampaignFreshness,
   getGenerationSourceChanges,
   restoreGenerationRun,

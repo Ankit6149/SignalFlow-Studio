@@ -98,6 +98,18 @@
   justify-content: flex-end;
 }
 
+:global(.app-shell) .dialog {
+  max-width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+}
+
+@media (max-width: 37rem) {
+  :global(.app-shell) .dialog {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .backdrop,
   .dialog {

@@ -29,7 +29,7 @@ test("Studio stage composition is static CSS, not runtime accessibility injectio
 test("all three Studio stages share shell spacing primitives and avoid forced hidden split grids", () => {
   assert.match(
     decisionLayout,
-    /\.app-shell \.studio-page,[\s\S]*width:\s*min\(var\(--sf-content-max, 88rem\),/,
+    /\.app-shell main\.studio-page\[data-stage="source"\],[\s\S]*width:\s*min\(var\(--sf-content-max, 88rem\),/,
   );
   assert.match(
     decisionLayout,

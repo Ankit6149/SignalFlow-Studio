@@ -107,6 +107,10 @@ test("authoritative Studio layers remain scoped and free of retired wizard patch
   assert.doesNotMatch(workflow, /\.app-shell \.secondary-page/);
   assert.doesNotMatch(workflow, /\.app-shell \.secondary-heading/);
   assert.match(workflow, /Final Studio stage composition authority/);
+  assert.doesNotMatch(workflow, /^\.app-shell \.studio-heading\s*\{/m);
+  assert.doesNotMatch(workflow, /^\.app-shell \.studio-flow\s*\{/m);
+  assert.doesNotMatch(workflow, /^\.app-shell \.studio-page\s*,/m);
+  assert.match(workflow, /\.app-shell main\.studio-page\[data-stage="source"\]/);
   assert.match(workflow, /\.app-shell \.studio-page/);
   assert.match(workflow, /\.app-shell \.studio-page\[data-stage="source"\]/);
   assert.match(workflow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);

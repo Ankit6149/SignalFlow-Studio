@@ -1,4 +1,4 @@
-/* Studio product composition. Loaded after app-workspace.css and before studio-decision-flow.css. */
+/* Studio product composition. Loaded after app-workspace.css as the final app product layer. */
 
 /*
  * Stage isolation is structural, not decorative. Inactive panels must leave
@@ -665,17 +665,18 @@
 }
 
 /* Responsive Studio composition authority.
- * Migrated from the retired responsive-studio.css layer so stage layout and
- * its breakpoint adaptations share one owner. studio-decision-flow.css remains later.
+ * Migrated from retired responsive-studio.css so breakpoint adaptations share
+ * the same Studio product owner as final stage composition.
  */
 @media (max-width: 72rem) {
-  .app-shell .studio-page,
-  .app-shell .studio-page[data-stage="review"] {
+  .app-shell main.studio-page[data-stage="source"],
+  .app-shell main.studio-page[data-stage="destinations"],
+  .app-shell main.studio-page[data-stage="review"] {
     width: min(100% - 2rem, 76rem);
     max-width: calc(100vw - 2rem);
   }
 
-  .app-shell .studio-heading {
+  .app-shell .studio-page .studio-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 1.25rem;
@@ -684,24 +685,25 @@
 }
 
 @media (max-width: 52rem) {
-  .app-shell .studio-page,
-  .app-shell .studio-page[data-stage="review"] {
+  .app-shell main.studio-page[data-stage="source"],
+  .app-shell main.studio-page[data-stage="destinations"],
+  .app-shell main.studio-page[data-stage="review"] {
     width: min(100% - 1.5rem, 76rem);
     max-width: calc(100vw - 1.5rem);
     padding-top: 2rem;
     padding-bottom: 5rem;
   }
 
-  .app-shell .studio-heading {
+  .app-shell .studio-page .studio-heading {
     margin-bottom: 1.75rem;
   }
 
-  .app-shell .studio-heading h1 {
+  .app-shell .studio-page .studio-heading h1 {
     max-width: 100%;
     font-size: clamp(2rem, 10vw, 2.75rem);
   }
 
-  .app-shell .studio-flow {
+  .app-shell .studio-page .studio-flow {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
     border: 0.0625rem solid var(--app-line);
@@ -710,17 +712,17 @@
     background: var(--app-surface);
   }
 
-  .app-shell .studio-flow button {
+  .app-shell .studio-page .studio-flow button {
     min-height: 3.75rem;
     padding: 0.75rem 1rem;
     border-bottom: 0.0625rem solid var(--app-line);
   }
 
-  .app-shell .studio-flow button:last-child {
+  .app-shell .studio-page .studio-flow button:last-child {
     border-bottom: 0;
   }
 
-  .app-shell .studio-flow button::after {
+  .app-shell .studio-page .studio-flow button::after {
     top: 0;
     right: auto;
     bottom: 0;
@@ -730,7 +732,7 @@
     opacity: 0;
   }
 
-  .app-shell .studio-flow button.is-active::after {
+  .app-shell .studio-page .studio-flow button.is-active::after {
     right: auto;
     opacity: 1;
   }
@@ -791,18 +793,19 @@
 }
 
 @media (max-width: 37rem) {
-  .app-shell .studio-page,
-  .app-shell .studio-page[data-stage="review"] {
+  .app-shell main.studio-page[data-stage="source"],
+  .app-shell main.studio-page[data-stage="destinations"],
+  .app-shell main.studio-page[data-stage="review"] {
     width: min(100% - 1rem, 76rem);
     max-width: calc(100vw - 1rem);
     padding-top: 1.5rem;
   }
 
-  .app-shell .studio-heading h1 {
+  .app-shell .studio-page .studio-heading h1 {
     font-size: clamp(1.875rem, 11vw, 2.4rem);
   }
 
-  .app-shell .studio-heading p:last-child {
+  .app-shell .studio-page .studio-heading p:last-child {
     font-size: 0.875rem;
   }
 
@@ -827,36 +830,35 @@
  * Destinations, Review, and their breakpoint decisions share one owner.
  */
 
-.app-shell .studio-page,
-.app-shell .studio-page[data-stage="source"],
-.app-shell .studio-page[data-stage="destinations"],
-.app-shell .studio-page[data-stage="review"] {
+.app-shell main.studio-page[data-stage="source"],
+.app-shell main.studio-page[data-stage="destinations"],
+.app-shell main.studio-page[data-stage="review"] {
   width: min(var(--sf-content-max, 88rem), calc(100% - (2 * var(--sf-page-gutter-wide, clamp(1.35rem, 3.2vw, 3.5rem)))));
   max-width: none;
   padding-top: clamp(2rem, 3.5vw, 3.5rem);
   padding-bottom: clamp(4rem, 7vw, 6.5rem);
 }
 
-.app-shell .studio-heading {
+.app-shell .studio-page .studio-heading {
   margin-bottom: clamp(1.75rem, 3vw, 2.75rem);
   align-items: flex-end;
 }
 
-.app-shell .studio-heading > div {
+.app-shell .studio-page .studio-heading > div {
   max-width: 48rem;
 }
 
-.app-shell .studio-flow {
+.app-shell .studio-page .studio-flow {
   margin-bottom: clamp(1.4rem, 2.5vw, 2rem);
   gap: clamp(1rem, 2.3vw, 2.25rem);
 }
 
-.app-shell .studio-flow button {
+.app-shell .studio-page .studio-flow button {
   min-height: 4rem;
   padding-bottom: 0.85rem;
 }
 
-.app-shell .studio-flow small {
+.app-shell .studio-page .studio-flow small {
   max-width: 24rem;
 }
 
@@ -1019,7 +1021,7 @@
 }
 
 /* Review — read the exact revision first; controls support the decision instead of surrounding it. */
-.app-shell .studio-page[data-stage="review"] {
+.app-shell main.studio-page[data-stage="review"] {
   width: min(94rem, calc(100% - (2 * var(--sf-page-gutter-wide, clamp(1.35rem, 3.2vw, 3.5rem)))));
 }
 
@@ -1095,20 +1097,19 @@
 }
 
 @media (max-width: 68rem) {
-  .app-shell .studio-page,
-  .app-shell .studio-page[data-stage="source"],
-  .app-shell .studio-page[data-stage="destinations"],
-  .app-shell .studio-page[data-stage="review"] {
+  .app-shell main.studio-page[data-stage="source"],
+  .app-shell main.studio-page[data-stage="destinations"],
+  .app-shell main.studio-page[data-stage="review"] {
     width: min(100% - (2 * var(--sf-page-gutter, 1.15rem)), 72rem);
     padding-top: 1.75rem;
   }
 
-  .app-shell .studio-heading {
+  .app-shell .studio-page .studio-heading {
     align-items: flex-start;
     gap: 1.25rem;
   }
 
-  .app-shell .studio-flow {
+  .app-shell .studio-page .studio-flow {
     gap: 0.75rem;
   }
 
@@ -1122,10 +1123,9 @@
 }
 
 @media (max-width: 36rem) {
-  .app-shell .studio-page,
-  .app-shell .studio-page[data-stage="source"],
-  .app-shell .studio-page[data-stage="destinations"],
-  .app-shell .studio-page[data-stage="review"] {
+  .app-shell main.studio-page[data-stage="source"],
+  .app-shell main.studio-page[data-stage="destinations"],
+  .app-shell main.studio-page[data-stage="review"] {
     width: calc(100% - 2rem);
     padding-top: 1.25rem;
     padding-bottom: 4rem;

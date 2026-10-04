@@ -3,6 +3,7 @@
 import PlatformIcon from "./PlatformIcon";
 import { OFFICIAL_CONNECTORS, channelMeta } from "../lib/studio/studioCatalog.mjs";
 import { selectChannelStatus } from "../lib/studio/campaignStatus.mjs";
+import styles from "./ReviewStage.module.css";
 
 function formatDate(value) {
   if (!value) return "Just now";
@@ -96,7 +97,7 @@ export default function ReviewStage({
   onExportZip,
 }) {
   return (
-    <div className={`review-workspace ${isCampaignStale ? "has-stale-campaign" : ""}`}>
+    <div className={`${styles.root} review-workspace ${isCampaignStale ? "has-stale-campaign" : ""}`}>
       <div className="campaign-status-strip" role="status" aria-live="polite">
         <div className="campaign-status-strip__primary">
           <span className={`campaign-state-badge is-${campaignStatus.campaignKey}`}>
@@ -120,9 +121,9 @@ export default function ReviewStage({
       </div>
 
       {isCampaignStale && (
-        <div className="campaign-stale-banner" role="alert" aria-live="assertive">
-          <div className="campaign-stale-banner__copy">
-            <span className="campaign-stale-banner__label">Source changed</span>
+        <div className={`${styles.staleBanner} campaign-stale-banner`} role="alert" aria-live="assertive">
+          <div className={styles.staleCopy}>
+            <span className={styles.staleLabel}>Source changed</span>
             <strong>These drafts belong to an earlier campaign snapshot.</strong>
           </div>
           <p>

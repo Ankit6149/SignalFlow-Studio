@@ -1,4 +1,4 @@
-.app-shell .campaign-stale-banner {
+.staleBanner {
   padding: 1rem 1.1rem;
   border: 0.0625rem solid #e2d2ad;
   border-radius: var(--app-radius);
@@ -10,11 +10,11 @@
   color: var(--app-ink);
 }
 
-.app-shell .campaign-stale-banner__copy {
+.staleCopy {
   min-width: 0;
 }
 
-.app-shell .campaign-stale-banner__label {
+.staleLabel {
   display: block;
   margin-bottom: 0.25rem;
   color: var(--app-warning);
@@ -24,14 +24,14 @@
   text-transform: uppercase;
 }
 
-.app-shell .campaign-stale-banner strong {
+.staleBanner strong {
   display: block;
   font-size: 0.9375rem;
   line-height: 1.4;
 }
 
-.app-shell .campaign-stale-banner p,
-.app-shell .campaign-stale-banner small {
+.staleBanner p,
+.staleBanner small {
   grid-column: 1;
   margin: 0;
   color: var(--app-muted);
@@ -39,12 +39,12 @@
   line-height: 1.55;
 }
 
-.app-shell .campaign-stale-banner small {
+.staleBanner small {
   color: var(--app-warning);
   font-weight: 650;
 }
 
-.app-shell .campaign-stale-banner button {
+.staleBanner button {
   grid-column: 2;
   grid-row: 1 / span 3;
   min-height: 2.5rem;
@@ -58,35 +58,29 @@
   cursor: pointer;
 }
 
-.app-shell .campaign-stale-banner button:hover {
+.staleBanner button:hover {
   border-color: var(--app-warning);
   background: #fff;
 }
 
-.app-shell .connection-badge--stale {
-  border-color: #e2d2ad;
-  background: var(--app-warning-soft);
-  color: var(--app-warning);
-}
-
-.app-shell .export-row button:disabled,
-.app-shell .review-actions button:disabled {
+.root :global(.export-row) button:disabled,
+.root :global(.review-actions) button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
 @media (max-width: 48rem) {
-  .app-shell .campaign-stale-banner {
+  .staleBanner {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell .campaign-stale-banner p,
-  .app-shell .campaign-stale-banner small,
-  .app-shell .campaign-stale-banner button {
+  .staleBanner p,
+  .staleBanner small,
+  .staleBanner button {
     grid-column: 1;
   }
 
-  .app-shell .campaign-stale-banner button {
+  .staleBanner button {
     grid-row: auto;
     justify-self: start;
   }

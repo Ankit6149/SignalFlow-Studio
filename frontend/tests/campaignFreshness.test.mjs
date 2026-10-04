@@ -204,13 +204,15 @@ test("source change descriptions name only the changed generation inputs", () =>
 });
 
 test("Studio renders a persistent stale warning and blocks outbound actions", async () => {
-  const [page, review, layout] = await Promise.all([
+  const [page, review, reviewStyles, layout] = await Promise.all([
     readFile(new URL("../app/page.js", import.meta.url), "utf8"),
     readFile(new URL("../components/ReviewStage.js", import.meta.url), "utf8"),
+    readFile(new URL("../components/ReviewStage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.js", import.meta.url), "utf8"),
   ]);
 
-  assert.match(review, /className="campaign-stale-banner"/);
+  assert.match(review, /styles\.staleBanner/);
+  assert.match(review, /campaign-stale-banner/);
   assert.match(review, /role="alert"/);
   assert.match(page, /data-freshness=\{campaignFreshness\.status\}/);
   assert.match(review, /disabled=\{Boolean\(campaignStatus\.copyBlockedReason\) \|\| !currentPost\}/);
@@ -221,5 +223,9 @@ test("Studio renders a persistent stale warning and blocks outbound actions", as
   assert.match(page, /onExportZip=\{\(\) => void exportZip\(\)\}/);
   assert.match(review, /publishAvailability\.ready/);
   assert.match(page, /generationRun=\{generationRun\}/);
-  assert.match(layout, /campaign-freshness\.css/);
+  assert.doesNotMatch(layout, /campaign-freshness\.css/);
+  assert.match(review, /import styles from "\.\/ReviewStage\.module\.css"/);
+  assert.match(reviewStyles, /\.staleBanner \{/);
+  assert.match(reviewStyles, /\.root :global\(\.export-row\) button:disabled/);
+  assert.doesNotMatch(reviewStyles, /connection-badge--stale/);
 });

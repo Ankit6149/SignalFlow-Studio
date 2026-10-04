@@ -24,7 +24,7 @@ test("Landing and Create have explicit route owners", async () => {
   assert.match(controller, /export default function StudioRootController\(\)/);
   assert.match(controller, /<WorkspaceShell[\s\S]*activeItem="create"/);
   assert.match(controller, /useCampaignEditorSession\(\)/);
-  assert.match(controller, /generateStudioCampaign/);
+  assert.match(controller, /useCampaignGenerationController\(/);\n  assert.doesNotMatch(controller, /generateStudioCampaign|new AbortController|acceptGenerationResponse/);
   assert.doesNotMatch(controller, /LandingPage|workspace === "settings"|workspace === "library"|socialStatus/);
 });
 

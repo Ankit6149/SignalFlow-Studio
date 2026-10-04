@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current code checkpoint | `a5e76aa41950510bc2283774dd40780c6a0bcb1d` |
-| Current code checkpoint change | #382 — extracted provider/model-route state ownership into `useProviderRouteController` |
+| Current code checkpoint | `12ca7551d1ed2e7ed2ffb01bb6d42b422aa5c789` |
+| Current code checkpoint change | #386 — moved Connections to a real `/connections` route with callback-safe compatibility |
 | Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
 | Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
 | Production change | #358 — Source stage presentation boundary |
-| Master ↔ production | **Split** — production is behind the #382 code checkpoint |
-| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#382 deployment |
+| Master ↔ production | **Split** — production is behind the #386 code checkpoint |
+| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#386 deployment |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; cleanup is through #382; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 remains at its controller/state-ownership decision point |
+| Repository hygiene | Active under #340; cleanup is through #386; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 has narrow controller boundaries plus independent Settings/Connections routes |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,6 +47,9 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
+- #386 — moved Connections to a real `/connections` route, preserved social/GitHub callback recovery and manual-destination handoff to Studio, and passed full GitHub CI;
+- #385 — moved Settings to a real `/settings` route, extracted shared browser-download helpers, fixed shared-shell `?workspace=studio` navigation compatibility, and passed full GitHub CI;
+- #384 — extracted owner-session and official-connector ownership into `useOwnerConnectionsController`; `page.js` dropped to 1,553 lines and full GitHub CI passed;
 - #382 — extracted provider/model-route controller ownership into `useProviderRouteController`; `page.js` is now 1,622 lines and full GitHub CI passed;
 - #380 — eliminated the final exact selector overlap between `app-workspace.css` and `studio-product.css` (22 → 0) and added a CI invariant preventing duplicate selectors from returning;
 - #379 — scoped Studio frame/heading/workflow-rail authority to the staged Studio surface, reducing exact cross-layer selector overlap 34 → 22;
@@ -188,16 +191,16 @@ The currently connected GitHub action surface cannot delete branch refs. The bra
 
 ## Production alignment
 
-Production is currently **behind the #382 code checkpoint**.
+Production is currently **behind the #386 code checkpoint**.
 
 Verified on 2026-10-04:
 
-- code checkpoint SHA: `a5e76aa41950510bc2283774dd40780c6a0bcb1d` (#382);
+- code checkpoint SHA: `12ca7551d1ed2e7ed2ffb01bb6d42b422aa5c789` (#386);
 - latest READY production SHA: `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` (#358);
 - production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
 - recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
 
-Do not claim #359–#382 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+Do not claim #359–#386 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
 
 ## Current #44 measured CSS frontier
 
@@ -209,7 +212,11 @@ Verified after #380:
 - exact selectors shared by `app-workspace.css` and `studio-product.css`: **0**, enforced by CI;
 - shared shell/component primitives remain in `app-workspace.css`;
 - Studio-only composition is scoped beneath the staged Studio surface in `studio-product.css`;
-- `page.js` is **1,622 lines** after #382; provider/model-route ownership is now separated, while remaining state families still require individual coupling decisions.
+- `page.js` is **1,480 lines** after #386;
+- provider/model-route ownership lives in `useProviderRouteController`;
+- owner-session/official-connector ownership lives in `useOwnerConnectionsController`;
+- Settings is a real `/settings` route and Connections is a real `/connections` route;
+- Library and Create intentionally remain on the root client because moving Library to a route today would unmount unsaved campaign/editor state.
 
 The architecture portion of #44 is complete. Do not close #44 until current-SHA visual evidence covers desktop/tablet/mobile, 200% zoom, and long-content states. Current production remains #358, so existing production visuals cannot prove the #380 CSS state.
 
@@ -226,10 +233,22 @@ Reverified against the current production deployment (#358):
 
 Therefore hosted inference authorization and the CDP capture path remain **not currently verified**, not failed. Do not refresh reserved #315 or claim GP2 readiness until an authenticated owner-session readiness probe is captured.
 
+## #45 route-separation boundary — 2026-10-04
+
+Verified after #386:
+
+- `/settings` is independent from campaign reducer/generation/publishing state;
+- `/connections` is independent from campaign reducer/generation/publishing state and preserves OAuth/source callback recovery;
+- root Create still owns live campaign/editor state;
+- root Library is still an in-memory section, so switching Create ↔ Library does not unmount unsaved editor state;
+- forcing Library to `/library` now would change that behavior and can discard unsaved campaign state.
+
+The next #45 architecture step is therefore **state continuity before Library routing**: establish the smallest shared in-memory campaign/editor ownership that can survive route navigation, or prove an equivalent safe mechanism. Do not move generation side effects, provider routing, publishing, or persistence into a catch-all controller merely to enable the route.
+
 ## Immediate execution order
 
 1. Keep #44 open only for current-SHA visual/responsive acceptance evidence; do not restart CSS architecture work unless evidence exposes a concrete defect.
-2. Continue #45 only by cohesive state family. #382 extracted provider/model-route ownership; do not replace the remaining controller with one monolithic mega-hook.
+2. Continue #45 by designing the smallest route-surviving campaign/editor state boundary needed for safe Create ↔ Library navigation. Do not move Library to a real route while doing so would discard unsaved state, and do not create one monolithic mega-hook.
 3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
 4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
 5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.

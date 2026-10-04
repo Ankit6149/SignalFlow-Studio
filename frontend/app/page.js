@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PlatformIcon from "../components/PlatformIcon";
 import LandingPage from "../components/LandingPage";
 import SourceStage from "../components/SourceStage";
@@ -22,10 +22,6 @@ import {
   getGenerationSourceChanges,
   restoreGenerationRun,
 } from "../lib/studio/campaignFreshness.mjs";
-import {
-  campaignReducer,
-  createInitialCampaignState,
-} from "../lib/studio/campaignState.mjs";
 import { acceptGenerationResponse } from "../lib/studio/generationAcceptance.mjs";
 import {
   editedChannels,
@@ -57,6 +53,11 @@ import { sourceFilePresentation } from "../lib/studio/sourcePresentation.mjs";
 import { useProviderRouteController } from "../lib/studio/useProviderRouteController.js";
 import { useOwnerConnectionsController } from "../lib/studio/useOwnerConnectionsController.js";
 import { downloadBinary, downloadText } from "../lib/browser/browserDownload.mjs";
+import {
+  createEmptyCampaignBrief,
+  createEmptyPublishOptions,
+  useCampaignEditorSession,
+} from "../lib/studio/CampaignEditorSessionContext.js";
 
 const LIBRARY_KEY = "signalflow_recovery_library";
 function generationProgressLabel(status) {
@@ -146,11 +147,24 @@ function SparkIcon() {
 export default function Home() {
   const [entered, setEntered] = useState(false);
   const [section, setSection] = useState("studio");
-  const [campaignState, dispatchCampaign] = useReducer(
-    campaignReducer,
-    undefined,
-    createInitialCampaignState,
-  );
+  const {
+    campaignState,
+    dispatchCampaign,
+    form,
+    setForm,
+    channels,
+    setChannels,
+    files,
+    setFiles,
+    documentText,
+    setDocumentText,
+    strategyReview,
+    setStrategyReview,
+    currentCampaignId,
+    setCurrentCampaignId,
+    publishOptions,
+    setPublishOptions,
+  } = useCampaignEditorSession();
   const {
     stage,
     result,
@@ -167,31 +181,12 @@ export default function Home() {
     lastExportedAt,
     savedSourceFingerprint,
   } = campaignState;
-  const [form, setForm] = useState({
-    projectName: "",
-    notes: "",
-    audience: "Founders, builders, and early users",
-    links: "",
-    repo: "",
-    provider: "gemini",
-    apiKey: "",
-    model: "",
-    baseUrl: "",
-  });
-  const [channels, setChannels] = useState(DEFAULT_CHANNELS);
-  const [files, setFiles] = useState([]);
-  const [documentText, setDocumentText] = useState([]);
   const [busy, setBusy] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(null);
   const [message, setMessage] = useState(null);
-  const [strategyReview, setStrategyReview] = useState(null);
   const [library, setLibrary] = useState([]);
-  const [currentCampaignId, setCurrentCampaignId] = useState("");
   const [regenerationDialogOpen, setRegenerationDialogOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
-  const [publishOptions, setPublishOptions] = useState({
-    reddit: { subreddit: "", title: "" },
-  });
   const fileInputRef = useRef(null);
   const generationAbortRef = useRef(null);
   const campaignApplication = useMemo(() => createBrowserCampaignApplication({
@@ -425,21 +420,11 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     setRegenerationDialogOpen(false);
     setVersionHistoryOpen(false);
     dispatchCampaign({ type: "RESET_CAMPAIGN" });
-    setForm({
-      projectName: "",
-      notes: "",
-      audience: "Founders, builders, and early users",
-      links: "",
-      repo: "",
-      provider: "gemini",
-      apiKey: "",
-      model: "",
-      baseUrl: "",
-    });
+    setForm(createEmptyCampaignBrief());
     setChannels(DEFAULT_CHANNELS);
     setFiles([]);
     setDocumentText([]);
-    setPublishOptions({ reddit: { subreddit: "", title: "" } });
+    setPublishOptions(createEmptyPublishOptions());
     setGenerationProgress(null);
     setMessage(null);
     navigateSection("studio");
@@ -972,7 +957,7 @@ ${extractedText}`);
           activeChannel: restored.channels[0] || "linkedin",
         },
       });
-      setPublishOptions(restored.publishOptions || { reddit: { subreddit: "", title: "" } });
+      setPublishOptions(restored.publishOptions || createEmptyPublishOptions());
       setFiles(restored.sourceFiles || []);
       setDocumentText(restored.documentText || []);
       setVersionHistoryOpen(false);

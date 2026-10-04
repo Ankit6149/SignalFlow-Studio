@@ -49,15 +49,6 @@
   max-width: 100%;
 }
 
-.app-shell .app-header {
-  isolation: isolate;
-}
-
-.app-shell .app-nav {
-  scrollbar-width: thin;
-  scrollbar-color: var(--app-line-strong) transparent;
-}
-
 .app-shell .studio-page,
 .app-shell .secondary-page {
   max-width: calc(100vw - 2rem);
@@ -189,23 +180,6 @@
 }
 
 @media (max-width: 72rem) {
-  .app-shell .app-header {
-    grid-template-columns: minmax(9.5rem, 1fr) minmax(0, auto);
-    gap: 0.75rem;
-  }
-
-  .app-shell .app-header__status {
-    display: none;
-  }
-
-  .app-shell .app-nav {
-    justify-self: end;
-    max-width: min(100%, calc(100vw - 13rem));
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
   .app-shell .studio-page,
   .app-shell .secondary-page,
   .app-shell .studio-page[data-stage="review"] {
@@ -235,42 +209,6 @@
 }
 
 @media (max-width: 52rem) {
-  .app-shell {
-    --app-header: auto;
-  }
-
-  .app-shell .app-header {
-    position: sticky;
-    top: 0;
-    height: auto;
-    min-height: 0;
-    padding: 0.75rem 1rem;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-    gap: 0.625rem;
-  }
-
-  .app-shell .brand-button {
-    justify-self: start;
-  }
-
-  .app-shell .app-nav {
-    width: 100%;
-    max-width: 100%;
-    justify-self: stretch;
-    justify-content: flex-start;
-    overflow-x: auto;
-  }
-
-  .app-shell .app-nav button {
-    flex: 0 0 auto;
-    min-height: 2.5rem;
-  }
-
-  .app-shell .toast {
-    top: 7.5rem;
-  }
-
   .app-shell .studio-page,
   .app-shell .secondary-page,
   .app-shell .studio-page[data-stage="review"] {
@@ -393,19 +331,6 @@
 }
 
 @media (max-width: 37rem) {
-  .app-shell .app-header {
-    padding-inline: 0.75rem;
-  }
-
-  .app-shell .brand-mark__copy small {
-    display: none;
-  }
-
-  .app-shell .app-nav button {
-    padding-inline: 0.75rem;
-    font-size: 0.75rem;
-  }
-
   .app-shell .studio-page,
   .app-shell .secondary-page,
   .app-shell .studio-page[data-stage="review"] {

@@ -9,7 +9,6 @@ import ReviewStage from "../components/ReviewStage";
 import RegenerationDialog from "../components/RegenerationDialog";
 import WorkspaceShell from "../components/WorkspaceShell";
 import {
-  createSourceSnapshot,
   resolveStudioStage,
   restoreSourceSnapshot,
   selectAcceptedFiles,
@@ -36,7 +35,6 @@ import {
   createUploadSourceBundle,
   projectGenerationMediaItem,
 } from "../lib/domain/sourceArtifacts.mjs";
-import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
 import {
   generateCampaign as generateStudioCampaign,
   publishPost as publishStudioPost,
@@ -51,12 +49,11 @@ import {
 import { sourceFilePresentation } from "../lib/studio/sourcePresentation.mjs";
 import { useProviderRouteController } from "../lib/studio/useProviderRouteController.js";
 import { useOwnerConnectionsController } from "../lib/studio/useOwnerConnectionsController.js";
-import { downloadBinary, downloadText } from "../lib/browser/browserDownload.mjs";
+import { useCampaignPersistenceController } from "../lib/studio/useCampaignPersistenceController.js";
 import {
   useCampaignEditorSession,
 } from "../lib/studio/CampaignEditorSessionContext.js";
 
-const LIBRARY_KEY = "signalflow_recovery_library";
 function generationProgressLabel(status) {
   const labels = {
     queued: "Queued",
@@ -165,12 +162,6 @@ export default function StudioRootController() {
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const fileInputRef = useRef(null);
   const generationAbortRef = useRef(null);
-  const campaignApplication = useMemo(() => createBrowserCampaignApplication({
-    getStorage: () => window.localStorage,
-    key: LIBRARY_KEY,
-    limit: 30,
-  }), []);
-
   const {
     availableProviders,
     provider,
@@ -270,6 +261,27 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     isStale: isCampaignStale,
     currentSourceFingerprint: currentSourceSnapshot.fingerprint,
     hasCampaignId: Boolean(currentCampaignId),
+  });
+  const {
+    saveCampaign,
+    saveCampaignAsCopy,
+    exportMarkdown,
+    exportJson,
+    exportZip,
+  } = useCampaignPersistenceController({
+    campaignState,
+    form,
+    channels,
+    files,
+    documentText,
+    publishOptions,
+    currentCampaignId,
+    setCurrentCampaignId,
+    currentSourceSnapshot,
+    exportBlockedReason: campaignStatus.exportBlockedReason,
+    dispatchCampaign,
+    setBusy,
+    setMessage,
   });
   const activeChannelStatus = selectChannelStatus({
     channelState: channelStates[activeChannel],
@@ -783,79 +795,6 @@ ${extractedText}`);
     dispatchCampaign({ type: "DISCARD_ARCHIVE", archiveId });
   }
 
-  function currentEditorState(overrides = {}) {
-    return {
-      revision,
-      savedRevision,
-      exportedRevision,
-      lastSavedAt,
-      lastExportedAt,
-      savedSourceFingerprint,
-      ...overrides,
-    };
-  }
-
-  function currentCampaignInput(overrides = {}) {
-    return {
-      campaignId: currentCampaignId,
-      title: form.projectName.trim() || result?.package?.project?.name || "Untitled campaign",
-      channels: [...channels],
-      posts: { ...posts },
-      generatedPosts: { ...generatedPosts },
-      channelStates: structuredClone(channelStates),
-      archives: structuredClone(archives),
-      result,
-      generationRun,
-      editorState: currentEditorState(),
-      brief: { ...form },
-      publishOptions,
-      ...createSourceSnapshot(files, documentText),
-      ...overrides,
-    };
-  }
-
-  async function persistCampaign({ asCopy = false } = {}) {
-    if (!result) return;
-    const savedAt = new Date().toISOString();
-    const input = currentCampaignInput({
-      updatedAt: savedAt,
-      editorState: currentEditorState({
-        savedRevision: revision,
-        lastSavedAt: savedAt,
-        savedSourceFingerprint: currentSourceSnapshot.fingerprint,
-      }),
-    });
-    try {
-      const saved = asCopy
-        ? await campaignApplication.saveAsCopy(input)
-        : await campaignApplication.saveCampaign(input);
-      setCurrentCampaignId(saved.campaignId);
-      dispatchCampaign({
-        type: "MARK_SAVED",
-        payload: { savedAt, sourceFingerprint: currentSourceSnapshot.fingerprint },
-      });
-      setMessage({
-        type: "success",
-        text: asCopy
-          ? "Saved as a separate local campaign copy. The original remains unchanged."
-          : "Campaign saved to your local library.",
-      });
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: `The browser could not save this campaign${error?.name === "QuotaExceededError" ? " because local storage is full" : ""}. Export Markdown or JSON now before leaving this page.`,
-      });
-    }
-  }
-
-  async function saveCampaign() {
-    await persistCampaign();
-  }
-
-  async function saveCampaignAsCopy() {
-    await persistCampaign({ asCopy: true });
-  }
-
   async function copyCurrentPost(showMessage = true) {
     if (isCampaignStale) {
       reportStaleCampaign();
@@ -912,66 +851,6 @@ ${extractedText}`);
 
     setMessage({ type: "success", text: `${activeMeta.label} draft copied. Paste it into your publishing tool.` });
   }
-
-  function exportMarkdown() {
-    if (campaignStatus.exportBlockedReason) {
-      setMessage({ type: "warning", text: campaignStatus.exportBlockedReason });
-      return;
-    }
-    try {
-      const projection = campaignApplication.projectMarkdown(currentCampaignInput());
-      downloadText(projection.filename, projection.content, projection.mimeType);
-      dispatchCampaign({ type: "MARK_EXPORTED", payload: { exportedAt: new Date().toISOString() } });
-      setMessage({ type: "success", text: "Current campaign revision exported as Markdown." });
-    } catch {
-      setMessage({ type: "error", text: "SignalFlow could not project the current campaign into Markdown." });
-    }
-  }
-
-  function exportJson() {
-    if (campaignStatus.exportBlockedReason) {
-      setMessage({ type: "warning", text: campaignStatus.exportBlockedReason });
-      return;
-    }
-    try {
-      const projection = campaignApplication.projectJson(currentCampaignInput());
-      downloadText(projection.filename, projection.content, projection.mimeType);
-      dispatchCampaign({ type: "MARK_EXPORTED", payload: { exportedAt: new Date().toISOString() } });
-      setMessage({ type: "success", text: "Current campaign revision exported as versioned JSON." });
-    } catch {
-      setMessage({ type: "error", text: "SignalFlow could not project the current campaign into JSON." });
-    }
-  }
-
-
-async function exportZip() {
-  if (campaignStatus.exportBlockedReason) {
-    setMessage({ type: "warning", text: campaignStatus.exportBlockedReason });
-    return;
-  }
-  setBusy(true);
-  setMessage(null);
-  try {
-    const projection = await campaignApplication.projectZip(currentCampaignInput());
-    downloadBinary(projection.filename, projection.content, projection.mimeType);
-    const exportedAt = new Date().toISOString();
-    dispatchCampaign({ type: "MARK_EXPORTED", payload: { exportedAt } });
-    const failedChannels = projection.summary?.failedChannels || [];
-    setMessage({
-      type: failedChannels.length ? "warning" : "success",
-      text: failedChannels.length
-        ? `ZIP exported with ${projection.summary.channelCount} destinations. ${failedChannels.map((channel) => channelMeta(channel).label).join(", ")} are included with explicit failure status instead of substitute content.`
-        : `ZIP exported with ${projection.summary.channelCount} destinations and ${projection.summary.fileCount} files.`,
-    });
-  } catch (error) {
-    setMessage({
-      type: "error",
-      text: `SignalFlow could not build the ZIP archive. Your current drafts are unchanged. ${error.message || "Try Markdown or JSON export instead."}`,
-    });
-  } finally {
-    setBusy(false);
-  }
-}
 
   async function publishCurrentPost() {
     if (!publishAvailability.ready) {

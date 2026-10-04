@@ -53,7 +53,7 @@ test("generation validation uses the canonical GitHub parser", () => {
 test("nested application roots outrank documentation", () => {
   assert.equal(classifyRepositoryFile("frontend/app/api/generate/route.js"), "entrypoint");
   assert.equal(classifyRepositoryFile("web/src/components/Editor.tsx"), "source");
-  assert.ok(getFilePriorityScore("frontend/app/page.js") > getFilePriorityScore("docs/architecture.md"));
+  assert.ok(getFilePriorityScore("frontend/app/StudioRootController.js") > getFilePriorityScore("docs/architecture.md"));
   assert.equal(shouldIncludeFile("frontend/public/logo.png"), false);
 });
 
@@ -63,7 +63,7 @@ test("repository planning is deterministic, representative, and bounded", () => 
     { path: "docs/architecture.md", size: 4000 },
     { path: "docs/product.md", size: 4000 },
     { path: "frontend/package.json", size: 1000 },
-    { path: "frontend/app/page.js", size: 9000 },
+    { path: "frontend/app/StudioRootController.js", size: 9000 },
     { path: "frontend/app/api/generate/route.js", size: 7000 },
     { path: "frontend/src/components/Editor.tsx", size: 6000 },
     { path: "frontend/src/lib/export.ts", size: 5000 },
@@ -78,7 +78,7 @@ test("repository planning is deterministic, representative, and bounded", () => 
   const selected = first.files.map((file) => file.path);
 
   assert.deepEqual(selected, second.files.map((file) => file.path));
-  assert.ok(selected.includes("frontend/app/page.js"));
+  assert.ok(selected.includes("frontend/app/StudioRootController.js"));
   assert.ok(selected.includes("frontend/app/api/generate/route.js"));
   assert.ok(selected.includes("frontend/src/components/Editor.tsx"));
   assert.ok(first.diagnostics.selectedBytes <= 50000);

@@ -13,13 +13,16 @@ test("secondary workspaces are explicit presentation components", () => {
   const library = read("components/LibraryWorkspace.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");
+  const settingsRoute = read("app/settings/page.js");
 
   assert.match(page, /import LibraryWorkspace from/);
   assert.match(page, /import ConnectionsWorkspace from/);
-  assert.match(page, /import SettingsWorkspace from/);
+  assert.doesNotMatch(page, /import SettingsWorkspace from/);
   assert.match(page, /<LibraryWorkspace/);
   assert.match(page, /<ConnectionsWorkspace/);
-  assert.match(page, /<SettingsWorkspace/);
+  assert.doesNotMatch(page, /<SettingsWorkspace/);
+  assert.match(settingsRoute, /import SettingsWorkspace from/);
+  assert.match(settingsRoute, /<SettingsWorkspace/);
 
   for (const [name, source] of [
     ["LibraryWorkspace", library],
@@ -36,11 +39,15 @@ test("secondary workspace mutations stay explicit in the page controller", () =>
   const page = read("app/page.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");
+  const settingsRoute = read("app/settings/page.js");
 
   assert.match(page, /function useChannelInStudio\(channelId\)/);
-  assert.match(page, /function exportLocalLibrary\(\)/);
-  assert.match(page, /function clearLocalLibrary\(\)/);
+  assert.doesNotMatch(page, /function exportLocalLibrary\(\)/);
+  assert.doesNotMatch(page, /function clearLocalLibrary\(\)/);
   assert.match(page, /async function refreshLibrary\(\)/);
+  assert.match(settingsRoute, /async function exportLocalLibrary\(\)/);
+  assert.match(settingsRoute, /function clearLocalLibrary\(\)/);
+  assert.match(settingsRoute, /useOwnerConnectionsController\(/);
 
   assert.match(connections, /onConnect\(channel\.id\)/);
   assert.match(connections, /onDisconnect\(channel\.id\)/);

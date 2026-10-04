@@ -9,7 +9,6 @@ import ReviewStage from "../components/ReviewStage";
 import RegenerationDialog from "../components/RegenerationDialog";
 import LibraryWorkspace from "../components/LibraryWorkspace";
 import ConnectionsWorkspace from "../components/ConnectionsWorkspace";
-import SettingsWorkspace from "../components/SettingsWorkspace";
 import WorkspaceShell from "../components/WorkspaceShell";
 import {
   createSourceSnapshot,
@@ -58,6 +57,7 @@ import {
 import { sourceFilePresentation } from "../lib/studio/sourcePresentation.mjs";
 import { useProviderRouteController } from "../lib/studio/useProviderRouteController.js";
 import { useOwnerConnectionsController } from "../lib/studio/useOwnerConnectionsController.js";
+import { downloadBinary, downloadText } from "../lib/browser/browserDownload.mjs";
 
 const LIBRARY_KEY = "signalflow_recovery_library";
 function generationProgressLabel(status) {
@@ -71,31 +71,6 @@ function generationProgressLabel(status) {
     cancelled: "Cancelled",
   };
   return labels[String(status || "")] || "Preparing";
-}
-
-function downloadText(filename, value, type = "text/plain") {
-  const blob = new Blob([value], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-
-
-function downloadBinary(filename, value, type = "application/octet-stream") {
-  const blob = new Blob([value], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
 }
 
 function providerRecoveryMessage(providerError) {
@@ -242,18 +217,14 @@ export default function Home() {
     connections,
     connectionsLoading,
     accessToken,
-    ownerKey,
-    setOwnerKey,
     syncOwnerSession,
     refreshConnections,
     connectPlatform,
     disconnectPlatform,
-    unlockOwnerSession,
-    lockOwnerSession,
   } = useOwnerConnectionsController({
     setBusy,
     setMessage,
-    onRequireOwnerUnlock: () => navigateSection("settings"),
+    onRequireOwnerUnlock: () => window.location.assign("/settings"),
   });
   const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
@@ -375,9 +346,13 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
     const params = new URLSearchParams(window.location.search);
     const workspace = params.get("workspace");
-    if (["create", "library", "connections", "settings"].includes(workspace)) {
+    if (workspace === "settings") {
+      window.location.replace("/settings");
+      return;
+    }
+    if (["create", "studio", "library", "connections"].includes(workspace)) {
       setEntered(true);
-      setSection(workspace === "create" ? "studio" : workspace);
+      setSection(workspace === "create" || workspace === "studio" ? "studio" : workspace);
     }
     const socialStatus = params.get("social_status");
     const socialMessage = params.get("social_message");
@@ -1205,20 +1180,6 @@ async function exportZip() {
     setActiveChannel(channelId);
   }
 
-  function exportLocalLibrary() {
-    downloadText(
-      "signalflow-local-library.json",
-      JSON.stringify(library, null, 2),
-      "application/json",
-    );
-  }
-
-  function clearLocalLibrary() {
-    if (!window.confirm("Clear the local campaign library?")) return;
-    setLibrary([]);
-    window.localStorage.removeItem(LIBRARY_KEY);
-  }
-
   if (!entered) return <LandingPage onEnter={enterStudio} brand={<BrandMark />} />;
 
   const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
@@ -1230,7 +1191,6 @@ async function exportZip() {
         create: () => navigateSection("studio"),
         library: () => navigateSection("library"),
         connections: () => navigateSection("connections"),
-        settings: () => navigateSection("settings"),
       }}
       statusLabel={providerReadiness.ready ? `${provider.label} ready` : "Model setup needed"}
       statusTone={providerReadiness.ready ? "ready" : "attention"}
@@ -1535,18 +1495,6 @@ async function exportZip() {
         />
       )}
 
-      {section === "settings" && (
-        <SettingsWorkspace
-          ownerSessionActive={Boolean(accessToken)}
-          ownerKey={ownerKey}
-          busy={busy}
-          onOwnerKeyChange={setOwnerKey}
-          onUnlockOwner={unlockOwnerSession}
-          onLockOwner={lockOwnerSession}
-          onExportLibrary={exportLocalLibrary}
-          onClearLibrary={clearLocalLibrary}
-        />
-      )}
     </WorkspaceShell>
   );
 }

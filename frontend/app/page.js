@@ -45,13 +45,8 @@ import {
 } from "../lib/domain/sourceArtifacts.mjs";
 import { createBrowserCampaignApplication } from "../lib/application/browserCampaignApplication.mjs";
 import {
-  disconnectSocial as disconnectSocialAccount,
   generateCampaign as generateStudioCampaign,
-  getOwnerSession as getOwnerApiSession,
-  getSocialStatus as getSocialConnectionStatus,
-  lockOwnerSession as lockOwnerApiSession,
   publishPost as publishStudioPost,
-  unlockOwnerSession as unlockOwnerApiSession,
 } from "../lib/studio/studioApiClient.mjs";
 import {
   CHANNELS,
@@ -62,6 +57,7 @@ import {
 } from "../lib/studio/studioCatalog.mjs";
 import { sourceFilePresentation } from "../lib/studio/sourcePresentation.mjs";
 import { useProviderRouteController } from "../lib/studio/useProviderRouteController.js";
+import { useOwnerConnectionsController } from "../lib/studio/useOwnerConnectionsController.js";
 
 const LIBRARY_KEY = "signalflow_recovery_library";
 function generationProgressLabel(status) {
@@ -219,10 +215,6 @@ export default function Home() {
   const [currentCampaignId, setCurrentCampaignId] = useState("");
   const [regenerationDialogOpen, setRegenerationDialogOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
-  const [connections, setConnections] = useState({});
-  const [connectionsLoading, setConnectionsLoading] = useState(false);
-  const [accessToken, setAccessToken] = useState("");
-  const [ownerKey, setOwnerKey] = useState("");
   const [publishOptions, setPublishOptions] = useState({
     reddit: { subreddit: "", title: "" },
   });
@@ -246,6 +238,23 @@ export default function Home() {
     refreshProviderStatus,
     testProviderConnection,
   } = useProviderRouteController({ form, setForm });
+  const {
+    connections,
+    connectionsLoading,
+    accessToken,
+    ownerKey,
+    setOwnerKey,
+    syncOwnerSession,
+    refreshConnections,
+    connectPlatform,
+    disconnectPlatform,
+    unlockOwnerSession,
+    lockOwnerSession,
+  } = useOwnerConnectionsController({
+    setBusy,
+    setMessage,
+    onRequireOwnerUnlock: () => navigateSection("settings"),
+  });
   const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
   const currentConnection = connections[activeChannel] || null;
@@ -423,15 +432,6 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     });
   }, [entered, section]);
-
-  async function syncOwnerSession() {
-    try {
-      const { data } = await getOwnerApiSession();
-      setAccessToken(data.authenticated ? "cookie-session" : "");
-    } catch {
-      setAccessToken("");
-    }
-  }
 
   function setStage(nextStage) {
     dispatchCampaign({ type: "SET_STAGE", stage: nextStage });
@@ -1190,75 +1190,6 @@ async function exportZip() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function refreshConnections() {
-    setConnectionsLoading(true);
-    try {
-      const { response, data } = await getSocialConnectionStatus();
-      if (!response.ok) throw new Error("Owner access is required to inspect official connectors.");
-      setConnections(data.platforms || {});
-    } catch {
-      setConnections({});
-    } finally {
-      setConnectionsLoading(false);
-    }
-  }
-
-  function connectPlatform(platform) {
-    if (!accessToken) {
-      navigateSection("settings");
-      setMessage({
-        type: "warning",
-        text: "Unlock the owner session before connecting an official account.",
-      });
-      return;
-    }
-    window.location.assign(`/api/social/connect?platform=${encodeURIComponent(platform)}`);
-  }
-
-  async function disconnectPlatform(platform) {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const { response, data } = await disconnectSocialAccount(platform);
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Could not disconnect this account.");
-      }
-      setMessage({ type: "success", text: data.message });
-      await refreshConnections();
-    } catch (error) {
-      setMessage({ type: "error", text: error.message });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function unlockOwnerSession() {
-    if (!ownerKey.trim()) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const { response, data } = await unlockOwnerApiSession(ownerKey);
-      if (!response.ok) throw new Error(data.error || "The owner key was not accepted.");
-      setAccessToken(data.authenticated ? "cookie-session" : "");
-          setOwnerKey("");
-      setMessage({
-        type: "success",
-        text: data.locked === false ? "Access lock is disabled for this deployment." : "Owner session unlocked.",
-      });
-    } catch (error) {
-      setMessage({ type: "error", text: error.message });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function lockOwnerSession() {
-    await lockOwnerApiSession().catch(() => null);
-    setAccessToken("");
-    setConnections({});
-    setMessage({ type: "success", text: "Owner session closed." });
   }
 
   async function refreshLibrary() {

@@ -141,7 +141,6 @@ export default function StudioRootController() {
     setCurrentCampaignId,
     publishOptions,
     setPublishOptions,
-    resetEditorSession,
   } = useCampaignEditorSession();
   const {
     stage,
@@ -362,14 +361,6 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
   function setActiveChannel(channel) {
     dispatchCampaign({ type: "SET_ACTIVE_CHANNEL", channel });
-  }
-
-  function startNewCampaign() {
-    resetEditorSession();
-    setRegenerationDialogOpen(false);
-    setVersionHistoryOpen(false);
-    setGenerationProgress(null);
-    setMessage(null);
   }
 
   function updateForm(key, value) {

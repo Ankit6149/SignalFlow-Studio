@@ -2502,3 +2502,63 @@
   }
 }
 
+/* Responsive secondary page-frame authority.
+ * Secondary route width and heading behavior stays with the shared workspace
+ * owner instead of the late Studio responsive layer.
+ */
+.app-shell .secondary-page {
+  min-width: 0;
+  max-width: calc(100vw - 2rem);
+}
+
+.app-shell .secondary-heading {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 72rem) {
+  .app-shell .secondary-page {
+    width: min(100% - 2rem, 76rem);
+    max-width: calc(100vw - 2rem);
+  }
+
+  .app-shell .secondary-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 52rem) {
+  .app-shell .secondary-page {
+    width: min(100% - 1.5rem, 76rem);
+    max-width: calc(100vw - 1.5rem);
+    padding-top: 2rem;
+    padding-bottom: 5rem;
+  }
+
+  .app-shell .secondary-heading {
+    margin-bottom: 1.75rem;
+  }
+
+  .app-shell .secondary-heading h1 {
+    max-width: 100%;
+    font-size: clamp(2rem, 10vw, 2.75rem);
+  }
+}
+
+@media (max-width: 37rem) {
+  .app-shell .secondary-page {
+    width: min(100% - 1rem, 76rem);
+    max-width: calc(100vw - 1rem);
+    padding-top: 1.5rem;
+  }
+
+  .app-shell .secondary-heading h1 {
+    font-size: clamp(1.875rem, 11vw, 2.4rem);
+  }
+
+  .app-shell .secondary-heading p:last-child {
+    font-size: 0.875rem;
+  }
+}
+

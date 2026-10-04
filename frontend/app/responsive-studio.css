@@ -16,7 +16,6 @@
 .app-shell form,
 .app-shell fieldset,
 .app-shell .studio-page,
-.app-shell .secondary-page,
 .app-shell .studio-grid,
 .app-shell .panel,
 .app-shell .composer-panel,
@@ -49,13 +48,11 @@
   max-width: 100%;
 }
 
-.app-shell .studio-page,
-.app-shell .secondary-page {
+.app-shell .studio-page {
   max-width: calc(100vw - 2rem);
 }
 
 .app-shell .studio-heading,
-.app-shell .secondary-heading,
 .app-shell .studio-main,
 .app-shell .studio-grid,
 .app-shell .composer-panel,
@@ -181,14 +178,12 @@
 
 @media (max-width: 72rem) {
   .app-shell .studio-page,
-  .app-shell .secondary-page,
   .app-shell .studio-page[data-stage="review"] {
     width: min(100% - 2rem, 76rem);
     max-width: calc(100vw - 2rem);
   }
 
-  .app-shell .studio-heading,
-  .app-shell .secondary-heading {
+  .app-shell .studio-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 1.25rem;
@@ -198,7 +193,6 @@
 
 @media (max-width: 52rem) {
   .app-shell .studio-page,
-  .app-shell .secondary-page,
   .app-shell .studio-page[data-stage="review"] {
     width: min(100% - 1.5rem, 76rem);
     max-width: calc(100vw - 1.5rem);
@@ -206,13 +200,11 @@
     padding-bottom: 5rem;
   }
 
-  .app-shell .studio-heading,
-  .app-shell .secondary-heading {
+  .app-shell .studio-heading {
     margin-bottom: 1.75rem;
   }
 
-  .app-shell .studio-heading h1,
-  .app-shell .secondary-heading h1 {
+  .app-shell .studio-heading h1 {
     max-width: 100%;
     font-size: clamp(2rem, 10vw, 2.75rem);
   }
@@ -308,20 +300,17 @@
 
 @media (max-width: 37rem) {
   .app-shell .studio-page,
-  .app-shell .secondary-page,
   .app-shell .studio-page[data-stage="review"] {
     width: min(100% - 1rem, 76rem);
     max-width: calc(100vw - 1rem);
     padding-top: 1.5rem;
   }
 
-  .app-shell .studio-heading h1,
-  .app-shell .secondary-heading h1 {
+  .app-shell .studio-heading h1 {
     font-size: clamp(1.875rem, 11vw, 2.4rem);
   }
 
-  .app-shell .studio-heading p:last-child,
-  .app-shell .secondary-heading p:last-child {
+  .app-shell .studio-heading p:last-child {
     font-size: 0.875rem;
   }
 

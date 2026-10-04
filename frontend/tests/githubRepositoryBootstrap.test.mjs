@@ -46,7 +46,7 @@ function treeFor(revision = SHA_A) {
     { path: "docs/ARCHITECTURE.md", type: "blob", sha: SHA_B, size: 1200 },
     { path: "docs/product-overview.md", type: "blob", sha: SHA_C, size: 900 },
     { path: "package.json", type: "blob", sha: "d".repeat(40), size: 600 },
-    { path: "frontend/app/page.js", type: "blob", sha: "e".repeat(40), size: 1000 },
+    { path: "frontend/app/StudioRootController.js", type: "blob", sha: "e".repeat(40), size: 1000 },
     { path: ".env", type: "blob", sha: "f".repeat(40), size: 200 },
     { path: "private-key.pem", type: "blob", sha: "1".repeat(40), size: 200 },
     { path: "package-lock.json", type: "blob", sha: "2".repeat(40), size: 3000 },
@@ -60,7 +60,7 @@ function contentFor(path, revision = SHA_A) {
     "docs/ARCHITECTURE.md": "# Architecture\nCanonical state is persisted separately from external delivery mechanisms.",
     "docs/product-overview.md": "# Product\nConnect a repository once, then review meaningful stories instead of configuring triggers.",
     "package.json": "{\"name\":\"product\",\"scripts\":{\"test\":\"node --test\"}}",
-    "frontend/app/page.js": "export default function Page(){ return 'SignalFlow'; }",
+    "frontend/app/StudioRootController.js": "export default function Page(){ return 'SignalFlow'; }",
   };
   return values[path] || "representative source";
 }

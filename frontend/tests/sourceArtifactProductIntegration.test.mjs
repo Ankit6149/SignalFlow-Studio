@@ -196,7 +196,7 @@ test("capability contract declares canonical records and fails closed on unfinis
 });
 
 test("Studio source list exposes canonical usability and evidence state without claiming full diagnostics", () => {
-  const page = readFrontend("app/page.js");
+  const page = readFrontend("app/StudioRootController.js");
   const sourceStage = readFrontend("components/SourceStage.js");
   const sourcePresentation = readFrontend("lib/studio/sourcePresentation.mjs");
   const css = readFrontend("components/SourceStage.module.css");

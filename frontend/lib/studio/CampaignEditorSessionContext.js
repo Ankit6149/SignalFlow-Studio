@@ -43,6 +43,45 @@ export function CampaignEditorSessionProvider({ children }) {
   const [currentCampaignId, setCurrentCampaignId] = useState("");
   const [publishOptions, setPublishOptions] = useState(initialPublishOptions);
 
+  function resetEditorSession() {
+    setCurrentCampaignId("");
+    dispatchCampaign({ type: "RESET_CAMPAIGN" });
+    setForm(initialForm());
+    setChannels(DEFAULT_CHANNELS);
+    setFiles([]);
+    setDocumentText([]);
+    setStrategyReview(null);
+    setPublishOptions(initialPublishOptions());
+  }
+
+  function restoreEditorSession(restored) {
+    setCurrentCampaignId(restored.campaignId);
+    setForm((previous) => ({ ...previous, ...restored.brief, apiKey: "" }));
+    setChannels(restored.channels);
+    dispatchCampaign({
+      type: "RESTORE_CAMPAIGN",
+      payload: {
+        posts: restored.posts,
+        generatedPosts: restored.generatedPosts,
+        channelStates: restored.channelStates,
+        archives: restored.archives,
+        result: restored.result,
+        generationRun: restored.generationRun,
+        revision: restored.revision,
+        savedRevision: restored.savedRevision,
+        exportedRevision: restored.exportedRevision,
+        lastSavedAt: restored.lastSavedAt,
+        lastExportedAt: restored.lastExportedAt,
+        savedSourceFingerprint: restored.savedSourceFingerprint,
+        activeChannel: restored.channels[0] || "linkedin",
+      },
+    });
+    setPublishOptions(restored.publishOptions || initialPublishOptions());
+    setFiles(restored.sourceFiles || []);
+    setDocumentText(restored.documentText || []);
+    setStrategyReview(null);
+  }
+
   return (
     <CampaignEditorSessionContext.Provider
       value={{
@@ -62,6 +101,8 @@ export function CampaignEditorSessionProvider({ children }) {
         setCurrentCampaignId,
         publishOptions,
         setPublishOptions,
+        resetEditorSession,
+        restoreEditorSession,
       }}
     >
       {children}

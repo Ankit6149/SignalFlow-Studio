@@ -10,16 +10,19 @@ const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "u
 
 test("secondary workspaces are explicit presentation components", () => {
   const page = read("app/page.js");
+  const libraryRoute = read("app/library/page.js");
   const library = read("components/LibraryWorkspace.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");
   const settingsRoute = read("app/settings/page.js");
   const connectionsRoute = read("app/connections/page.js");
 
-  assert.match(page, /import LibraryWorkspace from/);
+  assert.doesNotMatch(page, /import LibraryWorkspace from/);
+  assert.match(libraryRoute, /import LibraryWorkspace from/);
   assert.doesNotMatch(page, /import ConnectionsWorkspace from/);
   assert.doesNotMatch(page, /import SettingsWorkspace from/);
-  assert.match(page, /<LibraryWorkspace/);
+  assert.doesNotMatch(page, /<LibraryWorkspace/);
+  assert.match(libraryRoute, /<LibraryWorkspace/);
   assert.doesNotMatch(page, /<ConnectionsWorkspace/);
   assert.match(connectionsRoute, /import ConnectionsWorkspace from/);
   assert.match(connectionsRoute, /<ConnectionsWorkspace/);
@@ -38,8 +41,9 @@ test("secondary workspaces are explicit presentation components", () => {
   }
 });
 
-test("secondary workspace mutations stay explicit in the page controller", () => {
+test("secondary workspace mutations stay explicit in their owning route/controller", () => {
   const page = read("app/page.js");
+  const libraryRoute = read("app/library/page.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");
   const settingsRoute = read("app/settings/page.js");
@@ -49,7 +53,8 @@ test("secondary workspace mutations stay explicit in the page controller", () =>
   assert.match(connectionsRoute, /function useChannelInStudio\(channelId\)/);
   assert.doesNotMatch(page, /function exportLocalLibrary\(\)/);
   assert.doesNotMatch(page, /function clearLocalLibrary\(\)/);
-  assert.match(page, /async function refreshLibrary\(\)/);
+  assert.doesNotMatch(page, /async function refreshLibrary\(\)/);
+  assert.match(libraryRoute, /async function refreshLibrary\(\)/);
   assert.match(settingsRoute, /async function exportLocalLibrary\(\)/);
   assert.match(settingsRoute, /function clearLocalLibrary\(\)/);
   assert.match(settingsRoute, /useOwnerConnectionsController\(/);

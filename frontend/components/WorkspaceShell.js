@@ -25,7 +25,7 @@ const NAV_GROUPS = [
     { id: "signals", label: "Signals", href: "/signals", status: "available" },
     { id: "plan", label: "Plan", href: "/plan", status: "available" },
     { id: "create", label: "Create", href: "/?workspace=studio", status: "available" },
-    { id: "library", label: "Library", href: "/?workspace=library", status: "available" },
+    { id: "library", label: "Library", href: "/library", status: "available" },
   ]},
   { label: "System", items: [
     { id: "voice", label: "Voice", href: "/voice", status: "available" },

@@ -41,11 +41,12 @@ test("route-surviving editor session does not globalize transient UI/process sta
     "busy",
     "generationProgress",
     "message",
-    "library",
     "regenerationDialogOpen",
     "versionHistoryOpen",
   ]) {
     assert.ok(page.includes(`const [${localState},`), `${localState} must stay local to the Create route`);
     assert.equal(session.includes(localState), false, `${localState} must not move into the route-surviving session`);
   }
+
+  assert.equal(session.includes("library"), false, "browser-library listing state must not move into the route-surviving editor session");
 });

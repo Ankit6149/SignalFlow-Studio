@@ -24,6 +24,6 @@ test("Settings is an independent route rather than campaign-controller state", a
 
 test("legacy and shared-shell Create navigation both enter the Studio workspace", async () => {
   const root = await readFile(rootUrl, "utf8");
-  assert.match(root, /\["create", "studio", "library"\]\.includes\(workspace\)/);
-  assert.match(root, /workspace === "create" \|\| workspace === "studio" \? "studio" : workspace/);
+  assert.match(root, /\["create", "studio"\]\.includes\(workspace\)/);
+  assert.match(root, /setSection\("studio"\)/);
 });

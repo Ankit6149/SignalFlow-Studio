@@ -12,7 +12,6 @@ const APPROVED_STYLE_ORDER = [
   "globals.css",
   "app-workspace.css",
   "studio-product.css",
-  "campaign-freshness.css",
   "campaign-versioning.css",
   "responsive-studio.css",
   "studio-decision-flow.css",
@@ -39,6 +38,7 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   assert.doesNotMatch(source, /connector\.css/);
   assert.doesNotMatch(source, /ui-containment\.css/);
   assert.doesNotMatch(source, /public-surfaces\.css/);
+  assert.doesNotMatch(source, /campaign-freshness\.css/);
 
   for (const retiredLayer of RETIRED_GLOBAL_LAYERS) {
     assert.equal(
@@ -47,6 +47,13 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
       `${retiredLayer} is retired and must not return to the production cascade`,
     );
   }
+});
+
+test("Review freshness styles are component-scoped rather than a root override layer", async () => {
+  const freshness = withoutCssComments(await readFile(new URL("../components/ReviewStage.module.css", import.meta.url), "utf8"));
+  assert.match(freshness, /\.staleBanner/);
+  assert.match(freshness, /\.root :global\(\.export-row\)/);
+  assert.equal(freshness.includes(".app-shell"), false);
 });
 
 test("legal styles are route-scoped and cannot patch Studio components", async () => {

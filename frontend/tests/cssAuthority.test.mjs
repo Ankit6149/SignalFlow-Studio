@@ -27,11 +27,12 @@ test("global layout no longer grows a connector-specific stylesheet layer", () =
   const layout = read("app/layout.js");
   const globalImports = [...layout.matchAll(/import "\.\.\/app\/[^"]+\.css";/g)].map((match) => match[0]);
 
-  assert.equal(globalImports.length, 7);
+  assert.equal(globalImports.length, 6);
   assert.ok(globalImports.some((entry) => entry.includes("app-workspace.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("connector.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("ui-containment.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("public-surfaces.css")));
+  assert.ok(globalImports.every((entry) => !entry.includes("campaign-freshness.css")));
 });
 
 test("root containment is part of the actual global reset", () => {
@@ -64,4 +65,19 @@ test("legal surfaces use one shared scoped module instead of a root global layer
   assert.match(legal, /\.nav \{/);
   assert.match(legal, /\.content \{/);
   assert.doesNotMatch(legal, /\.app-shell|\.studio-grid|\.studio-actionbar/);
+});
+
+
+test("Review owns freshness styling without a root feature stylesheet", () => {
+  const review = read("components/ReviewStage.js");
+  const reviewStyles = read("components/ReviewStage.module.css");
+  const retired = path.join(frontendRoot, "app/campaign-freshness.css");
+
+  assert.equal(fs.existsSync(retired), false, "retired campaign-freshness.css must not return");
+  assert.match(review, /import styles from "\.\/ReviewStage\.module\.css"/);
+  assert.match(review, /styles\.staleBanner/);
+  assert.match(review, /campaign-stale-banner/);
+  assert.match(reviewStyles, /\.staleBanner \{/);
+  assert.match(reviewStyles, /\.root :global\(\.review-actions\) button:disabled/);
+  assert.doesNotMatch(reviewStyles, /connection-badge--stale/);
 });

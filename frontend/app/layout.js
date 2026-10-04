@@ -1,7 +1,6 @@
 import "../app/globals.css";
 import "../app/app-workspace.css";
 import "../app/studio-product.css";
-import "../app/campaign-freshness.css";
 import "../app/campaign-versioning.css";
 import "../app/responsive-studio.css";
 import "../app/studio-decision-flow.css";

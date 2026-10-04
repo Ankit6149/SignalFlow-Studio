@@ -13,10 +13,11 @@ This document defines the production cascade and the ownership boundary for ever
 1. `globals.css` — reset/tokens, root viewport containment, scrollbar behavior, shared primitives, and typography.
 2. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
 3. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
-4. `campaign-freshness.css` — freshness-only states and source-change feedback.
-5. `campaign-versioning.css` — version-history and restore-only states.
-6. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
-7. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
+4. `campaign-versioning.css` — version-history and restore-only states.
+5. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
+6. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
+
+Review freshness/source-change appearance no longer participates in the root cascade; it is owned by `frontend/components/ReviewStage.module.css`.
 
 Legal routes do not participate in this global cascade. Terms and Privacy share the scoped `frontend/app/legal.module.css` module.
 
@@ -32,6 +33,7 @@ The following historical visual systems were removed after their legitimate publ
 - `connector.css` (folded into scoped `app-workspace.css` authority)
 - `ui-containment.css` (folded into `globals.css` root/reset authority)
 - `public-surfaces.css` (legal rules moved into `legal.module.css`; unused legacy skip-link rules removed)
+- `campaign-freshness.css` (Review freshness appearance moved into `ReviewStage.module.css`; unused stale connection-badge rule removed)
 
 They must not be recreated or restored. Git history remains the source for archaeology.
 
@@ -64,12 +66,12 @@ Stage-specific width or max-width rules must not be appended to `app-workspace.c
 
 ### Feature-state extensions
 
-A feature stylesheet is allowed only when it is narrow and state-oriented. It must:
+Prefer component-scoped modules for feature-state appearance when the state belongs to one surface, as with Review freshness. A root feature stylesheet is justified only when the same state genuinely spans multiple independently owned surfaces.
 
-- describe one capability such as freshness or version history;
+Any remaining feature stylesheet must:
+- describe one capability such as version history;
 - remain scoped below `.app-shell`;
 - avoid redefining shared component foundations;
-- load after the workflow layer;
 - include tests for its state behavior.
 
 ## Prohibited patterns

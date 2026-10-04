@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current master SHA | `6a511bb8a74c703a00ac19d800d7e996f62fd4f7` |
-| Current master change | #355 — extracted Library, Connections, and Settings workspaces |
-| Production SHA | `6a511bb8a74c703a00ac19d800d7e996f62fd4f7` |
-| Production deployment | `dpl_DMSGL7V1rLTmYwJfKrRAnD6cAonF` — READY |
-| Production change | #355 — secondary workspace decomposition |
-| Master ↔ production | **Aligned** |
-| Deployment status | Vercel quota cleared; current master deployed successfully |
+| Current code checkpoint | `6a441a4638c90d1e65ac97087ca64d5e73ea40ae` |
+| Current code checkpoint change | #370 — moved secondary page responsive authority into `app-workspace.css` |
+| Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
+| Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
+| Production change | #358 — Source stage presentation boundary |
+| Master ↔ production | **Split** — production is behind the #370 code checkpoint |
+| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#370 deployment |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; truth/docs/dead-code/runtime/extension/governance + first two #45 slices merged |
+| Repository hygiene | Active under #340; cleanup is through #370, with #44 CSS authority consolidation the current architecture focus and #45 presentation decomposition at its controller-boundary milestone |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,6 +47,13 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
+- #370 — moved secondary-route page-frame/heading responsive authority into `app-workspace.css`; `responsive-studio.css` is now 351 lines;
+- #369 — moved Library/Connections/Settings responsive ownership into `app-workspace.css`;
+- #368 — moved responsive application chrome ownership into `app-workspace.css`;
+- #367 — extracted `RegenerationDialog` with scoped module styling and removed `campaign-versioning.css`; root CSS imports are now 5 and `page.js` is 1,706 lines;
+- #366/#365/#364 — moved Review/Source state and freshness/version-history styling into component modules;
+- #363/#362/#361 — removed public-surfaces/ui-containment/connector global layers after moving their behavior to scoped owners;
+- #360/#359/#358/#357 — extracted Review, Destinations, Source, and Studio catalog presentation boundaries while keeping orchestration in the controller;
 - #355 — extracted Library/Connections/Settings presentation; `page.js` is now 2,488 lines, down from 2,881 at cleanup start;
 - #354 — refreshed execution truth against the post-#353 repository/deployment/governance state;
 - #353 — extracted Studio transport into `studioApiClient.mjs`; direct `fetch()` calls in `page.js` dropped 9 → 0;
@@ -157,7 +164,7 @@ Broader cloud/media/mobile/collaboration/destination expansion remains later unl
 
 ## Branch truth
 
-There are currently **27 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
+There are currently **42 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
 
 Intentional branches:
 
@@ -172,27 +179,26 @@ The currently connected GitHub action surface cannot delete branch refs. The bra
 
 ## Production alignment
 
-Production is now **aligned with master**.
+Production is currently **behind the #370 code checkpoint**.
 
 Verified on 2026-10-04:
 
-- master SHA: `6a511bb8a74c703a00ac19d800d7e996f62fd4f7`;
-- production deployment: `dpl_DMSGL7V1rLTmYwJfKrRAnD6cAonF`;
-- production target: READY;
-- canonical alias: `signal-flow-studio.vercel.app`;
-- grouped production runtime errors after deployment: none found in the current check window.
+- code checkpoint SHA: `6a441a4638c90d1e65ac97087ca64d5e73ea40ae` (#370);
+- latest READY production SHA: `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` (#358);
+- production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
+- recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
 
-This resolves the master/production split that had existed since #337. Do not infer GP2 owner acceptance from deployment alignment; deployment and acceptance remain separate gates.
+Do not claim #359–#370 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
 
 ## Immediate execution order
 
-1. Continue #45 with static channel/provider metadata and then Source/Destinations/Review component extraction; keep behavior unchanged.
-2. Execute #44 CSS authority consolidation after component ownership is clearer. Current audit found 91 class names spanning multiple global stylesheet layers.
-3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
-4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
-5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.
-6. Reverify GP2 runtime prerequisites against the now-current production deployment.
-7. Refresh #315 from then-current master only when the acceptance run is ready.
+1. Continue #44 by moving one coherent remaining responsive ownership cluster at a time while preserving the current computed appearance and five-layer cascade.
+2. Keep #45 at the controller-boundary decision point; do not mechanically extract more JSX or create a second campaign/store architecture.
+3. After responsive ownership stabilizes, reconcile `studio-decision-flow.css` into the true owners without reversing its current last-layer precedence.
+4. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
+5. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
+6. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.
+7. Reverify GP2 runtime prerequisites against the current production checkpoint before refreshing reserved #315.
 8. Complete positive + noise-control GP2 evidence.
 9. Perform the final cross-repository audit and close #340 only with evidence.
 

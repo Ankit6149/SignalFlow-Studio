@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current master SHA | `4ddf7486b48c995ecd351e0a8704c6bd238309b3` |
-| Current master change | #353 — extracted Studio API client; `page.js` now has zero direct `fetch()` calls |
-| Production SHA | `8a3cb236dd1b228652643e9f4d5fa8baf60cf251` |
-| Production deployment | `dpl_jA3K3KXbbCf66n8mEESLVK9xybPs` — READY |
-| Production change | #337 — hosted strategy planning through MCP |
-| Master ↔ production | **Diverged** |
-| Deployment blocker | Vercel free deployment/build daily rate limit; do not interpret this as an application test failure |
+| Current master SHA | `6a511bb8a74c703a00ac19d800d7e996f62fd4f7` |
+| Current master change | #355 — extracted Library, Connections, and Settings workspaces |
+| Production SHA | `6a511bb8a74c703a00ac19d800d7e996f62fd4f7` |
+| Production deployment | `dpl_DMSGL7V1rLTmYwJfKrRAnD6cAonF` — READY |
+| Production change | #355 — secondary workspace decomposition |
+| Master ↔ production | **Aligned** |
+| Deployment status | Vercel quota cleared; current master deployed successfully |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; truth/docs/dead-code/runtime/extension/governance + first #45 slice merged |
+| Repository hygiene | Active under #340; truth/docs/dead-code/runtime/extension/governance + first two #45 slices merged |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,7 +47,9 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
-- #353 — extracted Studio transport into `studioApiClient.mjs`; `page.js` dropped 2,881 → 2,800 lines and direct `fetch()` calls 9 → 0;
+- #355 — extracted Library/Connections/Settings presentation; `page.js` is now 2,488 lines, down from 2,881 at cleanup start;
+- #354 — refreshed execution truth against the post-#353 repository/deployment/governance state;
+- #353 — extracted Studio transport into `studioApiClient.mjs`; direct `fetch()` calls in `page.js` dropped 9 → 0;
 - #352 — strengthened the PR template with issue ownership, truth-level, validation, deployment/acceptance and remaining-work gates;
 - #351 — retired the stale 2026-09-20 next-chat handoff to a short historical pointer;
 - #350 — made the browser extension explicitly experimental and guarded against capture/delivery overclaims;
@@ -155,46 +157,44 @@ Broader cloud/media/mobile/collaboration/destination expansion remains later unl
 
 ## Branch truth
 
-There are currently **25 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
+There are currently **27 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
 
 Intentional branches:
 
 - `master`;
 - `feat/refine-workspace-loader-gate-c-20260915` — reserved #315.
 
-Branches already classified as deletion candidates after verification now also include the merged #347–#353 cleanup/refactor branches in addition to the earlier #313/#314/#316/#317/#318/#321/#339/#341/#342/#343 residue and the zero-ahead GP2 ledger branch.
+Branches already classified as deletion candidates after verification now also include the merged #347–#355 cleanup/refactor branches in addition to the earlier #313/#314/#316/#317/#318/#321/#339/#341/#342/#343 residue and the zero-ahead GP2 ledger branch.
 
 `feat/editorial-execution-layer` was forensically reviewed. Nearly all of its changed paths are already identical to or superseded by current master. Its only branch-only domain module, `distributionPlanning.mjs`, belongs to later editorial-calendar/publication work and is not accepted GP2 scope. **Retire this branch rather than rescuing it wholesale.**
 
 The currently connected GitHub action surface cannot delete branch refs. The branch decisions are recorded in #340; actual ref deletion remains a mechanical cleanup step on a GitHub surface with ref-deletion permission.
 
-## Production divergence
+## Production alignment
 
-Current production is healthy and Vercel reports no grouped runtime errors in the current 7-day window, but production remains on `8a3cb236…` (#337) while master is `4ddf7486…` (#353).
+Production is now **aligned with master**.
 
-Recent Preview deployments continue to be canceled/blocked while the account is constrained by the deployment/build quota.
+Verified on 2026-10-04:
 
-Do not repeatedly trigger deployments to work around the quota.
+- master SHA: `6a511bb8a74c703a00ac19d800d7e996f62fd4f7`;
+- production deployment: `dpl_DMSGL7V1rLTmYwJfKrRAnD6cAonF`;
+- production target: READY;
+- canonical alias: `signal-flow-studio.vercel.app`;
+- grouped production runtime errors after deployment: none found in the current check window.
 
-When the limit permits:
-
-1. deploy/reconcile current `master`;
-2. verify exact production SHA;
-3. inspect runtime errors and capability output;
-4. update this checkpoint only after production truth is known.
+This resolves the master/production split that had existed since #337. Do not infer GP2 owner acceptance from deployment alignment; deployment and acceptance remain separate gates.
 
 ## Immediate execution order
 
-1. Continue #45 decomposition with Library/Connections/Settings route-level presentation extraction; keep behavior unchanged.
+1. Continue #45 with static channel/provider metadata and then Source/Destinations/Review component extraction; keep behavior unchanged.
 2. Execute #44 CSS authority consolidation after component ownership is clearer. Current audit found 91 class names spanning multiple global stylesheet layers.
 3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
 4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
 5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.
-6. Reverify GP2 runtime prerequisites.
+6. Reverify GP2 runtime prerequisites against the now-current production deployment.
 7. Refresh #315 from then-current master only when the acceptance run is ready.
 8. Complete positive + noise-control GP2 evidence.
-9. Reconcile production to an exact current master SHA.
-10. Perform the final cross-repository audit and close #340 only with evidence.
+9. Perform the final cross-repository audit and close #340 only with evidence.
 
 ## Release discipline
 

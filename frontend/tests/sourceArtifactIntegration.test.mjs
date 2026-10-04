@@ -326,7 +326,7 @@ test("Copy import remaps AssetProcessing and SourceArtifact array references con
 });
 
 test("main Studio upload and generation boundary use canonical records with compatibility projection only", () => {
-  const page = readFrontend("app/page.js");
+  const page = readFrontend("app/StudioRootController.js");
   assert.match(page, /createUploadSourceBundle/);
   assert.match(page, /assetId: createClientId\("asset"\)/);
   assert.match(page, /sourceArtifactId: createClientId\("source-artifact"\)/);

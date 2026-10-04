@@ -9,7 +9,7 @@ const frontendRoot = path.resolve(testDir, "..");
 const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "utf8");
 
 test("Studio exposes deliberate edit-safe regeneration choices", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const dialog = read("components/RegenerationDialog.js");
 
   assert.match(page, /REGENERATION_POLICIES\.UNEDITED/);
@@ -25,7 +25,7 @@ test("Studio exposes deliberate edit-safe regeneration choices", () => {
 });
 
 test("Studio shows persistent campaign and channel state instead of toast-only state", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const review = read("components/ReviewStage.js");
   assert.match(page, /campaignStatus=\{campaignStatus\}/);
   assert.match(page, /lastSavedAt=\{lastSavedAt\}/);
@@ -42,7 +42,7 @@ test("Studio shows persistent campaign and channel state instead of toast-only s
 });
 
 test("Studio exposes explicit identity-safe persistence operations", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const review = read("components/ReviewStage.js");
   const application = read("lib/application/campaignApplication.mjs");
   assert.match(page, /saveCampaignAsCopy/);
@@ -59,7 +59,7 @@ test("Studio exposes explicit identity-safe persistence operations", () => {
 });
 
 test("version history and generated-copy restoration are available", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const review = read("components/ReviewStage.js");
   assert.match(review, /Version history/);
   assert.match(page, /RESTORE_ARCHIVE/);

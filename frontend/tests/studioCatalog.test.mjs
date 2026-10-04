@@ -74,7 +74,7 @@ test("channel metadata keeps the existing unknown-channel fallback", () => {
 });
 
 test("page controller consumes the shared catalog instead of owning duplicate metadata", () => {
-  const page = fs.readFileSync(path.join(frontendRoot, "app/page.js"), "utf8");
+  const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   assert.match(page, /from "\.\.\/lib\/studio\/studioCatalog\.mjs"/);
   assert.doesNotMatch(page, /const CHANNELS = \[/);
   assert.doesNotMatch(page, /const CHANNEL_GROUPS = \[/);

@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("Review downloads the canonical ZIP through a browser-safe binary path", async () => {
   const [page, review, application, zipExport, browserDownload] = await Promise.all([
-    readFile(new URL("../app/page.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8"),
     readFile(new URL("../components/ReviewStage.js", import.meta.url), "utf8"),
     readFile(new URL("../lib/application/campaignApplication.mjs", import.meta.url), "utf8"),
     readFile(new URL("../lib/export/campaignZip.mjs", import.meta.url), "utf8"),

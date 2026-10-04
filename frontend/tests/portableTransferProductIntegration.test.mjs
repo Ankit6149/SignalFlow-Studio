@@ -18,7 +18,7 @@ const readFrontend = (relative) => fs.readFileSync(path.join(frontendRoot, relat
 const readRepository = (relative) => fs.readFileSync(path.join(repositoryRoot, relative), "utf8");
 
 test("Library renders the browser transfer application as a real product surface", () => {
-  const page = readFrontend("app/page.js");
+  const page = readFrontend("app/StudioRootController.js");
   const libraryRoute = readFrontend("app/library/page.js");
   const libraryWorkspace = readFrontend("components/LibraryWorkspace.js");
   assert.doesNotMatch(page, /<LibraryWorkspace/);

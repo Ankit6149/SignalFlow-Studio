@@ -393,7 +393,7 @@ test("failed destinations expose an isolated retry path without touching success
 test("generation cancellation is propagated through API, providers, UI, and campaign state", async () => {
   const routeSource = await readFile(new URL("../app/api/launch_kit/route.js", import.meta.url), "utf8");
   const packageSource = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
-  const pageSource = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
+  const pageSource = await readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8");
   const providerPaths = [
     "../lib/ai/providers/openai.js",
     "../lib/ai/providers/claude.js",

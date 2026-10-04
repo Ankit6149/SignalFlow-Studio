@@ -28,7 +28,7 @@ async function exists(filePath) {
 
 test("legacy bearer-token migration is fully retired in favor of the HTTP-only session", async () => {
   const layout = await readFile(path.join(frontendRoot, "app/layout.js"), "utf8");
-  const page = await readFile(path.join(frontendRoot, "app/page.js"), "utf8");
+  const page = await readFile(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   const studioApiClient = await readFile(path.join(frontendRoot, "lib/studio/studioApiClient.mjs"), "utf8");
   const ownerConnectionsController = await readFile(path.join(frontendRoot, "lib/studio/useOwnerConnectionsController.js"), "utf8");
   const sessionRoute = await readFile(path.join(frontendRoot, "app/api/session/route.js"), "utf8");
@@ -59,7 +59,7 @@ test("unsupported Playwright capture is absent from the production graph", async
   const captureTypes = await import("../lib/capture/types.js");
   const packageManifest = JSON.parse(await readFile(path.join(frontendRoot, "package.json"), "utf8"));
   const packageLock = JSON.parse(await readFile(path.join(frontendRoot, "package-lock.json"), "utf8"));
-  const page = await readFile(path.join(frontendRoot, "app/page.js"), "utf8");
+  const page = await readFile(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   const activeFiles = [
     ...await sourceFiles(path.join(frontendRoot, "app")),
     ...await sourceFiles(path.join(frontendRoot, "components")),

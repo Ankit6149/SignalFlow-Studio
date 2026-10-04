@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const rootUrl = new URL("../app/page.js", import.meta.url);
+const rootUrl = new URL("../app/StudioRootController.js", import.meta.url);
 const libraryUrl = new URL("../app/library/page.js", import.meta.url);
 const shellUrl = new URL("../components/WorkspaceShell.js", import.meta.url);
 const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);

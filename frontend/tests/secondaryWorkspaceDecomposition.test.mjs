@@ -9,7 +9,7 @@ const frontendRoot = path.resolve(testDir, "..");
 const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "utf8");
 
 test("secondary workspaces are explicit presentation components", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const libraryRoute = read("app/library/page.js");
   const library = read("components/LibraryWorkspace.js");
   const connections = read("components/ConnectionsWorkspace.js");
@@ -42,7 +42,7 @@ test("secondary workspaces are explicit presentation components", () => {
 });
 
 test("secondary workspace mutations stay explicit in their owning route/controller", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const libraryRoute = read("app/library/page.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");

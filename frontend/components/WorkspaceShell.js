@@ -12,7 +12,7 @@ import styles from "./WorkspaceShell.module.css";
 const FLOW = [
   { id: "signals", label: "Capture", href: "/signals", status: "available" },
   { id: "plan", label: "Shape", href: "/plan", status: "available" },
-  { id: "create", label: "Create", href: "/?workspace=studio", status: "available" },
+  { id: "create", label: "Create", href: "/studio", status: "available" },
   { id: "today", label: "Review", href: "/today", status: "available" },
   { id: "calendar", label: "Publish", status: "planned" },
 ];
@@ -24,7 +24,7 @@ const NAV_GROUPS = [
     { id: "today", label: "Today", href: "/today", status: "available" },
     { id: "signals", label: "Signals", href: "/signals", status: "available" },
     { id: "plan", label: "Plan", href: "/plan", status: "available" },
-    { id: "create", label: "Create", href: "/?workspace=studio", status: "available" },
+    { id: "create", label: "Create", href: "/studio", status: "available" },
     { id: "library", label: "Library", href: "/library", status: "available" },
   ]},
   { label: "System", items: [

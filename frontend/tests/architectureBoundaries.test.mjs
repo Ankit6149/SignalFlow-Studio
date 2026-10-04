@@ -54,12 +54,12 @@ test("campaign UI delegates library persistence and export projection to the app
 });
 
 test("new campaign action clears editor identity through the shared session boundary", () => {
-  const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
+  const controller = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   const libraryRoute = fs.readFileSync(path.join(frontendRoot, "app/library/page.js"), "utf8");
   const session = fs.readFileSync(path.join(frontendRoot, "lib/studio/CampaignEditorSessionContext.js"), "utf8");
   const library = fs.readFileSync(path.join(frontendRoot, "components/LibraryWorkspace.js"), "utf8");
 
-  assert.match(page, /function startNewCampaign\(\)[\s\S]*resetEditorSession\(\)/);
+  assert.doesNotMatch(controller, /function startNewCampaign\(\)|resetEditorSession\(\)/);
   assert.match(libraryRoute, /function startNewCampaign\(\)[\s\S]*resetEditorSession\(\)/);
   assert.match(session, /function resetEditorSession\(\)/);
   assert.match(session, /setCurrentCampaignId\(""\)/);

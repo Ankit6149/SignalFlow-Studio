@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current code checkpoint | `1939ba25cf225bb0d6efb97ead2ae8d392caf76b` |
-| Current code checkpoint change | #374 — moved all remaining non-media responsive base rules into `app-workspace.css` |
+| Current code checkpoint | `6b3d88c577b63c697d89587fc1847139e45d02bb` |
+| Current code checkpoint change | #380 — eliminated the final exact selector overlap between `app-workspace.css` and `studio-product.css` |
 | Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
 | Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
 | Production change | #358 — Source stage presentation boundary |
-| Master ↔ production | **Split** — production is behind the #374 code checkpoint |
-| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#374 deployment |
+| Master ↔ production | **Split** — production is behind the #380 code checkpoint |
+| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#380 deployment |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; cleanup is through #374, with #44 CSS authority consolidation the current architecture focus and #45 presentation decomposition at its controller-boundary milestone |
+| Repository hygiene | Active under #340; cleanup is through #380; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 remains at its controller/state-ownership decision point |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,6 +47,10 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
+- #380 — eliminated the final exact selector overlap between `app-workspace.css` and `studio-product.css` (22 → 0) and added a CI invariant preventing duplicate selectors from returning;
+- #379 — scoped Studio frame/heading/workflow-rail authority to the staged Studio surface, reducing exact cross-layer selector overlap 34 → 22;
+- #378 — retired `studio-decision-flow.css` by folding final Source/Destinations/Review composition into `studio-product.css`; root CSS imports dropped 4 → 3;
+- #377 — retired `responsive-studio.css`; Studio breakpoints moved into `studio-product.css`, reduced-motion moved into `app-workspace.css`, and root CSS imports dropped 5 → 4;
 - #374 — moved all remaining non-media responsive base rules into `app-workspace.css`; `responsive-studio.css` is now breakpoint-only plus reduced-motion at 174 lines; full GitHub CI passed;
 - #373 — moved shared workspace containment/intrinsic sizing/long-content resilience into `app-workspace.css`; `responsive-studio.css` dropped from 336 to 235 lines; full GitHub CI passed after reconciling the stale responsive contract test;
 - #372 — scoped RegenerationDialog viewport containment into `RegenerationDialog.module.css`; `responsive-studio.css` dropped from 351 to 336 lines; full GitHub CI passed;
@@ -183,39 +187,41 @@ The currently connected GitHub action surface cannot delete branch refs. The bra
 
 ## Production alignment
 
-Production is currently **behind the #374 code checkpoint**.
+Production is currently **behind the #380 code checkpoint**.
 
 Verified on 2026-10-04:
 
-- code checkpoint SHA: `1939ba25cf225bb0d6efb97ead2ae8d392caf76b` (#374);
+- code checkpoint SHA: `6b3d88c577b63c697d89587fc1847139e45d02bb` (#380);
 - latest READY production SHA: `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` (#358);
 - production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
 - recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
 
-Do not claim #359–#374 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+Do not claim #359–#380 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
 
 ## Current #44 measured CSS frontier
 
-Verified after #374:
+Verified after #380:
 
-- root CSS imports remain **5**;
-- `responsive-studio.css` is **174 lines** and contains only breakpoint-specific plus reduced-motion rules;
-- remaining responsive unique selectors: **34**;
-- selectors still overlapping an owning stylesheet: **33**;
-- `studio-decision-flow.css` remains **37 unique selectors** and stays last in the cascade until responsive ownership is fully reconciled;
-- `page.js` remains **1,706 lines**; #45 is still at the controller/state ownership decision point.
+- root CSS imports are **3**: `globals.css` → `app-workspace.css` → `studio-product.css`;
+- `responsive-studio.css` is retired;
+- `studio-decision-flow.css` is retired;
+- exact selectors shared by `app-workspace.css` and `studio-product.css`: **0**, enforced by CI;
+- shared shell/component primitives remain in `app-workspace.css`;
+- Studio-only composition is scoped beneath the staged Studio surface in `studio-product.css`;
+- `page.js` remains **1,706 lines**; #45 is still a separate controller/state-ownership decision.
+
+The architecture portion of #44 is complete. Do not close #44 until current-SHA visual evidence covers desktop/tablet/mobile, 200% zoom, and long-content states. Current production remains #358, so existing production visuals cannot prove the #380 CSS state.
 
 ## Immediate execution order
 
-1. Continue #44 by moving one coherent remaining responsive ownership cluster at a time while preserving the current computed appearance and five-layer cascade.
-2. Keep #45 at the controller-boundary decision point; do not mechanically extract more JSX or create a second campaign/store architecture.
-3. After responsive ownership stabilizes, reconcile `studio-decision-flow.css` into the true owners without reversing its current last-layer precedence.
-4. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
-5. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
-6. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.
-7. Reverify GP2 runtime prerequisites against the current production checkpoint before refreshing reserved #315.
-8. Complete positive + noise-control GP2 evidence.
-9. Perform the final cross-repository audit and close #340 only with evidence.
+1. Keep #44 open only for current-SHA visual/responsive acceptance evidence; do not restart CSS architecture work unless evidence exposes a concrete defect.
+2. Keep #45 at the controller/state-ownership decision point; do not mechanically extract more JSX or create a second campaign/store architecture.
+3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
+4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
+5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.
+6. Reverify GP2 runtime prerequisites against the current production checkpoint before refreshing reserved #315.
+7. Complete positive + noise-control GP2 evidence.
+8. Perform the final cross-repository audit and close #340 only with evidence.
 
 ## Release discipline
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const pageUrl = new URL("../app/page.js", import.meta.url);
+const pageUrl = new URL("../app/StudioRootController.js", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
 const sourceStageUrl = new URL("../components/SourceStage.js", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);

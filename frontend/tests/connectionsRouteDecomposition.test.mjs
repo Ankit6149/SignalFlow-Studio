@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const rootUrl = new URL("../app/page.js", import.meta.url);
+const rootUrl = new URL("../app/StudioRootController.js", import.meta.url);
 const routeUrl = new URL("../app/connections/page.js", import.meta.url);
 const shellUrl = new URL("../components/WorkspaceShell.js", import.meta.url);
 const callbackUrl = new URL("../app/api/social/callback/[platform]/route.js", import.meta.url);

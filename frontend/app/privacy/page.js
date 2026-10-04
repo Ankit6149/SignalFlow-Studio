@@ -1,3 +1,5 @@
+import styles from "../legal.module.css";
+
 export const metadata = {
   title: "Privacy",
   description: "How SignalFlow Studio handles campaign data, model keys, uploaded text, and social connector sessions.",
@@ -15,12 +17,12 @@ function LegalBrand() {
 
 export default function PrivacyPage() {
   return (
-    <main className="legal-shell">
-      <header className="legal-nav">
+    <main className={styles.shell}>
+      <header className={styles.nav}>
         <a href="/"><LegalBrand /></a>
         <a href="/">Back to SignalFlow</a>
       </header>
-      <article className="legal-content">
+      <article className={styles.content}>
         <p className="eyebrow eyebrow--dark"><span /> Product policy</p>
         <h1>Privacy</h1>
         <p>Effective July 30, 2026</p>

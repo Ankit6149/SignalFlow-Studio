@@ -12,7 +12,6 @@ const page = read("app/page.js");
 const landing = read("components/LandingPage.js");
 const styles = read("components/LandingPage.module.css");
 const globals = read("app/globals.css");
-const publicSurfaces = read("app/public-surfaces.css");
 const layout = read("app/layout.js");
 const openGraphStaticPath = path.join(frontend, "public/opengraph-static.jpg");
 const manifest = read("public/manifest.webmanifest");
@@ -74,7 +73,6 @@ test("public discovery metadata matches the content operating system positioning
 
 test("the landing design remains component-scoped and keeps its current narrative sections", () => {
   assert.doesNotMatch(globals, /\.landing-shell|\.landing-hero|\.landing-nav|\.landing-editorial/);
-  assert.doesNotMatch(publicSurfaces, /\.landing-shell|\.landing-hero|\.landing-nav|\.channel-showcase|\.landing-faq/);
   assert.doesNotMatch(styles, /\.app-shell|\.studio-page|\.secondary-page/);
   for (const selector of ["hero", "theatre", "statementSection", "flowSection", "systemSection", "controlSection", "finalSection"]) {
     assert.match(styles, new RegExp(`\\.${selector}\\s*[,\\{]`));

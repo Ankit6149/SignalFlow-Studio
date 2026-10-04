@@ -1,3 +1,5 @@
+import styles from "../legal.module.css";
+
 export const metadata = {
   title: "Terms",
   description: "Terms for using the SignalFlow Studio campaign creation and publishing workflow.",
@@ -15,12 +17,12 @@ function LegalBrand() {
 
 export default function TermsPage() {
   return (
-    <main className="legal-shell">
-      <header className="legal-nav">
+    <main className={styles.shell}>
+      <header className={styles.nav}>
         <a href="/"><LegalBrand /></a>
         <a href="/">Back to SignalFlow</a>
       </header>
-      <article className="legal-content">
+      <article className={styles.content}>
         <p className="eyebrow eyebrow--dark"><span /> Product policy</p>
         <h1>Terms</h1>
         <p>Effective July 24, 2026</p>

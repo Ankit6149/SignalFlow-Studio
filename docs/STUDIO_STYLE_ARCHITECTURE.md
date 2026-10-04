@@ -11,13 +11,14 @@ This document defines the production cascade and the ownership boundary for ever
 `frontend/app/layout.js` must import styles in this order:
 
 1. `globals.css` — reset/tokens, root viewport containment, scrollbar behavior, shared primitives, and typography.
-2. `public-surfaces.css` — accessibility skip link and legal/public utility surfaces only.
-3. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
-4. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
-5. `campaign-freshness.css` — freshness-only states and source-change feedback.
-6. `campaign-versioning.css` — version-history and restore-only states.
-7. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
-8. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
+2. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
+3. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
+4. `campaign-freshness.css` — freshness-only states and source-change feedback.
+5. `campaign-versioning.css` — version-history and restore-only states.
+6. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
+7. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
+
+Legal routes do not participate in this global cascade. Terms and Privacy share the scoped `frontend/app/legal.module.css` module.
 
 The order is enforced by `frontend/tests/styleCascade.test.mjs`.
 
@@ -30,6 +31,7 @@ The following historical visual systems were removed after their legitimate publ
 - `professional-polish.css`
 - `connector.css` (folded into scoped `app-workspace.css` authority)
 - `ui-containment.css` (folded into `globals.css` root/reset authority)
+- `public-surfaces.css` (legal rules moved into `legal.module.css`; unused legacy skip-link rules removed)
 
 They must not be recreated or restored. Git history remains the source for archaeology.
 
@@ -37,9 +39,9 @@ They must not be recreated or restored. Git history remains the source for archa
 
 ### Public and legal pages
 
-Keep legal/public utility layout in `public-surfaces.css`. Landing layout remains component-scoped in `LandingPage.module.css`. Public rules must not contain `.app-shell` selectors or redefine Studio controls.
+Landing layout remains component-scoped in `LandingPage.module.css`. Terms and Privacy share `legal.module.css`. Public/legal rules must not contain `.app-shell` selectors or redefine Studio controls.
 
-Root overflow, scrollbar behavior, and global page-gutter tokens belong in `globals.css`; do not recreate a separate containment override layer.
+Root overflow, scrollbar behavior, and global page-gutter tokens belong in `globals.css`; do not recreate separate public or containment override layers.
 
 ### Shared Studio components
 
@@ -76,7 +78,7 @@ Do not add another global `polish`, `tuning`, `refresh`, or `final` stylesheet. 
 
 Do not:
 
-- restyle Studio selectors from `public-surfaces.css` or unscoped global reset rules;
+- restyle Studio selectors from public/legal modules or unscoped global reset rules;
 - use `!important` to win cascade conflicts;
 - redefine the same component in multiple active files;
 - place unscoped `body`, `html`, or `:root` rules in Studio layers;

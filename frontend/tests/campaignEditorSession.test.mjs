@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const layoutUrl = new URL("../app/layout.js", import.meta.url);
+const pageUrl = new URL("../app/page.js", import.meta.url);
+const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);
+
+test("campaign editor state survives route navigation through a side-effect-free root session", async () => {
+  const [layout, page, session] = await Promise.all([
+    readFile(layoutUrl, "utf8"),
+    readFile(pageUrl, "utf8"),
+    readFile(sessionUrl, "utf8"),
+  ]);
+
+  assert.match(layout, /<CampaignEditorSessionProvider>/);
+  assert.match(page, /useCampaignEditorSession\(\)/);
+  assert.doesNotMatch(page, /useReducer\(\s*campaignReducer/);
+  assert.doesNotMatch(page, /const \[form, setForm\] = useState/);
+  assert.doesNotMatch(page, /const \[channels, setChannels\] = useState/);
+  assert.doesNotMatch(page, /const \[files, setFiles\] = useState/);
+  assert.doesNotMatch(page, /const \[documentText, setDocumentText\] = useState/);
+
+  assert.match(session, /campaignReducer/);
+  assert.match(session, /currentCampaignId/);
+  assert.match(session, /publishOptions/);
+  assert.match(session, /strategyReview/);
+  assert.doesNotMatch(session, /fetch\s*\(/);
+  assert.doesNotMatch(session, /localStorage|sessionStorage|indexedDB/);
+  assert.doesNotMatch(session, /generateStudioCampaign|publishStudioPost|studioApiClient/);
+  assert.doesNotMatch(session, /useEffect|AbortController/);
+});
+
+test("route-surviving editor session does not globalize transient UI/process state", async () => {
+  const [page, session] = await Promise.all([
+    readFile(pageUrl, "utf8"),
+    readFile(sessionUrl, "utf8"),
+  ]);
+
+  for (const localState of [
+    "busy",
+    "generationProgress",
+    "message",
+    "library",
+    "regenerationDialogOpen",
+    "versionHistoryOpen",
+  ]) {
+    assert.ok(page.includes(`const [${localState},`), `${localState} must stay local to the Create route`);
+    assert.equal(session.includes(localState), false, `${localState} must not move into the route-surviving session`);
+  }
+});

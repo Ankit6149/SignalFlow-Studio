@@ -2,6 +2,7 @@ import "../app/globals.css";
 import "../app/app-workspace.css";
 import "../app/studio-product.css";
 import WorkspaceAccessibility from "../components/WorkspaceAccessibility";
+import { CampaignEditorSessionProvider } from "../lib/studio/CampaignEditorSessionContext.js";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";
 const repositoryUrl = "https://github.com/Ankit6149/SignalFlow-Studio";
@@ -212,7 +213,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <WorkspaceAccessibility />
-        {children}
+        <CampaignEditorSessionProvider>
+          {children}
+        </CampaignEditorSessionProvider>
       </body>
     </html>
   );

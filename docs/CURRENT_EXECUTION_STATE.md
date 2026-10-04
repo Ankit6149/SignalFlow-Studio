@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current code checkpoint | `6a441a4638c90d1e65ac97087ca64d5e73ea40ae` |
-| Current code checkpoint change | #370 — moved secondary page responsive authority into `app-workspace.css` |
+| Current code checkpoint | `1939ba25cf225bb0d6efb97ead2ae8d392caf76b` |
+| Current code checkpoint change | #374 — moved all remaining non-media responsive base rules into `app-workspace.css` |
 | Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
 | Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
 | Production change | #358 — Source stage presentation boundary |
-| Master ↔ production | **Split** — production is behind the #370 code checkpoint |
-| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#370 deployment |
+| Master ↔ production | **Split** — production is behind the #374 code checkpoint |
+| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#374 deployment |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; cleanup is through #370, with #44 CSS authority consolidation the current architecture focus and #45 presentation decomposition at its controller-boundary milestone |
+| Repository hygiene | Active under #340; cleanup is through #374, with #44 CSS authority consolidation the current architecture focus and #45 presentation decomposition at its controller-boundary milestone |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,6 +47,10 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
+- #374 — moved all remaining non-media responsive base rules into `app-workspace.css`; `responsive-studio.css` is now breakpoint-only plus reduced-motion at 174 lines; full GitHub CI passed;
+- #373 — moved shared workspace containment/intrinsic sizing/long-content resilience into `app-workspace.css`; `responsive-studio.css` dropped from 336 to 235 lines; full GitHub CI passed after reconciling the stale responsive contract test;
+- #372 — scoped RegenerationDialog viewport containment into `RegenerationDialog.module.css`; `responsive-studio.css` dropped from 351 to 336 lines; full GitHub CI passed;
+- #371 — refreshed this execution control plane against the verified #370 code checkpoint / #358 production split;
 - #370 — moved secondary-route page-frame/heading responsive authority into `app-workspace.css`; `responsive-studio.css` is now 351 lines;
 - #369 — moved Library/Connections/Settings responsive ownership into `app-workspace.css`;
 - #368 — moved responsive application chrome ownership into `app-workspace.css`;
@@ -164,7 +168,7 @@ Broader cloud/media/mobile/collaboration/destination expansion remains later unl
 
 ## Branch truth
 
-There are currently **42 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
+There are currently **46 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
 
 Intentional branches:
 
@@ -179,16 +183,27 @@ The currently connected GitHub action surface cannot delete branch refs. The bra
 
 ## Production alignment
 
-Production is currently **behind the #370 code checkpoint**.
+Production is currently **behind the #374 code checkpoint**.
 
 Verified on 2026-10-04:
 
-- code checkpoint SHA: `6a441a4638c90d1e65ac97087ca64d5e73ea40ae` (#370);
+- code checkpoint SHA: `1939ba25cf225bb0d6efb97ead2ae8d392caf76b` (#374);
 - latest READY production SHA: `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` (#358);
 - production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
 - recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
 
-Do not claim #359–#370 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+Do not claim #359–#374 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+
+## Current #44 measured CSS frontier
+
+Verified after #374:
+
+- root CSS imports remain **5**;
+- `responsive-studio.css` is **174 lines** and contains only breakpoint-specific plus reduced-motion rules;
+- remaining responsive unique selectors: **34**;
+- selectors still overlapping an owning stylesheet: **33**;
+- `studio-decision-flow.css` remains **37 unique selectors** and stays last in the cascade until responsive ownership is fully reconciled;
+- `page.js` remains **1,706 lines**; #45 is still at the controller/state ownership decision point.
 
 ## Immediate execution order
 

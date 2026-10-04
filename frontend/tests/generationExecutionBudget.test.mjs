@@ -189,6 +189,6 @@ test("provider calls are accounted centrally before adapter invocation", async (
 });
 
 test("Studio exposes a specific request-budget recovery action", async () => {
-  const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8");
   assert.match(page, /reduce_destinations: "Reduce the number of destinations or retry only the affected destination\."/);
 });

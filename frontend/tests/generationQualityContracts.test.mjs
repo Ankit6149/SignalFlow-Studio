@@ -371,10 +371,10 @@ test("complete, needs_review, and failed quality states remain behaviorally dist
 
 
 test("failed destinations expose an isolated retry path without touching successful channels", async () => {
-  const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
-  assert.match(page, /\? "Generation failed"/);
-  assert.match(page, /\? "Retry destination" : "Regenerate this channel"/);
-  assert.match(page, /\["needs_review", "failed", "cancelled"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
+  const review = await readFile(new URL("../components/ReviewStage.js", import.meta.url), "utf8");
+  assert.match(review, /\? "Generation failed"/);
+  assert.match(review, /\? "Retry destination"/);
+  assert.match(review, /\["needs_review", "failed", "cancelled"\]\.includes\(channelStates\[activeChannel\]\?\.status\) \? "alert" : "status"/);
 
   const targets = regenerationTargets({
     policy: REGENERATION_POLICIES.CHANNEL,

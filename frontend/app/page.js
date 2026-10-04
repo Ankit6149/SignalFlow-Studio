@@ -5,6 +5,7 @@ import PlatformIcon from "../components/PlatformIcon";
 import LandingPage from "../components/LandingPage";
 import SourceStage from "../components/SourceStage";
 import DestinationsStage from "../components/DestinationsStage";
+import ReviewStage from "../components/ReviewStage";
 import LibraryWorkspace from "../components/LibraryWorkspace";
 import ConnectionsWorkspace from "../components/ConnectionsWorkspace";
 import SettingsWorkspace from "../components/SettingsWorkspace";
@@ -108,16 +109,6 @@ function downloadBinary(filename, value, type = "application/octet-stream") {
   URL.revokeObjectURL(url);
 }
 
-function formatDate(value) {
-  if (!value) return "Just now";
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 function providerRecoveryMessage(providerError) {
   const action = String(providerError?.recoveryAction || "");
   const messages = {
@@ -185,15 +176,6 @@ function SparkIcon() {
         stroke="currentColor"
         strokeWidth="1.5"
       />
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <rect x="6.5" y="6.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M4.5 12.5h-.2a1.8 1.8 0 0 1-1.8-1.8V4.3a1.8 1.8 0 0 1 1.8-1.8h6.4a1.8 1.8 0 0 1 1.8 1.8v.2" fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }
@@ -640,6 +622,26 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     if (!channels.length) return;
     const nextIndex = (reviewIndex + direction + channels.length) % channels.length;
     setActiveChannel(channels[nextIndex]);
+  }
+
+  function editActivePost(text) {
+    dispatchCampaign({
+      type: "EDIT_POST",
+      channel: activeChannel,
+      text,
+    });
+  }
+
+  function regenerateActiveChannel() {
+    void performRegeneration(REGENERATION_POLICIES.CHANNEL, activeChannel);
+  }
+
+  function restoreActiveGeneratedPost() {
+    dispatchCampaign({ type: "RESTORE_GENERATED", channel: activeChannel });
+  }
+
+  function toggleVersionHistory() {
+    setVersionHistoryOpen((open) => !open);
   }
 
   async function handleFiles(event) {
@@ -1502,346 +1504,63 @@ async function exportZip() {
               />
 
               {stage !== "destinations" && (
-                <div className={`review-workspace ${isCampaignStale ? "has-stale-campaign" : ""}`}>
-                  <div className="campaign-status-strip" role="status" aria-live="polite">
-                    <div className="campaign-status-strip__primary">
-                      <span className={`campaign-state-badge is-${campaignStatus.campaignKey}`}>
-                        {campaignStatus.campaignLabel}
-                      </span>
-                      <strong>{form.projectName.trim() || "Untitled campaign"}</strong>
-                      <small>Revision {revision} · {campaignStatus.approvedCount}/{channels.length} approved · {campaignStatus.editedCount} edited</small>
-                    </div>
-                    <div className="campaign-status-strip__meta">
-                      <small>{lastSavedAt ? `Saved ${formatDate(lastSavedAt)}` : "Not saved yet"}</small>
-                      <small>{campaignStatus.isExportedCurrent ? `Exported ${formatDate(lastExportedAt)}` : lastExportedAt ? "Changed since last export" : "Not exported yet"}</small>
-                    </div>
-                  </div>
-                  {isCampaignStale && (
-                    <div className="campaign-stale-banner" role="alert" aria-live="assertive">
-                      <div className="campaign-stale-banner__copy">
-                        <span className="campaign-stale-banner__label">Source changed</span>
-                        <strong>These drafts belong to an earlier campaign snapshot.</strong>
-                      </div>
-                      <p>
-                        Review remains available, but SignalFlow blocks copy, export, and publishing until the
-                        campaign is regenerated from the current source.
-                      </p>
-                      {sourceChangeLabels.length > 0 && (
-                        <small>Changed: {sourceChangeLabels.join(", ")}.</small>
-                      )}
-                      <button type="button" onClick={() => navigateStudioFlow("destinations")}>
-                        Review changes
-                      </button>
-                    </div>
-                  )}
-                  <div className="review-tabs" aria-label="Campaign channels">
-                    {channels.map((channelId) => {
-                      const meta = channelMeta(channelId);
-                      const status = selectChannelStatus({
-                        channelState: channelStates[channelId],
-                        isStale: isCampaignStale,
-                        content: posts[channelId] || "",
-                      });
-                      return (
-                        <button
-                          key={channelId}
-                          className={activeChannel === channelId ? "is-active" : ""}
-                          onClick={() => setActiveChannel(channelId)}
-                          aria-label={`${meta.label}: ${status.label}`}
-                        >
-                          <span>
-                            <PlatformIcon platform={channelId} size={13} />
-                          </span>
-                          <span className="review-tab__copy">
-                            <strong>{meta.label}</strong>
-                            <small className="review-tab__status">{status.label}</small>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="review-nav" aria-label="Move between campaign drafts">
-                    <button type="button" onClick={() => moveReviewChannel(-1)}>← Previous</button>
-                    <button type="button" onClick={() => moveReviewChannel(1)}>Next →</button>
-                  </div>
-
-                  <div className={`native-preview native-preview--${activeChannel}`}>
-                    <header>
-                      <div className="preview-avatar">
-                        <PlatformIcon platform={activeChannel} size={19} />
-                      </div>
-                      <div>
-                        <strong>{activeMeta.label} draft</strong>
-                        <span>{activeMeta.tone}</span>
-                      </div>
-                      <span className={`draft-state-badge is-${activeChannelStatus.key}`}>
-                        {activeChannelStatus.label}
-                      </span>
-                    </header>
-
-                    <textarea
-                      value={currentPost}
-                      onChange={(event) =>
-                        dispatchCampaign({
-                          type: "EDIT_POST",
-                          channel: activeChannel,
-                          text: event.target.value,
-                        })
-                      }
-                      placeholder="No draft was generated for this channel."
-                      aria-label={`${activeMeta.label} campaign draft`}
-                    />
-
-                    <footer>
-                      <span className={isOverLimit ? "is-over-limit" : ""}>
-                        {xThreadMode
-                          ? `${xThreadParts.length} posts · longest ${xLongestPart.toLocaleString()} / ${activeMeta.limit.toLocaleString()} characters`
-                          : `${currentPost.length.toLocaleString()}${activeMeta.limit ? ` / ${activeMeta.limit.toLocaleString()}` : ""} characters`}
-                      </span>
-                      <span>Editable before export or publish</span>
-                    </footer>
-
-                    {activeMeta.limit && (
-                      <div
-                        className={`character-guide ${isOverLimit ? "is-over-limit" : ""}`}
-                        aria-label={`${characterPercent}% of character guide used`}
-                      >
-                        <span style={{ width: `${characterPercent}%` }} />
-                      </div>
-                    )}
-                  </div>
-
-                  <aside className="review-inspector" aria-label={`${activeMeta.label} draft guidance`}>
-                    <div className="review-inspector__eyebrow">Channel intelligence</div>
-                    <h3>{activeMeta.label}</h3>
-                    <dl>
-                      <div><dt>Voice</dt><dd>{activeMeta.tone}</dd></div>
-                      <div>
-                        <dt>Route</dt>
-                        <dd>
-                          {isCampaignStale
-                            ? "Blocked until regeneration from the current source"
-                            : canPublishCurrent
-                              ? "Connected official API"
-                              : OFFICIAL_CONNECTORS.has(activeChannel)
-                                ? "Official connector available; manual handoff remains available"
-                                : "Review, copy, export, and open-platform handoff"}
-                        </dd>
-                      </div>
-                      <div><dt>Length</dt><dd>{xThreadMode ? `${xThreadParts.length} posts; longest is ${xLongestPart} of ${activeMeta.limit} characters` : activeMeta.limit ? `${currentPost.length.toLocaleString()} of ${activeMeta.limit.toLocaleString()} characters` : `${currentPost.length.toLocaleString()} characters; no fixed guide`}</dd></div>
-                      <div><dt>Campaign context</dt><dd>{sourceSignals} source signal{sourceSignals === 1 ? "" : "s"}, {files.length} attached file{files.length === 1 ? "" : "s"}</dd></div>
-                      <div><dt>Draft state</dt><dd>{activeChannelStatus.label}{activeChannelStatus.isEdited && activeChannelStatus.isApproved ? " · edited and approved" : ""}</dd></div>
-                      <div><dt>Generation run</dt><dd>{channelStates[activeChannel]?.generationRunId || generationRun?.generationRunId || "Not tracked"}</dd></div>
-                    </dl>
-
-                    {(channelStates[activeChannel]?.issues || []).length > 0 && (
-                      <div
-                        className="draft-quality-issues"
-                        role={["needs_review", "failed", "cancelled"].includes(channelStates[activeChannel]?.status) ? "alert" : "status"}
-                      >
-                        <strong>
-                          {channelStates[activeChannel]?.status === "failed"
-                            ? "Generation failed"
-                            : channelStates[activeChannel]?.status === "cancelled"
-                              ? "Generation cancelled"
-                              : channelStates[activeChannel]?.status === "needs_review"
-                              ? "Unresolved quality issues"
-                              : "Generation notes"}
-                        </strong>
-                        <ul>
-                          {channelStates[activeChannel].issues.map((issue, index) => (
-                            <li key={channelStates[activeChannel]?.issueCodes?.[index] || index}>
-                              {channelStates[activeChannel]?.issueCodes?.[index] && <code>{channelStates[activeChannel].issueCodes[index]}</code>}
-                              <span>{issue}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {channelStates[activeChannel]?.providerError && (
-                          <p>
-                            Recovery: {providerRecoveryMessage(channelStates[activeChannel].providerError) || "Retry deliberately or inspect provider diagnostics."}
-                            {channelStates[activeChannel].providerError.correlationId ? ` Reference ${channelStates[activeChannel].providerError.correlationId}.` : ""}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="draft-state-actions" aria-label={`${activeMeta.label} draft state actions`}>
-                      <button
-                        type="button"
-                        className={channelStates[activeChannel]?.approved ? "is-approved" : ""}
-                        onClick={handleDraftApproval}
-                        disabled={!currentPost || isCampaignStale}
-                      >
-                        {channelStates[activeChannel]?.approved
-                          ? "Return to review"
-                          : channelStates[activeChannel]?.status === "needs_review"
-                            ? "Accept issues & approve"
-                            : "Mark approved"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void performRegeneration(REGENERATION_POLICIES.CHANNEL, activeChannel)}
-                        disabled={busy || !providerReadiness.ready}
-                      >
-                        {["failed", "cancelled"].includes(channelStates[activeChannel]?.status) ? "Retry destination" : "Regenerate this channel"}
-                      </button>
-                      {channelStates[activeChannel]?.edited && generatedPosts[activeChannel] && (
-                        <button
-                          type="button"
-                          onClick={() => dispatchCampaign({ type: "RESTORE_GENERATED", channel: activeChannel })}
-                        >
-                          Restore generated copy
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="version-history">
-                      <button
-                        type="button"
-                        className="version-history-toggle"
-                        onClick={() => setVersionHistoryOpen((open) => !open)}
-                        aria-expanded={versionHistoryOpen}
-                      >
-                        <span>Version history</span>
-                        <span>{archives.length}</span>
-                      </button>
-                      {versionHistoryOpen && (
-                        <div className="version-history-list">
-                          {archives.length === 0 ? (
-                            <small>No archived generation versions yet.</small>
-                          ) : archives.map((archive) => (
-                            <article className="version-history-item" key={archive.archiveId}>
-                              <header>
-                                <div>
-                                  <strong>{archive.reason === "channel" ? "Channel regeneration" : archive.reason === "unedited" ? "Unedited regeneration" : "Full campaign version"}</strong>
-                                  <small>{formatDate(archive.createdAt)} · revision {archive.revision}</small>
-                                </div>
-                              </header>
-                              <div className="version-history-item__actions">
-                                <button type="button" onClick={() => restoreArchivedVersion(archive.archiveId)}>Restore</button>
-                                <button type="button" onClick={() => discardArchivedVersion(archive.archiveId)}>Discard</button>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {activeChannel === "reddit" && (
-                      <div className="review-publish-fields">
-                        <label>
-                          <span>Subreddit</span>
-                          <input
-                            value={publishOptions.reddit?.subreddit || ""}
-                            onChange={(event) => updatePublishOption("reddit", "subreddit", event.target.value)}
-                            placeholder="e.g. SideProject"
-                          />
-                        </label>
-                        <label>
-                          <span>Post title</span>
-                          <input
-                            value={publishOptions.reddit?.title || ""}
-                            onChange={(event) => updatePublishOption("reddit", "title", event.target.value)}
-                            placeholder={form.projectName || "A clear, factual title"}
-                          />
-                        </label>
-                        <small>Required for direct Reddit publishing. Community rules still apply.</small>
-                      </div>
-                    )}
-                  </aside>
-
-                  <div className="review-actions">
-                    <button
-                      className="button button--outline"
-                      onClick={() => copyCurrentPost()}
-                      disabled={Boolean(campaignStatus.copyBlockedReason) || !currentPost}
-                      title={campaignStatus.copyBlockedReason || undefined}
-                    >
-                      <CopyIcon /> Copy draft
-                    </button>
-                    <div className="save-action-group">
-                      <button className="button button--outline" onClick={saveCampaign} disabled={busy}>
-                        {currentCampaignId ? "Save changes" : "Save locally"}
-                      </button>
-                      <button className="button button--outline" onClick={saveCampaignAsCopy} disabled={busy}>
-                        Save as copy
-                      </button>
-                    </div>
-                    <button
-                      className="button button--dark"
-                      onClick={copyAndOpenCurrent}
-                      disabled={busy || !publishAvailability.ready}
-                      title={publishAvailability.reason || undefined}
-                    >
-                      {!publishAvailability.ready
-                        ? channelStates[activeChannel]?.approved
-                          ? "Handoff unavailable"
-                          : "Approve to continue"
-                        : activeMeta.openUrl
-                          ? `Copy & open ${activeMeta.label}`
-                          : "Copy approved draft"}
-                      <ArrowIcon />
-                    </button>
-                    {!publishAvailability.ready && (
-                      <p className="review-action-reason" role="status">{publishAvailability.reason}</p>
-                    )}
-                  </div>
-
-                  {OFFICIAL_CONNECTORS.has(activeChannel) && (
-                    <details className="route-note direct-publish-panel">
-                      <summary>Direct publishing to {activeMeta.label}</summary>
-                      <div className="direct-publish-panel__body">
-                        <div>
-                          <strong>{currentConnectionLabel}</strong>
-                          <span>Revision {revision} · exact approved draft currently shown</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="button button--outline"
-                          onClick={publishCurrentPost}
-                          disabled={busy || !directPublishAvailability.ready}
-                          title={directPublishAvailability.reason || undefined}
-                        >
-                          Publish this revision
-                        </button>
-                        {!directPublishAvailability.ready && (
-                          <p className="review-action-reason" role="status">{directPublishAvailability.reason}</p>
-                        )}
-                      </div>
-                    </details>
-                  )}
-
-                  {OFFICIAL_CONNECTORS.has(activeChannel) && !canPublishCurrent && (
-                    <button
-                      className="publishing-route-link"
-                      onClick={() => navigateSection("connections")}
-                    >
-                      Configure the official {activeMeta.label} connector
-                      <ArrowIcon />
-                    </button>
-                  )}
-
-                  {result?.warnings?.length > 0 && (
-                    <details className="route-note">
-                      <summary>Generation and integration notes ({result.warnings.length})</summary>
-                      <ul>
-                        {result.warnings.map((warning, index) => (
-                          <li key={index}>{warning}</li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
-
-                  <div className="export-row">
-                    <div>
-                      <strong>Take the full campaign with you</strong>
-                      <span>Export every selected draft and the generation metadata.</span>
-                    </div>
-                    <button onClick={exportMarkdown} disabled={busy || Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>Markdown</button>
-<button onClick={exportJson} disabled={busy || Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>JSON</button>
-<button onClick={() => void exportZip()} disabled={busy || Boolean(campaignStatus.exportBlockedReason)} title={campaignStatus.exportBlockedReason || undefined}>{busy ? "Preparing…" : "ZIP"}</button>
-                  </div>
-                </div>
+                <ReviewStage
+                  isCampaignStale={isCampaignStale}
+                  campaignStatus={campaignStatus}
+                  projectName={form.projectName}
+                  revision={revision}
+                  channels={channels}
+                  lastSavedAt={lastSavedAt}
+                  lastExportedAt={lastExportedAt}
+                  sourceChangeLabels={sourceChangeLabels}
+                  onReviewChanges={() => navigateStudioFlow("destinations")}
+                  channelStates={channelStates}
+                  posts={posts}
+                  activeChannel={activeChannel}
+                  onSelectChannel={setActiveChannel}
+                  onMoveChannel={moveReviewChannel}
+                  activeMeta={activeMeta}
+                  activeChannelStatus={activeChannelStatus}
+                  currentPost={currentPost}
+                  onEditPost={editActivePost}
+                  isOverLimit={isOverLimit}
+                  xThreadMode={xThreadMode}
+                  xThreadParts={xThreadParts}
+                  xLongestPart={xLongestPart}
+                  characterPercent={characterPercent}
+                  canPublishCurrent={canPublishCurrent}
+                  sourceSignals={sourceSignals}
+                  fileCount={files.length}
+                  generationRun={generationRun}
+                  getProviderRecoveryMessage={providerRecoveryMessage}
+                  onDraftApproval={handleDraftApproval}
+                  onRegenerateActiveChannel={regenerateActiveChannel}
+                  providerReady={providerReadiness.ready}
+                  canRestoreGenerated={Boolean(channelStates[activeChannel]?.edited && generatedPosts[activeChannel])}
+                  onRestoreGenerated={restoreActiveGeneratedPost}
+                  versionHistoryOpen={versionHistoryOpen}
+                  onToggleVersionHistory={toggleVersionHistory}
+                  archives={archives}
+                  onRestoreArchivedVersion={restoreArchivedVersion}
+                  onDiscardArchivedVersion={discardArchivedVersion}
+                  publishOptions={publishOptions}
+                  onUpdatePublishOption={updatePublishOption}
+                  onCopyCurrentPost={copyCurrentPost}
+                  onSaveCampaign={saveCampaign}
+                  onSaveCampaignAsCopy={saveCampaignAsCopy}
+                  currentCampaignId={currentCampaignId}
+                  onCopyAndOpenCurrent={copyAndOpenCurrent}
+                  busy={busy}
+                  publishAvailability={publishAvailability}
+                  currentConnectionLabel={currentConnectionLabel}
+                  directPublishAvailability={directPublishAvailability}
+                  onPublishCurrentPost={publishCurrentPost}
+                  onConfigureConnector={() => navigateSection("connections")}
+                  warnings={result?.warnings || []}
+                  onExportMarkdown={exportMarkdown}
+                  onExportJson={exportJson}
+                  onExportZip={() => void exportZip()}
+                />
               )}
             </section>
           </div>

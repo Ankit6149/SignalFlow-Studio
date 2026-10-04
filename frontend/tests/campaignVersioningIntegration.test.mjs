@@ -23,24 +23,28 @@ test("Studio exposes deliberate edit-safe regeneration choices", () => {
 
 test("Studio shows persistent campaign and channel state instead of toast-only state", () => {
   const page = read("app/page.js");
-  assert.match(page, /campaign-status-strip/);
-  assert.match(page, /campaignStatus\.campaignLabel/);
-  assert.match(page, /lastSavedAt/);
-  assert.match(page, /lastExportedAt/);
-  assert.match(page, /selectChannelStatus/);
-  assert.match(page, /review-tab__status/);
-  assert.match(page, /role="status"/);
-  assert.match(page, /aria-live="polite"/);
-  assert.match(page, /Mark approved/);
-  assert.match(page, /Return to review/);
-  assert.match(page, /review-action-reason/);
+  const review = read("components/ReviewStage.js");
+  assert.match(page, /campaignStatus=\{campaignStatus\}/);
+  assert.match(page, /lastSavedAt=\{lastSavedAt\}/);
+  assert.match(page, /lastExportedAt=\{lastExportedAt\}/);
+  assert.match(review, /campaign-status-strip/);
+  assert.match(review, /campaignStatus\.campaignLabel/);
+  assert.match(review, /selectChannelStatus/);
+  assert.match(review, /review-tab__status/);
+  assert.match(review, /role="status"/);
+  assert.match(review, /aria-live="polite"/);
+  assert.match(review, /Mark approved/);
+  assert.match(review, /Return to review/);
+  assert.match(review, /review-action-reason/);
 });
 
 test("Studio exposes explicit identity-safe persistence operations", () => {
   const page = read("app/page.js");
+  const review = read("components/ReviewStage.js");
   const application = read("lib/application/campaignApplication.mjs");
   assert.match(page, /saveCampaignAsCopy/);
-  assert.match(page, /Save as copy/);
+  assert.match(page, /onSaveCampaignAsCopy=\{saveCampaignAsCopy\}/);
+  assert.match(review, /Save as copy/);
   assert.match(page, /campaignApplication\.saveAsCopy/);
   assert.match(application, /async function createCampaign/);
   assert.match(application, /async function updateCampaign/);
@@ -53,12 +57,13 @@ test("Studio exposes explicit identity-safe persistence operations", () => {
 
 test("version history and generated-copy restoration are available", () => {
   const page = read("app/page.js");
-  assert.match(page, /Version history/);
+  const review = read("components/ReviewStage.js");
+  assert.match(review, /Version history/);
   assert.match(page, /RESTORE_ARCHIVE/);
   assert.match(page, /DISCARD_ARCHIVE/);
   assert.match(page, /RESTORE_GENERATED/);
-  assert.match(page, /Restore generated copy/);
-  assert.match(page, /Regenerate this channel/);
+  assert.match(review, /Restore generated copy/);
+  assert.match(review, /Regenerate this channel/);
 });
 
 test("versioning styles include mobile and reduced-motion behavior", () => {

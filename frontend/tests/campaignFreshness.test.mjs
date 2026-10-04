@@ -204,19 +204,22 @@ test("source change descriptions name only the changed generation inputs", () =>
 });
 
 test("Studio renders a persistent stale warning and blocks outbound actions", async () => {
-  const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
-  const layout = await readFile(new URL("../app/layout.js", import.meta.url), "utf8");
+  const [page, review, layout] = await Promise.all([
+    readFile(new URL("../app/page.js", import.meta.url), "utf8"),
+    readFile(new URL("../components/ReviewStage.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.js", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(page, /className="campaign-stale-banner"/);
-  assert.match(page, /role="alert"/);
+  assert.match(review, /className="campaign-stale-banner"/);
+  assert.match(review, /role="alert"/);
   assert.match(page, /data-freshness=\{campaignFreshness\.status\}/);
-  assert.match(page, /disabled=\{Boolean\(campaignStatus\.copyBlockedReason\) \|\| !currentPost\}/);
-  const blockedExportControls = page.match(
-  /disabled=\{busy \|\| Boolean\(campaignStatus\.exportBlockedReason\)\}/g,
-) || [];
-assert.equal(blockedExportControls.length, 3, "Markdown, JSON, and ZIP must share stale/busy blocking");
-assert.match(page, /onClick=\{\(\) => void exportZip\(\)\}/);
-  assert.match(page, /publishAvailability\.ready/);
-  assert.match(page, /generationRun,/);
+  assert.match(review, /disabled=\{Boolean\(campaignStatus\.copyBlockedReason\) \|\| !currentPost\}/);
+  const blockedExportControls = review.match(
+    /disabled=\{busy \|\| Boolean\(campaignStatus\.exportBlockedReason\)\}/g,
+  ) || [];
+  assert.equal(blockedExportControls.length, 3, "Markdown, JSON, and ZIP must share stale/busy blocking");
+  assert.match(page, /onExportZip=\{\(\) => void exportZip\(\)\}/);
+  assert.match(review, /publishAvailability\.ready/);
+  assert.match(page, /generationRun=\{generationRun\}/);
   assert.match(layout, /campaign-freshness\.css/);
 });

@@ -8,7 +8,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const frontend = path.resolve(here, "..");
 const read = (relativePath) => fs.readFileSync(path.join(frontend, relativePath), "utf8");
 
-const page = read("app/StudioRootController.js");
+const page = read("app/page.js");
 const landing = read("components/LandingPage.js");
 const styles = read("components/LandingPage.module.css");
 const globals = read("app/globals.css");
@@ -20,7 +20,8 @@ const structuredData = JSON.parse(structuredDataText);
 
 test("the landing route has one component owner and uses the shared BrandMark", () => {
   assert.match(page, /import LandingPage from "\.\.\/components\/LandingPage";/);
-  assert.match(page, /<LandingPage onEnter=\{enterStudio\}/);
+  assert.match(page, /return <LandingPage \/>/);
+  assert.doesNotMatch(page, /StudioRootController|useCampaignEditorSession|generateStudioCampaign/);
   assert.match(landing, /import BrandMark from "\.\/BrandMark"/);
   assert.match(landing, /export default function LandingPage\(\)/);
   assert.match(landing, /<BrandMark tone="dark"/);

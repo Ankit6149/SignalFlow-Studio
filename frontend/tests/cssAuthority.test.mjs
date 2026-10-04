@@ -27,12 +27,13 @@ test("global layout no longer grows a connector-specific stylesheet layer", () =
   const layout = read("app/layout.js");
   const globalImports = [...layout.matchAll(/import "\.\.\/app\/[^"]+\.css";/g)].map((match) => match[0]);
 
-  assert.equal(globalImports.length, 6);
+  assert.equal(globalImports.length, 5);
   assert.ok(globalImports.some((entry) => entry.includes("app-workspace.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("connector.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("ui-containment.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("public-surfaces.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("campaign-freshness.css")));
+  assert.ok(globalImports.every((entry) => !entry.includes("campaign-versioning.css")));
 });
 
 test("root containment is part of the actual global reset", () => {
@@ -83,29 +84,32 @@ test("Review owns freshness styling without a root feature stylesheet", () => {
 });
 
 
-test("Source canonical-state styling belongs to SourceStage rather than global versioning", () => {
+test("Source canonical-state styling belongs to SourceStage rather than a root versioning layer", () => {
   const source = read("components/SourceStage.js");
   const sourceStyles = read("components/SourceStage.module.css");
-  const versioning = read("app/campaign-versioning.css");
 
   assert.match(source, /import styles from "\.\/SourceStage\.module\.css"/);
   assert.match(source, /styles\.root/);
   assert.match(sourceStyles, /\.root :global\(\.file-chip--canonical\)/);
   assert.match(sourceStyles, /\.root :global\(\.source-state-badge\.is-usable_evidence\)/);
   assert.match(sourceStyles, /\.root :global\(\.source-contract-summary\)/);
-  assert.doesNotMatch(versioning, /Canonical source and asset states|source-state-badge|source-contract-summary|file-chip--canonical/);
 });
 
 
-test("Review status and version-history styling belongs to ReviewStage", () => {
+test("Review status/versioning and regeneration dialog each own scoped styles", () => {
   const reviewStyles = read("components/ReviewStage.module.css");
-  const dialogStyles = read("app/campaign-versioning.css");
+  const dialog = read("components/RegenerationDialog.js");
+  const dialogStyles = read("components/RegenerationDialog.module.css");
+  const retired = path.join(frontendRoot, "app/campaign-versioning.css");
 
+  assert.equal(fs.existsSync(retired), false, "retired campaign-versioning.css must not return");
   assert.match(reviewStyles, /\.root :global\(\.campaign-status-strip\)/);
   assert.match(reviewStyles, /\.root :global\(\.draft-state-badge/);
   assert.match(reviewStyles, /\.root :global\(\.version-history\)/);
   assert.match(reviewStyles, /\.root :global\(\.review-action-reason\)/);
 
+  assert.match(dialog, /import styles from "\.\/RegenerationDialog\.module\.css"/);
+  assert.match(dialogStyles, /\.backdrop \{/);
+  assert.match(dialogStyles, /\.dialog \{/);
   assert.doesNotMatch(dialogStyles, /campaign-status-strip|draft-state-badge|version-history|review-action-reason|save-action-group/);
-  assert.match(dialogStyles, /regeneration-dialog/);
 });

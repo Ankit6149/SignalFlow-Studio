@@ -1,21 +1,4 @@
-.app-shell .regeneration-dialog button {
-  min-height: 2.35rem;
-  padding: 0.55rem 0.75rem;
-  border: 0.0625rem solid var(--app-line-strong);
-  border-radius: 0.45rem;
-  background: var(--app-surface);
-  color: var(--app-ink);
-  font-size: 0.75rem;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.app-shell .regeneration-dialog button:hover {
-  border-color: #b8a779;
-  background: #fffdf8;
-}
-
-.app-shell .regeneration-dialog-backdrop {
+.backdrop {
   position: fixed;
   z-index: 1000;
   inset: 0;
@@ -25,7 +8,7 @@
   background: rgba(24, 24, 20, 0.46);
 }
 
-.app-shell .regeneration-dialog {
+.dialog {
   width: min(34rem, 100%);
   max-height: min(42rem, calc(100vh - 2.5rem));
   overflow: auto;
@@ -37,7 +20,24 @@
   box-shadow: 0 1.5rem 4rem rgba(24, 24, 20, 0.18);
 }
 
-.app-shell .regeneration-dialog__eyebrow {
+.dialog button {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.75rem;
+  border: 0.0625rem solid var(--app-line-strong);
+  border-radius: 0.45rem;
+  background: var(--app-surface);
+  color: var(--app-ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.dialog button:hover {
+  border-color: #b8a779;
+  background: #fffdf8;
+}
+
+.eyebrow {
   color: var(--app-accent);
   font-size: 0.6875rem;
   font-weight: 800;
@@ -45,7 +45,7 @@
   text-transform: uppercase;
 }
 
-.app-shell .regeneration-dialog h2 {
+.dialog h2 {
   margin: 0.5rem 0 0;
   font-family: "Playfair Display", serif;
   font-size: 1.6rem;
@@ -53,20 +53,20 @@
   letter-spacing: -0.025em;
 }
 
-.app-shell .regeneration-dialog > p {
+.dialog > p {
   margin: 0.65rem 0 0;
   color: var(--app-muted);
   font-size: 0.8125rem;
   line-height: 1.65;
 }
 
-.app-shell .regeneration-dialog__options {
+.options {
   margin-top: 1rem;
   display: grid;
   gap: 0.65rem;
 }
 
-.app-shell .regeneration-option {
+.option {
   width: 100%;
   min-height: 0;
   padding: 0.9rem;
@@ -75,32 +75,32 @@
   text-align: left;
 }
 
-.app-shell .regeneration-option strong,
-.app-shell .regeneration-option span {
+.option strong,
+.option span {
   display: block;
 }
 
-.app-shell .regeneration-option span {
+.option span {
   color: var(--app-muted);
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.5;
 }
 
-.app-shell .regeneration-option:disabled {
+.option:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.app-shell .regeneration-dialog__footer {
+.footer {
   margin-top: 1rem;
   display: flex;
   justify-content: flex-end;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-shell .regeneration-dialog-backdrop,
-  .app-shell .regeneration-dialog {
+  .backdrop,
+  .dialog {
     animation: none;
   }
 }

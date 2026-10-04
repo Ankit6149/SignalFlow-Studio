@@ -9,7 +9,7 @@ const frontendRoot = path.resolve(testDir, "..");
 const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "utf8");
 
 test("Source stage is an explicit presentation boundary", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const source = read("components/SourceStage.js");
 
   assert.match(page, /import SourceStage from/);
@@ -30,7 +30,7 @@ test("Source stage is an explicit presentation boundary", () => {
 });
 
 test("canonical source presentation policy is separate from the page controller", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const presentation = read("lib/studio/sourcePresentation.mjs");
 
   assert.match(page, /sourceFilePresentation/);
@@ -42,7 +42,7 @@ test("canonical source presentation policy is separate from the page controller"
 
 
 test("Destinations stage is an explicit presentation boundary", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const destinations = read("components/DestinationsStage.js");
 
   assert.match(page, /import DestinationsStage from/);
@@ -64,7 +64,7 @@ test("Destinations stage is an explicit presentation boundary", () => {
 
 
 test("Review stage is an explicit presentation boundary", () => {
-  const page = read("app/page.js");
+  const page = read("app/StudioRootController.js");
   const review = read("components/ReviewStage.js");
 
   assert.match(page, /import ReviewStage from/);

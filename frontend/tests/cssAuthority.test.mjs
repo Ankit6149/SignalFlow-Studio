@@ -81,3 +81,17 @@ test("Review owns freshness styling without a root feature stylesheet", () => {
   assert.match(reviewStyles, /\.root :global\(\.review-actions\) button:disabled/);
   assert.doesNotMatch(reviewStyles, /connection-badge--stale/);
 });
+
+
+test("Source canonical-state styling belongs to SourceStage rather than global versioning", () => {
+  const source = read("components/SourceStage.js");
+  const sourceStyles = read("components/SourceStage.module.css");
+  const versioning = read("app/campaign-versioning.css");
+
+  assert.match(source, /import styles from "\.\/SourceStage\.module\.css"/);
+  assert.match(source, /styles\.root/);
+  assert.match(sourceStyles, /\.root :global\(\.file-chip--canonical\)/);
+  assert.match(sourceStyles, /\.root :global\(\.source-state-badge\.is-usable_evidence\)/);
+  assert.match(sourceStyles, /\.root :global\(\.source-contract-summary\)/);
+  assert.doesNotMatch(versioning, /Canonical source and asset states|source-state-badge|source-contract-summary|file-chip--canonical/);
+});

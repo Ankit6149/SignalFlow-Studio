@@ -17,7 +17,7 @@ This document defines the production cascade and the ownership boundary for ever
 5. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
 6. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
 
-Review freshness/source-change appearance no longer participates in the root cascade; it is owned by `frontend/components/ReviewStage.module.css`.
+Review freshness/source-change appearance no longer participates in the root cascade; it is owned by `frontend/components/ReviewStage.module.css`. Canonical SourceArtifact usability/version state appearance is owned by `frontend/components/SourceStage.module.css`.
 
 Legal routes do not participate in this global cascade. Terms and Privacy share the scoped `frontend/app/legal.module.css` module.
 
@@ -66,7 +66,7 @@ Stage-specific width or max-width rules must not be appended to `app-workspace.c
 
 ### Feature-state extensions
 
-Prefer component-scoped modules for feature-state appearance when the state belongs to one surface, as with Review freshness. A root feature stylesheet is justified only when the same state genuinely spans multiple independently owned surfaces.
+Prefer component-scoped modules for feature-state appearance when the state belongs to one surface, as with Review freshness and Source canonical-state presentation. A root feature stylesheet is justified only when the same state genuinely spans multiple independently owned surfaces.
 
 Any remaining feature stylesheet must:
 - describe one capability such as version history;

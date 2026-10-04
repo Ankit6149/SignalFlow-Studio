@@ -17,7 +17,8 @@ test("secondary workspaces are explicit presentation components", () => {
   const settingsRoute = read("app/settings/page.js");
   const connectionsRoute = read("app/connections/page.js");
 
-  assert.match(page, /import LibraryWorkspace from/);
+  assert.doesNotMatch(page, /import LibraryWorkspace from/);
+  assert.match(libraryRoute, /import LibraryWorkspace from/);
   assert.doesNotMatch(page, /import ConnectionsWorkspace from/);
   assert.doesNotMatch(page, /import SettingsWorkspace from/);
   assert.doesNotMatch(page, /<LibraryWorkspace/);
@@ -52,7 +53,8 @@ test("secondary workspace mutations stay explicit in their owning route/controll
   assert.match(connectionsRoute, /function useChannelInStudio\(channelId\)/);
   assert.doesNotMatch(page, /function exportLocalLibrary\(\)/);
   assert.doesNotMatch(page, /function clearLocalLibrary\(\)/);
-  assert.match(page, /async function refreshLibrary\(\)/);
+  assert.doesNotMatch(page, /async function refreshLibrary\(\)/);
+  assert.match(libraryRoute, /async function refreshLibrary\(\)/);
   assert.match(settingsRoute, /async function exportLocalLibrary\(\)/);
   assert.match(settingsRoute, /function clearLocalLibrary\(\)/);
   assert.match(settingsRoute, /useOwnerConnectionsController\(/);

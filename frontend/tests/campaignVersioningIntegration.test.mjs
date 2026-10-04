@@ -62,11 +62,13 @@ test("Studio exposes explicit identity-safe persistence operations", () => {
 
 test("version history and generated-copy restoration are available", () => {
   const page = read("app/StudioRootController.js");
+  const reviewController = read("lib/studio/useCampaignReviewController.js");
   const review = read("components/ReviewStage.js");
+  assert.match(page, /useCampaignReviewController\(/);
   assert.match(review, /Version history/);
-  assert.match(page, /RESTORE_ARCHIVE/);
-  assert.match(page, /DISCARD_ARCHIVE/);
-  assert.match(page, /RESTORE_GENERATED/);
+  assert.match(reviewController, /RESTORE_ARCHIVE/);
+  assert.match(reviewController, /DISCARD_ARCHIVE/);
+  assert.match(reviewController, /RESTORE_GENERATED/);
   assert.match(review, /Restore generated copy/);
   assert.match(review, /Regenerate this channel/);
 });

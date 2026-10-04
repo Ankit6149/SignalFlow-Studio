@@ -5,7 +5,7 @@ import fs from "node:fs";
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 
 test("Studio consumes the capability endpoint and serves the extension handshake", () => {
-  const page = read("../app/page.js");
+  const page = read("../app/StudioRootController.js");
   const client = read("../lib/studio/studioApiClient.mjs");
   const providerController = read("../lib/studio/useProviderRouteController.js");
   const route = read("../app/api/capabilities/route.js");
@@ -29,7 +29,7 @@ test("owner-only model routes match API authorization in every deployment profil
 });
 
 test("Studio validates a generation response before the atomic state commit", () => {
-  const page = read("../app/page.js");
+  const page = read("../app/StudioRootController.js");
   const validationIndex = page.indexOf("const accepted = acceptGenerationResponse");
   const mutationIndex = page.indexOf('type: "ACCEPT_GENERATION"');
 

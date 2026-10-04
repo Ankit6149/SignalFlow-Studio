@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current code checkpoint | `ddc8b24fd94af390f9adae1a4534ee6832e8a8ef` |
-| Current code checkpoint change | #394 — extracted campaign persistence/export orchestration into `useCampaignPersistenceController` |
+| Current code checkpoint | `a16b2c51dfee275cbfc7daedf2540c53d1c67c92` |
+| Current code checkpoint change | #396 — extracted generation execution into `useCampaignGenerationController` |
 | Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
 | Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
 | Production change | #358 — Source stage presentation boundary |
-| Master ↔ production | **Split** — production is behind the #394 code checkpoint |
-| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#394 deployment |
+| Master ↔ production | **Split** — production is behind the #396 code checkpoint |
+| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#396 deployment |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; cleanup is through #394; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 has narrow controller boundaries plus independent Settings/Connections routes |
+| Repository hygiene | Active under #340; cleanup is through #396; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 now has explicit routes plus provider, owner-connection, persistence/export, and generation-execution controller boundaries |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,6 +47,7 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
+- #396 — extracted generation request construction, progress/cancel lifecycle, acceptance/run binding, and bounded regeneration orchestration into `useCampaignGenerationController`; `StudioRootController.js` dropped from 1,199 to 970 lines and full GitHub CI passed;
 - #394 — extracted browser-local campaign persistence and Markdown/JSON/ZIP export orchestration into `useCampaignPersistenceController`; `StudioRootController.js` dropped to 1,199 lines and full GitHub CI passed;
 - #392 — separated public Landing `/` from Create `/studio`, preserved legacy root `?workspace=` compatibility, kept internal route changes client-side for editor continuity, and passed full GitHub CI;
 - #391 — moved the former root Landing/Create controller source behind `StudioRootController.js` and migrated behavioral regression anchors before changing routing semantics; full GitHub CI passed;
@@ -196,7 +197,7 @@ The currently connected GitHub action surface cannot delete branch refs. The bra
 
 ## Production alignment
 
-Production is currently **behind the #394 code checkpoint**.
+Production is currently **behind the #396 code checkpoint**.
 
 Verified on 2026-10-04:
 
@@ -205,7 +206,7 @@ Verified on 2026-10-04:
 - production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
 - recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
 
-Do not claim #359–#394 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+Do not claim #359–#396 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
 
 ## Current #44 measured CSS frontier
 
@@ -218,7 +219,8 @@ Verified after #380:
 - shared shell/component primitives remain in `app-workspace.css`;
 - Studio-only composition is scoped beneath the staged Studio surface in `studio-product.css`;
 - root `page.js` is **32 lines** after #392 and owns only Landing + legacy redirects;
-- Create orchestration lives in `StudioRootController.js` at **1,199 lines**;
+- Create orchestration lives in `StudioRootController.js` at **970 lines**;
+- generation execution ownership lives in `useCampaignGenerationController`, including request construction, exact acceptance/run binding, progress/cancel lifecycle, and bounded regeneration policy orchestration;
 - browser-local campaign persistence/export ownership lives in `useCampaignPersistenceController`;
 - provider/model-route ownership lives in `useProviderRouteController`;
 - owner-session/official-connector ownership lives in `useOwnerConnectionsController`;
@@ -241,7 +243,7 @@ Reverified against the current production deployment (#358):
 
 Therefore hosted inference authorization and the CDP capture path remain **not currently verified**, not failed. Do not refresh reserved #315 or claim GP2 readiness until an authenticated owner-session readiness probe is captured.
 
-## #45 route-separation boundary — 2026-10-04
+## #45 route/controller boundary — 2026-10-04
 
 Verified after #392:
 
@@ -252,12 +254,12 @@ Verified after #392:
 - Library and Connections return to Create through client-side `/studio` navigation, preserving the shared in-memory editor session;
 - `CampaignEditorSessionProvider` still owns only route-surviving editor state, not generation, publishing, persistence, owner-session, dialogs/loading, or notifications.
 
-The route-separation milestone is complete. Campaign persistence/export is also separated as of #394. The next #45 work is the generation-execution family: request construction, bounded run/cancel/regeneration orchestration, and generation progress should be evaluated together without absorbing publishing, provider routing, or editor persistence.
+The route-separation milestone is complete. Campaign persistence/export is separated as of #394, and generation execution is separated as of #396. Publishing/manual handoff remains in `StudioRootController`; treat it as the next candidate cohesive side-effect family only after measuring its dependencies, without absorbing provider routing, persistence, editor state, or Review presentation.
 
 ## Immediate execution order
 
 1. Keep #44 open only for current-SHA visual/responsive acceptance evidence; do not restart CSS architecture work unless evidence exposes a concrete defect.
-2. Continue #45 inside `/studio` with the generation-execution family now that persistence/export is separated. Keep publishing, provider routing, owner-session, and editor persistence outside that controller.
+2. Continue #45 inside `/studio` by measuring the remaining publishing/manual-handoff side-effect family and extracting it only if the boundary stays cohesive. Keep provider routing, owner-session, persistence/export, generation execution, editor state, and presentation in their current owners.
 3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
 4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
 5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.

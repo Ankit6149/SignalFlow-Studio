@@ -132,10 +132,11 @@ test("session without verified provider identity is not connected", () => {
 });
 
 test("status, publish boundary, and review UI preserve connector truth", async () => {
-  const [statusRoute, publishRoute, page, connectionsRoute, connectionsWorkspace, callbackRoute] = await Promise.all([
+  const [statusRoute, publishRoute, page, publishing, connectionsRoute, connectionsWorkspace, callbackRoute] = await Promise.all([
     readFile(new URL("../app/api/social/status/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/publish/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8"),
+    readFile(new URL("../lib/studio/useCampaignPublishingController.js", import.meta.url), "utf8"),
     readFile(new URL("../app/connections/page.js", import.meta.url), "utf8"),
     readFile(new URL("../components/ConnectionsWorkspace.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/social/callback/[platform]/route.js", import.meta.url), "utf8"),
@@ -152,9 +153,10 @@ test("status, publish boundary, and review UI preserve connector truth", async (
   assert.match(statusRoute, /publishCapabilities:\s*\[\]/);
   assert.match(statusRoute, /canPublishText:\s*false/);
 
-  assert.match(page, /currentConnection\?\.verified/);
-  assert.match(page, /currentConnection\?\.canPublishText/);
-  assert.match(page, /currentConnection\?\.scopeStatus === "verified"/);
+  assert.match(page, /useCampaignPublishingController\(/);
+  assert.match(publishing, /currentConnection\?\.verified/);
+  assert.match(publishing, /currentConnection\?\.canPublishText/);
+  assert.match(publishing, /currentConnection\?\.scopeStatus === "verified"/);
   assert.doesNotMatch(page, /<ConnectionsWorkspace/);
   assert.match(connectionsRoute, /<ConnectionsWorkspace/);
   assert.match(connectionsWorkspace, /Direct capabilities:/);

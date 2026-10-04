@@ -7,12 +7,14 @@ const read = (path) => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 test("Studio consumes the capability endpoint and serves the extension handshake", () => {
   const page = read("../app/page.js");
   const client = read("../lib/studio/studioApiClient.mjs");
+  const providerController = read("../lib/studio/useProviderRouteController.js");
   const route = read("../app/api/capabilities/route.js");
 
-  assert.match(page, /getStudioCapabilities\(\)/);
+  assert.match(page, /useProviderRouteController\(\{ form, setForm \}\)/);
+  assert.match(providerController, /getStudioCapabilities\(\)/);
   assert.doesNotMatch(page, /fetch\(/);
   assert.match(client, /"\/api\/capabilities"/);
-  assert.match(page, /parseCapabilitySnapshot\(raw\)/);
+  assert.match(providerController, /parseCapabilitySnapshot\(raw\)/);
   assert.match(page, /SignalFlowRequestCapabilities/);
   assert.match(page, /SignalFlowCapabilitiesAvailable/);
   assert.match(route, /createCapabilitySnapshot/);

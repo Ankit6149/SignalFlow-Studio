@@ -44,11 +44,12 @@ test("Studio shows persistent campaign and channel state instead of toast-only s
 test("Studio exposes explicit identity-safe persistence operations", () => {
   const page = read("app/StudioRootController.js");
   const review = read("components/ReviewStage.js");
+  const persistence = read("lib/studio/useCampaignPersistenceController.js");
   const application = read("lib/application/campaignApplication.mjs");
   assert.match(page, /saveCampaignAsCopy/);
   assert.match(page, /onSaveCampaignAsCopy=\{saveCampaignAsCopy\}/);
   assert.match(review, /Save as copy/);
-  assert.match(page, /campaignApplication\.saveAsCopy/);
+  assert.match(persistence, /campaignApplication\.saveAsCopy/);
   assert.match(application, /async function createCampaign/);
   assert.match(application, /async function updateCampaign/);
   assert.match(application, /async function saveAsCopy/);

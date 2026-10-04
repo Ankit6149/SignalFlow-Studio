@@ -1,0 +1,136 @@
+name: Branch hygiene
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/branch-hygiene.yml"
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-hygiene
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    if: github.repository == 'Ankit6149/SignalFlow-Studio'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete only verified stale branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repository = await github.rest.repos.get({ owner, repo });
+            const defaultBranch = repository.data.default_branch;
+
+            const protectedBranches = new Set([
+              defaultBranch,
+              "feat/refine-workspace-loader-gate-c-20260915",
+            ]);
+
+            const explicitlyRetired = new Set([
+              "feat/editorial-execution-layer",
+            ]);
+
+            const openPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+            const openPullBranches = new Set(
+              openPulls
+                .filter((pull) => pull.head.repo?.full_name === `${owner}/${repo}`)
+                .map((pull) => pull.head.ref),
+            );
+
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            const deleted = [];
+            const kept = [];
+
+            for (const branch of branches) {
+              const name = branch.name;
+
+              if (protectedBranches.has(name)) {
+                kept.push({ name, reason: "protected" });
+                continue;
+              }
+
+              if (openPullBranches.has(name)) {
+                kept.push({ name, reason: "open-pull-request" });
+                continue;
+              }
+
+              let mergedPull = false;
+              const closedPulls = await github.paginate(github.rest.pulls.list, {
+                owner,
+                repo,
+                state: "closed",
+                head: `${owner}:${name}`,
+                per_page: 100,
+              });
+              mergedPull = closedPulls.some((pull) => Boolean(pull.merged_at));
+
+              let zeroAhead = false;
+              try {
+                const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                  owner,
+                  repo,
+                  basehead: `${defaultBranch}...${name}`,
+                });
+                zeroAhead = comparison.data.ahead_by === 0;
+              } catch (error) {
+                core.warning(`Could not compare ${name}: ${error.message}`);
+              }
+
+              const retired = explicitlyRetired.has(name);
+              if (!mergedPull && !zeroAhead && !retired) {
+                kept.push({ name, reason: "unproven-unique-work" });
+                continue;
+              }
+
+              try {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${name}`,
+                });
+                deleted.push({
+                  name,
+                  reason: retired
+                    ? "explicitly-retired"
+                    : mergedPull
+                      ? "merged-pr"
+                      : "zero-ahead",
+                });
+              } catch (error) {
+                core.setFailed(`Failed to delete verified stale branch ${name}: ${error.message}`);
+                return;
+              }
+            }
+
+            core.summary
+              .addHeading("Branch hygiene")
+              .addRaw(`Deleted: ${deleted.length}\n\n`)
+              .addCodeBlock(JSON.stringify(deleted, null, 2), "json")
+              .addRaw(`\nKept: ${kept.length}\n\n`)
+              .addCodeBlock(JSON.stringify(kept, null, 2), "json");
+            await core.summary.write();
+
+            core.info(`Deleted ${deleted.length} verified stale branches.`);
+            core.info(`Kept ${kept.length} branches.`);

@@ -26,11 +26,13 @@ test("Responsive rules remain scoped to the application and preserve the logo", 
     read("../app/app-workspace.css"),
   ]);
 
-  assert.match(css, /\.app-shell \{/);
-  assert.match(css, /overflow-x: clip;/);
-  assert.match(css, /\.app-shell \.studio-main/);
-  assert.match(css, /\.app-shell \.source-truth-grid/);
-  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(workspace, /Shared workspace containment authority/);
+  assert.match(workspace, /\.app-shell \{/);
+  assert.match(workspace, /overflow-x: clip;/);
+  assert.match(workspace, /\.app-shell \.studio-main/);
+  assert.match(workspace, /\.app-shell \.source-truth-grid/);
+  assert.match(workspace, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.doesNotMatch(css, /\.app-shell \.studio-main/);
   assert.match(css, /@media \(max-width: 52rem\)/);
   assert.match(css, /@media \(max-width: 37rem\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);

@@ -394,6 +394,7 @@ test("generation cancellation is propagated through API, providers, UI, and camp
   const routeSource = await readFile(new URL("../app/api/launch_kit/route.js", import.meta.url), "utf8");
   const packageSource = await readFile(new URL("../lib/ai/generateStudioPackage.js", import.meta.url), "utf8");
   const pageSource = await readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8");
+  const generationSource = await readFile(new URL("../lib/studio/useCampaignGenerationController.js", import.meta.url), "utf8");
   const providerPaths = [
     "../lib/ai/providers/openai.js",
     "../lib/ai/providers/claude.js",
@@ -409,7 +410,7 @@ test("generation cancellation is propagated through API, providers, UI, and camp
   assert.match(routeSource, /signal: request\.signal/);
   assert.match(packageSource, /signal: executionConfig\.signal/);
   assert.match(pageSource, /Cancel generation/);
-  assert.match(pageSource, /MARK_CHANNELS_CANCELLED/);
+  assert.match(generationSource, /MARK_CHANNELS_CANCELLED/);
 
   for (const providerPath of providerPaths) {
     const providerSource = await readFile(new URL(providerPath, import.meta.url), "utf8");

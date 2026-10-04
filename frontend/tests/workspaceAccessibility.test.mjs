@@ -10,7 +10,7 @@ import {
 
 const controllerUrl = new URL("../components/WorkspaceAccessibility.js", import.meta.url);
 const runtimeUrl = new URL("../app/layout.js", import.meta.url);
-const pageUrl = new URL("../app/page.js", import.meta.url);
+const pageUrl = new URL("../app/StudioRootController.js", import.meta.url);
 const sourceStageUrl = new URL("../components/SourceStage.js", import.meta.url);
 const reviewStageUrl = new URL("../components/ReviewStage.js", import.meta.url);
 

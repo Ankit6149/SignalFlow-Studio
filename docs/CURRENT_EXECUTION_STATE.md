@@ -25,17 +25,17 @@
 | Item | Current state |
 | --- | --- |
 | Default branch | `master` |
-| Current code checkpoint | `c99c76747a71281e84ac32a869641a580e7e7892` |
-| Current code checkpoint change | #389 — moved Library to a real `/library` route with shared editor continuity |
+| Current code checkpoint | `1df6e62fa902b624490d3449c053398537e13009` |
+| Current code checkpoint change | #392 — separated public Landing `/` from Create `/studio` |
 | Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
 | Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
 | Production change | #358 — Source stage presentation boundary |
-| Master ↔ production | **Split** — production is behind the #389 code checkpoint |
-| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#389 deployment |
+| Master ↔ production | **Split** — production is behind the #392 code checkpoint |
+| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#392 deployment |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not accepted |
 | Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; cleanup is through #389; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 has narrow controller boundaries plus independent Settings/Connections routes |
+| Repository hygiene | Active under #340; cleanup is through #392; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 has narrow controller boundaries plus independent Settings/Connections routes |
 | Open PRs | #315 only; intentionally reserved |
 | Production runtime errors | None found in the current 7-day Vercel error window |
 | GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
@@ -47,6 +47,8 @@ Do not claim a merged change is live until the production deployment SHA matches
 
 Completed/merged during #340:
 
+- #392 — separated public Landing `/` from Create `/studio`, preserved legacy root `?workspace=` compatibility, kept internal route changes client-side for editor continuity, and passed full GitHub CI;
+- #391 — moved the former root Landing/Create controller source behind `StudioRootController.js` and migrated behavioral regression anchors before changing routing semantics; full GitHub CI passed;
 - #389 — moved Library to a real `/library` route after shared editor continuity was established; root `page.js` is now 1,394 lines and full GitHub CI passed;
 - #388 — added the side-effect-free root `CampaignEditorSessionProvider` so transient Create state survives route navigation without globalizing generation/publishing/persistence/UI process state; full GitHub CI passed;
 - #386 — moved Connections to a real `/connections` route, preserved social/GitHub callback recovery and manual-destination handoff to Studio, and passed full GitHub CI;
@@ -193,7 +195,7 @@ The currently connected GitHub action surface cannot delete branch refs. The bra
 
 ## Production alignment
 
-Production is currently **behind the #389 code checkpoint**.
+Production is currently **behind the #392 code checkpoint**.
 
 Verified on 2026-10-04:
 
@@ -202,7 +204,7 @@ Verified on 2026-10-04:
 - production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
 - recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
 
-Do not claim #359–#389 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+Do not claim #359–#392 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
 
 ## Current #44 measured CSS frontier
 
@@ -214,12 +216,13 @@ Verified after #380:
 - exact selectors shared by `app-workspace.css` and `studio-product.css`: **0**, enforced by CI;
 - shared shell/component primitives remain in `app-workspace.css`;
 - Studio-only composition is scoped beneath the staged Studio surface in `studio-product.css`;
-- `page.js` is **1,394 lines** after #389;
+- root `page.js` is **32 lines** after #392 and owns only Landing + legacy redirects;
+- Create orchestration lives in `StudioRootController.js` at **1,320 lines**;
 - provider/model-route ownership lives in `useProviderRouteController`;
 - owner-session/official-connector ownership lives in `useOwnerConnectionsController`;
 - transient campaign/editor state that must survive route navigation lives in the side-effect-free `CampaignEditorSessionProvider`;
-- Settings, Connections, and Library are real `/settings`, `/connections`, and `/library` routes;
-- the remaining root-page route-coupling is Landing + Create; a real `/studio` boundary is the next route-separation decision.
+- Landing, Create, Library, Connections, and Settings have explicit route ownership at `/`, `/studio`, `/library`, `/connections`, and `/settings`;
+- internal Create handoffs use client-side `/studio` navigation so the shared editor session survives route changes.
 
 The architecture portion of #44 is complete. Do not close #44 until current-SHA visual evidence covers desktop/tablet/mobile, 200% zoom, and long-content states. Current production remains #358, so existing production visuals cannot prove the #380 CSS state.
 
@@ -238,21 +241,21 @@ Therefore hosted inference authorization and the CDP capture path remain **not c
 
 ## #45 route-separation boundary — 2026-10-04
 
-Verified after #389:
+Verified after #392:
 
-- `/settings` is independent from campaign reducer/generation/publishing state;
-- `/connections` is independent from campaign reducer/generation/publishing state and preserves OAuth/source callback recovery;
-- `/library` is independent from Create presentation and owns browser-library listing/open/delete/import I/O;
-- `CampaignEditorSessionProvider` preserves only transient campaign/editor state across client-side route navigation;
-- generation execution, provider routing, publishing, owner-session logic, browser-library persistence, dialogs/loading and notifications remain outside that shared session;
-- opening or starting a campaign from Library returns to Create through the shared session without requiring campaign autosave.
+- `/` is the public Landing route and no longer imports or owns campaign/controller state;
+- `/studio` is the Create route and renders `StudioRootController`;
+- `/library`, `/connections`, and `/settings` remain independent route owners;
+- legacy root `?workspace=create|studio|library|connections|settings` URLs forward server-side to the canonical routes with non-workspace query parameters preserved;
+- Library and Connections return to Create through client-side `/studio` navigation, preserving the shared in-memory editor session;
+- `CampaignEditorSessionProvider` still owns only route-surviving editor state, not generation, publishing, persistence, owner-session, dialogs/loading, or notifications.
 
-The next #45 route decision is **Landing vs Create**: the root page still combines landing-entry behavior with the Create controller. Evaluate a real `/studio` route without moving campaign side effects into the layout/provider and while preserving legacy `?workspace=studio` compatibility.
+The route-separation milestone is complete. The next #45 work is controller decomposition inside Create: evaluate generation execution, campaign persistence/export orchestration, and remaining UI-process state as separate cohesive ownership families rather than creating a monolithic controller hook.
 
 ## Immediate execution order
 
 1. Keep #44 open only for current-SHA visual/responsive acceptance evidence; do not restart CSS architecture work unless evidence exposes a concrete defect.
-2. Continue #45 by evaluating Landing/Create separation into a real `/studio` route. Preserve the narrow shared editor session from #388/#389 and do not move generation, publishing, persistence, or UI process state into the layout/provider.
+2. Continue #45 inside `/studio` by extracting only cohesive orchestration families. Start with the cleanest of generation execution vs campaign persistence/export after measuring dependencies; do not create one monolithic controller hook.
 3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
 4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
 5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.

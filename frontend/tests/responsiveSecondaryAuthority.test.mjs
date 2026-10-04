@@ -10,7 +10,7 @@ const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "u
 
 test("secondary workspace responsive layout has one owner", () => {
   const workspace = read("app/app-workspace.css");
-  const responsive = read("app/responsive-studio.css");
+  const studio = read("app/studio-product.css");
 
   assert.match(workspace, /Responsive secondary-workspace authority/);
   assert.match(workspace, /@media \(max-width: 72rem\)[\s\S]*\.app-shell \.library-grid/);
@@ -18,8 +18,8 @@ test("secondary workspace responsive layout has one owner", () => {
   assert.match(workspace, /@media \(max-width: 52rem\)[\s\S]*\.app-shell \.settings-form \{/);
   assert.match(workspace, /@media \(max-width: 52rem\)[\s\S]*\.app-shell \.truth-panel \{/);
 
-  assert.doesNotMatch(responsive, /@media \(max-width: 72rem\)[\s\S]*\.app-shell \.library-grid \{/);
-  assert.doesNotMatch(responsive, /\.app-shell \.settings-card--wide \{/);
-  assert.doesNotMatch(responsive, /\.app-shell \.connection-card \.status-tag \{/);
-  assert.doesNotMatch(responsive, /\.app-shell \.settings-form \{/);
+  assert.doesNotMatch(studio, /@media \(max-width: 72rem\)[\s\S]*\.app-shell \.library-grid \{/);
+  assert.doesNotMatch(studio, /\.app-shell \.settings-card--wide \{/);
+  assert.doesNotMatch(studio, /\.app-shell \.connection-card \.status-tag \{/);
+  assert.doesNotMatch(studio, /\.app-shell \.settings-form \{/);
 });

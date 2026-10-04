@@ -5,24 +5,23 @@ import test from "node:test";
 const read = (relativePath) =>
   readFile(new URL(relativePath, import.meta.url), "utf8");
 
-test("Root layout loads the scoped responsive Studio contract last", async () => {
+test("Root layout keeps Studio responsiveness in the product owner before decision flow", async () => {
   const layout = await read("../app/layout.js");
 
-  assert.match(layout, /import "\.\.\/app\/responsive-studio\.css";/);
-
   const studioImport = layout.indexOf('import "../app/studio-product.css";');
-  const responsiveImport = layout.indexOf('import "../app/responsive-studio.css";');
+  const decisionImport = layout.indexOf('import "../app/studio-decision-flow.css";');
 
+  assert.doesNotMatch(layout, /responsive-studio\.css/);
   assert.ok(studioImport >= 0, "Studio stylesheet import must remain present");
   assert.ok(
-    responsiveImport > studioImport,
-    "Responsive contract must load after the primary Studio stylesheet",
+    decisionImport > studioImport,
+    "Decision-flow authority must remain later than Studio product styles",
   );
 });
 
 test("Responsive rules remain scoped to the application and preserve the logo", async () => {
   const [css, workspace] = await Promise.all([
-    read("../app/responsive-studio.css"),
+    read("../app/studio-product.css"),
     read("../app/app-workspace.css"),
   ]);
 
@@ -34,9 +33,10 @@ test("Responsive rules remain scoped to the application and preserve the logo", 
   assert.match(workspace, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(workspace, /Shared horizontal-overflow and action-resilience authority/);
   assert.doesNotMatch(css, /\.app-shell \.studio-main/);
+  assert.match(css, /Responsive Studio composition authority/);
   assert.match(css, /@media \(max-width: 52rem\)/);
   assert.match(css, /@media \(max-width: 37rem\)/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(workspace, /@media \(prefers-reduced-motion: reduce\)/);
 
   assert.doesNotMatch(css, /\.brand-mark__glyph\s*span\s*\{/);
   assert.doesNotMatch(css, /\.brand-mark__copy\s*strong\s*\{/);
@@ -50,7 +50,7 @@ test("Responsive rules remain scoped to the application and preserve the logo", 
 });
 
 test("Compact layouts collapse grids and keep actions reachable", async () => {
-  const css = await read("../app/responsive-studio.css");
+  const css = await read("../app/studio-product.css");
 
   assert.match(
     css,

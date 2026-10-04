@@ -27,13 +27,14 @@ test("global layout no longer grows a connector-specific stylesheet layer", () =
   const layout = read("app/layout.js");
   const globalImports = [...layout.matchAll(/import "\.\.\/app\/[^"]+\.css";/g)].map((match) => match[0]);
 
-  assert.equal(globalImports.length, 5);
+  assert.equal(globalImports.length, 4);
   assert.ok(globalImports.some((entry) => entry.includes("app-workspace.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("connector.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("ui-containment.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("public-surfaces.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("campaign-freshness.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("campaign-versioning.css")));
+  assert.ok(globalImports.every((entry) => !entry.includes("responsive-studio.css")));
 });
 
 test("root containment is part of the actual global reset", () => {

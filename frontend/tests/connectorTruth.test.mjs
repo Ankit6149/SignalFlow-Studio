@@ -132,10 +132,11 @@ test("session without verified provider identity is not connected", () => {
 });
 
 test("status, publish boundary, and review UI preserve connector truth", async () => {
-  const [statusRoute, publishRoute, page, callbackRoute] = await Promise.all([
+  const [statusRoute, publishRoute, page, connectionsWorkspace, callbackRoute] = await Promise.all([
     readFile(new URL("../app/api/social/status/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/publish/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/page.js", import.meta.url), "utf8"),
+    readFile(new URL("../components/ConnectionsWorkspace.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/social/callback/[platform]/route.js", import.meta.url), "utf8"),
   ]);
 
@@ -153,11 +154,12 @@ test("status, publish boundary, and review UI preserve connector truth", async (
   assert.match(page, /currentConnection\?\.verified/);
   assert.match(page, /currentConnection\?\.canPublishText/);
   assert.match(page, /currentConnection\?\.scopeStatus === "verified"/);
-  assert.match(page, /Direct capabilities:/);
-  assert.match(page, /Connected · limited/);
-  assert.match(page, /Verified · text/);
-  assert.match(page, /Last verified:/);
-  assert.match(page, /Expiry:/);
+  assert.match(page, /<ConnectionsWorkspace/);
+  assert.match(connectionsWorkspace, /Direct capabilities:/);
+  assert.match(connectionsWorkspace, /Connected · limited/);
+  assert.match(connectionsWorkspace, /Verified · text/);
+  assert.match(connectionsWorkspace, /Last verified:/);
+  assert.match(connectionsWorkspace, /Expiry:/);
 
   assert.match(publishRoute, /!status\.connected \|\| !status\.verified \|\| !tokenSession/);
   assert.match(publishRoute, /if \(status\.expired\)/);

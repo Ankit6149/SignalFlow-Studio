@@ -55,8 +55,10 @@ test("campaign UI delegates library persistence and export projection to the app
 
 test("new campaign action clears the prior campaign identity and reducer output", () => {
   const page = fs.readFileSync(path.join(frontendRoot, "app/page.js"), "utf8");
+  const library = fs.readFileSync(path.join(frontendRoot, "components/LibraryWorkspace.js"), "utf8");
   assert.match(page, /function startNewCampaign\(\)/);
   assert.match(page, /setCurrentCampaignId\(""\)/);
   assert.match(page, /type: "RESET_CAMPAIGN"/);
-  assert.match(page, /onClick=\{startNewCampaign\}/);
+  assert.match(page, /onNewCampaign=\{startNewCampaign\}/);
+  assert.match(library, /onClick=\{onNewCampaign\}/);
 });

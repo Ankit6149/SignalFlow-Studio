@@ -40,6 +40,9 @@ jobs:
 
             const explicitlyRetired = new Set([
               "feat/editorial-execution-layer",
+              "chore/340-reconciliation",
+              "chore/345-next-security-patch",
+              "refactor/45-studio-route",
             ]);
 
             const openPulls = await github.paginate(github.rest.pulls.list, {

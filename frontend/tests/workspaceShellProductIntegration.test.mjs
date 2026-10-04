@@ -16,7 +16,7 @@ test("workspace shell represents the current product map without hiding the real
   for (const [id, href] of [["today", "/today"], ["signals", "/signals"], ["plan", "/plan"], ["voice", "/voice"], ["connections", "/connections"], ["settings", "/settings"]]) {
     assert.match(shell, new RegExp(`id: "${id}", label: "[^"]+", href: "${href.replace("/", "\\/")}", status: "available"`));
   }
-  assert.match(shell, /id: "create", label: "Create", href: "\/\?workspace=studio", status: "available"/);
+  assert.match(shell, /id: "create", label: "Create", href: "\/studio", status: "available"/);
   assert.match(shell, /if \(activeItem === "create"\) return "create"/);
   assert.match(shell, /id: "calendar", label: "Publish", status: "planned"/);
   assert.doesNotMatch(shell, /id: "calendar"[^\n]+href:/);

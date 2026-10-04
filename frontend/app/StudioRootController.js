@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import PlatformIcon from "../components/PlatformIcon";
-import LandingPage from "../components/LandingPage";
 import SourceStage from "../components/SourceStage";
 import DestinationsStage from "../components/DestinationsStage";
 import ReviewStage from "../components/ReviewStage";
@@ -94,25 +94,6 @@ function createClientId(kind) {
   return `signalflow-${kind}-${randomId}`;
 }
 
-function BrandMark({ compact = false, dark = false }) {
-  return (
-    <span
-      className={`brand-mark ${compact ? "brand-mark--compact" : ""} ${dark ? "brand-mark--dark" : ""}`}
-      aria-label="SignalFlow Studio"
-    >
-      <span className="brand-mark__glyph" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="brand-mark__copy">
-        <strong>SignalFlow</strong>
-        {!compact && <small>STUDIO</small>}
-      </span>
-    </span>
-  );
-}
-
 function ArrowIcon() {
   return (
     <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -142,8 +123,7 @@ function SparkIcon() {
 }
 
 export default function StudioRootController() {
-  const [entered, setEntered] = useState(false);
-  const [section, setSection] = useState("studio");
+  const router = useRouter();
   const {
     campaignState,
     dispatchCampaign,
@@ -212,7 +192,7 @@ export default function StudioRootController() {
   } = useOwnerConnectionsController({
     setBusy,
     setMessage,
-    onRequireOwnerUnlock: () => window.location.assign("/settings"),
+    onRequireOwnerUnlock: () => router.push("/settings"),
   });
   const activeMeta = channelMeta(activeChannel);
   const currentPost = posts[activeChannel] || "";
@@ -327,45 +307,19 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     void refreshProviderStatus();
 
     const params = new URLSearchParams(window.location.search);
-    const workspace = params.get("workspace");
-    const socialStatus = params.get("social_status");
-    if (workspace === "settings") {
-      window.location.replace("/settings");
-      return;
-    }
-    if (workspace === "connections" || socialStatus) {
-      const next = new URL("/connections", window.location.origin);
-      params.forEach((value, key) => {
-        if (key !== "workspace") next.searchParams.append(key, value);
-      });
-      window.location.replace(`${next.pathname}${next.search}`);
-      return;
-    }
-    if (workspace === "library") {
-      window.location.replace("/library");
-      return;
-    }
-    if (["create", "studio"].includes(workspace)) {
-      setEntered(true);
-      setSection("studio");
-      const requestedChannel = params.get("channel");
-      if (
-        (workspace === "create" || workspace === "studio") &&
-        CHANNELS.some((item) => item.id === requestedChannel)
-      ) {
-        setChannels((previous) => previous.includes(requestedChannel)
-          ? previous
-          : [...previous, requestedChannel]);
-        setActiveChannel(requestedChannel);
-      }
+    const requestedChannel = params.get("channel");
+    if (CHANNELS.some((item) => item.id === requestedChannel)) {
+      setChannels((previous) => previous.includes(requestedChannel)
+        ? previous
+        : [...previous, requestedChannel]);
+      setActiveChannel(requestedChannel);
     }
   }, []);
 
   useEffect(() => {
-    if (!entered) return;
     refreshConnections();
     refreshProviderStatus();
-  }, [entered, accessToken]);
+  }, [accessToken]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -400,7 +354,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     });
-  }, [entered, section]);
+  }, []);
 
   function setStage(nextStage) {
     dispatchCampaign({ type: "SET_STAGE", stage: nextStage });
@@ -416,16 +370,6 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     setVersionHistoryOpen(false);
     setGenerationProgress(null);
     setMessage(null);
-    navigateSection("studio");
-  }
-
-  function enterStudio() {
-    setEntered(true);
-    startNewCampaign();
-  }
-
-  function navigateSection(nextSection) {
-    setSection(nextSection);
   }
 
   function updateForm(key, value) {
@@ -1099,16 +1043,9 @@ async function exportZip() {
     }
   }
 
-  if (!entered) return <LandingPage onEnter={enterStudio} brand={<BrandMark />} />;
-
-  const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
-
   return (
     <WorkspaceShell
-      activeItem={section === "studio" ? "create" : section}
-      onNavigate={{
-        create: () => navigateSection("studio"),
-      }}
+      activeItem="create"
       statusLabel={providerReadiness.ready ? `${provider.label} ready` : "Model setup needed"}
       statusTone={providerReadiness.ready ? "ready" : "attention"}
     >
@@ -1122,8 +1059,7 @@ async function exportZip() {
         </div>
       )}
 
-      {section === "studio" && (
-        <main
+      <main
           className="studio-page"
           id="workspace-content"
           data-stage={stage}
@@ -1280,7 +1216,7 @@ async function exportZip() {
                   currentConnectionLabel={currentConnectionLabel}
                   directPublishAvailability={directPublishAvailability}
                   onPublishCurrentPost={publishCurrentPost}
-                  onConfigureConnector={() => navigateSection("connections")}
+                  onConfigureConnector={() => router.push("/connections")}
                   warnings={result?.warnings || []}
                   onExportMarkdown={exportMarkdown}
                   onExportJson={exportJson}
@@ -1373,8 +1309,7 @@ async function exportZip() {
               )}
             </div>
           </div>
-        </main>
-      )}
+      </main>
 
       <RegenerationDialog
         open={regenerationDialogOpen}

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ConnectionsWorkspace from "../../components/ConnectionsWorkspace";
 import WorkspaceShell from "../../components/WorkspaceShell";
 import { CHANNELS, OFFICIAL_CONNECTORS } from "../../lib/studio/studioCatalog.mjs";
 import { useOwnerConnectionsController } from "../../lib/studio/useOwnerConnectionsController.js";
 
 export default function ConnectionsPage() {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const {
@@ -20,7 +22,7 @@ export default function ConnectionsPage() {
   } = useOwnerConnectionsController({
     setBusy,
     setMessage,
-    onRequireOwnerUnlock: () => window.location.assign("/settings"),
+    onRequireOwnerUnlock: () => router.push("/settings"),
   });
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function ConnectionsPage() {
   }, [accessToken]);
 
   function useChannelInStudio(channelId) {
-    window.location.assign(`/?workspace=studio&channel=${encodeURIComponent(channelId)}`);
+    router.push(`/studio?channel=${encodeURIComponent(channelId)}`);
   }
 
   return (

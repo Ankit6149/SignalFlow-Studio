@@ -43,14 +43,14 @@ export default function LibraryPage() {
 
   function startNewCampaign() {
     resetEditorSession();
-    router.push("/?workspace=studio");
+    router.push("/studio");
   }
 
   function openCampaign(item) {
     try {
       const restored = campaignApplication.openCampaign(item);
       restoreEditorSession(restored);
-      router.push("/?workspace=studio");
+      router.push("/studio");
     } catch {
       setMessage({
         type: "error",

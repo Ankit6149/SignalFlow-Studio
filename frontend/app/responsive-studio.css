@@ -3,69 +3,8 @@
  *
  * Loaded after the core Studio layers and scoped to .app-shell so public landing
  * styles and the existing SignalFlow logo remain untouched. Shared workspace containment
- * now lives in app-workspace.css; this file keeps the remaining overflow and mobile ergonomics.
+ * now lives in app-workspace.css; this file contains only breakpoint-specific and reduced-motion rules.
  */
-
-.app-shell .review-tabs,
-.app-shell .destination-tabs,
-.app-shell .channel-tabs,
-.app-shell .control-strip,
-.app-shell .studio-controls {
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-}
-
-.app-shell .review-tabs > *,
-.app-shell .destination-tabs > *,
-.app-shell .channel-tabs > *,
-.app-shell .control-strip > *,
-.app-shell .studio-controls > * {
-  flex: 0 0 auto;
-}
-
-.app-shell .review-actions,
-.app-shell .export-row,
-.app-shell .studio-actionbar,
-.app-shell .panel-kicker--with-actions,
-.app-shell .settings-actions,
-.app-shell .recent-card footer {
-  min-width: 0;
-  max-width: 100%;
-  flex-wrap: wrap;
-}
-
-.app-shell .review-actions > *,
-.app-shell .export-row > *,
-.app-shell .studio-actionbar > *,
-.app-shell .panel-kicker--with-actions > *,
-.app-shell .settings-actions > *,
-.app-shell .recent-card footer > * {
-  min-width: 0;
-}
-
-.app-shell .recent-card,
-.app-shell .library-card,
-.app-shell .connection-card,
-.app-shell .settings-card,
-.app-shell .truth-panel {
-  max-width: 100%;
-}
-
-.app-shell .recent-card pre,
-.app-shell .recent-card code,
-.app-shell .review-workspace pre,
-.app-shell .review-workspace code,
-.app-shell .output-panel pre,
-.app-shell .output-panel code {
-  max-width: 100%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
 
 @media (max-width: 72rem) {
   .app-shell .studio-page,

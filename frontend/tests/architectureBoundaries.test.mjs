@@ -43,14 +43,19 @@ test("application modules do not import React, Next routes, or UI components", (
   }
 });
 
-test("campaign UI delegates library persistence and export projection to the application service", () => {
+test("campaign UI delegates persistence and export projection to the persistence controller", () => {
   const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
-  assert.match(page, /createBrowserCampaignApplication/);
-  assert.match(page, /campaignApplication\.saveCampaign/);
-  assert.match(page, /campaignApplication\.projectMarkdown/);
-  assert.match(page, /campaignApplication\.projectJson/);
-  assert.doesNotMatch(page, /localStorage\.setItem\(LIBRARY_KEY/);
-  assert.doesNotMatch(page, /JSON\.stringify\(\{ campaign: form\.projectName, channels, posts/);
+  const persistence = fs.readFileSync(path.join(frontendRoot, "lib/studio/useCampaignPersistenceController.js"), "utf8");
+
+  assert.match(page, /useCampaignPersistenceController\(/);
+  assert.doesNotMatch(page, /createBrowserCampaignApplication|campaignApplication\.|downloadBinary\(|downloadText\(/);
+  assert.match(persistence, /createBrowserCampaignApplication/);
+  assert.match(persistence, /campaignApplication\.saveCampaign/);
+  assert.match(persistence, /campaignApplication\.projectMarkdown/);
+  assert.match(persistence, /campaignApplication\.projectJson/);
+  assert.match(persistence, /campaignApplication\.projectZip/);
+  assert.doesNotMatch(persistence, /localStorage\.setItem\(LIBRARY_KEY/);
+  assert.doesNotMatch(persistence, /generateStudioCampaign|publishStudioPost/);
 });
 
 test("new campaign action clears editor identity through the shared session boundary", () => {

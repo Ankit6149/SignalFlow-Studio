@@ -30,13 +30,15 @@ test("owner-only model routes match API authorization in every deployment profil
 
 test("Studio validates a generation response before the atomic state commit", () => {
   const page = read("../app/StudioRootController.js");
-  const validationIndex = page.indexOf("const accepted = acceptGenerationResponse");
-  const mutationIndex = page.indexOf('type: "ACCEPT_GENERATION"');
+  const generation = read("../lib/studio/useCampaignGenerationController.js");
+  const validationIndex = generation.indexOf("const accepted = acceptGenerationResponse");
+  const mutationIndex = generation.indexOf('type: "ACCEPT_GENERATION"');
 
+  assert.match(page, /useCampaignGenerationController\(/);
   assert.ok(validationIndex >= 0, "generation acceptance boundary is missing");
   assert.ok(mutationIndex > validationIndex, "generation state is committed before validation");
-  assert.doesNotMatch(page, /setResult\(data\)[\s\S]{0,300}data\.fallbackUsed/);
-  assert.doesNotMatch(page, /setPosts\(generatedPosts\)/);
+  assert.doesNotMatch(generation, /setResult\(data\)[\s\S]{0,300}data\.fallbackUsed/);
+  assert.doesNotMatch(generation, /setPosts\(generatedPosts\)/);
 });
 
 test("extension reads capabilities and refuses unacknowledged delivery", () => {

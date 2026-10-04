@@ -98,7 +98,7 @@ test("launch kit keeps JSON compatibility and streams progress only when request
 });
 
 test("Studio consumes live progress with JSON fallback and accessible status semantics", async () => {
-  const page = await readFile(new URL("../app/page.js", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8");
   const client = await readFile(new URL("../lib/studio/studioApiClient.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(page, /fetch\(/);
   assert.match(page, /generateStudioCampaign\(/);

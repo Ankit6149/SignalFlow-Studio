@@ -29,7 +29,7 @@ const NAV_GROUPS = [
   ]},
   { label: "System", items: [
     { id: "voice", label: "Voice", href: "/voice", status: "available" },
-    { id: "connections", label: "Connections", href: "/?workspace=connections", status: "available" },
+    { id: "connections", label: "Connections", href: "/connections", status: "available" },
     { id: "settings", label: "Settings", href: "/settings", status: "available" },
   ]},
 ];

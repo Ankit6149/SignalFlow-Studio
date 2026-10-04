@@ -132,10 +132,11 @@ test("session without verified provider identity is not connected", () => {
 });
 
 test("status, publish boundary, and review UI preserve connector truth", async () => {
-  const [statusRoute, publishRoute, page, connectionsWorkspace, callbackRoute] = await Promise.all([
+  const [statusRoute, publishRoute, page, connectionsRoute, connectionsWorkspace, callbackRoute] = await Promise.all([
     readFile(new URL("../app/api/social/status/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/publish/route.js", import.meta.url), "utf8"),
     readFile(new URL("../app/page.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/connections/page.js", import.meta.url), "utf8"),
     readFile(new URL("../components/ConnectionsWorkspace.js", import.meta.url), "utf8"),
     readFile(new URL("../app/api/social/callback/[platform]/route.js", import.meta.url), "utf8"),
   ]);
@@ -154,7 +155,8 @@ test("status, publish boundary, and review UI preserve connector truth", async (
   assert.match(page, /currentConnection\?\.verified/);
   assert.match(page, /currentConnection\?\.canPublishText/);
   assert.match(page, /currentConnection\?\.scopeStatus === "verified"/);
-  assert.match(page, /<ConnectionsWorkspace/);
+  assert.doesNotMatch(page, /<ConnectionsWorkspace/);
+  assert.match(connectionsRoute, /<ConnectionsWorkspace/);
   assert.match(connectionsWorkspace, /Direct capabilities:/);
   assert.match(connectionsWorkspace, /Connected · limited/);
   assert.match(connectionsWorkspace, /Verified · text/);
@@ -169,5 +171,6 @@ test("status, publish boundary, and review UI preserve connector truth", async (
 
   assert.match(callbackRoute, /throw oauthFailure\("social_identity_verification_failed"/);
   assert.match(callbackRoute, /createTokenSession\(platformId, tokenData, profile\)/);
+  assert.match(callbackRoute, /Location: `\$\{baseUrl\}\/connections\?\$\{params\.toString\(\)\}`/);
   assert.doesNotMatch(callbackRoute, /Connected to \$\{platform\.label\} as/);
 });

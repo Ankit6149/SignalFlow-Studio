@@ -193,7 +193,7 @@ function buildRedirect(request, status, message, cookies = []) {
   const response = new Response(null, {
     status: 302,
     headers: {
-      Location: `${baseUrl}/?${params.toString()}`,
+      Location: `${baseUrl}/connections?${params.toString()}`,
       "Cache-Control": "no-store",
       "Referrer-Policy": "no-referrer",
     },

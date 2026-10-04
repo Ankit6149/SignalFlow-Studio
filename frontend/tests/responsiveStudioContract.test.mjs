@@ -21,7 +21,10 @@ test("Root layout loads the scoped responsive Studio contract last", async () =>
 });
 
 test("Responsive rules remain scoped to the application and preserve the logo", async () => {
-  const css = await read("../app/responsive-studio.css");
+  const [css, workspace] = await Promise.all([
+    read("../app/responsive-studio.css"),
+    read("../app/app-workspace.css"),
+  ]);
 
   assert.match(css, /\.app-shell \{/);
   assert.match(css, /overflow-x: clip;/);
@@ -35,6 +38,12 @@ test("Responsive rules remain scoped to the application and preserve the logo", 
   assert.doesNotMatch(css, /\.brand-mark__glyph\s*span\s*\{/);
   assert.doesNotMatch(css, /\.brand-mark__copy\s*strong\s*\{/);
   assert.doesNotMatch(css, /background-image\s*:/);
+  assert.doesNotMatch(css, /\.app-shell \.app-header\s*\{/);
+  assert.doesNotMatch(css, /\.app-shell \.app-nav\s*\{/);
+  assert.match(workspace, /\/\* Responsive application chrome authority\./);
+  assert.match(workspace, /@media \(max-width: 72rem\)[\s\S]*\.app-shell \.app-header/);
+  assert.match(workspace, /@media \(max-width: 52rem\)[\s\S]*\.app-shell \.app-nav/);
+  assert.match(workspace, /@media \(max-width: 37rem\)[\s\S]*\.app-shell \.brand-mark__copy small/);
 });
 
 test("Compact layouts collapse grids and keep actions reachable", async () => {
@@ -48,6 +57,7 @@ test("Compact layouts collapse grids and keep actions reachable", async () => {
     css,
     /\.app-shell \.review-actions,[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
   );
-  assert.match(css, /\.app-shell \.app-nav[\s\S]*?overflow-x: auto;/);
+  const workspace = await read("../app/app-workspace.css");
+  assert.match(workspace, /\.app-shell \.app-nav[\s\S]*?overflow-x: auto;/);
   assert.match(css, /max-width: calc\(100vw - 1rem\);/);
 });

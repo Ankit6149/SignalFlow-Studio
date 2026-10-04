@@ -27,7 +27,18 @@ test("global layout no longer grows a connector-specific stylesheet layer", () =
   const layout = read("app/layout.js");
   const globalImports = [...layout.matchAll(/import "\.\.\/app\/[^"]+\.css";/g)].map((match) => match[0]);
 
-  assert.equal(globalImports.length, 9);
+  assert.equal(globalImports.length, 8);
   assert.ok(globalImports.some((entry) => entry.includes("app-workspace.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("connector.css")));
+  assert.ok(globalImports.every((entry) => !entry.includes("ui-containment.css")));
+});
+
+test("root containment is part of the actual global reset", () => {
+  const globals = read("app/globals.css");
+  const retired = path.join(frontendRoot, "app/ui-containment.css");
+
+  assert.equal(fs.existsSync(retired), false, "retired ui-containment.css must not return");
+  assert.match(globals, /--sf-page-max:\s*88rem/);
+  assert.match(globals, /scrollbar-color:\s*rgba\(155, 130, 72, 0\.72\) transparent/);
+  assert.match(globals, /@media \(max-width: 52rem\)[\s\S]*--sf-page-gutter:\s*clamp\(1rem, 5vw, 2rem\)/);
 });

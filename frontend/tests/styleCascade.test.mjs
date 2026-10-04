@@ -4,7 +4,6 @@ import test from "node:test";
 
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
 const publicSurfacesUrl = new URL("../app/public-surfaces.css", import.meta.url);
-const containmentUrl = new URL("../app/ui-containment.css", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
 const responsiveUrl = new URL("../app/responsive-studio.css", import.meta.url);
@@ -13,7 +12,6 @@ const decisionFlowUrl = new URL("../app/studio-decision-flow.css", import.meta.u
 const APPROVED_STYLE_ORDER = [
   "globals.css",
   "public-surfaces.css",
-  "ui-containment.css",
   "app-workspace.css",
   "studio-product.css",
   "campaign-freshness.css",
@@ -41,8 +39,7 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   const source = await readFile(layoutUrl, "utf8");
   assert.deepEqual(stylesheetImports(source), APPROVED_STYLE_ORDER);
   assert.doesNotMatch(source, /connector\.css/);
-
-  assert.doesNotMatch(source, /connector\.css/);
+  assert.doesNotMatch(source, /ui-containment\.css/);
 
   for (const retiredLayer of RETIRED_GLOBAL_LAYERS) {
     assert.equal(
@@ -53,16 +50,25 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   }
 });
 
-test("public and containment layers cannot patch Studio components", async () => {
-  const [publicSurfaces, containment] = await Promise.all([
-    readFile(publicSurfacesUrl, "utf8"),
-    readFile(containmentUrl, "utf8"),
+test("public surfaces cannot patch Studio components", async () => {
+  const publicSurfaces = withoutCssComments(await readFile(publicSurfacesUrl, "utf8"));
+  assert.equal(publicSurfaces.includes(".app-shell"), false);
+  assert.equal(publicSurfaces.includes(".studio-actionbar"), false);
+  assert.equal(publicSurfaces.includes(".studio-grid"), false);
+});
+
+test("root containment belongs to globals rather than a standalone override layer", async () => {
+  const [layout, globals] = await Promise.all([
+    readFile(layoutUrl, "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
-  for (const source of [publicSurfaces, containment].map(withoutCssComments)) {
-    assert.equal(source.includes(".app-shell"), false);
-    assert.equal(source.includes(".studio-actionbar"), false);
-    assert.equal(source.includes(".studio-grid"), false);
-  }
+
+  assert.doesNotMatch(layout, /ui-containment\.css/);
+  assert.match(globals, /--sf-page-max:\s*88rem/);
+  assert.match(globals, /--sf-page-gutter:\s*max\(/);
+  assert.match(globals, /html\s*\{[\s\S]*overflow-x:\s*hidden[\s\S]*scrollbar-width:\s*thin/);
+  assert.match(globals, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
+  assert.match(globals, /html::\-webkit-scrollbar-thumb/);
 });
 
 test("authoritative Studio layers remain scoped and free of retired wizard patches", async () => {

@@ -47,6 +47,7 @@ export function useCampaignGenerationController({
   activeChannel,
   dispatchCampaign,
   setStrategyReview,
+  setStage,
   navigateStudioFlow,
   setBusy,
   setMessage,
@@ -165,7 +166,7 @@ export function useCampaignGenerationController({
       const generation = await requestGeneration(channels, controller.signal);
       if (generation.strategyBlocked) {
         setStrategyReview(generation.data.strategy_review);
-        navigateStudioFlow("destinations");
+        setStage("destinations");
         setMessage({
           type: "warning",
           text: "Strategy needs review before any destination drafts are generated. No draft content was created or replaced.",
@@ -219,7 +220,7 @@ export function useCampaignGenerationController({
       const generation = await requestGeneration(targetChannels, controller.signal);
       if (generation.strategyBlocked) {
         setStrategyReview(generation.data.strategy_review);
-        navigateStudioFlow("destinations");
+        setStage("destinations");
         setMessage({
           type: "warning",
           text: "The rebuilt strategy still needs review. Existing drafts and edits were left unchanged.",

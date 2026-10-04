@@ -39,6 +39,7 @@ import {
   providerRecoveryMessage,
   useCampaignGenerationController,
 } from "../lib/studio/useCampaignGenerationController.js";
+import { useCampaignPublishingController } from "../lib/studio/useCampaignPublishingController.js";
 import {
   useCampaignEditorSession,
 } from "../lib/studio/CampaignEditorSessionContext.js";

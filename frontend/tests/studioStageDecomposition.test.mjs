@@ -39,3 +39,25 @@ test("canonical source presentation policy is separate from the page controller"
   assert.match(presentation, /sourceArtifactVersionId/);
   assert.match(presentation, /Legacy source/);
 });
+
+
+test("Destinations stage is an explicit presentation boundary", () => {
+  const page = read("app/page.js");
+  const destinations = read("components/DestinationsStage.js");
+
+  assert.match(page, /import DestinationsStage from/);
+  assert.match(page, /<DestinationsStage/);
+  assert.match(page, /onToggleChannel=\{toggleChannel\}/);
+  assert.match(page, /onSelectProvider=\{selectProviderRoute\}/);
+  assert.match(page, /onTestProviderConnection=\{testProviderConnection\}/);
+  assert.match(page, /onRebuildStrategy=\{handleGenerationAction\}/);
+
+  assert.doesNotMatch(destinations, /\bfetch\s*\(/);
+  assert.doesNotMatch(destinations, /\/api\//);
+  assert.doesNotMatch(destinations, /localStorage/);
+  assert.match(destinations, /CHANNEL_GROUPS\.map/);
+  assert.match(destinations, /onToggleChannel\(channel\.id\)/);
+  assert.match(destinations, /onSelectProvider\(item\.id\)/);
+  assert.match(destinations, /strategy-review-panel/);
+  assert.match(destinations, /compose-readiness/);
+});

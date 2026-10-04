@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
-const decisionUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
+const decisionUrl = new URL("../app/studio-product.css", import.meta.url);
 const freshnessUrl = new URL("../components/ReviewStage.module.css", import.meta.url);
 const versioningUrl = new URL("../components/ReviewStage.module.css", import.meta.url);
 

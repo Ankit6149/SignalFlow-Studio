@@ -5,7 +5,7 @@ import test from "node:test";
 const pageUrl = new URL("../app/page.js", import.meta.url);
 const destinationsUrl = new URL("../components/DestinationsStage.js", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
-const decisionUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
+const decisionUrl = new URL("../app/studio-product.css", import.meta.url);
 
 test("Destinations exposes Core, All, and Clear selection shortcuts", async () => {
   const [page, destinations] = await Promise.all([

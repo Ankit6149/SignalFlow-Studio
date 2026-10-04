@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const decisionUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
+const decisionUrl = new URL("../app/studio-product.css", import.meta.url);
 const productUrl = new URL("../app/studio-product.css", import.meta.url);
 
 test("Source defaults to one readable column and widens only when there is room", async () => {

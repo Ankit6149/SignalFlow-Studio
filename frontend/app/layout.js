@@ -1,7 +1,6 @@
 import "../app/globals.css";
 import "../app/app-workspace.css";
 import "../app/studio-product.css";
-import "../app/studio-decision-flow.css";
 import WorkspaceAccessibility from "../components/WorkspaceAccessibility";
 
 const siteUrl = "https://signal-flow-studio.vercel.app";

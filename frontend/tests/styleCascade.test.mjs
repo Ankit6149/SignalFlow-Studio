@@ -5,13 +5,11 @@ import test from "node:test";
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
-const decisionFlowUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
 
 const APPROVED_STYLE_ORDER = [
   "globals.css",
   "app-workspace.css",
   "studio-product.css",
-  "studio-decision-flow.css",
 ];
 
 const RETIRED_GLOBAL_LAYERS = [
@@ -19,6 +17,7 @@ const RETIRED_GLOBAL_LAYERS = [
   "living-ui-tuning.css",
   "professional-polish.css",
   "responsive-studio.css",
+  "studio-decision-flow.css",
 ];
 
 function stylesheetImports(source) {
@@ -87,10 +86,9 @@ test("root containment belongs to globals rather than a standalone override laye
 });
 
 test("authoritative Studio layers remain scoped and free of retired wizard patches", async () => {
-  const [workspace, workflow, decisionFlow] = await Promise.all([
+  const [workspace, workflow] = await Promise.all([
     readFile(workspaceUrl, "utf8"),
     readFile(workflowUrl, "utf8"),
-    readFile(decisionFlowUrl, "utf8"),
   ]);
 
   assert.match(workspace, /\.app-shell\s*\{/);
@@ -108,13 +106,14 @@ test("authoritative Studio layers remain scoped and free of retired wizard patch
   assert.match(workspace, /Shared horizontal-overflow and action-resilience authority/);
   assert.doesNotMatch(workflow, /\.app-shell \.secondary-page/);
   assert.doesNotMatch(workflow, /\.app-shell \.secondary-heading/);
-  assert.match(decisionFlow, /\.app-shell \.studio-page/);
-  assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="source"\]/);
-  assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);
-  assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="review"\]/);
+  assert.match(workflow, /Final Studio stage composition authority/);
+  assert.match(workflow, /\.app-shell \.studio-page/);
+  assert.match(workflow, /\.app-shell \.studio-page\[data-stage="source"\]/);
+  assert.match(workflow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);
+  assert.match(workflow, /\.app-shell \.studio-page\[data-stage="review"\]/);
   assert.equal(workspace.includes("Focused three-step wizard"), false);
 
-  for (const source of [workspace, workflow, decisionFlow]) {
+  for (const source of [workspace, workflow]) {
     assert.equal(/^body\s*\{/m.test(source), false);
     assert.equal(/^html\s*\{/m.test(source), false);
     assert.equal(/^:root\s*\{/m.test(source), false);

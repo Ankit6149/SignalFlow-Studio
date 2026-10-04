@@ -97,17 +97,20 @@ test("launch kit keeps JSON compatibility and streams progress only when request
   assert.match(route, /"Content-Type": "application\/json"/);
 });
 
-test("Studio consumes live progress with JSON fallback and accessible status semantics", async () => {
+test("Studio consumes live progress through the dedicated generation controller with JSON fallback and accessible status semantics", async () => {
   const page = await readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8");
+  const generation = await readFile(new URL("../lib/studio/useCampaignGenerationController.js", import.meta.url), "utf8");
   const client = await readFile(new URL("../lib/studio/studioApiClient.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(page, /fetch\(/);
-  assert.match(page, /generateStudioCampaign\(/);
-  assert.match(page, /onProgress: setGenerationProgress/);
+  assert.match(page, /useCampaignGenerationController\(/);
+  assert.doesNotMatch(page, /generateStudioCampaign|setGenerationProgress|new AbortController/);
+  assert.match(generation, /generateStudioCampaign\(/);
+  assert.match(generation, /onProgress: setGenerationProgress/);
+  assert.match(generation, /new AbortController\(\)/);
   assert.match(client, /Accept: "application\/x-ndjson"/);
   assert.match(client, /readGenerationResponse\(/);
   assert.match(client, /response\.body\.getReader\(\)/);
   assert.match(client, /event\.type === "progress"/);
-  assert.match(page, /setGenerationProgress/);
   assert.match(page, /className="generation-progress-list"/);
   assert.match(page, /aria-label="Destination generation progress"/);
   assert.match(page, /aria-live=\{busy && generationProgress \? "polite" : undefined\}/);

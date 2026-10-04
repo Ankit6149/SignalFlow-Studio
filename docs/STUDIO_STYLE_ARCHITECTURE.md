@@ -12,9 +12,8 @@ This document defines the production cascade and the ownership boundary for ever
 
 1. `globals.css` — reset/tokens, root viewport containment, scrollbar behavior, shared primitives, and typography.
 2. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
-3. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
-4. `responsive-studio.css` — bounded responsive Studio/content behavior still awaiting consolidation into owning layers. Header/navigation, Library/Connections/Settings, and secondary page-frame/heading responsive authority has moved into `app-workspace.css`.
-5. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
+3. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition, including Studio breakpoint adaptations.
+4. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
 
 Review freshness/source-change, campaign status, draft status, and version-history appearance no longer participate in the root cascade; they are owned by `frontend/components/ReviewStage.module.css`. Canonical SourceArtifact usability/version state appearance is owned by `frontend/components/SourceStage.module.css`. Regeneration-dialog appearance is owned by `frontend/components/RegenerationDialog.module.css`.
 
@@ -24,7 +23,7 @@ The order is enforced by `frontend/tests/styleCascade.test.mjs`.
 
 ## Retired layers
 
-The following historical visual systems were removed after their legitimate public rules were migrated into `public-surfaces.css`:
+The following historical or override layers are retired after their legitimate rules were migrated into the owning stylesheet or component:
 
 - `living-ui.css`
 - `living-ui-tuning.css`
@@ -34,6 +33,7 @@ The following historical visual systems were removed after their legitimate publ
 - `public-surfaces.css` (legal rules moved into `legal.module.css`; unused legacy skip-link rules removed)
 - `campaign-freshness.css` (Review freshness appearance moved into `ReviewStage.module.css`; unused stale connection-badge rule removed)
 - `campaign-versioning.css` (Source state moved into `SourceStage.module.css`, Review state/version history moved into `ReviewStage.module.css`, and regeneration-dialog styling moved into `RegenerationDialog.module.css`)
+- `responsive-studio.css` (shared containment/overflow/accessibility moved into `app-workspace.css`; Studio breakpoint composition moved into `studio-product.css`)
 
 They must not be recreated or restored. Git history remains the source for archaeology.
 
@@ -54,13 +54,13 @@ Put reusable product rules in `app-workspace.css`. Examples include:
 - buttons and form controls;
 - panels, cards, status messages, and empty states;
 - library, connection, and settings layouts;
-- shared breakpoints and accessibility states.
+- shared breakpoints and accessibility states, including reduced-motion behavior.
 
 All product selectors must begin with `.app-shell` so they cannot mutate the public landing page or legal routes.
 
 ### Source, Destinations, and Review layout
 
-Put stage-specific composition in `studio-product.css`. This file can arrange existing components, but it should not redefine the base appearance of buttons, fields, panels, or status components.
+Put stage-specific composition and its breakpoint adaptations in `studio-product.css`. This file can arrange existing components, but it should not redefine the base appearance of buttons, fields, panels, or status components.
 
 Stage-specific width or max-width rules must not be appended to `app-workspace.css`. In particular, do not reintroduce a global 64rem cap on `.studio-heading`, `.studio-flow`, `.studio-grid`, or `.studio-actionbar`.
 

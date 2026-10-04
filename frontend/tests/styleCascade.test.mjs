@@ -5,14 +5,12 @@ import test from "node:test";
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
-const responsiveUrl = new URL("../app/responsive-studio.css", import.meta.url);
 const decisionFlowUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
 
 const APPROVED_STYLE_ORDER = [
   "globals.css",
   "app-workspace.css",
   "studio-product.css",
-  "responsive-studio.css",
   "studio-decision-flow.css",
 ];
 
@@ -20,6 +18,7 @@ const RETIRED_GLOBAL_LAYERS = [
   "living-ui.css",
   "living-ui-tuning.css",
   "professional-polish.css",
+  "responsive-studio.css",
 ];
 
 function stylesheetImports(source) {
@@ -57,15 +56,8 @@ test("Review freshness styles are component-scoped rather than a root override l
 });
 
 test("Regeneration dialog viewport containment is component-scoped", async () => {
-  const [responsive, regenerationDialog] = await Promise.all([
-    readFile(responsiveUrl, "utf8"),
-    readFile(new URL("../components/RegenerationDialog.module.css", import.meta.url), "utf8"),
-  ]);
+  const regenerationDialog = await readFile(new URL("../components/RegenerationDialog.module.css", import.meta.url), "utf8");
 
-  assert.equal(responsive.includes(".app-shell .modal,"), false);
-  assert.equal(responsive.includes(".app-shell .modal-card"), false);
-  assert.equal(responsive.includes(".app-shell .dialog,"), false);
-  assert.equal(responsive.includes('[role="dialog"]'), false);
   assert.match(regenerationDialog, /:global\(\.app-shell\) \.dialog\s*\{[\s\S]*max-width:\s*min\(42rem, calc\(100vw - 2rem\)\)[\s\S]*max-height:\s*calc\(100dvh - 2rem\)/);
   assert.match(regenerationDialog, /@media \(max-width:\s*37rem\)[\s\S]*max-width:\s*calc\(100vw - 1rem\)[\s\S]*max-height:\s*calc\(100dvh - 1rem\)/);
 });
@@ -95,10 +87,9 @@ test("root containment belongs to globals rather than a standalone override laye
 });
 
 test("authoritative Studio layers remain scoped and free of retired wizard patches", async () => {
-  const [workspace, workflow, responsive, decisionFlow] = await Promise.all([
+  const [workspace, workflow, decisionFlow] = await Promise.all([
     readFile(workspaceUrl, "utf8"),
     readFile(workflowUrl, "utf8"),
-    readFile(responsiveUrl, "utf8"),
     readFile(decisionFlowUrl, "utf8"),
   ]);
 
@@ -108,24 +99,22 @@ test("authoritative Studio layers remain scoped and free of retired wizard patch
   assert.match(workflow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);
   assert.match(workspace, /Shared workspace containment authority/);
   assert.match(workspace, /\.app-shell \.studio-main/);
-  assert.doesNotMatch(responsive, /\.app-shell \.studio-main/);
-  assert.doesNotMatch(responsive, /\.app-shell \.app-header\s*\{/);
-  assert.doesNotMatch(responsive, /\.app-shell \.app-nav\s*\{/);
+  assert.match(workflow, /Responsive Studio composition authority/);
+  assert.match(workflow, /@media \(max-width: 52rem\)/);
+  assert.match(workspace, /Reduced-motion accessibility authority/);
   assert.match(workspace, /Responsive application chrome authority/);
   assert.match(workspace, /Responsive secondary-workspace authority/);
   assert.match(workspace, /Responsive secondary page-frame authority/);
   assert.match(workspace, /Shared horizontal-overflow and action-resilience authority/);
-  const responsiveBase = withoutCssComments(responsive).split("@media")[0];
-  assert.equal(responsiveBase.includes(".app-shell"), false);
-  assert.doesNotMatch(responsive, /\.app-shell \.secondary-page/);
-  assert.doesNotMatch(responsive, /\.app-shell \.secondary-heading/);
+  assert.doesNotMatch(workflow, /\.app-shell \.secondary-page/);
+  assert.doesNotMatch(workflow, /\.app-shell \.secondary-heading/);
   assert.match(decisionFlow, /\.app-shell \.studio-page/);
   assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="source"\]/);
   assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);
   assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="review"\]/);
   assert.equal(workspace.includes("Focused three-step wizard"), false);
 
-  for (const source of [workspace, workflow, responsive, decisionFlow]) {
+  for (const source of [workspace, workflow, decisionFlow]) {
     assert.equal(/^body\s*\{/m.test(source), false);
     assert.equal(/^html\s*\{/m.test(source), false);
     assert.equal(/^:root\s*\{/m.test(source), false);

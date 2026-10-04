@@ -4,7 +4,7 @@ import test from "node:test";
 
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
 const pageUrl = new URL("../app/StudioRootController.js", import.meta.url);
-const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);
+const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);\nconst generationUrl = new URL("../lib/studio/useCampaignGenerationController.js", import.meta.url);
 
 test("campaign editor state survives route navigation through a side-effect-free root session", async () => {
   const [layout, page, session] = await Promise.all([
@@ -32,20 +32,19 @@ test("campaign editor state survives route navigation through a side-effect-free
 });
 
 test("route-surviving editor session does not globalize transient UI/process state", async () => {
-  const [page, session] = await Promise.all([
+  const [page, session, generation] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(sessionUrl, "utf8"),
+    readFile(generationUrl, "utf8"),
   ]);
 
-  for (const localState of [
-    "busy",
-    "generationProgress",
-    "message",
-    "regenerationDialogOpen",
-    "versionHistoryOpen",
-  ]) {
+  for (const localState of ["busy", "message", "versionHistoryOpen"]) {
     assert.ok(page.includes(`const [${localState},`), `${localState} must stay local to the Create route`);
     assert.equal(session.includes(localState), false, `${localState} must not move into the route-surviving session`);
+  }
+  for (const generationState of ["generationProgress", "regenerationDialogOpen"]) {
+    assert.ok(generation.includes(`const [${generationState},`), `${generationState} must stay inside Create generation execution`);
+    assert.equal(session.includes(generationState), false, `${generationState} must not move into the route-surviving session`);
   }
 
   assert.equal(session.includes("library"), false, "browser-library listing state must not move into the route-surviving editor session");

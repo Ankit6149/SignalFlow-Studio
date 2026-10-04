@@ -19,12 +19,14 @@ const readRepository = (relative) => fs.readFileSync(path.join(repositoryRoot, r
 
 test("Library renders the browser transfer application as a real product surface", () => {
   const page = readFrontend("app/page.js");
+  const libraryRoute = readFrontend("app/library/page.js");
   const libraryWorkspace = readFrontend("components/LibraryWorkspace.js");
-  assert.match(page, /import LibraryWorkspace from "\.\.\/components\/LibraryWorkspace"/);
-  assert.match(page, /<LibraryWorkspace/);
-  assert.match(page, /campaigns=\{library\}/);
-  assert.match(page, /onLibraryChanged=\{refreshLibrary\}/);
-  assert.match(page, /setLibrary\(await campaignApplication\.listCampaigns\(\)\)/);
+  assert.doesNotMatch(page, /<LibraryWorkspace/);
+  assert.match(libraryRoute, /import LibraryWorkspace from "\.\.\/\.\.\/components\/LibraryWorkspace"/);
+  assert.match(libraryRoute, /<LibraryWorkspace/);
+  assert.match(libraryRoute, /campaigns=\{campaigns\}/);
+  assert.match(libraryRoute, /onLibraryChanged=\{refreshLibrary\}/);
+  assert.match(libraryRoute, /setCampaigns\(await campaignApplication\.listCampaigns\(\)\)/);
   assert.match(libraryWorkspace, /import PortableTransferPanel from "\.\/PortableTransferPanel"/);
   assert.match(libraryWorkspace, /<PortableTransferPanel/);
   assert.match(libraryWorkspace, /campaigns=\{campaigns\}/);

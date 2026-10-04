@@ -205,7 +205,7 @@ test("source change descriptions name only the changed generation inputs", () =>
 
 test("Studio renders a persistent stale warning and blocks outbound actions", async () => {
   const [page, review, reviewStyles, layout] = await Promise.all([
-    readFile(new URL("../app/page.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/StudioRootController.js", import.meta.url), "utf8"),
     readFile(new URL("../components/ReviewStage.js", import.meta.url), "utf8"),
     readFile(new URL("../components/ReviewStage.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.js", import.meta.url), "utf8"),

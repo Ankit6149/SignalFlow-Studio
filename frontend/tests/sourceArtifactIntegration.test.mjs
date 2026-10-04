@@ -325,14 +325,16 @@ test("Copy import remaps AssetProcessing and SourceArtifact array references con
   assert.deepEqual(importedProcessing[0].outputSourceArtifactIds, [importedArtifacts[0].sourceArtifactId]);
 });
 
-test("main Studio upload and generation boundary use canonical records with compatibility projection only", () => {
+test("main Studio upload and generation boundaries use canonical records with compatibility projection only", () => {
   const page = readFrontend("app/StudioRootController.js");
+  const generation = readFrontend("lib/studio/useCampaignGenerationController.js");
   assert.match(page, /createUploadSourceBundle/);
   assert.match(page, /assetId: createClientId\("asset"\)/);
   assert.match(page, /sourceArtifactId: createClientId\("source-artifact"\)/);
-  assert.match(page, /assets: files\.map\(\(file\) => file\.asset\)/);
-  assert.match(page, /source_artifacts: files\.map\(\(file\) => file\.sourceArtifact\)/);
-  assert.match(page, /media_items: files\.map\(\(file\) => projectGenerationMediaItem/);
+  assert.match(generation, /assets: files\.map\(\(file\) => file\.asset\)/);
+  assert.match(generation, /source_artifacts: files\.map\(\(file\) => file\.sourceArtifact\)/);
+  assert.match(generation, /media_items: files\.map\(\(file\) => projectGenerationMediaItem/);
+  assert.doesNotMatch(page, /projectGenerationMediaItem|generateStudioCampaign/);
   assert.doesNotMatch(page, /nextFiles\.push\(\{\s*name: file\.name,\s*type: file\.type \|\| "file"/s);
 });
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const pageUrl = new URL("../app/page.js", import.meta.url);
+const pageUrl = new URL("../app/StudioRootController.js", import.meta.url);
 const controllerUrl = new URL("../lib/studio/useProviderRouteController.js", import.meta.url);
 
 test("provider route state has one dedicated controller boundary", async () => {

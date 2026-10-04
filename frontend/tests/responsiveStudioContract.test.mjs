@@ -32,6 +32,7 @@ test("Responsive rules remain scoped to the application and preserve the logo", 
   assert.match(workspace, /\.app-shell \.studio-main/);
   assert.match(workspace, /\.app-shell \.source-truth-grid/);
   assert.match(workspace, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(workspace, /Shared horizontal-overflow and action-resilience authority/);
   assert.doesNotMatch(css, /\.app-shell \.studio-main/);
   assert.match(css, /@media \(max-width: 52rem\)/);
   assert.match(css, /@media \(max-width: 37rem\)/);

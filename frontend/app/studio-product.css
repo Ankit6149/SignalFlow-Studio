@@ -476,7 +476,6 @@
 }
 
 .app-shell .studio-actionbar {
-  max-width: none;
   margin-top: 0;
   padding: 0.9rem 1.1rem;
   border: 0.0625rem solid var(--app-line);

@@ -168,7 +168,7 @@ Broader cloud/media/mobile/collaboration/destination expansion remains later unl
 
 ## Branch truth
 
-There are currently **46 branch refs including `master`**. Only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
+At the #374 code checkpoint there were **46 branch refs including `master`**; the count can increase when cleanup PR branches cannot be deleted through the connected GitHub surface. The stable execution truth is that only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
 
 Intentional branches:
 

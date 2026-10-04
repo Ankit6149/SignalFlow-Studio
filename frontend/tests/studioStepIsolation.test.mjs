@@ -4,18 +4,20 @@ import test from "node:test";
 
 const pageUrl = new URL("../app/page.js", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
+const sourceStageUrl = new URL("../components/SourceStage.js", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 
 test("inactive Studio panels are removed from layout and interaction", async () => {
-  const [page, workflow] = await Promise.all([
+  const [page, workflow, sourceStage] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(workflowUrl, "utf8"),
+    readFile(sourceStageUrl, "utf8"),
   ]);
 
   assert.match(
-    page,
-    /composer-panel \$\{stage !== "source" \? "is-step-hidden" : ""\}/,
-    "the source panel must be marked hidden outside Step 1",
+    sourceStage,
+    /composer-panel \$\{hidden \? "is-step-hidden" : ""\}/,
+    "the extracted source panel must be marked hidden outside Step 1",
   );
   assert.match(
     page,

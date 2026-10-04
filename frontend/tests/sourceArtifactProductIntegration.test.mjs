@@ -197,18 +197,23 @@ test("capability contract declares canonical records and fails closed on unfinis
 
 test("Studio source list exposes canonical usability and evidence state without claiming full diagnostics", () => {
   const page = readFrontend("app/page.js");
+  const sourceStage = readFrontend("components/SourceStage.js");
+  const sourcePresentation = readFrontend("lib/studio/sourcePresentation.mjs");
   const css = readFrontend("app/campaign-versioning.css");
-  assert.match(page, /SOURCE_STATE_PRESENTATION/);
-  assert.match(page, /Usable evidence/);
-  assert.match(page, /Reference only/);
-  assert.match(page, /sourceArtifactVersionId/);
-  assert.match(page, /source-contract-summary/);
-  assert.match(page, /aria-live="polite"/);
+  const sourceSurface = [page, sourceStage, sourcePresentation].join("\n");
+
+  assert.match(page, /<SourceStage/);
+  assert.match(sourcePresentation, /SOURCE_STATE_PRESENTATION/);
+  assert.match(sourcePresentation, /Usable evidence/);
+  assert.match(sourcePresentation, /Reference only/);
+  assert.match(sourcePresentation, /sourceArtifactVersionId/);
+  assert.match(sourceStage, /source-contract-summary/);
+  assert.match(sourceStage, /aria-live="polite"/);
   assert.match(css, /source-state-badge\.is-usable_evidence/);
   assert.match(css, /source-state-badge\.is-reference_only/);
   assert.match(css, /@media \(max-width: 48rem\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.doesNotMatch(page, /Source health workspace|Filter all sources|Remote evidence refresh/);
+  assert.doesNotMatch(sourceSurface, /Source health workspace|Filter all sources|Remote evidence refresh/);
 });
 
 test("source architecture documentation and public AI context are consistent", () => {

@@ -66,11 +66,17 @@ test("version history and generated-copy restoration are available", () => {
   assert.match(review, /Regenerate this channel/);
 });
 
-test("versioning styles include mobile and reduced-motion behavior", () => {
-  const css = read("app/campaign-versioning.css");
-  assert.match(css, /campaign-status-strip/);
-  assert.match(css, /regeneration-dialog-backdrop/);
-  assert.match(css, /@media \(max-width: 48rem\)/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css, /review-action-reason/);
+test("versioning styles are split between Review state and the regeneration dialog", () => {
+  const reviewStyles = read("components/ReviewStage.module.css");
+  const dialogStyles = read("app/campaign-versioning.css");
+
+  assert.match(reviewStyles, /campaign-status-strip/);
+  assert.match(reviewStyles, /version-history/);
+  assert.match(reviewStyles, /review-action-reason/);
+  assert.match(reviewStyles, /@media \(max-width: 48rem\)/);
+
+  assert.match(dialogStyles, /regeneration-dialog-backdrop/);
+  assert.match(dialogStyles, /regeneration-dialog button/);
+  assert.match(dialogStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(dialogStyles, /campaign-status-strip|draft-state-badge|version-history|review-action-reason|save-action-group/);
 });

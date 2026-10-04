@@ -95,3 +95,17 @@ test("Source canonical-state styling belongs to SourceStage rather than global v
   assert.match(sourceStyles, /\.root :global\(\.source-contract-summary\)/);
   assert.doesNotMatch(versioning, /Canonical source and asset states|source-state-badge|source-contract-summary|file-chip--canonical/);
 });
+
+
+test("Review status and version-history styling belongs to ReviewStage", () => {
+  const reviewStyles = read("components/ReviewStage.module.css");
+  const dialogStyles = read("app/campaign-versioning.css");
+
+  assert.match(reviewStyles, /\.root :global\(\.campaign-status-strip\)/);
+  assert.match(reviewStyles, /\.root :global\(\.draft-state-badge/);
+  assert.match(reviewStyles, /\.root :global\(\.version-history\)/);
+  assert.match(reviewStyles, /\.root :global\(\.review-action-reason\)/);
+
+  assert.doesNotMatch(dialogStyles, /campaign-status-strip|draft-state-badge|version-history|review-action-reason|save-action-group/);
+  assert.match(dialogStyles, /regeneration-dialog/);
+});

@@ -10,6 +10,7 @@ const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "u
 
 test("secondary workspaces are explicit presentation components", () => {
   const page = read("app/page.js");
+  const libraryRoute = read("app/library/page.js");
   const library = read("components/LibraryWorkspace.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");
@@ -19,7 +20,8 @@ test("secondary workspaces are explicit presentation components", () => {
   assert.match(page, /import LibraryWorkspace from/);
   assert.doesNotMatch(page, /import ConnectionsWorkspace from/);
   assert.doesNotMatch(page, /import SettingsWorkspace from/);
-  assert.match(page, /<LibraryWorkspace/);
+  assert.doesNotMatch(page, /<LibraryWorkspace/);
+  assert.match(libraryRoute, /<LibraryWorkspace/);
   assert.doesNotMatch(page, /<ConnectionsWorkspace/);
   assert.match(connectionsRoute, /import ConnectionsWorkspace from/);
   assert.match(connectionsRoute, /<ConnectionsWorkspace/);
@@ -38,8 +40,9 @@ test("secondary workspaces are explicit presentation components", () => {
   }
 });
 
-test("secondary workspace mutations stay explicit in the page controller", () => {
+test("secondary workspace mutations stay explicit in their owning route/controller", () => {
   const page = read("app/page.js");
+  const libraryRoute = read("app/library/page.js");
   const connections = read("components/ConnectionsWorkspace.js");
   const settings = read("components/SettingsWorkspace.js");
   const settingsRoute = read("app/settings/page.js");

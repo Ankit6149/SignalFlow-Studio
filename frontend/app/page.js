@@ -7,7 +7,6 @@ import SourceStage from "../components/SourceStage";
 import DestinationsStage from "../components/DestinationsStage";
 import ReviewStage from "../components/ReviewStage";
 import RegenerationDialog from "../components/RegenerationDialog";
-import LibraryWorkspace from "../components/LibraryWorkspace";
 import WorkspaceShell from "../components/WorkspaceShell";
 import {
   createSourceSnapshot,
@@ -54,8 +53,6 @@ import { useProviderRouteController } from "../lib/studio/useProviderRouteContro
 import { useOwnerConnectionsController } from "../lib/studio/useOwnerConnectionsController.js";
 import { downloadBinary, downloadText } from "../lib/browser/browserDownload.mjs";
 import {
-  createEmptyCampaignBrief,
-  createEmptyPublishOptions,
   useCampaignEditorSession,
 } from "../lib/studio/CampaignEditorSessionContext.js";
 
@@ -164,6 +161,7 @@ export default function Home() {
     setCurrentCampaignId,
     publishOptions,
     setPublishOptions,
+    resetEditorSession,
   } = useCampaignEditorSession();
   const {
     stage,
@@ -184,7 +182,6 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(null);
   const [message, setMessage] = useState(null);
-  const [library, setLibrary] = useState([]);
   const [regenerationDialogOpen, setRegenerationDialogOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const fileInputRef = useRef(null);
@@ -326,12 +323,6 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    void campaignApplication.listCampaigns()
-      .then(setLibrary)
-      .catch(() => setMessage({
-        type: "error",
-        text: "The browser could not read or migrate the local campaign library.",
-      }));
     void syncOwnerSession();
     void refreshProviderStatus();
 
@@ -350,9 +341,13 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
       window.location.replace(`${next.pathname}${next.search}`);
       return;
     }
-    if (["create", "studio", "library"].includes(workspace)) {
+    if (workspace === "library") {
+      window.location.replace("/library");
+      return;
+    }
+    if (["create", "studio"].includes(workspace)) {
       setEntered(true);
-      setSection(workspace === "create" || workspace === "studio" ? "studio" : workspace);
+      setSection("studio");
       const requestedChannel = params.get("channel");
       if (
         (workspace === "create" || workspace === "studio") &&
@@ -416,15 +411,9 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
   }
 
   function startNewCampaign() {
-    setCurrentCampaignId("");
+    resetEditorSession();
     setRegenerationDialogOpen(false);
     setVersionHistoryOpen(false);
-    dispatchCampaign({ type: "RESET_CAMPAIGN" });
-    setForm(createEmptyCampaignBrief());
-    setChannels(DEFAULT_CHANNELS);
-    setFiles([]);
-    setDocumentText([]);
-    setPublishOptions(createEmptyPublishOptions());
     setGenerationProgress(null);
     setMessage(null);
     navigateSection("studio");
@@ -906,7 +895,6 @@ ${extractedText}`);
         ? await campaignApplication.saveAsCopy(input)
         : await campaignApplication.saveCampaign(input);
       setCurrentCampaignId(saved.campaignId);
-      setLibrary(await campaignApplication.listCampaigns());
       dispatchCampaign({
         type: "MARK_SAVED",
         payload: { savedAt, sourceFingerprint: currentSourceSnapshot.fingerprint },
@@ -931,51 +919,6 @@ ${extractedText}`);
 
   async function saveCampaignAsCopy() {
     await persistCampaign({ asCopy: true });
-  }
-
-  function openCampaign(item) {
-    try {
-      const restored = campaignApplication.openCampaign(item);
-      setCurrentCampaignId(restored.campaignId);
-      setForm((previous) => ({ ...previous, ...restored.brief, apiKey: "" }));
-      setChannels(restored.channels);
-      dispatchCampaign({
-        type: "RESTORE_CAMPAIGN",
-        payload: {
-          posts: restored.posts,
-          generatedPosts: restored.generatedPosts,
-          channelStates: restored.channelStates,
-          archives: restored.archives,
-          result: restored.result,
-          generationRun: restored.generationRun,
-          revision: restored.revision,
-          savedRevision: restored.savedRevision,
-          exportedRevision: restored.exportedRevision,
-          lastSavedAt: restored.lastSavedAt,
-          lastExportedAt: restored.lastExportedAt,
-          savedSourceFingerprint: restored.savedSourceFingerprint,
-          activeChannel: restored.channels[0] || "linkedin",
-        },
-      });
-      setPublishOptions(restored.publishOptions || createEmptyPublishOptions());
-      setFiles(restored.sourceFiles || []);
-      setDocumentText(restored.documentText || []);
-      setVersionHistoryOpen(false);
-      navigateSection("studio");
-    } catch {
-      setMessage({ type: "error", text: "This saved campaign could not be migrated or opened safely." });
-    }
-  }
-
-  async function deleteCampaign(campaignId) {
-    if (!window.confirm("Delete this saved campaign from the current browser?")) return;
-    try {
-      await campaignApplication.deleteCampaign(campaignId);
-      setLibrary(await campaignApplication.listCampaigns());
-      if (currentCampaignId === campaignId) setCurrentCampaignId("");
-    } catch {
-      setMessage({ type: "error", text: "The browser could not update the local campaign library." });
-    }
   }
 
   async function copyCurrentPost(showMessage = true) {
@@ -1156,10 +1099,6 @@ async function exportZip() {
     }
   }
 
-  async function refreshLibrary() {
-    setLibrary(await campaignApplication.listCampaigns());
-  }
-
   if (!entered) return <LandingPage onEnter={enterStudio} brand={<BrandMark />} />;
 
   const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
@@ -1169,7 +1108,6 @@ async function exportZip() {
       activeItem={section === "studio" ? "create" : section}
       onNavigate={{
         create: () => navigateSection("studio"),
-        library: () => navigateSection("library"),
       }}
       statusLabel={providerReadiness.ready ? `${provider.label} ready` : "Model setup needed"}
       statusTone={providerReadiness.ready ? "ready" : "attention"}
@@ -1448,16 +1386,7 @@ async function exportZip() {
         onArchiveAndRegenerateAll={() => void performRegeneration(REGENERATION_POLICIES.ARCHIVE_ALL)}
       />
 
-      {section === "library" && (
-        <LibraryWorkspace
-          campaigns={library}
-          channels={CHANNELS}
-          onLibraryChanged={refreshLibrary}
-          onNewCampaign={startNewCampaign}
-          onOpenCampaign={openCampaign}
-          onDeleteCampaign={deleteCampaign}
-        />
-      )}
+
 
     </WorkspaceShell>
   );

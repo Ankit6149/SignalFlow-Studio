@@ -59,5 +59,8 @@ test("Compact layouts collapse grids and keep actions reachable", async () => {
   );
   const workspace = await read("../app/app-workspace.css");
   assert.match(workspace, /\.app-shell \.app-nav[\s\S]*?overflow-x: auto;/);
+  assert.match(workspace, /Responsive secondary-workspace authority/);
+  assert.match(workspace, /@media \(max-width: 72rem\)[\s\S]*\.app-shell \.library-grid/);
+  assert.match(workspace, /@media \(max-width: 52rem\)[\s\S]*\.app-shell \.settings-form/);
   assert.match(css, /max-width: calc\(100vw - 1rem\);/);
 });

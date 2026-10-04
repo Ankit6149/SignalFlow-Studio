@@ -2449,3 +2449,56 @@
   }
 }
 
+/* Responsive secondary-workspace authority.
+ * Library, Connections, and Settings responsive layout belongs to the shared
+ * workspace stylesheet rather than the late Studio responsive layer.
+ */
+@media (max-width: 72rem) {
+  .app-shell .library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell .connections-grid,
+  .app-shell .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .settings-card--wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 52rem) {
+  .app-shell .library-grid,
+  .app-shell .connections-grid,
+  .app-shell .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell .connection-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-shell .connection-card .status-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .app-shell .settings-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .app-shell .settings-form .button,
+  .app-shell .settings-form button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .app-shell .truth-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+}
+

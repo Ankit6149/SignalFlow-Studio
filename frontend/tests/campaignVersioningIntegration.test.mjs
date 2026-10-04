@@ -10,11 +10,12 @@ const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "u
 
 test("Studio exposes deliberate edit-safe regeneration choices", () => {
   const page = read("app/StudioRootController.js");
+  const generation = read("lib/studio/useCampaignGenerationController.js");
   const dialog = read("components/RegenerationDialog.js");
 
-  assert.match(page, /REGENERATION_POLICIES\.UNEDITED/);
-  assert.match(page, /REGENERATION_POLICIES\.ARCHIVE_ALL/);
-  assert.match(page, /REGENERATION_POLICIES\.CHANNEL/);
+  assert.match(generation, /REGENERATION_POLICIES\.UNEDITED/);
+  assert.match(generation, /REGENERATION_POLICIES\.ARCHIVE_ALL/);
+  assert.match(generation, /REGENERATION_POLICIES\.CHANNEL/);
   assert.match(page, /<RegenerationDialog/);
   assert.match(dialog, /role="dialog"/);
   assert.match(dialog, /aria-modal="true"/);

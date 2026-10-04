@@ -58,6 +58,21 @@ test("campaign UI delegates persistence and export projection to the persistence
   assert.doesNotMatch(persistence, /generateStudioCampaign|publishStudioPost/);
 });
 
+test("campaign UI delegates generation execution to the generation controller", () => {
+  const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
+  const generation = fs.readFileSync(path.join(frontendRoot, "lib/studio/useCampaignGenerationController.js"), "utf8");
+
+  assert.match(page, /useCampaignGenerationController\(/);
+  assert.doesNotMatch(page, /generateStudioCampaign|createGenerationRun|acceptGenerationResponse|new AbortController|regenerationTargets/);
+  assert.match(generation, /generateStudioCampaign/);
+  assert.match(generation, /createGenerationRun/);
+  assert.match(generation, /acceptGenerationResponse/);
+  assert.match(generation, /new AbortController\(\)/);
+  assert.match(generation, /regenerationTargets/);
+  assert.match(generation, /onProgress: setGenerationProgress/);
+  assert.doesNotMatch(generation, /publishStudioPost|createBrowserCampaignApplication|useProviderRouteController|useOwnerConnectionsController/);
+});
+
 test("new campaign action clears editor identity through the shared session boundary", () => {
   const controller = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   const libraryRoute = fs.readFileSync(path.join(frontendRoot, "app/library/page.js"), "utf8");

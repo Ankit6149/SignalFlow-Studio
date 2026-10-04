@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
-const publicSurfacesUrl = new URL("../app/public-surfaces.css", import.meta.url);
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 const workflowUrl = new URL("../app/studio-product.css", import.meta.url);
 const responsiveUrl = new URL("../app/responsive-studio.css", import.meta.url);
@@ -11,7 +10,6 @@ const decisionFlowUrl = new URL("../app/studio-decision-flow.css", import.meta.u
 
 const APPROVED_STYLE_ORDER = [
   "globals.css",
-  "public-surfaces.css",
   "app-workspace.css",
   "studio-product.css",
   "campaign-freshness.css",
@@ -40,6 +38,7 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   assert.deepEqual(stylesheetImports(source), APPROVED_STYLE_ORDER);
   assert.doesNotMatch(source, /connector\.css/);
   assert.doesNotMatch(source, /ui-containment\.css/);
+  assert.doesNotMatch(source, /public-surfaces\.css/);
 
   for (const retiredLayer of RETIRED_GLOBAL_LAYERS) {
     assert.equal(
@@ -50,11 +49,14 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   }
 });
 
-test("public surfaces cannot patch Studio components", async () => {
-  const publicSurfaces = withoutCssComments(await readFile(publicSurfacesUrl, "utf8"));
-  assert.equal(publicSurfaces.includes(".app-shell"), false);
-  assert.equal(publicSurfaces.includes(".studio-actionbar"), false);
-  assert.equal(publicSurfaces.includes(".studio-grid"), false);
+test("legal styles are route-scoped and cannot patch Studio components", async () => {
+  const legal = withoutCssComments(await readFile(new URL("../app/legal.module.css", import.meta.url), "utf8"));
+  assert.equal(legal.includes(".app-shell"), false);
+  assert.equal(legal.includes(".studio-actionbar"), false);
+  assert.equal(legal.includes(".studio-grid"), false);
+  assert.equal(legal.includes(".legal-shell"), false);
+  assert.equal(legal.includes(".legal-nav"), false);
+  assert.equal(legal.includes(".legal-content"), false);
 });
 
 test("root containment belongs to globals rather than a standalone override layer", async () => {

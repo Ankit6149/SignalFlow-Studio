@@ -27,10 +27,11 @@ test("global layout no longer grows a connector-specific stylesheet layer", () =
   const layout = read("app/layout.js");
   const globalImports = [...layout.matchAll(/import "\.\.\/app\/[^"]+\.css";/g)].map((match) => match[0]);
 
-  assert.equal(globalImports.length, 8);
+  assert.equal(globalImports.length, 7);
   assert.ok(globalImports.some((entry) => entry.includes("app-workspace.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("connector.css")));
   assert.ok(globalImports.every((entry) => !entry.includes("ui-containment.css")));
+  assert.ok(globalImports.every((entry) => !entry.includes("public-surfaces.css")));
 });
 
 test("root containment is part of the actual global reset", () => {
@@ -41,4 +42,26 @@ test("root containment is part of the actual global reset", () => {
   assert.match(globals, /--sf-page-max:\s*88rem/);
   assert.match(globals, /scrollbar-color:\s*rgba\(155, 130, 72, 0\.72\) transparent/);
   assert.match(globals, /@media \(max-width: 52rem\)[\s\S]*--sf-page-gutter:\s*clamp\(1rem, 5vw, 2rem\)/);
+});
+
+
+test("legal surfaces use one shared scoped module instead of a root global layer", () => {
+  const terms = read("app/terms/page.js");
+  const privacy = read("app/privacy/page.js");
+  const legal = read("app/legal.module.css");
+  const retired = path.join(frontendRoot, "app/public-surfaces.css");
+
+  assert.equal(fs.existsSync(retired), false, "retired public-surfaces.css must not return");
+  for (const page of [terms, privacy]) {
+    assert.match(page, /import styles from "\.\.\/legal\.module\.css"/);
+    assert.match(page, /className=\{styles\.shell\}/);
+    assert.match(page, /className=\{styles\.nav\}/);
+    assert.match(page, /className=\{styles\.content\}/);
+    assert.doesNotMatch(page, /legal-shell|legal-nav|legal-content/);
+  }
+
+  assert.match(legal, /\.shell \{/);
+  assert.match(legal, /\.nav \{/);
+  assert.match(legal, /\.content \{/);
+  assert.doesNotMatch(legal, /\.app-shell|\.studio-grid|\.studio-actionbar/);
 });

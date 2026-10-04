@@ -1,5 +1,4 @@
 import "../app/globals.css";
-import "../app/public-surfaces.css";
 import "../app/app-workspace.css";
 import "../app/studio-product.css";
 import "../app/campaign-freshness.css";

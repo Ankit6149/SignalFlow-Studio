@@ -8,7 +8,6 @@ import DestinationsStage from "../components/DestinationsStage";
 import ReviewStage from "../components/ReviewStage";
 import RegenerationDialog from "../components/RegenerationDialog";
 import LibraryWorkspace from "../components/LibraryWorkspace";
-import ConnectionsWorkspace from "../components/ConnectionsWorkspace";
 import WorkspaceShell from "../components/WorkspaceShell";
 import {
   createSourceSnapshot,
@@ -215,12 +214,9 @@ export default function Home() {
   } = useProviderRouteController({ form, setForm });
   const {
     connections,
-    connectionsLoading,
     accessToken,
     syncOwnerSession,
     refreshConnections,
-    connectPlatform,
-    disconnectPlatform,
   } = useOwnerConnectionsController({
     setBusy,
     setMessage,
@@ -346,24 +342,32 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
     const params = new URLSearchParams(window.location.search);
     const workspace = params.get("workspace");
+    const socialStatus = params.get("social_status");
     if (workspace === "settings") {
       window.location.replace("/settings");
       return;
     }
-    if (["create", "studio", "library", "connections"].includes(workspace)) {
+    if (workspace === "connections" || socialStatus) {
+      const next = new URL("/connections", window.location.origin);
+      params.forEach((value, key) => {
+        if (key !== "workspace") next.searchParams.append(key, value);
+      });
+      window.location.replace(`${next.pathname}${next.search}`);
+      return;
+    }
+    if (["create", "studio", "library"].includes(workspace)) {
       setEntered(true);
       setSection(workspace === "create" || workspace === "studio" ? "studio" : workspace);
-    }
-    const socialStatus = params.get("social_status");
-    const socialMessage = params.get("social_message");
-    if (socialStatus) {
-      setEntered(true);
-      setSection("connections");
-      setMessage({
-        type: socialStatus === "success" ? "success" : "error",
-        text: socialMessage || "Connector flow completed.",
-      });
-      window.history.replaceState({}, "", window.location.pathname);
+      const requestedChannel = params.get("channel");
+      if (
+        (workspace === "create" || workspace === "studio") &&
+        CHANNELS.some((item) => item.id === requestedChannel)
+      ) {
+        setChannels((previous) => previous.includes(requestedChannel)
+          ? previous
+          : [...previous, requestedChannel]);
+        setActiveChannel(requestedChannel);
+      }
     }
   }, []);
 
@@ -1171,15 +1175,6 @@ async function exportZip() {
     setLibrary(await campaignApplication.listCampaigns());
   }
 
-  function useChannelInStudio(channelId) {
-    navigateSection("studio");
-    setStage(result ? "review" : sourceSignals > 0 ? "destinations" : "source");
-    if (!channels.includes(channelId)) {
-      setChannels((previous) => [...previous, channelId]);
-    }
-    setActiveChannel(channelId);
-  }
-
   if (!entered) return <LandingPage onEnter={enterStudio} brand={<BrandMark />} />;
 
   const selectedDirectCount = channels.filter((id) => OFFICIAL_CONNECTORS.has(id)).length;
@@ -1190,7 +1185,6 @@ async function exportZip() {
       onNavigate={{
         create: () => navigateSection("studio"),
         library: () => navigateSection("library"),
-        connections: () => navigateSection("connections"),
       }}
       statusLabel={providerReadiness.ready ? `${provider.label} ready` : "Model setup needed"}
       statusTone={providerReadiness.ready ? "ready" : "attention"}
@@ -1477,21 +1471,6 @@ async function exportZip() {
           onNewCampaign={startNewCampaign}
           onOpenCampaign={openCampaign}
           onDeleteCampaign={deleteCampaign}
-        />
-      )}
-
-      {section === "connections" && (
-        <ConnectionsWorkspace
-          channels={CHANNELS}
-          officialConnectorIds={Array.from(OFFICIAL_CONNECTORS)}
-          connections={connections}
-          ownerSessionActive={Boolean(accessToken)}
-          loading={connectionsLoading}
-          busy={busy}
-          onRefresh={refreshConnections}
-          onConnect={connectPlatform}
-          onDisconnect={disconnectPlatform}
-          onUseInStudio={useChannelInStudio}
         />
       )}
 

@@ -199,7 +199,7 @@ test("Studio source list exposes canonical usability and evidence state without 
   const page = readFrontend("app/page.js");
   const sourceStage = readFrontend("components/SourceStage.js");
   const sourcePresentation = readFrontend("lib/studio/sourcePresentation.mjs");
-  const css = readFrontend("app/campaign-versioning.css");
+  const css = readFrontend("components/SourceStage.module.css");
   const sourceSurface = [page, sourceStage, sourcePresentation].join("\n");
 
   assert.match(page, /<SourceStage/);
@@ -207,6 +207,8 @@ test("Studio source list exposes canonical usability and evidence state without 
   assert.match(sourcePresentation, /Usable evidence/);
   assert.match(sourcePresentation, /Reference only/);
   assert.match(sourcePresentation, /sourceArtifactVersionId/);
+  assert.match(sourceStage, /import styles from "\.\/SourceStage\.module\.css"/);
+  assert.match(sourceStage, /styles\.root/);
   assert.match(sourceStage, /source-contract-summary/);
   assert.match(sourceStage, /aria-live="polite"/);
   assert.match(css, /source-state-badge\.is-usable_evidence/);

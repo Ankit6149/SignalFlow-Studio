@@ -1,6 +1,7 @@
 "use client";
 
 import { sourceFilePresentation } from "../lib/studio/sourcePresentation.mjs";
+import styles from "./SourceStage.module.css";
 
 export default function SourceStage({
   hidden,
@@ -14,7 +15,7 @@ export default function SourceStage({
 }) {
   return (
     <section
-      className={`panel composer-panel ${hidden ? "is-step-hidden" : ""}`}
+      className={`${styles.root} panel composer-panel ${hidden ? "is-step-hidden" : ""}`}
       id="campaign-source"
     >
       <div className="panel-kicker">

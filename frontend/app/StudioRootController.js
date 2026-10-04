@@ -277,6 +277,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
     activeChannel,
     dispatchCampaign,
     setStrategyReview,
+    setStage,
     navigateStudioFlow,
     setBusy,
     setMessage,

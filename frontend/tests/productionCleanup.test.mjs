@@ -59,7 +59,7 @@ test("unsupported Playwright capture is absent from the production graph", async
   const captureTypes = await import("../lib/capture/types.js");
   const packageManifest = JSON.parse(await readFile(path.join(frontendRoot, "package.json"), "utf8"));
   const packageLock = JSON.parse(await readFile(path.join(frontendRoot, "package-lock.json"), "utf8"));
-  const page = await readFile(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
+  const sourceController = await readFile(path.join(frontendRoot, "lib/studio/useCampaignSourceController.js"), "utf8");
   const activeFiles = [
     ...await sourceFiles(path.join(frontendRoot, "app")),
     ...await sourceFiles(path.join(frontendRoot, "components")),
@@ -76,7 +76,7 @@ test("unsupported Playwright capture is absent from the production graph", async
   assert.equal(packageLock.packages?.[""]?.devDependencies?.playwright, undefined);
   assert.doesNotMatch(activeSource, /captureAppScreenshot|\/api\/capture\/app|from\s+["']playwright["']/);
   assert.doesNotMatch(activeSource, /Remote Playwright Screenshot|Screenshot capture skipped/i);
-  assert.match(page, /async function handleFiles\(event\)/);
+  assert.match(sourceController, /async function handleFiles\(event\)/);
 });
 
 

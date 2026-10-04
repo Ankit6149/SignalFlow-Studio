@@ -13,11 +13,10 @@ This document defines the production cascade and the ownership boundary for ever
 1. `globals.css` — reset/tokens, root viewport containment, scrollbar behavior, shared primitives, and typography.
 2. `app-workspace.css` — the authoritative Studio shell, navigation, page frames, panels, controls, cards, feedback, secondary pages, and shared responsive behavior.
 3. `studio-product.css` — the authoritative three-stage Source, Destinations, and Review composition.
-4. `campaign-versioning.css` — temporary regeneration-dialog-only styling pending dialog extraction.
-5. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
-6. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
+4. `responsive-studio.css` — bounded responsive application behavior still awaiting consolidation into owning layers.
+5. `studio-decision-flow.css` — stage-specific decision-flow layout still awaiting consolidation into owning layers.
 
-Review freshness/source-change, campaign status, draft status, and version-history appearance no longer participate in the root cascade; they are owned by `frontend/components/ReviewStage.module.css`. Canonical SourceArtifact usability/version state appearance is owned by `frontend/components/SourceStage.module.css`.
+Review freshness/source-change, campaign status, draft status, and version-history appearance no longer participate in the root cascade; they are owned by `frontend/components/ReviewStage.module.css`. Canonical SourceArtifact usability/version state appearance is owned by `frontend/components/SourceStage.module.css`. Regeneration-dialog appearance is owned by `frontend/components/RegenerationDialog.module.css`.
 
 Legal routes do not participate in this global cascade. Terms and Privacy share the scoped `frontend/app/legal.module.css` module.
 
@@ -34,6 +33,7 @@ The following historical visual systems were removed after their legitimate publ
 - `ui-containment.css` (folded into `globals.css` root/reset authority)
 - `public-surfaces.css` (legal rules moved into `legal.module.css`; unused legacy skip-link rules removed)
 - `campaign-freshness.css` (Review freshness appearance moved into `ReviewStage.module.css`; unused stale connection-badge rule removed)
+- `campaign-versioning.css` (Source state moved into `SourceStage.module.css`, Review state/version history moved into `ReviewStage.module.css`, and regeneration-dialog styling moved into `RegenerationDialog.module.css`)
 
 They must not be recreated or restored. Git history remains the source for archaeology.
 

@@ -12,7 +12,6 @@ const APPROVED_STYLE_ORDER = [
   "globals.css",
   "app-workspace.css",
   "studio-product.css",
-  "campaign-versioning.css",
   "responsive-studio.css",
   "studio-decision-flow.css",
 ];
@@ -39,6 +38,7 @@ test("the root layout uses one explicit stylesheet cascade", async () => {
   assert.doesNotMatch(source, /ui-containment\.css/);
   assert.doesNotMatch(source, /public-surfaces\.css/);
   assert.doesNotMatch(source, /campaign-freshness\.css/);
+  assert.doesNotMatch(source, /campaign-versioning\.css/);
 
   for (const retiredLayer of RETIRED_GLOBAL_LAYERS) {
     assert.equal(

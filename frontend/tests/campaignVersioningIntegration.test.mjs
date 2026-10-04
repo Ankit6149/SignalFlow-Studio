@@ -10,14 +10,17 @@ const read = (relative) => fs.readFileSync(path.join(frontendRoot, relative), "u
 
 test("Studio exposes deliberate edit-safe regeneration choices", () => {
   const page = read("app/page.js");
+  const dialog = read("components/RegenerationDialog.js");
+
   assert.match(page, /REGENERATION_POLICIES\.UNEDITED/);
   assert.match(page, /REGENERATION_POLICIES\.ARCHIVE_ALL/);
   assert.match(page, /REGENERATION_POLICIES\.CHANNEL/);
-  assert.match(page, /role="dialog"/);
-  assert.match(page, /aria-modal="true"/);
-  assert.match(page, /Regenerate only unedited destinations/);
-  assert.match(page, /Archive edits and regenerate everything/);
-  assert.match(page, /Cancel/);
+  assert.match(page, /<RegenerationDialog/);
+  assert.match(dialog, /role="dialog"/);
+  assert.match(dialog, /aria-modal="true"/);
+  assert.match(dialog, /Regenerate only unedited destinations/);
+  assert.match(dialog, /Archive edits and regenerate everything/);
+  assert.match(dialog, /Cancel/);
   assert.doesNotMatch(page, /onClick=\{generateCampaign\}/);
 });
 
@@ -68,15 +71,17 @@ test("version history and generated-copy restoration are available", () => {
 
 test("versioning styles are split between Review state and the regeneration dialog", () => {
   const reviewStyles = read("components/ReviewStage.module.css");
-  const dialogStyles = read("app/campaign-versioning.css");
+  const dialog = read("components/RegenerationDialog.js");
+  const dialogStyles = read("components/RegenerationDialog.module.css");
 
   assert.match(reviewStyles, /campaign-status-strip/);
   assert.match(reviewStyles, /version-history/);
   assert.match(reviewStyles, /review-action-reason/);
   assert.match(reviewStyles, /@media \(max-width: 48rem\)/);
 
-  assert.match(dialogStyles, /regeneration-dialog-backdrop/);
-  assert.match(dialogStyles, /regeneration-dialog button/);
+  assert.match(dialog, /import styles from "\.\/RegenerationDialog\.module\.css"/);
+  assert.match(dialogStyles, /\.backdrop \{/);
+  assert.match(dialogStyles, /\.dialog button \{/);
   assert.match(dialogStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(dialogStyles, /campaign-status-strip|draft-state-badge|version-history|review-action-reason|save-action-group/);
 });

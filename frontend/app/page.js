@@ -6,6 +6,7 @@ import LandingPage from "../components/LandingPage";
 import SourceStage from "../components/SourceStage";
 import DestinationsStage from "../components/DestinationsStage";
 import ReviewStage from "../components/ReviewStage";
+import RegenerationDialog from "../components/RegenerationDialog";
 import LibraryWorkspace from "../components/LibraryWorkspace";
 import ConnectionsWorkspace from "../components/ConnectionsWorkspace";
 import SettingsWorkspace from "../components/SettingsWorkspace";
@@ -1651,50 +1652,15 @@ async function exportZip() {
         </main>
       )}
 
-      {regenerationDialogOpen && (
-        <div
-          className="regeneration-dialog-backdrop"
-          onMouseDown={() => setRegenerationDialogOpen(false)}
-        >
-          <section
-            className="regeneration-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="regeneration-dialog-title"
-            aria-describedby="regeneration-dialog-description"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className="regeneration-dialog__eyebrow">Protect manual work</div>
-            <h2 id="regeneration-dialog-title">Choose how to regenerate.</h2>
-            <p id="regeneration-dialog-description">
-              {editedDraftChannels.length} destination{editedDraftChannels.length === 1 ? " has" : "s have"} manual edits. SignalFlow will never replace them without a deliberate choice.
-            </p>
-            <div className="regeneration-dialog__options">
-              <button
-                type="button"
-                className="regeneration-option"
-                autoFocus
-                onClick={() => void performRegeneration(REGENERATION_POLICIES.UNEDITED)}
-                disabled={uneditedRegenerationTargets.length === 0}
-              >
-                <strong>Regenerate only unedited destinations</strong>
-                <span>Keep all {editedDraftChannels.length} edited drafts byte-for-byte unchanged and regenerate {uneditedRegenerationTargets.length} other destinations.</span>
-              </button>
-              <button
-                type="button"
-                className="regeneration-option"
-                onClick={() => void performRegeneration(REGENERATION_POLICIES.ARCHIVE_ALL)}
-              >
-                <strong>Archive edits and regenerate everything</strong>
-                <span>Save the complete current campaign in Version history, then regenerate all {channels.length} selected destinations.</span>
-              </button>
-            </div>
-            <div className="regeneration-dialog__footer">
-              <button type="button" onClick={() => setRegenerationDialogOpen(false)}>Cancel</button>
-            </div>
-          </section>
-        </div>
-      )}
+      <RegenerationDialog
+        open={regenerationDialogOpen}
+        editedCount={editedDraftChannels.length}
+        uneditedCount={uneditedRegenerationTargets.length}
+        channelCount={channels.length}
+        onClose={() => setRegenerationDialogOpen(false)}
+        onRegenerateUnedited={() => void performRegeneration(REGENERATION_POLICIES.UNEDITED)}
+        onArchiveAndRegenerateAll={() => void performRegeneration(REGENERATION_POLICIES.ARCHIVE_ALL)}
+      />
 
       {section === "library" && (
         <LibraryWorkspace

@@ -97,6 +97,7 @@ test("authoritative Studio layers remain scoped and free of retired wizard patch
   assert.doesNotMatch(responsive, /\.app-shell \.app-header\s*\{/);
   assert.doesNotMatch(responsive, /\.app-shell \.app-nav\s*\{/);
   assert.match(workspace, /Responsive application chrome authority/);
+  assert.match(workspace, /Responsive secondary-workspace authority/);
   assert.match(decisionFlow, /\.app-shell \.studio-page/);
   assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="source"\]/);
   assert.match(decisionFlow, /\.app-shell \.studio-page\[data-stage="destinations"\]/);

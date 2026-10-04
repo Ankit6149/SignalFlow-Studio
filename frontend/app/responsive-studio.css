@@ -194,18 +194,6 @@
     gap: 1.25rem;
   }
 
-  .app-shell .library-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .app-shell .connections-grid,
-  .app-shell .settings-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .app-shell .settings-card--wide {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 52rem) {
@@ -276,28 +264,22 @@
 
   .app-shell .source-grid,
   .app-shell .source-truth-grid,
-  .app-shell .channel-picker,
-  .app-shell .library-grid,
-  .app-shell .connections-grid,
-  .app-shell .settings-grid {
+  .app-shell .channel-picker {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell .upload-zone,
-  .app-shell .connection-card {
+  .app-shell .upload-zone {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .app-shell .upload-zone .text-button,
-  .app-shell .connection-card .status-tag {
+  .app-shell .upload-zone .text-button {
     grid-column: 1 / -1;
     justify-self: start;
   }
 
   .app-shell .review-actions,
   .app-shell .export-row,
-  .app-shell .studio-actionbar,
-  .app-shell .settings-form {
+  .app-shell .studio-actionbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
@@ -305,9 +287,7 @@
 
   .app-shell .review-actions .button,
   .app-shell .export-row .button,
-  .app-shell .studio-actionbar .button,
-  .app-shell .settings-form .button,
-  .app-shell .settings-form button {
+  .app-shell .studio-actionbar .button {
     width: 100%;
     margin-left: 0;
   }
@@ -324,10 +304,6 @@
     flex-wrap: wrap;
   }
 
-  .app-shell .truth-panel {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-  }
 }
 
 @media (max-width: 37rem) {

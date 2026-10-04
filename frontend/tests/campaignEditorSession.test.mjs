@@ -4,7 +4,8 @@ import test from "node:test";
 
 const layoutUrl = new URL("../app/layout.js", import.meta.url);
 const pageUrl = new URL("../app/StudioRootController.js", import.meta.url);
-const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);\nconst generationUrl = new URL("../lib/studio/useCampaignGenerationController.js", import.meta.url);
+const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);
+const generationUrl = new URL("../lib/studio/useCampaignGenerationController.js", import.meta.url);
 
 test("campaign editor state survives route navigation through a side-effect-free root session", async () => {
   const [layout, page, session] = await Promise.all([

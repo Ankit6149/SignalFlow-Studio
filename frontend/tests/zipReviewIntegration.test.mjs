@@ -3,8 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("Review downloads the canonical ZIP through a browser-safe binary path", async () => {
-  const [page, application, zipExport] = await Promise.all([
+  const [page, review, application, zipExport] = await Promise.all([
     readFile(new URL("../app/page.js", import.meta.url), "utf8"),
+    readFile(new URL("../components/ReviewStage.js", import.meta.url), "utf8"),
     readFile(new URL("../lib/application/campaignApplication.mjs", import.meta.url), "utf8"),
     readFile(new URL("../lib/export/campaignZip.mjs", import.meta.url), "utf8"),
   ]);
@@ -14,7 +15,8 @@ test("Review downloads the canonical ZIP through a browser-safe binary path", as
   assert.match(page, /URL\.createObjectURL\(blob\)/);
   assert.match(page, /URL\.revokeObjectURL\(url\)/);
   assert.match(page, /campaignApplication\.projectZip\(currentCampaignInput\(\)\)/);
-  assert.match(page, /onClick=\{\(\) => void exportZip\(\)\}/);
+  assert.match(page, /onExportZip=\{\(\) => void exportZip\(\)\}/);
+  assert.match(review, /onClick=\{onExportZip\}/);
   assert.match(page, /failedChannels\.map/);
 
   assert.match(application, /async function projectZip\(input\)/);

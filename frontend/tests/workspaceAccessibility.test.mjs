@@ -12,6 +12,7 @@ const controllerUrl = new URL("../components/WorkspaceAccessibility.js", import.
 const runtimeUrl = new URL("../app/layout.js", import.meta.url);
 const pageUrl = new URL("../app/page.js", import.meta.url);
 const sourceStageUrl = new URL("../components/SourceStage.js", import.meta.url);
+const reviewStageUrl = new URL("../components/ReviewStage.js", import.meta.url);
 
 test("errors announce assertively while other feedback remains polite and atomic", () => {
   assert.deepEqual(getAnnouncementSemantics("error"), {
@@ -61,11 +62,12 @@ test("Review tabs expose one roving tab stop and stable panel relationships", ()
 });
 
 test("the mounted controller owns focus, live feedback, upload description, and Review semantics", async () => {
-  const [controller, runtime, page, sourceStage] = await Promise.all([
+  const [controller, runtime, page, sourceStage, reviewStage] = await Promise.all([
     readFile(controllerUrl, "utf8"),
     readFile(runtimeUrl, "utf8"),
     readFile(pageUrl, "utf8"),
     readFile(sourceStageUrl, "utf8"),
+    readFile(reviewStageUrl, "utf8"),
   ]);
 
   assert.match(runtime, /import WorkspaceAccessibility from "\.\.\/components\/WorkspaceAccessibility"/);
@@ -85,7 +87,7 @@ test("the mounted controller owns focus, live feedback, upload description, and 
   assert.match(controller, /"aria-atomic", semantics\.atomic/);
 
   assert.match(sourceStage, /className="upload-zone"[\s\S]*role="button"[\s\S]*event\.key === "Enter" \|\| event\.key === " "/);
-  assert.match(page, /className="review-tabs"/);
-  assert.match(page, /onClick=\{\(\) => setActiveChannel\(channelId\)\}/);
-  assert.match(page, /className={`native-preview native-preview--\$\{activeChannel\}`}/);
+  assert.match(reviewStage, /className="review-tabs"/);
+  assert.match(reviewStage, /onClick=\{\(\) => onSelectChannel\(channelId\)\}/);
+  assert.match(reviewStage, /className={`native-preview native-preview--\$\{activeChannel\}`}/);
 });

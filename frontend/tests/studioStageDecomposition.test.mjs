@@ -61,3 +61,27 @@ test("Destinations stage is an explicit presentation boundary", () => {
   assert.match(destinations, /strategy-review-panel/);
   assert.match(destinations, /compose-readiness/);
 });
+
+
+test("Review stage is an explicit presentation boundary", () => {
+  const page = read("app/page.js");
+  const review = read("components/ReviewStage.js");
+
+  assert.match(page, /import ReviewStage from/);
+  assert.match(page, /<ReviewStage/);
+  assert.match(page, /onEditPost=\{editActivePost\}/);
+  assert.match(page, /onDraftApproval=\{handleDraftApproval\}/);
+  assert.match(page, /onRegenerateActiveChannel=\{regenerateActiveChannel\}/);
+  assert.match(page, /onPublishCurrentPost=\{publishCurrentPost\}/);
+  assert.match(page, /onExportMarkdown=\{exportMarkdown\}/);
+  assert.match(page, /onExportJson=\{exportJson\}/);
+
+  assert.doesNotMatch(review, /\bfetch\s*\(/);
+  assert.doesNotMatch(review, /\/api\//);
+  assert.doesNotMatch(review, /localStorage/);
+  assert.doesNotMatch(review, /dispatchCampaign|performRegeneration/);
+  assert.match(review, /campaign-stale-banner/);
+  assert.match(review, /review-tabs/);
+  assert.match(review, /direct-publish-panel/);
+  assert.match(review, /export-row/);
+});

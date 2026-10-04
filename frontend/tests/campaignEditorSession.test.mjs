@@ -6,6 +6,7 @@ const layoutUrl = new URL("../app/layout.js", import.meta.url);
 const pageUrl = new URL("../app/StudioRootController.js", import.meta.url);
 const sessionUrl = new URL("../lib/studio/CampaignEditorSessionContext.js", import.meta.url);
 const generationUrl = new URL("../lib/studio/useCampaignGenerationController.js", import.meta.url);
+const reviewUrl = new URL("../lib/studio/useCampaignReviewController.js", import.meta.url);
 
 test("campaign editor state survives route navigation through a side-effect-free root session", async () => {
   const [layout, page, session] = await Promise.all([
@@ -33,13 +34,14 @@ test("campaign editor state survives route navigation through a side-effect-free
 });
 
 test("route-surviving editor session does not globalize transient UI/process state", async () => {
-  const [page, session, generation] = await Promise.all([
+  const [page, session, generation, review] = await Promise.all([
     readFile(pageUrl, "utf8"),
     readFile(sessionUrl, "utf8"),
     readFile(generationUrl, "utf8"),
+    readFile(reviewUrl, "utf8"),
   ]);
 
-  for (const localState of ["busy", "message", "versionHistoryOpen"]) {
+  for (const localState of ["busy", "message"]) {
     assert.ok(page.includes(`const [${localState},`), `${localState} must stay local to the Create route`);
     assert.equal(session.includes(localState), false, `${localState} must not move into the route-surviving session`);
   }
@@ -47,6 +49,8 @@ test("route-surviving editor session does not globalize transient UI/process sta
     assert.ok(generation.includes(`const [${generationState},`), `${generationState} must stay inside Create generation execution`);
     assert.equal(session.includes(generationState), false, `${generationState} must not move into the route-surviving session`);
   }
+  assert.ok(review.includes("const [versionHistoryOpen,"), "versionHistoryOpen must stay inside Create review coordination");
+  assert.equal(session.includes("versionHistoryOpen"), false, "versionHistoryOpen must not move into the route-surviving session");
 
   assert.equal(session.includes("library"), false, "browser-library listing state must not move into the route-surviving editor session");
 });

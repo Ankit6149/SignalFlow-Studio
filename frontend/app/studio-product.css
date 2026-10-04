@@ -4,11 +4,11 @@
  * Stage isolation is structural, not decorative. Inactive panels must leave
  * the layout, pointer flow, keyboard order, and accessibility tree entirely.
  */
-.app-shell .studio-grid > .is-step-hidden {
+.app-shell .studio-page .studio-grid > .is-step-hidden {
   display: none;
 }
 
-.app-shell .studio-grid--review .model-route-panel {
+.app-shell .studio-page .studio-grid--review .model-route-panel {
   display: none;
 }
 
@@ -467,7 +467,7 @@
   text-align: left;
 }
 
-.app-shell .compose-readiness {
+.app-shell .studio-page .compose-readiness {
   width: 100%;
   padding: 1.1rem;
   border: 0.0625rem solid var(--app-line);
@@ -475,7 +475,7 @@
   background: var(--app-surface);
 }
 
-.app-shell .studio-actionbar {
+.app-shell .studio-page .studio-actionbar {
   margin-top: 0;
   padding: 0.9rem 1.1rem;
   border: 0.0625rem solid var(--app-line);
@@ -486,15 +486,15 @@
   box-shadow: 0 0.75rem 2rem rgba(24, 24, 20, 0.035);
 }
 
-.app-shell .studio-actionbar__summary {
+.app-shell .studio-page .studio-actionbar__summary {
   color: var(--app-muted);
 }
 
-.app-shell .studio-actionbar .button--outline {
+.app-shell .studio-page .studio-actionbar .button--outline {
   background: var(--app-surface);
 }
 
-.app-shell .studio-actionbar__summary.has-progress {
+.app-shell .studio-page .studio-actionbar__summary.has-progress {
   flex: 1 1 32rem;
   flex-wrap: wrap;
   min-width: 0;
@@ -586,12 +586,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell .studio-actionbar {
+  .app-shell .studio-page .studio-actionbar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .app-shell .studio-actionbar__summary {
+  .app-shell .studio-page .studio-actionbar__summary {
     display: flex;
     flex-wrap: wrap;
   }
@@ -737,53 +737,53 @@
     opacity: 1;
   }
 
-  .app-shell .studio-grid,
-  .app-shell .studio-grid--review {
+  .app-shell .studio-page .studio-grid,
+  .app-shell .studio-page .studio-grid--review {
     border-radius: var(--app-radius) var(--app-radius) 0 0;
   }
 
-  .app-shell .composer-panel,
-  .app-shell .output-panel,
-  .app-shell .studio-grid--review .output-panel {
+  .app-shell .studio-page .composer-panel,
+  .app-shell .studio-page .output-panel,
+  .app-shell .studio-page .studio-grid--review .output-panel {
     padding: 1.25rem;
   }
 
-  .app-shell .source-grid,
-  .app-shell .source-truth-grid,
-  .app-shell .channel-picker {
+  .app-shell .studio-page .source-grid,
+  .app-shell .studio-page .source-truth-grid,
+  .app-shell .studio-page .channel-picker {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell .upload-zone {
+  .app-shell .studio-page .upload-zone {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .app-shell .upload-zone .text-button {
+  .app-shell .studio-page .upload-zone .text-button {
     grid-column: 1 / -1;
     justify-self: start;
   }
 
-  .app-shell .review-actions,
-  .app-shell .export-row,
-  .app-shell .studio-actionbar {
+  .app-shell .studio-page .review-actions,
+  .app-shell .studio-page .export-row,
+  .app-shell .studio-page .studio-actionbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
   }
 
-  .app-shell .review-actions .button,
-  .app-shell .export-row .button,
-  .app-shell .studio-actionbar .button {
+  .app-shell .studio-page .review-actions .button,
+  .app-shell .studio-page .export-row .button,
+  .app-shell .studio-page .studio-actionbar .button {
     width: 100%;
     margin-left: 0;
   }
 
-  .app-shell .panel-kicker--with-actions {
+  .app-shell .studio-page .panel-kicker--with-actions {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .app-shell .panel-kicker--with-actions > div {
+  .app-shell .studio-page .panel-kicker--with-actions > div {
     width: 100%;
     margin-left: 0;
     justify-content: flex-start;
@@ -809,17 +809,17 @@
     font-size: 0.875rem;
   }
 
-  .app-shell .composer-panel,
-  .app-shell .output-panel,
-  .app-shell .studio-grid--review .output-panel {
+  .app-shell .studio-page .composer-panel,
+  .app-shell .studio-page .output-panel,
+  .app-shell .studio-page .studio-grid--review .output-panel {
     padding: 1rem;
   }
 
-  .app-shell .panel-kicker {
+  .app-shell .studio-page .panel-kicker {
     margin-bottom: 1.25rem;
   }
 
-  .app-shell .field textarea {
+  .app-shell .studio-page .field textarea {
     min-height: 10rem;
   }
 
@@ -862,12 +862,12 @@
   max-width: 24rem;
 }
 
-.app-shell .studio-grid,
-.app-shell .studio-grid:not(.studio-grid--review) {
+.app-shell .studio-page .studio-grid,
+.app-shell .studio-page .studio-grid:not(.studio-grid--review) {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.app-shell .studio-grid:not(.studio-grid--review) .output-panel {
+.app-shell .studio-page .studio-grid:not(.studio-grid--review) .output-panel {
   border-left: 0;
 }
 

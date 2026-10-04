@@ -33,7 +33,7 @@ test("all three Studio stages share shell spacing primitives and avoid forced hi
   );
   assert.match(
     decisionLayout,
-    /\.app-shell \.studio-grid,[\s\S]*\.studio-grid:not\(\.studio-grid--review\)[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
+    /\.app-shell \.studio-page \.studio-grid,[\s\S]*\.studio-page \.studio-grid:not\(\.studio-grid--review\)[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/,
   );
 });
 

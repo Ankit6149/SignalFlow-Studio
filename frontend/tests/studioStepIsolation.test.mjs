@@ -26,7 +26,7 @@ test("inactive Studio panels are removed from layout and interaction", async () 
   );
   assert.match(
     workflow,
-    /\.app-shell \.studio-grid > \.is-step-hidden\s*\{\s*display:\s*none;\s*\}/,
+    /\.app-shell \.studio-page \.studio-grid > \.is-step-hidden\s*\{\s*display:\s*none;\s*\}/,
     "the authoritative workflow stylesheet must remove inactive panels from the rendered flow",
   );
 });
@@ -44,7 +44,7 @@ test("Review exposes only review controls", async () => {
   );
   assert.match(
     workflow,
-    /\.app-shell \.studio-grid--review \.model-route-panel\s*\{\s*display:\s*none;\s*\}/,
+    /\.app-shell \.studio-page \.studio-grid--review \.model-route-panel\s*\{\s*display:\s*none;\s*\}/,
     "Review must not leak the Step 2 model-route setup panel",
   );
 });

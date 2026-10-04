@@ -51,11 +51,11 @@ test("Compact layouts collapse grids and keep actions reachable", async () => {
 
   assert.match(
     css,
-    /\.app-shell \.source-grid,[\s\S]*?\.app-shell \.source-truth-grid,[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
+    /\.app-shell \.studio-page \.source-grid,[\s\S]*?\.app-shell \.studio-page \.source-truth-grid,[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
   );
   assert.match(
     css,
-    /\.app-shell \.review-actions,[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
+    /\.app-shell \.studio-page \.review-actions,[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
   );
   const workspace = await read("../app/app-workspace.css");
   assert.match(workspace, /\.app-shell \.app-nav[\s\S]*?overflow-x: auto;/);

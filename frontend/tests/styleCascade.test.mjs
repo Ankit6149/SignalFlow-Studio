@@ -29,6 +29,24 @@ function withoutCssComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
+function exactCssSelectors(source) {
+  const selectors = new Set();
+  const clean = withoutCssComments(source);
+  const rulePattern = /([^{}]+)\{/g;
+  let match;
+
+  while ((match = rulePattern.exec(clean))) {
+    const heading = match[1].trim();
+    if (heading.startsWith("@")) continue;
+    for (const rawSelector of heading.split(",")) {
+      const selector = rawSelector.trim().replace(/\s+/g, " ");
+      if (selector) selectors.add(selector);
+    }
+  }
+
+  return selectors;
+}
+
 test("the root layout uses one explicit stylesheet cascade", async () => {
   const source = await readFile(layoutUrl, "utf8");
   assert.deepEqual(stylesheetImports(source), APPROVED_STYLE_ORDER);
@@ -83,6 +101,19 @@ test("root containment belongs to globals rather than a standalone override laye
   assert.match(globals, /html\s*\{[\s\S]*overflow-x:\s*hidden[\s\S]*scrollbar-width:\s*thin/);
   assert.match(globals, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
   assert.match(globals, /html::\-webkit-scrollbar-thumb/);
+});
+
+test("workspace and Studio product layers do not share exact selectors", async () => {
+  const [workspace, workflow] = await Promise.all([
+    readFile(workspaceUrl, "utf8"),
+    readFile(workflowUrl, "utf8"),
+  ]);
+
+  const workspaceSelectors = exactCssSelectors(workspace);
+  const productSelectors = exactCssSelectors(workflow);
+  const duplicates = [...workspaceSelectors].filter((selector) => productSelectors.has(selector)).sort();
+
+  assert.deepEqual(duplicates, []);
 });
 
 test("authoritative Studio layers remain scoped and free of retired wizard patches", async () => {

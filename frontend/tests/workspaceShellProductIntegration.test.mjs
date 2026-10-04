@@ -13,7 +13,7 @@ test("workspace shell represents the current product map without hiding the real
   for (const label of ["Today", "Signals", "Plan", "Create", "Library", "Connections", "Voice", "Settings"]) {
     assert.match(shell, new RegExp(`label: "${label}"`));
   }
-  for (const [id, href] of [["today", "/today"], ["signals", "/signals"], ["plan", "/plan"], ["voice", "/voice"]]) {
+  for (const [id, href] of [["today", "/today"], ["signals", "/signals"], ["plan", "/plan"], ["voice", "/voice"], ["settings", "/settings"]]) {
     assert.match(shell, new RegExp(`id: "${id}", label: "[^"]+", href: "${href.replace("/", "\\/")}", status: "available"`));
   }
   assert.match(shell, /id: "create", label: "Create", href: "\/\?workspace=studio", status: "available"/);

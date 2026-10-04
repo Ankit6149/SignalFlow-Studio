@@ -13,7 +13,6 @@ const decisionFlowUrl = new URL("../app/studio-decision-flow.css", import.meta.u
 const APPROVED_STYLE_ORDER = [
   "globals.css",
   "public-surfaces.css",
-  "connector.css",
   "ui-containment.css",
   "app-workspace.css",
   "studio-product.css",
@@ -41,6 +40,9 @@ function withoutCssComments(source) {
 test("the root layout uses one explicit stylesheet cascade", async () => {
   const source = await readFile(layoutUrl, "utf8");
   assert.deepEqual(stylesheetImports(source), APPROVED_STYLE_ORDER);
+  assert.doesNotMatch(source, /connector\.css/);
+
+  assert.doesNotMatch(source, /connector\.css/);
 
   for (const retiredLayer of RETIRED_GLOBAL_LAYERS) {
     assert.equal(
@@ -56,7 +58,6 @@ test("public and containment layers cannot patch Studio components", async () =>
     readFile(publicSurfacesUrl, "utf8"),
     readFile(containmentUrl, "utf8"),
   ]);
-
   for (const source of [publicSurfaces, containment].map(withoutCssComments)) {
     assert.equal(source.includes(".app-shell"), false);
     assert.equal(source.includes(".studio-actionbar"), false);

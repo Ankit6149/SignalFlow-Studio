@@ -1855,6 +1855,7 @@
 .app-shell .connection-card__actions {
   min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -1862,8 +1863,34 @@
 }
 
 .app-shell .connector-action {
+  min-width: 5.75rem;
   min-height: 2.2rem;
   padding: 0.45rem 0.65rem;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+}
+
+.app-shell .connector-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.app-shell .connector-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-shell .connector-action--quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: rgba(23, 23, 20, 0.62);
 }
 
 .app-shell .truth-panel {
@@ -2257,6 +2284,13 @@
 
   .app-shell .settings-form .button {
     width: 100%;
+  }
+}
+
+@media (max-width: 47.5rem) {
+  .app-shell .connection-card__actions {
+    width: 100%;
+    flex-direction: row;
   }
 }
 

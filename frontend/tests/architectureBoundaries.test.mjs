@@ -100,6 +100,21 @@ test("campaign UI delegates source-file intake to the source controller", () => 
   assert.doesNotMatch(source, /generateStudioCampaign|publishStudioPost|createBrowserCampaignApplication|useProviderRouteController|useOwnerConnectionsController/);
 });
 
+test("campaign UI delegates review/editor coordination to the review controller", () => {
+  const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
+  const review = fs.readFileSync(path.join(frontendRoot, "lib/studio/useCampaignReviewController.js"), "utf8");
+
+  assert.match(page, /useCampaignReviewController\(/);
+  assert.doesNotMatch(page, /MARK_CHANNEL_APPROVED|MARK_CHANNEL_NEEDS_REVIEW|RESTORE_ARCHIVE|DISCARD_ARCHIVE|RESTORE_GENERATED|window\.confirm/);
+  assert.match(review, /MARK_CHANNEL_APPROVED/);
+  assert.match(review, /MARK_CHANNEL_NEEDS_REVIEW/);
+  assert.match(review, /RESTORE_ARCHIVE/);
+  assert.match(review, /DISCARD_ARCHIVE/);
+  assert.match(review, /RESTORE_GENERATED/);
+  assert.match(review, /window\.confirm/);
+  assert.doesNotMatch(review, /generateStudioCampaign|publishStudioPost|createBrowserCampaignApplication|createUploadSourceBundle|useProviderRouteController|useOwnerConnectionsController/);
+});
+
 test("new campaign action clears editor identity through the shared session boundary", () => {
   const controller = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   const libraryRoute = fs.readFileSync(path.join(frontendRoot, "app/library/page.js"), "utf8");

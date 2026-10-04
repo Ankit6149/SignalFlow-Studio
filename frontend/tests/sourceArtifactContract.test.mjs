@@ -267,8 +267,8 @@ test("repository references preserve canonical owner repository revision and saf
       owner: "Ankit6149",
       repository: "SignalFlow-Studio",
       revision: "main",
-      relativePath: "frontend/app/page.js",
-      canonicalUrl: "https://github.com/Ankit6149/SignalFlow-Studio/blob/main/frontend/app/page.js",
+      relativePath: "frontend/app/StudioRootController.js",
+      canonicalUrl: "https://github.com/Ankit6149/SignalFlow-Studio/blob/main/frontend/app/StudioRootController.js",
     },
     extraction: { state: PROCESSING_STATES.COMPLETE, charCount: 1200 },
     usability: {
@@ -278,7 +278,7 @@ test("repository references preserve canonical owner repository revision and saf
     createdAt: NOW,
   });
   assert.equal(artifact.sourceReference.owner, "Ankit6149");
-  assert.equal(artifact.sourceReference.relativePath, "frontend/app/page.js");
+  assert.equal(artifact.sourceReference.relativePath, "frontend/app/StudioRootController.js");
   assertContractError(() => normalizeSourceArtifact({
     ...artifact,
     sourceArtifactId: "unsafe-repo",
@@ -294,13 +294,13 @@ test("trusted local repository stores only an opaque reference and safe relative
     sourceReference: {
       localReferenceId: "trusted-repo-1",
       displayName: "SignalFlow checkout",
-      relativePath: "frontend/app/page.js",
+      relativePath: "frontend/app/StudioRootController.js",
     },
     privacy: { classification: PRIVACY_CLASSES.DEVICE_PRIVATE, exportAllowed: false },
     createdAt: NOW,
   });
   assert.equal(artifact.sourceReference.localReferenceId, "trusted-repo-1");
-  assert.equal(artifact.sourceReference.relativePath, "frontend/app/page.js");
+  assert.equal(artifact.sourceReference.relativePath, "frontend/app/StudioRootController.js");
   assert.doesNotMatch(JSON.stringify(artifact), /Users|home\/|[A-Z]:\\/);
   assertContractError(() => normalizeSourceArtifact({
     ...artifact,

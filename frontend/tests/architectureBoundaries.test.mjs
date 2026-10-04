@@ -53,12 +53,17 @@ test("campaign UI delegates library persistence and export projection to the app
   assert.doesNotMatch(page, /JSON\.stringify\(\{ campaign: form\.projectName, channels, posts/);
 });
 
-test("new campaign action clears the prior campaign identity and reducer output", () => {
+test("new campaign action clears editor identity through the shared session boundary", () => {
   const page = fs.readFileSync(path.join(frontendRoot, "app/page.js"), "utf8");
+  const libraryRoute = fs.readFileSync(path.join(frontendRoot, "app/library/page.js"), "utf8");
+  const session = fs.readFileSync(path.join(frontendRoot, "lib/studio/CampaignEditorSessionContext.js"), "utf8");
   const library = fs.readFileSync(path.join(frontendRoot, "components/LibraryWorkspace.js"), "utf8");
-  assert.match(page, /function startNewCampaign\(\)/);
-  assert.match(page, /setCurrentCampaignId\(""\)/);
-  assert.match(page, /type: "RESET_CAMPAIGN"/);
-  assert.match(page, /onNewCampaign=\{startNewCampaign\}/);
+
+  assert.match(page, /function startNewCampaign\(\)[\s\S]*resetEditorSession\(\)/);
+  assert.match(libraryRoute, /function startNewCampaign\(\)[\s\S]*resetEditorSession\(\)/);
+  assert.match(session, /function resetEditorSession\(\)/);
+  assert.match(session, /setCurrentCampaignId\(""\)/);
+  assert.match(session, /type: "RESET_CAMPAIGN"/);
+  assert.match(libraryRoute, /onNewCampaign=\{startNewCampaign\}/);
   assert.match(library, /onClick=\{onNewCampaign\}/);
 });

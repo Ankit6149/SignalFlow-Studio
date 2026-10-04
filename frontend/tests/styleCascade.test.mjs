@@ -56,6 +56,20 @@ test("Review freshness styles are component-scoped rather than a root override l
   assert.equal(freshness.includes(".app-shell"), false);
 });
 
+test("Regeneration dialog viewport containment is component-scoped", async () => {
+  const [responsive, regenerationDialog] = await Promise.all([
+    readFile(responsiveUrl, "utf8"),
+    readFile(new URL("../components/RegenerationDialog.module.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.equal(responsive.includes(".app-shell .modal,"), false);
+  assert.equal(responsive.includes(".app-shell .modal-card"), false);
+  assert.equal(responsive.includes(".app-shell .dialog,"), false);
+  assert.equal(responsive.includes('[role="dialog"]'), false);
+  assert.match(regenerationDialog, /:global\(\.app-shell\) \.dialog\s*\{[\s\S]*max-width:\s*min\(42rem, calc\(100vw - 2rem\)\)[\s\S]*max-height:\s*calc\(100dvh - 2rem\)/);
+  assert.match(regenerationDialog, /@media \(max-width:\s*37rem\)[\s\S]*max-width:\s*calc\(100vw - 1rem\)[\s\S]*max-height:\s*calc\(100dvh - 1rem\)/);
+});
+
 test("legal styles are route-scoped and cannot patch Studio components", async () => {
   const legal = withoutCssComments(await readFile(new URL("../app/legal.module.css", import.meta.url), "utf8"));
   assert.equal(legal.includes(".app-shell"), false);

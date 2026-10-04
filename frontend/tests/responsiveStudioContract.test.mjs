@@ -5,18 +5,15 @@ import test from "node:test";
 const read = (relativePath) =>
   readFile(new URL(relativePath, import.meta.url), "utf8");
 
-test("Root layout keeps Studio responsiveness in the product owner before decision flow", async () => {
+test("Root layout keeps responsive and final-stage Studio authority in one product layer", async () => {
   const layout = await read("../app/layout.js");
 
+  const workspaceImport = layout.indexOf('import "../app/app-workspace.css";');
   const studioImport = layout.indexOf('import "../app/studio-product.css";');
-  const decisionImport = layout.indexOf('import "../app/studio-decision-flow.css";');
 
   assert.doesNotMatch(layout, /responsive-studio\.css/);
-  assert.ok(studioImport >= 0, "Studio stylesheet import must remain present");
-  assert.ok(
-    decisionImport > studioImport,
-    "Decision-flow authority must remain later than Studio product styles",
-  );
+  assert.doesNotMatch(layout, /studio-decision-flow\.css/);
+  assert.ok(studioImport > workspaceImport, "Studio product styles must load after the shared workspace");
 });
 
 test("Responsive rules remain scoped to the application and preserve the logo", async () => {

@@ -9,7 +9,7 @@ const accessibilityComponent = await readFile(
   "utf8",
 );
 const decisionLayout = await readFile(
-  path.join(root, "app", "studio-decision-flow.css"),
+  path.join(root, "app", "studio-product.css"),
   "utf8",
 );
 const layout = await readFile(
@@ -18,8 +18,9 @@ const layout = await readFile(
 );
 
 test("Studio stage composition is static CSS, not runtime accessibility injection", () => {
-  assert.match(layout, /import "\.\.\/app\/studio-decision-flow\.css"/);
-  assert.match(decisionLayout, /Final Studio stage layout authority/);
+  assert.doesNotMatch(layout, /studio-decision-flow\.css/);
+  assert.match(layout, /import "\.\.\/app\/studio-product\.css"/);
+  assert.match(decisionLayout, /Final Studio stage composition authority/);
   assert.doesNotMatch(accessibilityComponent, /WIDE_STUDIO_STYLES/);
   assert.doesNotMatch(accessibilityComponent, /return <style>/);
   assert.match(accessibilityComponent, /return null;/);

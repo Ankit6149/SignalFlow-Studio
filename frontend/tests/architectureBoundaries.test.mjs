@@ -44,7 +44,7 @@ test("application modules do not import React, Next routes, or UI components", (
 });
 
 test("campaign UI delegates library persistence and export projection to the application service", () => {
-  const page = fs.readFileSync(path.join(frontendRoot, "app/page.js"), "utf8");
+  const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   assert.match(page, /createBrowserCampaignApplication/);
   assert.match(page, /campaignApplication\.saveCampaign/);
   assert.match(page, /campaignApplication\.projectMarkdown/);
@@ -54,7 +54,7 @@ test("campaign UI delegates library persistence and export projection to the app
 });
 
 test("new campaign action clears editor identity through the shared session boundary", () => {
-  const page = fs.readFileSync(path.join(frontendRoot, "app/page.js"), "utf8");
+  const page = fs.readFileSync(path.join(frontendRoot, "app/StudioRootController.js"), "utf8");
   const libraryRoute = fs.readFileSync(path.join(frontendRoot, "app/library/page.js"), "utf8");
   const session = fs.readFileSync(path.join(frontendRoot, "lib/studio/CampaignEditorSessionContext.js"), "utf8");
   const library = fs.readFileSync(path.join(frontendRoot, "components/LibraryWorkspace.js"), "utf8");

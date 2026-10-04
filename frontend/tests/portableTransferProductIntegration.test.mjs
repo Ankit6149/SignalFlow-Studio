@@ -19,11 +19,15 @@ const readRepository = (relative) => fs.readFileSync(path.join(repositoryRoot, r
 
 test("Library renders the browser transfer application as a real product surface", () => {
   const page = readFrontend("app/page.js");
-  assert.match(page, /import PortableTransferPanel from "\.\.\/components\/PortableTransferPanel"/);
-  assert.match(page, /<PortableTransferPanel/);
+  const libraryWorkspace = readFrontend("components/LibraryWorkspace.js");
+  assert.match(page, /import LibraryWorkspace from "\.\.\/components\/LibraryWorkspace"/);
+  assert.match(page, /<LibraryWorkspace/);
   assert.match(page, /campaigns=\{library\}/);
-  assert.match(page, /onLibraryChanged=\{async \(\) =>/);
+  assert.match(page, /onLibraryChanged=\{refreshLibrary\}/);
   assert.match(page, /setLibrary\(await campaignApplication\.listCampaigns\(\)\)/);
+  assert.match(libraryWorkspace, /import PortableTransferPanel from "\.\/PortableTransferPanel"/);
+  assert.match(libraryWorkspace, /<PortableTransferPanel/);
+  assert.match(libraryWorkspace, /campaigns=\{campaigns\}/);
 });
 
 test("portable transfer UI exposes safe backup restore conflicts cancellation resume and rollback", () => {

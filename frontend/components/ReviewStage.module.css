@@ -85,3 +85,248 @@
     justify-self: start;
   }
 }
+
+.root :global(.campaign-status-strip) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.55rem;
+  background: var(--app-surface-subtle);
+}
+
+.root :global(.campaign-status-strip__primary),
+.root :global(.campaign-status-strip__meta) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.root :global(.campaign-status-strip) strong {
+  color: var(--app-ink);
+  font-size: 0.8125rem;
+}
+
+.root :global(.campaign-status-strip) small {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
+.root :global(.campaign-state-badge),
+.root :global(.draft-state-badge) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+  padding: 0.22rem 0.48rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 999rem;
+  background: var(--app-surface);
+  color: var(--app-muted);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.root :global(.campaign-state-badge.is-saved),
+.root :global(.draft-state-badge.is-approved) {
+  border-color: #cdddcf;
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.root :global(.campaign-state-badge.is-unsaved),
+.root :global(.draft-state-badge.is-edited),
+.root :global(.draft-state-badge.is-needs_review) {
+  border-color: #e2d2ad;
+  background: var(--app-warning-soft);
+  color: var(--app-warning);
+}
+
+.root :global(.campaign-state-badge.is-stale),
+.root :global(.draft-state-badge.is-stale),
+.root :global(.draft-state-badge.is-failed),
+.root :global(.draft-state-badge.is-empty) {
+  border-color: #e5c5c0;
+  background: #fff4f1;
+  color: #9b463d;
+}
+
+.root :global(.draft-state-badge.is-generated),
+.root :global(.draft-state-badge.is-regenerated) {
+  border-color: var(--app-line);
+  background: var(--app-surface);
+  color: var(--app-muted);
+}
+
+.root :global(.review-tabs) button {
+  align-items: flex-start;
+}
+
+.root :global(.review-tabs) button :global(.review-tab__copy) {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  place-items: initial;
+  gap: 0.18rem;
+  background: transparent;
+}
+
+.root :global(.review-tab__copy) > strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.root :global(.review-tab__status) {
+  color: var(--app-faint);
+  font-size: 0.625rem;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.root :global(.review-tabs) button.is-active :global(.review-tab__status) {
+  color: var(--app-accent);
+}
+
+.root :global(.draft-state-actions) {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 0.0625rem solid var(--app-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.root :global(.draft-state-actions) button,
+.root :global(.version-history-toggle),
+.root :global(.version-history-list) button {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.75rem;
+  border: 0.0625rem solid var(--app-line-strong);
+  border-radius: 0.45rem;
+  background: var(--app-surface);
+  color: var(--app-ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.root :global(.draft-state-actions) button:hover,
+.root :global(.version-history-toggle):hover,
+.root :global(.version-history-list) button:hover {
+  border-color: #b8a779;
+  background: #fffdf8;
+}
+
+.root :global(.draft-state-actions) button.is-approved {
+  border-color: #cdddcf;
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.root :global(.version-history) {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 0.0625rem solid var(--app-line);
+}
+
+.root :global(.version-history-toggle) {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.root :global(.version-history-list) {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.root :global(.version-history-item) {
+  padding: 0.75rem;
+  border: 0.0625rem solid var(--app-line);
+  border-radius: 0.45rem;
+  background: var(--app-surface);
+}
+
+.root :global(.version-history-item) header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.root :global(.version-history-item) strong,
+.root :global(.version-history-item) small {
+  display: block;
+}
+
+.root :global(.version-history-item) strong {
+  color: var(--app-ink);
+  font-size: 0.75rem;
+}
+
+.root :global(.version-history-item) small {
+  margin-top: 0.2rem;
+  color: var(--app-faint);
+  font-size: 0.6875rem;
+}
+
+.root :global(.version-history-item__actions) {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.root :global(.version-history-item__actions) button {
+  min-height: 2rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.root :global(.version-history-item__actions) button:last-child {
+  color: #9b463d;
+}
+
+.root :global(.review-action-reason) {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--app-warning);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.root :global(.save-action-group) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+@media (max-width: 48rem) {
+  .root :global(.campaign-status-strip) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .root :global(.campaign-status-strip__meta) {
+    width: 100%;
+  }
+
+  .root :global(.save-action-group) {
+    width: 100%;
+  }
+
+  .root :global(.save-action-group) :global(.button) {
+    flex: 1;
+  }
+}

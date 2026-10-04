@@ -5,7 +5,7 @@ import test from "node:test";
 const workspaceUrl = new URL("../app/app-workspace.css", import.meta.url);
 const decisionUrl = new URL("../app/studio-decision-flow.css", import.meta.url);
 const freshnessUrl = new URL("../components/ReviewStage.module.css", import.meta.url);
-const versioningUrl = new URL("../app/campaign-versioning.css", import.meta.url);
+const versioningUrl = new URL("../components/ReviewStage.module.css", import.meta.url);
 
 test("Review keeps the exact draft primary and moves destination choice to a horizontal row", async () => {
   const css = await readFile(decisionUrl, "utf8");

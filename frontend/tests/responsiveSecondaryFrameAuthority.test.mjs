@@ -21,3 +21,17 @@ test("secondary page-frame responsive behavior has one owner", () => {
   assert.doesNotMatch(studio, /\.app-shell \.secondary-page/);
   assert.doesNotMatch(studio, /\.app-shell \.secondary-heading/);
 });
+
+
+test("desktop secondary pages size against the workspace container rather than the viewport", () => {
+  const workspaceCss = read("app/app-workspace.css");
+
+  assert.match(
+    workspaceCss,
+    /\.app-shell \.secondary-page \{[\s\S]*?width: min\(76rem, calc\(100% - 3rem\)\);[\s\S]*?max-width: calc\(100% - 3rem\);/,
+  );
+  assert.doesNotMatch(
+    workspaceCss,
+    /\.app-shell \.secondary-page \{[\s\S]*?max-width: calc\(100vw - 2rem\);/,
+  );
+});

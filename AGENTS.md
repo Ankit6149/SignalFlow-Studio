@@ -1,5 +1,7 @@
 # SignalFlow Studio Agent Guide
 
+> Before implementation, read `docs/CURRENT_EXECUTION_STATE.md` for deployed/current truth and `docs/ISSUE_TRIAGE.md` for the actual working frontier. `ROADMAP.md` is product sequencing, not evidence that an open issue is active or a capability is shipped.
+
 ## Mission
 
 SignalFlow Studio is becoming a **content operating system that lets people stay focused on their real work while SignalFlow handles the burden between what happened, what is worth communicating, what media it needs, and how the approved result reaches the right destination**.

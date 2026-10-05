@@ -2673,7 +2673,8 @@
  */
 .app-shell .secondary-page {
   min-width: 0;
-  max-width: calc(100vw - 2rem);
+  width: min(76rem, calc(100% - 3rem));
+  max-width: calc(100% - 3rem);
 }
 
 .app-shell .secondary-heading {

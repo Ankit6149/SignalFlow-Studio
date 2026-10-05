@@ -2,7 +2,7 @@
 
 > Status: **NOT YET ACCEPTED**
 >
-> This document is an evidence ledger, not a declaration of completion. Mark an item passed only when a credential-backed hosted run or deterministic recovery proof actually satisfies it. Never paste GitHub tokens, OAuth codes, webhook secrets, private source bodies, browser credentials, S3 credentials, signed object URLs, cookies, or raw private repository content here.
+> This document is an evidence ledger, not a declaration of completion. Historical production checkpoints below are preserved as evidence snapshots; use `../CURRENT_EXECUTION_STATE.md` plus live runtime evidence for current production truth. Mark an item passed only when a credential-backed hosted run or deterministic recovery proof actually satisfies it. Never paste GitHub tokens, OAuth codes, webhook secrets, private source bodies, browser credentials, S3 credentials, signed object URLs, cookies, or raw private repository content here.
 
 ## Acceptance target
 

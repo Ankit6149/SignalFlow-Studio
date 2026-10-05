@@ -1,6 +1,8 @@
 # Project Context Core — Exact Verification Plan
 
-Before this slice is merged, verify the exact PR head through the normal repository gates.
+> **Historical verification plan:** this records the gates for the bounded ProjectContext progress slice. It is not the current repository test checklist; use `../CURRENT_EXECUTION_STATE.md`, current CI, and the owning issues for current requirements.
+
+Before that slice was merged, the exact PR head was required to pass the normal repository gates.
 
 ## Required gates
 

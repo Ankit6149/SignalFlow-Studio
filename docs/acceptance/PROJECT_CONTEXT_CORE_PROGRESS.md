@@ -1,6 +1,6 @@
 # Project Context Core — Progress Evidence
 
-This is a progress artifact for #222 / #167, not final owner acceptance.
+This is a **historical progress artifact** for #222 / #167, not final owner acceptance and not current execution status. Use `../CURRENT_EXECUTION_STATE.md` and the live issues for current truth.
 
 ## Exact slice exercised
 

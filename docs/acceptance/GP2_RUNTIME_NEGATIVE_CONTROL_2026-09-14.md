@@ -1,6 +1,6 @@
 # GP2 Runtime Negative-Control Probe — 2026-09-14
 
-This file is a controlled production-acceptance probe for SignalFlow Golden Path 2.
+This file is a **historical controlled production-acceptance probe** for SignalFlow Golden Path 2. It is preserved as evidence of the intended negative-control event, not as current runtime status.
 
 It intentionally introduces **no product capability, user-facing behavior, architecture change, release, or substantive project milestone**. Its only purpose is to create a real merged GitHub pull-request event after the manifest-backed source runtime repair reached production.
 

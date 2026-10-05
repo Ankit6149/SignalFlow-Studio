@@ -1,6 +1,6 @@
 # SignalFlow Studio Roadmap
 
-> **Status:** canonical execution roadmap. For the full product definition read `docs/PRODUCT_VISION.md`. For exact current implementation capability read `docs/CAPABILITY_MATRIX.md`.
+> **Status:** canonical product roadmap, not live execution state. For the current merged/deployed frontier read `docs/CURRENT_EXECUTION_STATE.md`; for open-issue scheduling read `docs/ISSUE_TRIAGE.md`; for exact implementation capability read `docs/CAPABILITY_MATRIX.md`; for the full product definition read `docs/PRODUCT_VISION.md`.
 
 SignalFlow Studio is evolving from a review-first campaign generator into a **content operating system that minimizes the amount of content work a person has to think about**.
 

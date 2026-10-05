@@ -25,13 +25,12 @@ test("secondary page-frame responsive behavior has one owner", () => {
 
 test("desktop secondary pages size against the workspace container rather than the viewport", () => {
   const workspaceCss = read("app/app-workspace.css");
+  const authority = workspaceCss.match(
+    /\/\* Responsive secondary page-frame authority[\s\S]*?\.app-shell \.secondary-page \{([\s\S]*?)\n\}/,
+  );
 
-  assert.match(
-    workspaceCss,
-    /\.app-shell \.secondary-page \{[\s\S]*?width: min\(76rem, calc\(100% - 3rem\)\);[\s\S]*?max-width: calc\(100% - 3rem\);/,
-  );
-  assert.doesNotMatch(
-    workspaceCss,
-    /\.app-shell \.secondary-page \{[\s\S]*?max-width: calc\(100vw - 2rem\);/,
-  );
+  assert.ok(authority, "secondary page-frame authority block must exist");
+  assert.match(authority[1], /width: min\(76rem, calc\(100% - 3rem\)\);/);
+  assert.match(authority[1], /max-width: calc\(100% - 3rem\);/);
+  assert.doesNotMatch(authority[1], /100vw/);
 });

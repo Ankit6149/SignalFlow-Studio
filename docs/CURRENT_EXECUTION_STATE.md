@@ -26,7 +26,7 @@
 | Repo-hygiene control issue | #340 — final closeout |
 | Client decomposition | #45 closed complete |
 | Landing rebuild | #135 closed complete |
-| CSS architecture | #44 architecture complete; current-production visual closeout in progress |
+| CSS architecture | #44 architecture complete; #404 live desktop overflow defect fixed/verified; explicit tablet/mobile + 200% zoom capture remains acceptance-only |
 | No-Playwright rule | Preserved; unsupported Playwright capture remains absent |
 
 ## Repository hygiene outcome
@@ -66,7 +66,7 @@ Root CSS authority is now:
 
 `responsive-studio.css` and `studio-decision-flow.css` are retired. Exact selector overlap between workspace and Studio product layers is **0** and guarded by CI.
 
-A live production audit exposed desktop horizontal overflow on Library/Connections because secondary-page width used viewport units inside a fixed-rail shell. #404 changed the desktop secondary frame to container-relative sizing and added a regression guard. Current production includes that fix.
+A live production audit exposed desktop horizontal overflow on Library/Connections because secondary-page width used viewport units inside a fixed-rail shell. #404 changed the desktop secondary frame to container-relative sizing and added a regression guard. Current production includes that fix, and a post-deploy regression pass verified that both routes no longer expose horizontal scrollbars or clipped content. The available browser automation cannot directly resize to 768px/390px or set browser zoom to 200%, so those exact rendered states remain unclaimed acceptance evidence under #44.
 
 ### Branch / PR hygiene
 

@@ -1,302 +1,160 @@
 # SignalFlow Studio — Current Execution State
 
-> **Authoritative execution frontier as of 2026-10-04.**
+> **Authoritative execution frontier as of 2026-10-05.**
 >
-> Use this file for the current repository, deployment and owner-acceptance state. Product/architecture documents define target behavior; this file records only the active execution frontier.
+> This is the only short-lived repository status document. Architecture/product documents describe target design; this file records what is merged, deployed, accepted, blocked, and next.
 >
-> Truth precedence:
->
-> ```text
-> live runtime
-> → deployed production SHA
-> → master
-> → current acceptance evidence
-> → capability/execution docs
-> → roadmap/README
-> → historical issues and notes
-> ```
+> Truth order: live runtime → deployed production SHA → `master` → acceptance evidence → capability/execution docs → roadmap/README → historical notes.
 >
 > Planned ≠ coded ≠ merged ≠ deployed ≠ accepted.
 
-> `docs/NEXT_CHAT_HANDOFF.md` is a retired historical pointer, not current execution authority.
-
 ## Current checkpoint
 
-| Item | Current state |
+| Item | Current truth |
 | --- | --- |
 | Default branch | `master` |
-| Current code checkpoint | `c17b906f4d7c158ac8997719c19e1ef6d2837924` |
-| Current code checkpoint change | #398 — extracted publishing/manual handoff into `useCampaignPublishingController` |
-| Production SHA | `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` |
-| Production deployment | `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` — READY |
-| Production change | #358 — Source stage presentation boundary |
-| Master ↔ production | **Split** — production is behind the #398 code checkpoint |
-| Deployment status | Latest verified production is READY at #358; recent cleanup previews are canceled/ignored or quota-limited and do not prove #359–#398 deployment |
+| Master SHA | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` |
+| Latest merged change | #404 — secondary workspace overflow fix |
+| Production SHA | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` |
+| Production deployment | `dpl_GHbw1LERqWua5w9N7H4s3ZudEjFx` — READY |
+| Master ↔ production | **Aligned** |
+| Intentional branches | `master`; `feat/refine-workspace-loader-gate-c-20260915` only |
+| Open PRs | #315 only — reserved / DO NOT MERGE |
 | Golden Path 1 | Accepted |
-| Golden Path 2 | Active; not accepted |
-| Golden Path 3 | Not started end to end |
-| Repository hygiene | Active under #340; cleanup is through #398; #44 architecture consolidation is complete and awaits current-SHA visual acceptance, while #45 now has explicit routes plus provider, owner-connection, persistence/export, and generation-execution controller boundaries |
-| Open PRs | #315 only; intentionally reserved |
-| Production runtime errors | None found in the current 7-day Vercel error window |
-| GitHub `master` protection | Disabled; required checks are not enforced by branch protection |
-| GitHub merge modes | squash, merge-commit and rebase are all currently enabled |
+| Golden Path 2 | Active; not owner-accepted |
+| Golden Path 3 | Not accepted end to end |
+| Repo-hygiene control issue | #340 — final closeout |
+| Client decomposition | #45 closed complete |
+| Landing rebuild | #135 closed complete |
+| CSS architecture | #44 architecture complete; current-production visual closeout in progress |
+| No-Playwright rule | Preserved; unsupported Playwright capture remains absent |
 
-Do not claim a merged change is live until the production deployment SHA matches it.
+## Repository hygiene outcome
 
-## Repository hygiene progress
+The repository reconciliation sprint removed competing implementations and stale control-plane state instead of merely moving files around.
 
-Completed/merged during #340:
+### Source tree
 
-- #398 — extracted connector-backed exact-revision publishing, publish-option handling, clipboard/manual handoff, stale-copy protection, and confirmed-success connector refresh into `useCampaignPublishingController`; `StudioRootController.js` dropped from 970 to 833 lines and full GitHub CI passed;
-- #396 — extracted generation request construction, progress/cancel lifecycle, acceptance/run binding, and bounded regeneration orchestration into `useCampaignGenerationController`; `StudioRootController.js` dropped from 1,199 to 970 lines and full GitHub CI passed;
-- #394 — extracted browser-local campaign persistence and Markdown/JSON/ZIP export orchestration into `useCampaignPersistenceController`; `StudioRootController.js` dropped to 1,199 lines and full GitHub CI passed;
-- #392 — separated public Landing `/` from Create `/studio`, preserved legacy root `?workspace=` compatibility, kept internal route changes client-side for editor continuity, and passed full GitHub CI;
-- #391 — moved the former root Landing/Create controller source behind `StudioRootController.js` and migrated behavioral regression anchors before changing routing semantics; full GitHub CI passed;
-- #389 — moved Library to a real `/library` route after shared editor continuity was established; root `page.js` is now 1,394 lines and full GitHub CI passed;
-- #388 — added the side-effect-free root `CampaignEditorSessionProvider` so transient Create state survives route navigation without globalizing generation/publishing/persistence/UI process state; full GitHub CI passed;
-- #386 — moved Connections to a real `/connections` route, preserved social/GitHub callback recovery and manual-destination handoff to Studio, and passed full GitHub CI;
-- #385 — moved Settings to a real `/settings` route, extracted shared browser-download helpers, fixed shared-shell `?workspace=studio` navigation compatibility, and passed full GitHub CI;
-- #384 — extracted owner-session and official-connector ownership into `useOwnerConnectionsController`; `page.js` dropped to 1,553 lines and full GitHub CI passed;
-- #382 — extracted provider/model-route controller ownership into `useProviderRouteController`; `page.js` is now 1,622 lines and full GitHub CI passed;
-- #380 — eliminated the final exact selector overlap between `app-workspace.css` and `studio-product.css` (22 → 0) and added a CI invariant preventing duplicate selectors from returning;
-- #379 — scoped Studio frame/heading/workflow-rail authority to the staged Studio surface, reducing exact cross-layer selector overlap 34 → 22;
-- #378 — retired `studio-decision-flow.css` by folding final Source/Destinations/Review composition into `studio-product.css`; root CSS imports dropped 4 → 3;
-- #377 — retired `responsive-studio.css`; Studio breakpoints moved into `studio-product.css`, reduced-motion moved into `app-workspace.css`, and root CSS imports dropped 5 → 4;
-- #374 — moved all remaining non-media responsive base rules into `app-workspace.css`; `responsive-studio.css` is now breakpoint-only plus reduced-motion at 174 lines; full GitHub CI passed;
-- #373 — moved shared workspace containment/intrinsic sizing/long-content resilience into `app-workspace.css`; `responsive-studio.css` dropped from 336 to 235 lines; full GitHub CI passed after reconciling the stale responsive contract test;
-- #372 — scoped RegenerationDialog viewport containment into `RegenerationDialog.module.css`; `responsive-studio.css` dropped from 351 to 336 lines; full GitHub CI passed;
-- #371 — refreshed this execution control plane against the verified #370 code checkpoint / #358 production split;
-- #370 — moved secondary-route page-frame/heading responsive authority into `app-workspace.css`; `responsive-studio.css` is now 351 lines;
-- #369 — moved Library/Connections/Settings responsive ownership into `app-workspace.css`;
-- #368 — moved responsive application chrome ownership into `app-workspace.css`;
-- #367 — extracted `RegenerationDialog` with scoped module styling and removed `campaign-versioning.css`; root CSS imports are now 5 and `page.js` is 1,706 lines;
-- #366/#365/#364 — moved Review/Source state and freshness/version-history styling into component modules;
-- #363/#362/#361 — removed public-surfaces/ui-containment/connector global layers after moving their behavior to scoped owners;
-- #360/#359/#358/#357 — extracted Review, Destinations, Source, and Studio catalog presentation boundaries while keeping orchestration in the controller;
-- #355 — extracted Library/Connections/Settings presentation; `page.js` is now 2,488 lines, down from 2,881 at cleanup start;
-- #354 — refreshed execution truth against the post-#353 repository/deployment/governance state;
-- #353 — extracted Studio transport into `studioApiClient.mjs`; direct `fetch()` calls in `page.js` dropped 9 → 0;
-- #352 — strengthened the PR template with issue ownership, truth-level, validation, deployment/acceptance and remaining-work gates;
-- #351 — retired the stale 2026-09-20 next-chat handoff to a short historical pointer;
-- #350 — made the browser extension explicitly experimental and guarded against capture/delivery overclaims;
-- #349 — removed unsupported Go/protobuf/Rust runtime scaffolds while retaining the tested Python scan/render/record utility path;
-- #348 — removed 4,631 lines of verified-unreachable pre-Content-OS UI and added absence guards;
-- #347 — reconciled public product/AI/crawler metadata and added root/deployed metadata-parity CI;
-- #343 — upgraded Next.js 16.3.4 → 16.3.6 to clear the critical ImageResponse RCE advisory exposed by CI;
-- #342 — added granular owner-scoped hosted-record capability reporting while preserving browser-local Campaign semantics;
-- #341/#344 — replaced and refreshed stale execution-state control-plane truth;
-- #339 — completed the current MCP review/export parity slice and fixed two CI integration defects discovered during reconciliation.
+- verified-dead pre-Content-OS UI was removed;
+- unsupported Go/protobuf/Rust product-runtime scaffolding was retired;
+- browser extension support is explicitly experimental rather than silently overstated;
+- Python remains utility-only for maintained scan/render/record paths;
+- Studio network transport, static catalog, stage presentation, provider routing, owner/connectors, route-surviving editor state, persistence/export, generation, publishing/manual handoff, source intake, and Review coordination each have explicit owners;
+- `/`, `/studio`, `/library`, `/connections`, and `/settings` have explicit route ownership;
+- `StudioRootController.js` is **714 lines**, down from the earlier monolithic application controller, and now serves as Create composition/orchestration rather than a hidden second application.
 
-Current issue reconciliation has updated the stale scope/status of #34, #35, #44, #45, #53, #135, #153–#159, #161, #163, #167, #209, #214 and #222. #137 was closed as superseded by #209 rather than treated as completed functionality.
+Current controller boundaries:
 
-## Pull requests
+- `useProviderRouteController`
+- `useOwnerConnectionsController`
+- `CampaignEditorSessionProvider`
+- `useCampaignPersistenceController`
+- `useCampaignGenerationController`
+- `useCampaignPublishingController`
+- `useCampaignSourceController`
+- `useCampaignReviewController`
 
-### #315 — RESERVED / DO NOT MERGE
+Further splitting purely to reduce line count is not a cleanup objective.
 
-`feat/refine-workspace-loader-gate-c-20260915` is the controlled GP2 positive acceptance event.
+### CSS ownership
 
-Current rules:
+Root CSS authority is now:
 
-- it is not ordinary UI cleanup;
-- it remains intentionally unmerged;
-- it is behind current master and must be refreshed from then-current `master` immediately before the final Gate-C run;
-- its intended event remains limited to `frontend/app/loading.js` and `frontend/app/state.module.css`;
-- refresh/CI/preview readiness does not replace the required live GP2 acceptance evidence.
+1. `globals.css`
+2. `app-workspace.css`
+3. `studio-product.css`
 
-Required before merge:
+`responsive-studio.css` and `studio-decision-flow.css` are retired. Exact selector overlap between workspace and Studio product layers is **0** and guarded by CI.
 
-1. current production/runtime prerequisites reverified;
-2. hosted inference authorized and operational;
-3. live bounded screenshot/CDP path ready;
-4. branch refreshed onto current master;
-5. normal CI/build/security gates green;
-6. acceptance observer/evidence path ready.
+A live production audit exposed desktop horizontal overflow on Library/Connections because secondary-page width used viewport units inside a fixed-rail shell. #404 changed the desktop secondary frame to container-relative sizing and added a regression guard. Current production includes that fix.
 
-## Golden Path 2
+### Branch / PR hygiene
 
-**Status: active and not owner-accepted.**
+The repository had dozens of cleanup/history branches. #402 added fail-closed branch pruning and #403 explicitly retired the final three superseded refs after forensic comparison.
 
-Closing authority remains:
-
-- #161 — GitHub connected-source ingestion;
-- #163 — campaign-ready screenshot/media proof;
-- #167 — Golden Path 2;
-- `docs/acceptance/GOLDEN_PATH_2_OWNER_ACCEPTANCE.md`.
-
-Historical production evidence from 2026-09-16 proved real GitHub ingestion and identified hosted inference + remote CDP as blockers at that time. Reverify current runtime state before acting; do not assume historical blockers or recoveries are unchanged.
-
-The closing journey remains:
-
-```text
-real GitHub event
-→ canonical ContentSignal at exact revision
-→ bounded evidence + ProjectContext
-→ worthwhile ContentOpportunity
-→ owner angle decision
-→ NarrativeStrategy
-→ exact LinkedIn/X revisions
-→ automatic screenshot when justified
-→ private immutable Asset / derivative
-→ exact text + media review
-→ owner approve / change / reject
-```
-
-A separate low-value/noise event must prove non-promotion.
-
-## Capability truth
-
-`frontend/app/api/capabilities/route.js` remains the runtime discovery surface.
-
-The capability contract now distinguishes:
-
-- general Campaign cloud persistence/autosave/collaboration — still unavailable;
-- owner-scoped hosted connected-source persistence;
-- hosted ContentSignal / ProjectContext / ContentOpportunity records;
-- hosted planning records;
-- hosted exact-review records;
-- durable opportunity-job state;
-- hosted private Asset persistence.
-
-Runtime configuration is not the same thing as production acceptance. In particular, durable database-backed job state does not imply an always-on worker.
-
-## Issue frontier
-
-At the start of #340 there were 96 open issues with no effective labels/milestones and several generations of planning mixed together.
-
-Do not treat all open issues as simultaneous execution.
-
-Current practical frontier:
-
-- #340 — repository hygiene/reconciliation;
-- #167 — GP2 acceptance;
-- #161 — GitHub source slice;
-- #163 — screenshot/media slice;
-- #222 — repository onboarding/project-context outcome;
-- #35 — MCP residual external-client/auth/cost/saved-Campaign acceptance;
-- #34 — remaining request-rate/concurrent-campaign/cost controls;
-- #135 — landing acceptance review rather than another rebuild;
-- #209 — UI consolidation parent;
-- #44 — CSS authority cleanup;
-- #45 — client decomposition.
-
-Broader cloud/media/mobile/collaboration/destination expansion remains later unless it becomes a direct prerequisite for the active owner journey.
-
-## Branch truth
-
-At the #374 code checkpoint there were **46 branch refs including `master`**; the count can increase when cleanup PR branches cannot be deleted through the connected GitHub surface. The stable execution truth is that only `master` and the reserved Gate-C branch have current execution purpose; the rest are merged/history or verified retirement residue.
-
-Intentional branches:
+Current branch set is intentionally only:
 
 - `master`;
-- `feat/refine-workspace-loader-gate-c-20260915` — reserved #315.
+- `feat/refine-workspace-loader-gate-c-20260915` — reserved #315 Gate-C event.
 
-Branches already classified as deletion candidates after verification now also include the merged #347–#355 cleanup/refactor branches in addition to the earlier #313/#314/#316/#317/#318/#321/#339/#341/#342/#343 residue and the zero-ahead GP2 ledger branch.
+The branch-pruner never deletes the default branch, the reserved Gate-C branch, open-PR heads, or unproven unique work.
 
-`feat/editorial-execution-layer` was forensically reviewed. Nearly all of its changed paths are already identical to or superseded by current master. Its only branch-only domain module, `distributionPlanning.mjs`, belongs to later editorial-calendar/publication work and is not accepted GP2 scope. **Retire this branch rather than rescuing it wholesale.**
+### Public truth
 
-The currently connected GitHub action surface cannot delete branch refs. The branch decisions are recorded in #340; actual ref deletion remains a mechanical cleanup step on a GitHub surface with ref-deletion permission.
+README/frontend docs/public AI metadata describe SignalFlow as an approval-first Content Operating System and separate implemented capability from product direction. #135 was closed after live production copy and responsive landing acceptance verified that stale autoposting/post-generator positioning is absent from the product surface.
 
-## Production alignment
+GitHub's repository **About description/topics remain stale** because the connected GitHub App does not expose repository-administration writes. This is an external admin-surface blocker, not hidden code debt.
 
-Production is currently **behind the #398 code checkpoint**.
+## Issue control plane
 
-Verified on 2026-10-04:
+`docs/ISSUE_TRIAGE.md` is the canonical open-issue execution classification.
 
-- code checkpoint SHA: `c99c76747a71281e84ac32a869641a580e7e7892` (#389);
-- latest READY production SHA: `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1` (#358);
-- production deployment: `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg`;
-- recent cleanup previews include canceled/ignored deployments; Vercel quota/check noise must remain distinct from GitHub CI and from production runtime failure.
+The actual execution frontier is intentionally small. Open does not mean active.
 
-Do not claim #359–#398 are live until an exact-SHA production deployment proves it. Deployment still does not imply GP2 owner acceptance.
+Current active frontier:
 
-## Current #44 measured CSS frontier
+- #34 — remaining request-rate/concurrent-campaign/cost controls;
+- #35 — residual external MCP/auth/cost/saved-Campaign acceptance;
+- #159 — Today/Signals/Plan decision-first center;
+- #161 — GitHub connected-source acceptance;
+- #163 — screenshot/media acceptance;
+- #167 — Golden Path 2 owner outcome;
+- #209 — shared UI consolidation parent;
+- #222 — repository onboarding/project-context outcome.
 
-Verified after #380:
+Everything else is explicitly classified as blocked, partially implemented, later, or close-with-evidence.
 
-- root CSS imports are **3**: `globals.css` → `app-workspace.css` → `studio-product.css`;
-- `responsive-studio.css` is retired;
-- `studio-decision-flow.css` is retired;
-- exact selectors shared by `app-workspace.css` and `studio-product.css`: **0**, enforced by CI;
-- shared shell/component primitives remain in `app-workspace.css`;
-- Studio-only composition is scoped beneath the staged Studio surface in `studio-product.css`;
-- root `page.js` is **32 lines** after #392 and owns only Landing + legacy redirects;
-- Create orchestration lives in `StudioRootController.js` at **833 lines**;
-- generation execution ownership lives in `useCampaignGenerationController`, including request construction, exact acceptance/run binding, progress/cancel lifecycle, and bounded regeneration policy orchestration;
-- publishing/manual-handoff ownership lives in `useCampaignPublishingController`, including connector-backed availability, exact-revision publish confirmation, clipboard/manual handoff, and publish-option validation;
-- browser-local campaign persistence/export ownership lives in `useCampaignPersistenceController`;
-- provider/model-route ownership lives in `useProviderRouteController`;
-- owner-session/official-connector ownership lives in `useOwnerConnectionsController`;
-- transient campaign/editor state that must survive route navigation lives in the side-effect-free `CampaignEditorSessionProvider`;
-- Landing, Create, Library, Connections, and Settings have explicit route ownership at `/`, `/studio`, `/library`, `/connections`, and `/settings`;
-- internal Create handoffs use client-side `/studio` navigation so the shared editor session survives route changes.
+## Reserved PR #315
 
-The architecture portion of #44 is complete. Do not close #44 until current-SHA visual evidence covers desktop/tablet/mobile, 200% zoom, and long-content states. Current production remains #358, so existing production visuals cannot prove the #380 CSS state.
+#315 is the controlled GP2 positive acceptance event. It must **not** enter normal merge flow.
 
-## GP2 runtime recheck — 2026-10-04
+Before it can merge:
 
-Reverified against the current production deployment (#358):
+1. reverify production/runtime prerequisites;
+2. verify hosted inference authorization and operation;
+3. verify live bounded screenshot/CDP path;
+4. refresh the reserved branch from then-current `master`;
+5. pass normal CI/build/security gates;
+6. prepare the acceptance observer/evidence path;
+7. complete positive-event and low-value/noise-control evidence.
 
-- deployment `dpl_99MuHiAYTAEoAc8rdvU6bR2a3UMg` remains **READY** at `e958cd27b45579be0a6d81bfcd6281bb9fd9dcb1`;
-- Vercel reports **no production runtime errors** in the available 7-day window;
-- project deployment protection has Vercel SSO enabled for `all_except_custom_domains`;
-- the connected Vercel surface is not permitted to list/decrypt project environment variables;
-- the protected production capability/readiness endpoints cannot be queried anonymously from the current browser/fetch surfaces;
-- no retained production invocation evidence for `/api/gp2/readiness` was available within the plan's runtime-log retention.
+Do not treat deployment readiness as owner acceptance.
 
-Therefore hosted inference authorization and the CDP capture path remain **not currently verified**, not failed. Do not refresh reserved #315 or claim GP2 readiness until an authenticated owner-session readiness probe is captured.
+## GitHub administration blockers
 
-## #45 route/controller boundary — 2026-10-04
+Current repository settings verified from GitHub:
 
-Verified after #392:
+- About description still says “Local-first autoposting workspace…”;
+- topics still include stale `autoposting`, `post-generator`, `gif-generator`, `fastapi`, and related legacy terms;
+- merge commit, rebase, and squash are all enabled;
+- `delete_branch_on_merge` is disabled;
+- connected GitHub App cannot read/write the administration endpoints needed to prove/configure master protection/rulesets.
 
-- `/` is the public Landing route and no longer imports or owns campaign/controller state;
-- `/studio` is the Create route and renders `StudioRootController`;
-- `/library`, `/connections`, and `/settings` remain independent route owners;
-- legacy root `?workspace=create|studio|library|connections|settings` URLs forward server-side to the canonical routes with non-workspace query parameters preserved;
-- Library and Connections return to Create through client-side `/studio` navigation, preserving the shared in-memory editor session;
-- `CampaignEditorSessionProvider` still owns only route-surviving editor state, not generation, publishing, persistence, owner-session, dialogs/loading, or notifications.
+Desired admin state:
 
-The route-separation milestone is complete. Campaign persistence/export is separated as of #394, generation execution as of #396, and publishing/manual handoff as of #398. The next #45 candidates are source-file intake and review/editor coordination; measure them independently and extract only cohesive ownership without absorbing presentation or the existing controller families.
+- update About description/topics to current Content Operating System positioning;
+- make squash the normal merge path;
+- enable delete-branch-after-merge;
+- protect `master`: PR required, green CI required, no force-push/delete.
 
-## Immediate execution order
+These cannot be truthfully marked done from the current connector surface.
 
-1. Keep #44 open only for current-SHA visual/responsive acceptance evidence; do not restart CSS architecture work unless evidence exposes a concrete defect.
-2. Continue #45 inside `/studio` by measuring source-file intake and review/editor coordination independently. Keep provider routing, owner-session, persistence/export, generation execution, publishing/manual handoff, route-surviving editor state, and presentation in their current owners.
-3. Reconcile GitHub About description/topics, which still use old autoposting/post-generator/FastAPI positioning.
-4. Mechanically delete verified merged/history branches when a ref-deletion surface is available.
-5. Add real `master` protection/ruleset enforcement through a GitHub admin surface; the current connected GitHub App cannot write repository administration settings.
-6. Reverify GP2 runtime prerequisites against the current production checkpoint before refreshing reserved #315.
-7. Complete positive + noise-control GP2 evidence.
-8. Perform the final cross-repository audit and close #340 only with evidence.
+## Vercel / release truth
 
-## Release discipline
+Production is exact-SHA aligned with current `master` at the checkpoint above.
 
-For every active slice:
+Vercel preview failures caused by Hobby deployment-rate limits remain separate from GitHub CI failures. A quota-limited preview is not evidence of a code regression.
 
-```text
-current verified problem
-→ smallest truthful change
-→ focused tests + normal CI
-→ preview/deployment verification where available
-→ merge
-→ production exact-SHA verification
-→ runtime/data inspection
-→ real acceptance where required
-→ update execution truth
-```
+A post-reconciliation repository tag is created by the reconciliation-checkpoint workflow after the final control-plane PR merges.
 
-Repository cleanup is complete only when the resulting state is simpler, truthful and verifiable, not merely when files, branches or issues have been removed.
+## Next product execution
 
+After repository hygiene closeout, do not restart cleanup/refactor loops without a concrete defect.
 
-## Residual repository metadata / governance debt
+Execution returns to the product frontier:
 
-Verified on 2026-10-04:
+1. reverify GP2 runtime prerequisites;
+2. refresh reserved #315 only when those prerequisites are ready;
+3. execute positive + noise-control GP2 owner acceptance;
+4. then resume the explicitly triaged product backlog.
 
-- GitHub repository description still says “Local-first autoposting workspace…”;
-- GitHub topics still include obsolete framing such as `autoposting`, `post-generator`, `gif-generator`, `fastapi`, and `social-media-automation`;
-- `master` is not protected;
-- squash merge is enabled, but merge-commit and rebase merge are also enabled;
-- branch deletion on merge is disabled;
-- repository ref deletion and admin protection writes are not exposed by the current connected GitHub App.
-
-Do not mark Areas B/D/F complete until those external repository settings are reconciled or explicitly accepted as manual/admin work.

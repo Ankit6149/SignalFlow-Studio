@@ -13,11 +13,10 @@
 | Item | Current truth |
 | --- | --- |
 | Default branch | `master` |
-| Master SHA | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` |
-| Latest merged change | #404 — secondary workspace overflow fix |
-| Production SHA | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` |
-| Production deployment | `dpl_GHbw1LERqWua5w9N7H4s3ZudEjFx` — READY |
-| Master ↔ production | **Aligned** |
+| Latest code-bearing checkpoint | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` — #404 secondary workspace overflow fix |
+| Runtime checkpoint | #404 is READY in production at `dpl_GHbw1LERqWua5w9N7H4s3ZudEjFx` |
+| Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — created at the merge commit of final reconciliation PR #405 |
+| Runtime/code relationship | **Aligned at #404**; #405 is documentation/governance-only and does not change product runtime behavior |
 | Intentional branches | `master`; `feat/refine-workspace-loader-gate-c-20260915` only |
 | Open PRs | #315 only — reserved / DO NOT MERGE |
 | Golden Path 1 | Accepted |
@@ -141,11 +140,11 @@ These cannot be truthfully marked done from the current connector surface.
 
 ## Vercel / release truth
 
-Production is exact-SHA aligned with current `master` at the checkpoint above.
+The latest product-code checkpoint (#404) is exact-SHA deployed and READY in production. The final reconciliation PR (#405) changes only documentation/governance files, so Git commit identity may advance without changing product runtime behavior.
+
+Use the immutable `repo-hygiene-2026-10-05` tag as the repository reconciliation checkpoint instead of repeatedly editing this file merely to echo its own merge SHA. Exact deployment SHA remains observable in Vercel when release evidence is required.
 
 Vercel preview failures caused by Hobby deployment-rate limits remain separate from GitHub CI failures. A quota-limited preview is not evidence of a code regression.
-
-A post-reconciliation repository tag is created by the reconciliation-checkpoint workflow after the final control-plane PR merges.
 
 ## Next product execution
 

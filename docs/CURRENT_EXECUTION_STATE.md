@@ -13,10 +13,11 @@
 | Item | Current truth |
 | --- | --- |
 | Default branch | `master` |
-| Latest code-bearing checkpoint | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` — #404 secondary workspace overflow fix |
-| Runtime checkpoint | #404 is READY in production at `dpl_GHbw1LERqWua5w9N7H4s3ZudEjFx` |
-| Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — created at the merge commit of final reconciliation PR #405 |
-| Runtime/code relationship | **Aligned at #404**; #405 is documentation/governance-only and does not change product runtime behavior |
+| Latest product-code checkpoint | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` — #404 secondary workspace overflow fix |
+| Latest repository/ops checkpoint | `3855358cf7e284a2999c92c7b2f16f7938e5c21e` — #406 maintenance structure and deployment hygiene |
+| Runtime checkpoint | #406 is READY in production at `dpl_7oEYgZ64UnkqBo8Z52Yt7oPMvwua` |
+| Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — immutable reconciliation tag created by #405 |
+| Runtime/code relationship | Product runtime behavior remains unchanged from #404; #406 changes repository/deployment-control structure and is exact-SHA deployed. Documentation-only commits may advance `master` without a new deployment when the Vercel guard proves `frontend/` is unchanged. |
 | Intentional branches | `master`; `feat/refine-workspace-loader-gate-c-20260915` only |
 | Open PRs | #315 only — reserved / DO NOT MERGE |
 | Golden Path 1 | Accepted |
@@ -54,6 +55,24 @@ Current controller boundaries:
 - `useCampaignReviewController`
 
 Further splitting purely to reduce line count is not a cleanup objective.
+
+### Documentation and maintenance structure
+
+- `docs/README.md` is the documentation map and separates current authorities from historical/reference documents;
+- `docs/CURRENT_EXECUTION_STATE.md` remains the only short-lived execution-state authority;
+- `docs/ISSUE_TRIAGE.md` remains the scheduling authority for open work;
+- the former `IMPLEMENTATION_LEDGER.md` is now a historical pointer instead of a competing stale current-status source;
+- the one-shot reconciliation-checkpoint workflow was removed after `repo-hygiene-2026-10-05` was verified;
+- branch pruning no longer carries hard-coded retired branch names; it deletes only merged or zero-ahead refs while preserving the default branch, reserved Gate-C branch, open-PR heads, and unproven unique work.
+
+### Deployment hygiene
+
+- `master` is the sole automatic Vercel branch;
+- non-production commits are skipped unless a commit explicitly carries `[vercel-preview]`;
+- on `master`, the ignored-build guard compares against `VERCEL_GIT_PREVIOUS_SHA` and skips a deployment when no `frontend/` project change exists since the previous successful deployment;
+- if the comparison cannot prove equivalence, the guard fails open to a normal build rather than risking a missed runtime deployment;
+- #406 branch commits produced CANCELED non-production deployment records rather than READY previews, while the merged deployment-control change received one normal READY production deployment.
+
 
 ### CSS ownership
 

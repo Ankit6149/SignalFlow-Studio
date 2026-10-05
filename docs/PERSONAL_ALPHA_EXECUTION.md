@@ -2,7 +2,7 @@
 
 > **Status:** canonical execution strategy for proving the owner product before broad SaaS expansion.
 >
-> **Operational state:** see `IMPLEMENTATION_LEDGER.md` for verified PR/commit/test history. This document defines execution order and exit conditions; the ledger records what has actually landed.
+> **Operational state:** see `CURRENT_EXECUTION_STATE.md` for merged/deployed/accepted truth and `ISSUE_TRIAGE.md` for the current working set. Use linked GitHub issues, PRs, commits, Actions, and acceptance artifacts for exact implementation traceability.
 >
 > **Capability truth:** a target described here is not automatically available in the current product. `CAPABILITY_MATRIX.md`, merged code, and verification evidence define what may be claimed as working.
 
@@ -280,7 +280,7 @@ The owner does real GitHub work and later finds a genuinely useful opportunity w
 
 ### Current execution state
 
-This is the active gate. See #167, #163, #161 and `IMPLEMENTATION_LEDGER.md` for verified implementation state.
+This is the active gate. See #167, #163, #161 and `CURRENT_EXECUTION_STATE.md` for current implementation state; use the issues and linked PR/acceptance evidence for exact historical proof.
 
 ## 8. Gate 3 — automatic product-demo production
 

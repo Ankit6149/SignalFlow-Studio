@@ -1,6 +1,6 @@
 # SignalFlow Studio Agent Guide
 
-> Before implementation, read `docs/CURRENT_EXECUTION_STATE.md` for deployed/current truth and `docs/ISSUE_TRIAGE.md` for the actual working frontier. `ROADMAP.md` is product sequencing, not evidence that an open issue is active or a capability is shipped.
+> Use `docs/README.md` as the documentation map. Before implementation, read `docs/CURRENT_EXECUTION_STATE.md` for deployed/current truth and `docs/ISSUE_TRIAGE.md` for the actual working frontier. `ROADMAP.md` is product sequencing, not evidence that an open issue is active or a capability is shipped.
 
 ## Mission
 

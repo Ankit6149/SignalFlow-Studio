@@ -38,13 +38,6 @@ jobs:
               "feat/refine-workspace-loader-gate-c-20260915",
             ]);
 
-            const explicitlyRetired = new Set([
-              "feat/editorial-execution-layer",
-              "chore/340-reconciliation",
-              "chore/345-next-security-patch",
-              "refactor/45-studio-route",
-            ]);
-
             const openPulls = await github.paginate(github.rest.pulls.list, {
               owner,
               repo,
@@ -100,9 +93,7 @@ jobs:
               } catch (error) {
                 core.warning(`Could not compare ${name}: ${error.message}`);
               }
-
-              const retired = explicitlyRetired.has(name);
-              if (!mergedPull && !zeroAhead && !retired) {
+              if (!mergedPull && !zeroAhead) {
                 kept.push({ name, reason: "unproven-unique-work" });
                 continue;
               }
@@ -115,11 +106,7 @@ jobs:
                 });
                 deleted.push({
                   name,
-                  reason: retired
-                    ? "explicitly-retired"
-                    : mergedPull
-                      ? "merged-pr"
-                      : "zero-ahead",
+                  reason: mergedPull ? "merged-pr" : "zero-ahead",
                 });
               } catch (error) {
                 core.setFailed(`Failed to delete verified stale branch ${name}: ${error.message}`);

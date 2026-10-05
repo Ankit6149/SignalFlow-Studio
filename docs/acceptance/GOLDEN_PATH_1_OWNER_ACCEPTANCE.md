@@ -1,6 +1,6 @@
 # Golden Path 1 — Owner Acceptance Evidence
 
-Status: acceptance candidate for issue #166. This document records the browser-local owner Golden Path proved by the automated acceptance scenario. It does **not** claim durable publishing, confirmed audience exposure, connected-source automation, or hosted/cross-device persistence.
+Status: **ACCEPTED for issue #166** (issue closed as completed). This document records the browser-local owner Golden Path proved by the automated acceptance scenario. It does **not** claim durable publishing, confirmed audience exposure, connected-source automation, or hosted/cross-device persistence.
 
 ## Scope
 

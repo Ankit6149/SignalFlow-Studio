@@ -17,6 +17,16 @@ const CHECK_IDS = Object.freeze(Object.keys(CHECK_LABELS));
 const CONFIGURATION_NAME = /^[A-Z0-9_+|.-]{1,240}$/;
 const CAPTURE_ENVIRONMENT = /^[a-z0-9_-]{2,40}$/;
 const RUNTIME_STATUS = /^[a-z0-9_-]{1,64}$/;
+const GATEWAY_STATUSES = new Set([
+  "authorized",
+  "unauthorized",
+  "forbidden",
+  "rate_limited",
+  "upstream_error",
+  "unavailable",
+  "unreachable",
+  "missing",
+]);
 
 async function readJson(response) {
   const text = await response.text();
@@ -67,6 +77,7 @@ function normalizeReadiness(body) {
     }
     const environmentValue = String(item?.environment || "").trim().toLowerCase();
     const runtimeStatusValue = String(item?.runtimeStatus || "").trim().toLowerCase();
+    const gatewayStatusValue = String(item?.gatewayStatus || "").trim().toLowerCase();
     byId.set(id, Object.freeze({
       id,
       label: CHECK_LABELS[id],
@@ -76,6 +87,7 @@ function normalizeReadiness(body) {
       environment: environmentValue && CAPTURE_ENVIRONMENT.test(environmentValue) ? environmentValue : null,
       liveChecked: item.liveChecked === true,
       runtimeStatus: runtimeStatusValue && RUNTIME_STATUS.test(runtimeStatusValue) ? runtimeStatusValue : null,
+      gatewayStatus: GATEWAY_STATUSES.has(gatewayStatusValue) ? gatewayStatusValue : null,
     }));
   }
 
@@ -106,6 +118,47 @@ function runtimeStatusLabel(value) {
     case "configuration_invalid": return "invalid configuration";
     default: return "unavailable";
   }
+}
+
+function gatewayStatusLabel(value) {
+  switch (value) {
+    case "authorized": return "authorized";
+    case "unauthorized": return "credential rejected";
+    case "forbidden": return "team or project access denied";
+    case "rate_limited": return "rate limited";
+    case "upstream_error": return "Gateway upstream error";
+    case "unreachable": return "unreachable";
+    case "missing": return "credential missing";
+    default: return "unavailable";
+  }
+}
+
+function blockerGuidance(item) {
+  if (item.id === "inference") {
+    if (item.gatewayStatus === "forbidden") {
+      return "Vercel AI Gateway recognized the deployment credential but denied team or project access. Fix Gateway access in Vercel, or configure one approved direct hosted provider. SignalFlow will keep blocked opportunity work stopped until inference is healthy.";
+    }
+    if (item.gatewayStatus === "unauthorized") {
+      return "The configured Vercel AI Gateway credential was rejected. Repair the Gateway credential or configure one approved direct hosted provider before retrying blocked work.";
+    }
+    if (item.gatewayStatus === "rate_limited") {
+      return "Vercel AI Gateway is currently rate limited. Recheck after the provider limit clears; SignalFlow will not requeue blocked work while inference is unavailable.";
+    }
+    if (item.missing.some((name) => name.includes("VERCEL_RUNTIME_OIDC") || name.includes("AI_GATEWAY_API_KEY"))) {
+      return "Configure Vercel runtime OIDC / AI Gateway access, or one approved direct hosted provider. Provider secrets remain server-only.";
+    }
+  }
+
+  if (item.id === "capture_worker") {
+    if (item.missing.includes("SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT")) {
+      return "Configure one approved server-only WSS CDP browser endpoint. Add the bearer-token setting only when that browser provider requires it, then run Test browser worker.";
+    }
+    if (item.missing.includes("SIGNALFLOW_CDP_BROWSER_ACCESS")) {
+      return "The browser endpoint is configured but did not pass the live CDP probe. Check provider access and transport configuration before running capture acceptance.";
+    }
+  }
+
+  return "";
 }
 
 export default function Gp2ReadinessPanel() {
@@ -248,6 +301,9 @@ export default function Gp2ReadinessPanel() {
                     {item.id === "capture_worker" && item.liveChecked && (
                       <p>Live worker check: <strong>{runtimeStatusLabel(item.runtimeStatus)}</strong></p>
                     )}
+                    {item.id === "inference" && item.gatewayStatus && (
+                      <p>Vercel AI Gateway: <strong>{gatewayStatusLabel(item.gatewayStatus)}</strong></p>
+                    )}
                     {item.missing.length > 0 && (
                       <ul className={styles.missing} aria-label={`Missing settings for ${item.label}`}>
                         {item.missing.map((name) => <li key={name}><code>{name}</code></li>)}
@@ -257,6 +313,9 @@ export default function Gp2ReadinessPanel() {
                       <p className={styles.blocked}>
                         Blocked by {item.blockedBy.map((id) => CHECK_LABELS[id]).join(", ")}. It will recheck automatically after that dependency is configured.
                       </p>
+                    )}
+                    {blockerGuidance(item) && (
+                      <p className={styles.blocked}>{blockerGuidance(item)}</p>
                     )}
                   </article>
                 );

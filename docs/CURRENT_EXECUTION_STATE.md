@@ -1,6 +1,6 @@
 # SignalFlow Studio — Current Execution State
 
-> **Authoritative execution frontier as of 2026-10-05.**
+> **Authoritative execution frontier as of 2026-10-11.**
 >
 > This is the only short-lived repository status document. Architecture/product documents describe target design; this file records what is merged, deployed, accepted, blocked, and next.
 >
@@ -13,11 +13,11 @@
 | Item | Current truth |
 | --- | --- |
 | Default branch | `master` |
-| Latest product-code checkpoint | `8a8057c47f245994ff1463e2c39cfdd4a55275c0` — #404 secondary workspace overflow fix |
-| Latest repository/ops checkpoint | `3855358cf7e284a2999c92c7b2f16f7938e5c21e` — #406 maintenance structure and deployment hygiene |
-| Runtime checkpoint | #406 is READY in production at `dpl_7oEYgZ64UnkqBo8Z52Yt7oPMvwua` |
+| Latest product-code checkpoint | `0d14796ecfbeb106eaaf42b5e8f985f79ada9c23` — #409 GP2 readiness blocker guidance |
+| Dependency-security checkpoint | `5c43ef3b431ca7fae43acab32093dcc07a027277` — #410 Next.js 16.4.0 / patched production dependency baseline, included in current `master` |
+| Runtime checkpoint | #409 is READY in production at `dpl_FyZKcCXvCxQgNWsKKvFqiXQe18FP` |
 | Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — immutable reconciliation tag created by #405 |
-| Runtime/code relationship | Product runtime behavior remains unchanged from #404; #406 changes repository/deployment-control structure and is exact-SHA deployed. Documentation-only commits may advance `master` without a new deployment when the Vercel guard proves `frontend/` is unchanged. |
+| Runtime/code relationship | **Aligned at #409.** Current READY production matches current code-bearing `master`; documentation-only commits may advance `master` without a new deployment when the Vercel guard proves `frontend/` is unchanged. |
 | Intentional branches | `master`; `feat/refine-workspace-loader-gate-c-20260915` only |
 | Open PRs | #315 only — reserved / DO NOT MERGE |
 | Golden Path 1 | Accepted |
@@ -71,7 +71,9 @@ Further splitting purely to reduce line count is not a cleanup objective.
 - non-production commits are skipped unless a commit explicitly carries `[vercel-preview]`;
 - on `master`, the ignored-build guard compares against `VERCEL_GIT_PREVIOUS_SHA` and skips a deployment when no `frontend/` project change exists since the previous successful deployment;
 - if the comparison cannot prove equivalence, the guard fails open to a normal build rather than risking a missed runtime deployment;
-- #406 branch commits produced CANCELED non-production deployment records rather than READY previews, while the merged deployment-control change received one normal READY production deployment.
+- feature-branch commits continue to produce CANCELED non-production deployment records unless explicitly marked for preview;
+- #407 and #408 proved docs-only `master` commits are canceled before a redundant production runtime build;
+- #410 and #409 contained real frontend changes and therefore each received a normal exact-SHA production deployment.
 
 
 ### CSS ownership
@@ -121,6 +123,38 @@ Current active frontier:
 - #222 — repository onboarding/project-context outcome.
 
 Everything else is explicitly classified as blocked, partially implemented, later, or close-with-evidence.
+
+## GP2 live blocker boundary
+
+Repository implementation is no longer the primary GP2 blocker.
+
+### Hosted inference
+
+- the Vercel AI Gateway adapter and readiness probe use the currently documented Bearer/OIDC contract;
+- production history shows the Gateway returning HTTP 403 at the team/account authorization layer when no direct provider fallback is configured;
+- project OIDC configuration was idempotently normalized to enabled/team issuer through the connected Vercel project API, but the available project read surface does not echo that field and the connected account cannot list environment-variable metadata, so this is **not** proof that Gateway authorization is fixed;
+- the fail-closed inference gate remains correct;
+- one approved direct hosted provider remains a valid fallback through the existing provider-selection boundary;
+- #409 now exposes the safe Gateway denial state to the owner instead of reducing it to an ambiguous missing-setting code.
+
+### Hosted screenshot capture
+
+- the existing server CDP transport requires WSS, rejects URL userinfo credentials, and supports an optional `Authorization: Bearer` handshake token;
+- Cloudflare Browser Rendering / Browser Run is the preferred bounded GP2 capture authority because its direct CDP contract matches that existing transport without an adapter rewrite;
+- production still needs the external account/token plus `SIGNALFLOW_CDP_BROWSER_WS_ENDPOINT` and, when required, `SIGNALFLOW_CDP_BROWSER_AUTH_TOKEN`;
+- the owner-triggered live browser-worker probe must pass before capture acceptance is claimed.
+
+### Immediate Gate-C sequence
+
+1. obtain working hosted inference authorization or configure one approved direct hosted provider;
+2. configure the approved remote CDP authority and pass the live worker probe;
+3. retry recoverable persisted opportunity work through the existing recovery action;
+4. verify exact ProjectContextSnapshot + ranked opportunity production evidence;
+5. refresh reserved #315 from then-current `master`;
+6. run #315 as the meaningful positive GitHub event;
+7. complete exact screenshot/media binding, recovery/noise controls, and sanitized GP2 acceptance evidence.
+
+Do not create replacement inference/capture architecture while these external prerequisites remain unresolved.
 
 ## Reserved PR #315
 

@@ -104,6 +104,12 @@ test("browser readiness panel uses protected safe contract and keeps technical c
   assert.match(panel, /Owner lock configuration required/);
   assert.match(panel, /Test browser worker/);
   assert.match(panel, /runtimeStatusLabel/);
+  assert.match(panel, /gatewayStatusLabel/);
+  assert.match(panel, /GATEWAY_STATUSES/);
+  assert.match(panel, /team or project access denied/);
+  assert.match(panel, /Fix Gateway access in Vercel, or configure one approved direct hosted provider/);
+  assert.match(panel, /approved server-only WSS CDP browser endpoint/);
+  assert.match(panel, /SIGNALFLOW_CDP_BROWSER_ACCESS/);
   assert.match(panel, /opening a remote browser connection can consume provider runtime/);
   assert.match(panel, /<details className=\{styles\.details\}>/);
   assert.match(panel, /Technical readiness details/);

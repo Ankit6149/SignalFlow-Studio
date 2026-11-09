@@ -44,6 +44,24 @@ const STATUS_LABELS = {
   archived: "Archived",
 };
 
+const SOURCE_LABELS = {
+  manual: "Manual",
+  github: "GitHub",
+  browser: "Browser",
+  file: "File",
+  api: "API",
+  mcp: "MCP",
+  other: "Other",
+};
+
+const DEFAULT_LIBRARY_FILTERS = Object.freeze({
+  status: "active",
+  project: "all",
+  source: "all",
+  kind: "all",
+  date: "all",
+});
+
 function defaultForm() {
   return {
     thought: "",
@@ -87,6 +105,10 @@ function statusClass(status) {
   return `${styles.status} ${styles[`status_${status}`] || ""}`;
 }
 
+function titleCase(value) {
+  return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function planRoute(result) {
   const opportunityId = result?.records?.opportunityId;
   return opportunityId ? `/plan?opportunity=${encodeURIComponent(opportunityId)}` : "/plan";
@@ -95,7 +117,7 @@ function planRoute(result) {
 export default function SignalsWorkspace() {
   const [form, setForm] = useState(defaultForm);
   const [signals, setSignals] = useState([]);
-  const [filter, setFilter] = useState("active");
+  const [libraryFilters, setLibraryFilters] = useState(DEFAULT_LIBRARY_FILTERS);
   const [busy, setBusy] = useState(false);
   const [ideaBusyId, setIdeaBusyId] = useState("");
   const [prepareBusyId, setPrepareBusyId] = useState("");
@@ -135,16 +157,50 @@ export default function SignalsWorkspace() {
     reload();
   }, [reload]);
 
-  const visibleSignals = useMemo(() => signals.filter((signal) => {
-    if (filter === "all") return true;
-    if (filter === "archived") return signal.status === "archived";
-    if (filter === "snoozed") return signal.status === "snoozed";
-    if (filter === "ignored") return signal.status === "ignored";
-    return !["archived", "ignored"].includes(signal.status);
-  }), [filter, signals]);
+  const projectOptions = useMemo(() => Array.from(new Set(
+    signals.map((signal) => signal.projectId).filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right)), [signals]);
 
-  const activeCount = signals.filter((signal) => !["archived", "ignored"].includes(signal.status)).length;
+  const sourceOptions = useMemo(() => Array.from(new Set(
+    signals.map((signal) => signal.sourceType).filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right)), [signals]);
+
+  const kindOptions = useMemo(() => Array.from(new Set(
+    signals.map((signal) => signal.signalKind).filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right)), [signals]);
+
+  const visibleSignals = useMemo(() => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    return signals.filter((signal) => {
+      const { status, project, source, kind, date } = libraryFilters;
+      if (status === "active" && !["new", "interpreted", "used"].includes(signal.status)) return false;
+      if (status === "interpreted_used" && !["interpreted", "used"].includes(signal.status)) return false;
+      if (!["all", "active", "interpreted_used"].includes(status) && signal.status !== status) return false;
+
+      if (project === "unassigned" && signal.projectId) return false;
+      if (!["all", "unassigned"].includes(project) && signal.projectId !== project) return false;
+      if (source !== "all" && signal.sourceType !== source) return false;
+      if (kind !== "all" && signal.signalKind !== kind) return false;
+
+      if (date !== "all") {
+        const observedAt = Date.parse(signal.observedAt || signal.createdAt || "");
+        if (!Number.isFinite(observedAt)) return false;
+        const age = Math.max(0, now - observedAt);
+        if (date === "7d" && age > 7 * day) return false;
+        if (date === "30d" && age > 30 * day) return false;
+        if (date === "older" && age <= 30 * day) return false;
+      }
+      return true;
+    });
+  }, [libraryFilters, signals]);
+
+  const activeCount = signals.filter((signal) => ["new", "interpreted", "used"].includes(signal.status)).length;
   const projectCount = new Set(signals.map((signal) => signal.projectId).filter(Boolean)).size;
+
+  function setLibraryFilter(key, value) {
+    setLibraryFilters((current) => ({ ...current, [key]: value }));
+  }
 
   function updateForm(key, value) {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -378,13 +434,57 @@ export default function SignalsWorkspace() {
 
         <section className={styles.librarySection} aria-labelledby="saved-signals-title">
           <div className={styles.libraryHeader}>
-            <div><p className={styles.eyebrow}>BROWSER SIGNAL HISTORY</p><h2 id="saved-signals-title">Saved context</h2></div>
-            <label className={styles.filterLabel}>
-              <span>Show</span>
-              <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-                <option value="active">Active</option><option value="snoozed">Snoozed</option><option value="ignored">Ignored</option><option value="archived">Archived</option><option value="all">All</option>
-              </select>
-            </label>
+            <div>
+              <p className={styles.eyebrow}>BROWSER SIGNAL HISTORY</p>
+              <h2 id="saved-signals-title">Saved context</h2>
+              <small>{visibleSignals.length} of {signals.length} signal{signals.length === 1 ? "" : "s"} shown</small>
+            </div>
+            <div className={styles.filterBar} aria-label="Signal history filters">
+              <label className={styles.filterLabel}>
+                <span>Status</span>
+                <select value={libraryFilters.status} onChange={(event) => setLibraryFilter("status", event.target.value)}>
+                  <option value="active">Active</option>
+                  <option value="new">New</option>
+                  <option value="interpreted_used">Interpreted / used</option>
+                  <option value="snoozed">Snoozed</option>
+                  <option value="ignored">Ignored</option>
+                  <option value="archived">Archived</option>
+                  <option value="all">All statuses</option>
+                </select>
+              </label>
+              <label className={styles.filterLabel}>
+                <span>Project</span>
+                <select value={libraryFilters.project} onChange={(event) => setLibraryFilter("project", event.target.value)}>
+                  <option value="all">All projects</option>
+                  <option value="unassigned">No project</option>
+                  {projectOptions.map((projectId) => <option key={projectId} value={projectId}>{projectId}</option>)}
+                </select>
+              </label>
+              <label className={styles.filterLabel}>
+                <span>Source</span>
+                <select value={libraryFilters.source} onChange={(event) => setLibraryFilter("source", event.target.value)}>
+                  <option value="all">All sources</option>
+                  {sourceOptions.map((sourceType) => <option key={sourceType} value={sourceType}>{SOURCE_LABELS[sourceType] || titleCase(sourceType)}</option>)}
+                </select>
+              </label>
+              <label className={styles.filterLabel}>
+                <span>Kind</span>
+                <select value={libraryFilters.kind} onChange={(event) => setLibraryFilter("kind", event.target.value)}>
+                  <option value="all">All kinds</option>
+                  {kindOptions.map((kind) => <option key={kind} value={kind}>{KIND_OPTIONS.find(([value]) => value === kind)?.[1] || titleCase(kind)}</option>)}
+                </select>
+              </label>
+              <label className={styles.filterLabel}>
+                <span>Observed</span>
+                <select value={libraryFilters.date} onChange={(event) => setLibraryFilter("date", event.target.value)}>
+                  <option value="all">Any date</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="older">Older than 30 days</option>
+                </select>
+              </label>
+              <button type="button" className={styles.resetFilters} onClick={() => setLibraryFilters(DEFAULT_LIBRARY_FILTERS)}>Reset</button>
+            </div>
           </div>
 
           {visibleSignals.length === 0 ? (
@@ -399,6 +499,7 @@ export default function SignalsWorkspace() {
                     <div className={styles.signalMeta}>
                       <span className={statusClass(signal.status)}>{STATUS_LABELS[signal.status] || signal.status}</span>
                       <span>{signal.signalKind.replaceAll("_", " ")}</span>
+                      <span>Source · {SOURCE_LABELS[signal.sourceType] || signal.sourceType}</span>
                       <span>{signal.privacyClassification.replaceAll("_", " ")}</span>
                       {signal.projectId && <span>Project · {signal.projectId}</span>}
                     </div>

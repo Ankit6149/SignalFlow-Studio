@@ -41,6 +41,7 @@ export async function GET(request) {
       workspaceId: apps.workspaceId,
       decisions: inbox.decisions,
       workState: inbox.workState,
+      comingUp: inbox.comingUp,
     });
   } catch (error) {
     return publicError(error);

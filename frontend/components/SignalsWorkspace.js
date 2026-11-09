@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserContentSignalApplication } from "../lib/application/browserContentSignalApplication.mjs";
 import { createBrowserContentOpportunityApplication } from "../lib/application/browserContentOpportunityApplication.mjs";
@@ -117,6 +118,7 @@ function planRoute(result) {
 export default function SignalsWorkspace() {
   const [form, setForm] = useState(defaultForm);
   const [signals, setSignals] = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
   const [libraryFilters, setLibraryFilters] = useState(DEFAULT_LIBRARY_FILTERS);
   const [busy, setBusy] = useState(false);
   const [ideaBusyId, setIdeaBusyId] = useState("");
@@ -146,12 +148,16 @@ export default function SignalsWorkspace() {
 
   const reload = useCallback(async () => {
     try {
-      const next = await application.listSignals({ includeArchived: true });
-      setSignals(next);
+      const [nextSignals, nextOpportunities] = await Promise.all([
+        application.listSignals({ includeArchived: true }),
+        opportunityApplication.listRankedOpportunities({ includeRejected: true }),
+      ]);
+      setSignals(nextSignals);
+      setOpportunities(nextOpportunities);
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "Signals could not be loaded from this browser." });
     }
-  }, [application]);
+  }, [application, opportunityApplication]);
 
   useEffect(() => {
     reload();
@@ -194,6 +200,19 @@ export default function SignalsWorkspace() {
       return true;
     });
   }, [libraryFilters, signals]);
+
+  const opportunityBySignalId = useMemo(() => {
+    const bySignal = new Map();
+    const newestFirst = [...opportunities].sort((left, right) => (
+      Date.parse(right.updatedAt || right.createdAt || "") - Date.parse(left.updatedAt || left.createdAt || "")
+    ));
+    for (const opportunity of newestFirst) {
+      for (const signalId of opportunity.signalIds || []) {
+        if (!bySignal.has(signalId)) bySignal.set(signalId, opportunity);
+      }
+    }
+    return bySignal;
+  }, [opportunities]);
 
   const activeCount = signals.filter((signal) => ["new", "interpreted", "used"].includes(signal.status)).length;
   const projectCount = new Set(signals.map((signal) => signal.projectId).filter(Boolean)).size;
@@ -494,6 +513,7 @@ export default function SignalsWorkspace() {
               {visibleSignals.map((signal) => {
                 const isEditing = editingId === signal.signalId;
                 const isActive = !["ignored", "archived", "snoozed"].includes(signal.status);
+                const currentOpportunity = opportunityBySignalId.get(signal.signalId) || null;
                 return (
                   <article className={styles.signalCard} key={signal.signalId}>
                     <div className={styles.signalMeta}>
@@ -526,6 +546,20 @@ export default function SignalsWorkspace() {
                           {signal.summary && signal.summary !== signal.headline && <p>{signal.summary}</p>}
                           {signal.boundaryNote && <div className={styles.boundary}><strong>Boundary</strong><span>{signal.boundaryNote}</span></div>}
                         </div>
+                        <div className={styles.opportunityRelationship} data-state={currentOpportunity ? currentOpportunity.status : "none"}>
+                          <span>OPPORTUNITY RELATIONSHIP</span>
+                          {currentOpportunity ? (
+                            <>
+                              <div>
+                                <strong>{currentOpportunity.title}</strong>
+                                <p>{titleCase(currentOpportunity.recommendation)} · {titleCase(currentOpportunity.status)} · score {Math.round(Number(currentOpportunity.score || 0))}</p>
+                              </div>
+                              <Link href={`/plan?opportunity=${encodeURIComponent(currentOpportunity.opportunityId)}`}>Open in Plan</Link>
+                            </>
+                          ) : (
+                            <p>No opportunity has been evaluated from this Signal yet.</p>
+                          )}
+                        </div>
                         <div className={styles.signalFoot}>
                           <div>
                             <span>Observed {formatDate(signal.observedAt)}</span>
@@ -540,7 +574,7 @@ export default function SignalsWorkspace() {
                                 <button type="button" className={styles.quietButton} onClick={() => findIdeas(signal.signalId)} disabled={busy} title="Open the opportunity and plan manually">{ideaBusyId === signal.signalId ? "Finding ideas…" : "Find ideas"}</button>
                               </>
                             )}
-                            <button type="button" onClick={() => beginEdit(signal)} disabled={busy}>Edit</button>
+                            <button type="button" onClick={() => beginEdit(signal)} disabled={busy} title="Edit this Signal's context and metadata">Add context</button>
                             {signal.status === "ignored" || signal.status === "archived" || signal.status === "snoozed" ? (
                               <button type="button" onClick={() => runAction(() => application.restoreSignal(signal.signalId), "Signal restored to active review.")} disabled={busy}>Restore</button>
                             ) : (

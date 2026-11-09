@@ -35,11 +35,12 @@ export async function GET(request) {
     const apps = createProductionHostedPlatformReviewApplications({
       origin: new URL(request.url).origin,
     });
-    const decisions = await apps.todayApplication.listDecisions();
+    const inbox = await apps.todayApplication.listInbox();
     return json({
       ok: true,
       workspaceId: apps.workspaceId,
-      decisions,
+      decisions: inbox.decisions,
+      workState: inbox.workState,
     });
   } catch (error) {
     return publicError(error);

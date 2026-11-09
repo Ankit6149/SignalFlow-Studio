@@ -285,9 +285,29 @@ export default function TodayWorkspace() {
             <div><Link href="/signals">Capture a signal</Link><Link href="/plan">Open Plan</Link></div>
           </section>
         ) : decisions.length > 0 ? (
-          <section className={styles.queue} aria-label="Decisions requiring owner judgment">
-            <div className={styles.queueHeader}><span>NEEDS YOU</span><small>{decisions.length} decision{decisions.length === 1 ? "" : "s"}</small></div>
-            {decisions.map((item) => {
+          <>
+            {[
+              {
+                id: "attention",
+                label: "ATTENTION REQUIRED",
+                description: "These exact revisions have blocking evidence, authenticity, or boundary findings. Resolve or reject them before approval.",
+                items: decisions.filter((item) => item.reviewVerdict === "block"),
+                tone: "attention",
+              },
+              {
+                id: "approval",
+                label: "NEEDS APPROVAL",
+                description: "Checks are complete. Your judgment is the remaining gate for these exact revisions.",
+                items: decisions.filter((item) => item.reviewVerdict !== "block"),
+                tone: "approval",
+              },
+            ].filter((group) => group.items.length > 0).map((group) => (
+              <section className={styles.queue} aria-label={group.label.toLowerCase()} data-priority={group.tone} key={group.id}>
+                <div className={styles.queueHeader}>
+                  <div><span>{group.label}</span><p>{group.description}</p></div>
+                  <small>{group.items.length} decision{group.items.length === 1 ? "" : "s"}</small>
+                </div>
+                {group.items.map((item) => {
               const busy = busyId === item.decisionId;
               const blocked = item.reviewVerdict === "block";
               const isRequesting = requestingId === item.decisionId;
@@ -360,8 +380,10 @@ export default function TodayWorkspace() {
                   </details>
                 </article>
               );
-            })}
-          </section>
+                })}
+              </section>
+            ))}
+          </>
         ) : null}
       </main>
     </WorkspaceShell>

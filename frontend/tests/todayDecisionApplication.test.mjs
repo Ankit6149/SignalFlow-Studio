@@ -18,7 +18,7 @@ import {
   createPlatformVariantApproval,
   createPlatformVariantReview,
 } from "../lib/domain/platformVariantReviews.mjs";
-import { createTodayDecisionApplication, projectOwnerDecisions, projectOwnerWorkState } from "../lib/application/todayDecisionApplication.mjs";
+import { createTodayDecisionApplication, projectOwnerComingUp, projectOwnerDecisions, projectOwnerWorkState } from "../lib/application/todayDecisionApplication.mjs";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createMemoryContentPlanningRepository } from "../lib/infrastructure/contentPlanningAdapters.mjs";
 import { createMemoryContentReviewRepository } from "../lib/infrastructure/contentReviewAdapters.mjs";
@@ -302,6 +302,34 @@ test("browser reopen reconstructs the same Today queue from canonical local repo
 });
 
 
+test("Today Coming up projects only exact approved destination variants and never invents schedule dates", () => {
+  const fixture = buildFixture();
+  const approvedVariant = normalizePlatformVariant({
+    ...fixture.variant,
+    status: "approved",
+    updatedAt: T3,
+  });
+  const comingUp = projectOwnerComingUp({
+    planningRecords: [fixture.strategy, fixture.piece, approvedVariant, fixture.revision],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(comingUp.length, 1);
+  assert.equal(comingUp[0].comingUpId, "coming-up:piece-today");
+  assert.equal(comingUp[0].schedulingState, "not_scheduled");
+  assert.equal(comingUp[0].destinations.length, 1);
+  assert.equal(comingUp[0].destinations[0].destination, "linkedin");
+  assert.equal(comingUp[0].destinations[0].platformVariantRevisionId, "revision-today-1");
+  assert.equal("scheduledAt" in comingUp[0], false);
+  assert.equal("publishAt" in comingUp[0], false);
+
+  assert.equal(projectOwnerComingUp({
+    planningRecords: records(fixture).planningRecords,
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  }).length, 0);
+});
+
 test("Today work state elevates a failed destination generation without inventing an error detail", () => {
   const fixture = buildFixture();
   const failed = normalizePlatformVariant({
@@ -390,6 +418,8 @@ test("Today application reconstructs decisions and work state from one canonical
   const inbox = await application.listInbox();
   assert.equal(inbox.decisions.length, 1);
   assert.equal(inbox.workState.length, 0);
+  assert.equal(inbox.comingUp.length, 0);
   assert.deepEqual(await application.listDecisions(), inbox.decisions);
   assert.deepEqual(await application.listWorkState(), inbox.workState);
+  assert.deepEqual(await application.listComingUp(), inbox.comingUp);
 });

@@ -154,7 +154,7 @@ Repository implementation is no longer the primary GP2 blocker.
 2. configure the approved remote CDP authority and pass the live worker probe;
 3. retry recoverable persisted opportunity work through the existing recovery action;
 4. verify exact ProjectContextSnapshot + ranked opportunity production evidence;
-5. refresh reserved #315 from then-current `master` (currently 96 master commits behind with 2 unique intended commits);
+5. refresh reserved #315 from then-current `master`; the reserved branch retains 2 unique intended commits, while its behind-count is live PR evidence and must be rechecked immediately before Gate C;
 6. run #315 as the meaningful positive GitHub event;
 7. complete exact screenshot/media binding, recovery/noise controls, and sanitized GP2 acceptance evidence.
 

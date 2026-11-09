@@ -26,6 +26,20 @@ test("Today keeps the primary owner interaction to judgment rather than workflow
   assert.doesNotMatch(component, /Run checks|Choose this direction|Build campaign plan|Generate drafts|Select a narrative direction/);
 });
 
+
+test("Today separates blocked work from approval-ready judgment using real review state", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  const attentionIndex = component.indexOf('label: "ATTENTION REQUIRED"');
+  const approvalIndex = component.indexOf('label: "NEEDS APPROVAL"');
+  assert.ok(attentionIndex >= 0);
+  assert.ok(approvalIndex > attentionIndex, "blocking work should be presented before approval-ready work");
+  assert.match(component, /decisions\.filter\(\(item\) => item\.reviewVerdict === "block"\)/);
+  assert.match(component, /decisions\.filter\(\(item\) => item\.reviewVerdict !== "block"\)/);
+  assert.match(component, /blocking evidence, authenticity, or boundary findings/);
+  assert.match(component, /Your judgment is the remaining gate/);
+  assert.doesNotMatch(component, />NEEDS YOU</);
+});
+
 test("Today delegates to application services and binds judgment to the exact visible revision", async () => {
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /createBrowserTodayDecisionApplication/);

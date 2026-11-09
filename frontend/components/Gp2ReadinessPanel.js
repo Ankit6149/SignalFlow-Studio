@@ -26,6 +26,10 @@ const GATEWAY_STATUSES = new Set([
   "unavailable",
   "unreachable",
   "missing",
+  "model_ineligible",
+  "model_unavailable",
+  "availability_unknown",
+  "response_invalid",
 ]);
 
 async function readJson(response) {
@@ -129,6 +133,10 @@ function gatewayStatusLabel(value) {
     case "upstream_error": return "Gateway upstream error";
     case "unreachable": return "unreachable";
     case "missing": return "credential missing";
+    case "model_ineligible": return "configured model is not eligible";
+    case "model_unavailable": return "configured model is unavailable";
+    case "availability_unknown": return "model eligibility is unknown";
+    case "response_invalid": return "Gateway availability response was invalid";
     default: return "unavailable";
   }
 }
@@ -143,6 +151,15 @@ function blockerGuidance(item) {
     }
     if (item.gatewayStatus === "rate_limited") {
       return "Vercel AI Gateway is currently rate limited. Recheck after the provider limit clears; SignalFlow will not requeue blocked work while inference is unavailable.";
+    }
+    if (item.gatewayStatus === "model_ineligible") {
+      return "Vercel accepted the Gateway credential, but the configured generation model is not eligible for this team/project. Review the Gateway model policy/availability or choose an eligible VERCEL_AI_GATEWAY_MODEL before retrying blocked work.";
+    }
+    if (item.gatewayStatus === "model_unavailable") {
+      return "The configured Vercel AI Gateway model is not present in the current Gateway catalog. Choose a current eligible language model before retrying blocked work.";
+    }
+    if (item.gatewayStatus === "availability_unknown" || item.gatewayStatus === "response_invalid") {
+      return "SignalFlow could not prove that the configured Gateway model is usable, so inference remains blocked. Recheck Gateway availability before retrying durable work.";
     }
     if (item.missing.some((name) => name.includes("VERCEL_RUNTIME_OIDC") || name.includes("AI_GATEWAY_API_KEY"))) {
       return "Configure Vercel runtime OIDC / AI Gateway access, or one approved direct hosted provider. Provider secrets remain server-only.";

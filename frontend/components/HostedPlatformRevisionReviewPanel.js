@@ -67,6 +67,7 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
   const approved = Boolean(reviewBundle?.approvalValid);
   const revisionId = revision?.platformVariantRevisionId || "";
   const rejected = decision?.decision === "rejected" && decision?.platformVariantRevisionId === revisionId;
+  const [selectedHistoryId, setSelectedHistoryId] = useState("");
   const historicalRevisions = (entry?.history || [])
     .filter((item) => item.platformVariantRevisionId !== revisionId)
     .sort((left, right) => right.revisionNumber - left.revisionNumber);
@@ -82,7 +83,6 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
   const [editText, setEditText] = useState(revisionText(revision));
   const [previewGeneration, setPreviewGeneration] = useState(0);
   const [mediaPreviewState, setMediaPreviewState] = useState({ revisionId, required: false, ready: true, status: "not_required", visibleMedia: [] });
-  const [selectedHistoryId, setSelectedHistoryId] = useState("");
 
   const previewAdapter = useMemo(() => createBrowserHostedExactMediaPreviewAdapter(), []);
   const changeRequestClient = useMemo(() => createBrowserHostedChangeRequestClient(), []);

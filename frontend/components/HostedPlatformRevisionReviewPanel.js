@@ -3,7 +3,10 @@
 import { useCallback, useMemo, useState } from "react";
 import ExactMediaRevisionPreview from "./ExactMediaRevisionPreview";
 import { createBrowserHostedExactMediaPreviewAdapter } from "../lib/infrastructure/browserHostedExactMediaPreviewAdapter.mjs";
+import { createBrowserHostedChangeRequestClient } from "../lib/infrastructure/browserHostedChangeRequestClient.mjs";
 import styles from "./PlatformReviewPanel.module.css";
+
+const MAX_CHANGE_REQUEST_LENGTH = 2000;
 
 function titleCase(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -47,11 +50,14 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [requestingChange, setRequestingChange] = useState(false);
+  const [changeRequest, setChangeRequest] = useState("");
   const [editText, setEditText] = useState(revisionText(revision));
   const [previewGeneration, setPreviewGeneration] = useState(0);
   const [mediaPreviewState, setMediaPreviewState] = useState({ revisionId, required: false, ready: true, status: "not_required", visibleMedia: [] });
 
   const previewAdapter = useMemo(() => createBrowserHostedExactMediaPreviewAdapter(), []);
+  const changeRequestClient = useMemo(() => createBrowserHostedChangeRequestClient(), []);
   const handlePreviewState = useCallback((next) => setMediaPreviewState({ ...next, revisionId }), [revisionId]);
 
   async function run(key, action, successText) {
@@ -123,6 +129,23 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
       "Owner edit saved as a new immutable hosted revision. Exact media bindings are preserved and prior review/approval is historical.",
     );
     if (result) setEditing(false);
+  }
+
+  async function requestNaturalLanguageChange(event) {
+    event.preventDefault();
+    const instruction = changeRequest.trim();
+    if (!instruction) return;
+    const result = await run(
+      "request-change",
+      () => changeRequestClient.requestChange(variant.platformVariantId, instruction, {
+        expectedCurrentRevisionId: revisionId,
+      }),
+      "SignalFlow created a new immutable hosted revision from your change request. Exact media bindings stay attached; prior checks and approval remain historical.",
+    );
+    if (result) {
+      setRequestingChange(false);
+      setChangeRequest("");
+    }
   }
 
   async function regenerate() {
@@ -215,10 +238,33 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
           {revision.format === "thread" && <small>Keep one blank line between X thread posts.</small>}
           <div><button type="button" onClick={() => { setEditing(false); setEditText(revisionText(revision)); }} disabled={Boolean(busy)}>Cancel</button><button type="submit" disabled={Boolean(busy) || !editText.trim()}>{busy === "edit" ? "Saving…" : "Save as new revision"}</button></div>
         </form>
+      ) : requestingChange ? (
+        <form className={styles.changeRequestForm} onSubmit={requestNaturalLanguageChange}>
+          <label>
+            <span>REQUEST A CHANGE TO THIS EXACT HOSTED REVISION</span>
+            <textarea
+              rows={3}
+              maxLength={MAX_CHANGE_REQUEST_LENGTH}
+              value={changeRequest}
+              onChange={(event) => setChangeRequest(event.target.value)}
+              placeholder="Make the opening less promotional, keep the concrete architecture point, and shorten the ending."
+              autoFocus
+            />
+          </label>
+          <div className={styles.changeRequestMeta}>
+            <small>SignalFlow will preserve the destination, approved story plan, Voice snapshot, exact media binding and immutable revision history.</small>
+            <span>{changeRequest.length}/{MAX_CHANGE_REQUEST_LENGTH}</span>
+          </div>
+          <div>
+            <button type="button" onClick={() => { setRequestingChange(false); setChangeRequest(""); }} disabled={Boolean(busy)}>Cancel</button>
+            <button type="submit" disabled={Boolean(busy) || !changeRequest.trim()}>{busy === "request-change" ? "Revising…" : "Request change"}</button>
+          </div>
+        </form>
       ) : (
         <div className={styles.actions}>
           <div>
             <button type="button" onClick={() => { setEditText(revisionText(revision)); setEditing(true); }} disabled={Boolean(busy)}>Edit</button>
+            <button type="button" onClick={() => setRequestingChange(true)} disabled={Boolean(busy)}>Request change</button>
             <button type="button" onClick={regenerate} disabled={Boolean(busy)}>{busy === "regenerate" ? "Regenerating…" : "Regenerate"}</button>
             {!approved && !rejected && <button type="button" onClick={reject} disabled={Boolean(busy)}>{busy === "reject" ? "Rejecting…" : "Reject"}</button>}
           </div>

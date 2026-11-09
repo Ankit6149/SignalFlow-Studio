@@ -151,6 +151,7 @@ test("connected-source Plan uses durable hosted review clients, automatic prepar
   const revision = source("components", "HostedPlatformRevisionReviewPanel.js");
   const client = source("lib", "infrastructure", "browserHostedPlatformReviewClient.mjs");
   const preparationClient = source("lib", "infrastructure", "browserHostedGp2PreparationClient.mjs");
+  const changeRequestClient = source("lib", "infrastructure", "browserHostedChangeRequestClient.mjs");
 
   assert.match(plan, /HostedPlatformDraftsPanel/);
   assert.match(plan, /strategy=\{strategy\}/);
@@ -177,6 +178,7 @@ test("connected-source Plan uses durable hosted review clients, automatic prepar
   assert.match(preparationClient, /cache: "no-store"/);
 
   assert.match(revision, /createBrowserHostedExactMediaPreviewAdapter/);
+  assert.match(revision, /createBrowserHostedChangeRequestClient/);
   assert.match(revision, /previewAdapter=\{previewAdapter\}/);
   assert.match(revision, /mediaPreviewState\.visibleMedia/);
   assert.match(revision, /previewBelongsToRevision = mediaPreviewState\.revisionId === revisionId/);
@@ -199,6 +201,36 @@ test("connected-source Plan uses durable hosted review clients, automatic prepar
   assert.match(client, /action: "produce_screenshot"/);
   assert.match(client, /normalizeReviewPreparation/);
   assert.match(client, /autoReview: normalizeAutoReview/);
+
+  assert.match(changeRequestClient, /credentials: "same-origin"/);
+  assert.match(changeRequestClient, /cache: "no-store"/);
+  assert.match(changeRequestClient, /changeRequest: required\(changeRequest, "changeRequest", 2000\)/);
+});
+
+test("hosted exact review exposes bounded natural-language change requests on the exact current revision", () => {
+  const revision = source("components", "HostedPlatformRevisionReviewPanel.js");
+  const client = source("lib", "infrastructure", "browserHostedChangeRequestClient.mjs");
+  const route = source("app", "api", "platform-review", "change-request", "route.js");
+
+  assert.match(revision, /createBrowserHostedChangeRequestClient/);
+  assert.match(revision, /MAX_CHANGE_REQUEST_LENGTH = 2000/);
+  assert.match(revision, /changeRequestClient\.requestChange\(variant\.platformVariantId, instruction/);
+  assert.match(revision, /expectedCurrentRevisionId: revisionId/);
+  assert.match(revision, /REQUEST A CHANGE TO THIS EXACT HOSTED REVISION/);
+  assert.match(revision, /Request change/);
+  assert.match(revision, /exact media binding and immutable revision history/);
+  assert.match(revision, /prior checks and approval remain historical/);
+
+  assert.match(client, /\/api\/platform-review\/change-request/);
+  assert.match(client, /credentials: "same-origin"/);
+  assert.match(client, /cache: "no-store"/);
+  assert.match(client, /expectedCurrentRevisionId/);
+  assert.match(client, /normalizePlatformVariantRevision/);
+
+  assert.match(route, /requireOwnerAccess/);
+  assert.match(route, /expectedCurrentRevisionId/);
+  assert.match(route, /apps\.changeApplication\.requestChange\(platformVariantId, changeRequest\)/);
+  assert.doesNotMatch(revision, /publishNow|autoPublish|approveCurrentVariant/);
 });
 
 test("hosted preview and screenshot worker configuration remain server-only", () => {

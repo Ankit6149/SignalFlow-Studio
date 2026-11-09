@@ -52,5 +52,5 @@ test("Signals UI owns no provider, threshold, legacy launch-kit, or storage muta
   assert.doesNotMatch(text, /\/api\/launch_kit/);
   assert.doesNotMatch(text, /generateJSON|DEFAULT_MODEL_PROVIDER|minimumScore|minimumConfidence|AUTOPILOT_THRESHOLDS/);
   assert.doesNotMatch(text, /localStorage\.(?:setItem|removeItem|clear)\s*\(/);
-  assert.match(text, /SignalFlow will stop in Plan if confidence, evidence, Voice, privacy, or strategy boundaries are not strong enough/);
+  assert.match(text, /stop in Plan or Voice instead of making unsafe assumptions when confidence, evidence, identity, privacy, or strategy boundaries need your judgment/);
 });

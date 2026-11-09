@@ -303,6 +303,41 @@
   font-weight: 760;
 }
 
+.destinationDecision {
+  min-width: 0;
+}
+
+.destinationDecision select {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.3rem 1.6rem 0.3rem 0.48rem;
+  border: 1px solid rgba(23, 23, 20, 0.14);
+  border-radius: 0.42rem;
+  background: #fffdf8;
+  color: #66512a;
+  font: inherit;
+  font-size: 0.59rem;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.destinationDecision select:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .destinationItem[data-decision="exclude"] > span {
   color: #8a6860;
 }
@@ -573,6 +608,7 @@
 
 .panel button:focus-visible,
 .panel textarea:focus-visible,
+.panel select:focus-visible,
 .panel a:focus-visible {
   outline: 2px solid #8b6a28;
   outline-offset: 2px;

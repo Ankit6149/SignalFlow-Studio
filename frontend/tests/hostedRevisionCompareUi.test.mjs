@@ -6,6 +6,15 @@ async function source(path) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 
+
+test("hosted history selection state is declared before it is used to derive the selected revision", async () => {
+  const component = await source("../components/HostedPlatformRevisionReviewPanel.js");
+  const stateIndex = component.indexOf('const [selectedHistoryId, setSelectedHistoryId] = useState("");');
+  const derivedIndex = component.indexOf("const selectedHistorical =");
+  assert.ok(stateIndex >= 0);
+  assert.ok(derivedIndex > stateIndex, "selectedHistoryId must exist before selectedHistorical is derived");
+});
+
 test("hosted Review compares the full current revision against a selected immutable historical revision", async () => {
   const component = await source("../components/HostedPlatformRevisionReviewPanel.js");
   assert.match(component, /selectedHistoryId/);

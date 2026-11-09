@@ -229,7 +229,7 @@ test("hosted exact review exposes bounded natural-language change requests on th
 
   assert.match(route, /requireOwnerAccess/);
   assert.match(route, /expectedCurrentRevisionId/);
-  assert.match(route, /changeRequestApplication\.requestChange/);
+  assert.match(route, /apps\.changeApplication\.requestChange\(platformVariantId, changeRequest\)/);
   assert.doesNotMatch(revision, /publishNow|autoPublish|approveCurrentVariant/);
 });
 

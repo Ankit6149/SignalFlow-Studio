@@ -17,6 +17,27 @@ function revisionText(revision) {
   return revision.format === "thread" ? (revision.segments || []).join("\n\n") : revision.content || "";
 }
 
+function revisionOriginLabel(revision) {
+  if (revision?.editProvenance?.restoredFromRevisionId) return "Restored";
+  if (revision?.origin === "edited") return "Owner edit";
+  if (revision?.origin === "ai_revised") return "AI change";
+  if (revision?.origin === "media_rebound") return "Media rebound";
+  if (revision?.origin === "generated" && revision?.revisionNumber > 1) return "Regenerated";
+  return "Generated";
+}
+
+function displayTime(value) {
+  const parsed = Date.parse(value || "");
+  if (!Number.isFinite(parsed)) return "Unknown time";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(parsed));
+}
+
+function mediaIdentityLines(revision) {
+  return (revision?.mediaBindings || []).map((binding) => (
+    `${titleCase(binding.role)} · ${binding.assetId} · ${binding.assetVersionId}`
+  ));
+}
+
 function FindingList({ title, result }) {
   if (!result) return null;
   return (
@@ -46,6 +67,13 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
   const approved = Boolean(reviewBundle?.approvalValid);
   const revisionId = revision?.platformVariantRevisionId || "";
   const rejected = decision?.decision === "rejected" && decision?.platformVariantRevisionId === revisionId;
+  const [selectedHistoryId, setSelectedHistoryId] = useState("");
+  const historicalRevisions = (entry?.history || [])
+    .filter((item) => item.platformVariantRevisionId !== revisionId)
+    .sort((left, right) => right.revisionNumber - left.revisionNumber);
+  const selectedHistorical = historicalRevisions.find((item) => item.platformVariantRevisionId === selectedHistoryId)
+    || historicalRevisions[0]
+    || null;
 
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
@@ -274,16 +302,78 @@ export default function HostedPlatformRevisionReviewPanel({ entry, client, onCha
         </div>
       )}
 
-      {entry.history?.length > 1 && (
-        <details className={styles.reviewPanel}>
-          <summary>Immutable history · {entry.history.length} revisions</summary>
-          <div className={styles.findings}>
-            {entry.history.filter((item) => item.platformVariantRevisionId !== revisionId).map((item) => (
-              <div key={item.platformVariantRevisionId} className={styles.reviewGate}>
-                <div><span>REVISION {item.revisionNumber}</span><p>{revisionText(item).slice(0, 240)}{revisionText(item).length > 240 ? "…" : ""}</p></div>
-                <button type="button" onClick={() => restore(item)} disabled={Boolean(busy)}>{busy === `restore-${item.platformVariantRevisionId}` ? "Restoring…" : "Restore as new current"}</button>
+      {historicalRevisions.length > 0 && (
+        <details className={styles.hostedHistory}>
+          <summary>
+            <span>Immutable history</span>
+            <small>{entry.history.length} saved revisions</small>
+          </summary>
+          <div className={styles.hostedHistoryBody}>
+            <div className={styles.hostedHistoryRail} aria-label="Hosted immutable revisions">
+              {historicalRevisions.map((item) => (
+                <button
+                  type="button"
+                  key={item.platformVariantRevisionId}
+                  aria-pressed={selectedHistorical?.platformVariantRevisionId === item.platformVariantRevisionId}
+                  data-selected={selectedHistorical?.platformVariantRevisionId === item.platformVariantRevisionId}
+                  onClick={() => setSelectedHistoryId(item.platformVariantRevisionId)}
+                  disabled={Boolean(busy)}
+                >
+                  <span>r{item.revisionNumber}</span>
+                  <strong>{revisionOriginLabel(item)}</strong>
+                  <small>{displayTime(item.createdAt)}</small>
+                </button>
+              ))}
+            </div>
+
+            {selectedHistorical && (
+              <div className={styles.hostedHistorySelection}>
+                <header>
+                  <div>
+                    <span>SELECTED HISTORICAL REVISION</span>
+                    <strong>Revision {selectedHistorical.revisionNumber} · {revisionOriginLabel(selectedHistorical)}</strong>
+                    <p>{displayTime(selectedHistorical.createdAt)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => restore(selectedHistorical)}
+                    disabled={Boolean(busy)}
+                  >
+                    {busy === `restore-${selectedHistorical.platformVariantRevisionId}` ? "Restoring…" : "Restore as new current"}
+                  </button>
+                </header>
+
+                {selectedHistorical.changeRequest && (
+                  <p className={styles.historyContext}>AI change request: “{selectedHistorical.changeRequest}”</p>
+                )}
+                {selectedHistorical.editProvenance?.restoredFromRevisionId && (
+                  <p className={styles.historyContext}>Restored from immutable revision {selectedHistorical.editProvenance.restoredFromRevisionId}.</p>
+                )}
+
+                <div className={styles.hostedCompare} aria-label="Current and selected hosted revision comparison">
+                  <section>
+                    <span>CURRENT · r{revision.revisionNumber}</span>
+                    <p>{revisionText(revision)}</p>
+                    <div className={styles.hostedMediaIdentity}>
+                      <strong>Exact media</strong>
+                      {mediaIdentityLines(revision).length
+                        ? mediaIdentityLines(revision).map((line) => <code key={line}>{line}</code>)
+                        : <small>No media bound</small>}
+                    </div>
+                  </section>
+                  <section>
+                    <span>SELECTED · r{selectedHistorical.revisionNumber}</span>
+                    <p>{revisionText(selectedHistorical)}</p>
+                    <div className={styles.hostedMediaIdentity}>
+                      <strong>Exact media</strong>
+                      {mediaIdentityLines(selectedHistorical).length
+                        ? mediaIdentityLines(selectedHistorical).map((line) => <code key={line}>{line}</code>)
+                        : <small>No media bound</small>}
+                    </div>
+                  </section>
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </details>
       )}

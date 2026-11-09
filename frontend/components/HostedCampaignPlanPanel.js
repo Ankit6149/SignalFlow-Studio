@@ -102,6 +102,27 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
     }
   }
 
+  async function setDestinationDecision(destination, decision) {
+    if (!plan?.strategy || plan.strategy.status === "approved") return;
+    setStatus("revising");
+    setMessage(null);
+    try {
+      const destinationPlan = plan.strategy.destinationPlan.map((item) => (
+        item.destination === destination ? { ...item, decision } : item
+      ));
+      const next = await application.reviseHostedPlan(entry, plan.strategy, { destinationPlan });
+      setPlan(next);
+      setStatus("ready");
+      setMessage({
+        type: "success",
+        text: `${destination === "x" ? "X" : label(destination)} is now ${label(decision)}. The exact hosted strategy revision was updated before production.`,
+      });
+    } catch (error) {
+      setStatus("error");
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not update this destination decision.", code: error?.code });
+    }
+  }
+
   if (!selectedAngleId) return null;
 
   if (status === "voice_required") {
@@ -174,11 +195,28 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
         </div>
       </div>
 
-      <div className={styles.destinationRows}>
+      <div className={styles.destinationRows} aria-label="Hosted strategy destination decisions">
         {strategy.destinationPlan.map((item) => (
-          <div key={item.destination}>
+          <div key={item.destination} data-decision={item.decision}>
             <strong>{item.destination === "x" ? "X" : label(item.destination)}</strong>
-            <span>{label(item.decision)} · {item.format}</span>
+            {approved ? (
+              <span>{label(item.decision)} · {item.format}</span>
+            ) : (
+              <label className={styles.destinationDecision}>
+                <span className={styles.visuallyHidden}>Decision for {item.destination === "x" ? "X" : label(item.destination)}</span>
+                <select
+                  aria-label={`Decision for ${item.destination === "x" ? "X" : label(item.destination)}`}
+                  value={item.decision}
+                  onChange={(event) => setDestinationDecision(item.destination, event.target.value)}
+                  disabled={status === "revising" || status === "approving" || status === "building"}
+                >
+                  <option value="include">Include</option>
+                  <option value="optional">Optional</option>
+                  <option value="exclude">Exclude</option>
+                </select>
+                <small>{item.format}</small>
+              </label>
+            )}
             <p>{item.reason}</p>
           </div>
         ))}
@@ -195,10 +233,10 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
         </>
       ) : (
         <div className={styles.actions}>
-          <button type="button" className={styles.primaryButton} onClick={approve} disabled={status === "approving" || status === "building"}>
+          <button type="button" className={styles.primaryButton} onClick={approve} disabled={status === "approving" || status === "building" || status === "revising"}>
             {status === "approving" ? "Approving…" : "Approve this strategy"}
           </button>
-          <button type="button" onClick={rebuild} disabled={status === "approving" || status === "building"}>Rebuild plan</button>
+          <button type="button" onClick={rebuild} disabled={status === "approving" || status === "building" || status === "revising"}>Rebuild plan</button>
         </div>
       )}
     </section>

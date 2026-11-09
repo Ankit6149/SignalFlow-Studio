@@ -133,6 +133,17 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     if (result) setBundle(result);
   }
 
+  async function setDestinationDecision(destination, decision) {
+    if (!bundle.strategy || bundle.contentPiece) return;
+    const destinationPlan = bundle.strategy.destinationPlan.map((item) => (
+      item.destination === destination ? { ...item, decision } : item
+    ));
+    await run(
+      () => application.reviseStrategy(bundle.strategy.narrativeStrategyId, { destinationPlan }),
+      `${destinationLabel(destination)} is now ${decision}. This is a new strategy revision; no hidden draft will be created for an excluded destination.`,
+    );
+  }
+
   async function generateDrafts() {
     if (!bundle.contentPiece) return;
     setBusy(true);
@@ -236,7 +247,23 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
             {strategy.destinationPlan.map((item) => (
               <div className={styles.destinationItem} key={item.destination} data-decision={item.decision}>
                 <strong>{destinationLabel(item.destination)}</strong>
-                <span>{titleCase(item.decision)}</span>
+                {contentPiece ? (
+                  <span>{titleCase(item.decision)}</span>
+                ) : (
+                  <label className={styles.destinationDecision}>
+                    <span className={styles.visuallyHidden}>Decision for {destinationLabel(item.destination)}</span>
+                    <select
+                      aria-label={`Decision for ${destinationLabel(item.destination)}`}
+                      value={item.decision}
+                      onChange={(event) => setDestinationDecision(item.destination, event.target.value)}
+                      disabled={busy}
+                    >
+                      <option value="include">Include</option>
+                      <option value="optional">Optional</option>
+                      <option value="exclude">Exclude</option>
+                    </select>
+                  </label>
+                )}
                 <p>{item.reason}</p>
                 <small>{item.format}</small>
               </div>

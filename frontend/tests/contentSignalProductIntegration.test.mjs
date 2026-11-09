@@ -57,7 +57,7 @@ test("Signals supports explicit review preparation alongside bounded connected-s
   assert.match(ui, /Save signal/);
   assert.match(ui, /No AI call to save/);
   assert.match(ui, /Saving does not call AI, approve content, or publish anything/);
-  assert.match(ui, /Prepare for review/);
+  assert.match(ui, /Create campaign/);
   assert.match(ui, /createBrowserGoldenPathAutopilotApplication/);
   assert.match(ui, /autopilotApplication\.prepareSignal\(signalId\)/);
   assert.match(ui, /GitHub<\/strong><span>Connected source<\/span><small>Verified repositories can create hosted context, Signals, and Opportunities/);

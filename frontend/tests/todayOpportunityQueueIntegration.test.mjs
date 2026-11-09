@@ -64,7 +64,7 @@ test("Today renders the ranked opportunity queue without weakening exact review 
   assert.match(today, /hostedDecisionStatus === "ready"/);
   assert.match(today, /decisions\.length === 0/);
   assert.match(today, /opportunityCount === 0/);
-  assert.match(today, /decisions\.length > 0 \?/);
+  assert.match(today, /decisions\.length > 0 &&/);
   assert.match(today, /reviewApplication\.approveRevision/);
   assert.match(today, /reviewApplication\.rejectRevision/);
   assert.match(today, /changeApplication\.requestChange/);
@@ -103,7 +103,7 @@ test("Today queue reports loading/count truth and never claims all-clear when co
   assert.match(queue, /onCountChange\(actionable\.length \|\| \(result\.hostedState\.status === "ready" \? 0 : -1\)\)/);
   assert.match(queue, /onCountChange\(-1\)/);
   assert.match(queue, /hostedState\.status !== "ready"/);
-  assert.match(queue, /any visible direct-create opportunities remain actionable/i);
+  assert.match(queue, /visible direct-create opportunities and review decisions remain actionable/i);
   assert.match(queue, /Checking for work worth your attention/);
 
   const today = read("components/TodayWorkspace.js");

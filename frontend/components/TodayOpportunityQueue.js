@@ -73,7 +73,7 @@ export default function TodayOpportunityQueue({ onStatus = () => {}, onCountChan
 
   if (!entries.length) {
     return hostedState.status !== "ready"
-      ? <section className={styles.sourceNotice}>Connected-source opportunities are temporarily unavailable. Existing review decisions below remain usable.</section>
+      ? <section className={styles.sourceNotice}>Connected-source opportunities are temporarily unavailable. Existing review decisions remain usable.</section>
       : null;
   }
 
@@ -87,7 +87,7 @@ export default function TodayOpportunityQueue({ onStatus = () => {}, onCountChan
         <small>SignalFlow found these from ranked, unsnoozed opportunities. Nothing advances until you choose.</small>
       </div>
 
-      {hostedState.status !== "ready" && <p className={styles.sourceNotice}>Connected-source opportunity refresh is unavailable; any visible direct-create opportunities remain actionable.</p>}
+      {hostedState.status !== "ready" && <p className={styles.sourceNotice}>Connected-source opportunity refresh is unavailable; visible direct-create opportunities and review decisions remain actionable.</p>}
 
       <div className={styles.grid}>
         {entries.map((entry) => {

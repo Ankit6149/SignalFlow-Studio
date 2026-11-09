@@ -7,6 +7,7 @@ import {
   createNarrativeStrategy,
   createPlannedPlatformVariant,
   createPrimaryContentPiece,
+  normalizePlatformVariant,
 } from "../lib/domain/contentPlanning.mjs";
 import {
   attachPlatformVariantRevision,
@@ -17,7 +18,7 @@ import {
   createPlatformVariantApproval,
   createPlatformVariantReview,
 } from "../lib/domain/platformVariantReviews.mjs";
-import { createTodayDecisionApplication, projectOwnerDecisions } from "../lib/application/todayDecisionApplication.mjs";
+import { createTodayDecisionApplication, projectOwnerDecisions, projectOwnerWorkState } from "../lib/application/todayDecisionApplication.mjs";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createMemoryContentPlanningRepository } from "../lib/infrastructure/contentPlanningAdapters.mjs";
 import { createMemoryContentReviewRepository } from "../lib/infrastructure/contentReviewAdapters.mjs";
@@ -298,4 +299,97 @@ test("browser reopen reconstructs the same Today queue from canonical local repo
   const second = createBrowserTodayDecisionApplication({ getStorage: () => storage, workspaceId: WORKSPACE });
   assert.deepEqual(await second.listDecisions(), await first.listDecisions());
   assert.equal((await second.listDecisions()).length, 1);
+});
+
+
+test("Today work state elevates a failed destination generation without inventing an error detail", () => {
+  const fixture = buildFixture();
+  const failed = normalizePlatformVariant({
+    ...fixture.variant,
+    status: "failed",
+    currentRevisionId: null,
+    updatedAt: T3,
+  });
+  const work = projectOwnerWorkState({
+    planningRecords: [fixture.strategy, fixture.piece, failed, fixture.revision],
+    reviewRecords: [],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(work.length, 1);
+  assert.equal(work[0].stage, "generation_failed");
+  assert.equal(work[0].priority, "attention");
+  assert.match(work[0].explanation, /did not produce a current revision/i);
+  assert.doesNotMatch(work[0].explanation, /timeout|quota|credential/i);
+});
+
+test("Today work state reconstructs planned generation and exact-check progress from canonical variant state", () => {
+  const fixture = buildFixture();
+  const planned = normalizePlatformVariant({
+    ...fixture.variant,
+    status: "planned",
+    currentRevisionId: null,
+    updatedAt: T2,
+  });
+  const plannedWork = projectOwnerWorkState({
+    planningRecords: [fixture.strategy, fixture.piece, planned, fixture.revision],
+    reviewRecords: [],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(plannedWork[0].stage, "draft_pending");
+  assert.equal(plannedWork[0].priority, "progress");
+
+  const checksPending = projectOwnerWorkState({
+    planningRecords: records(fixture).planningRecords,
+    reviewRecords: [],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(checksPending.length, 1);
+  assert.equal(checksPending[0].stage, "checks_pending");
+});
+
+test("required strategy media remains visible as progress instead of becoming approval-ready", () => {
+  const fixture = buildFixture();
+  const strategy = {
+    ...fixture.strategy,
+    mediaRequirements: [{ type: "screenshot", reason: "Visible proof is required.", required: true }],
+  };
+  const work = projectOwnerWorkState({
+    planningRecords: [strategy, fixture.piece, fixture.variant, fixture.revision],
+    reviewRecords: [fixture.review],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(work.length, 1);
+  assert.equal(work[0].stage, "media_required");
+  assert.equal(work[0].priority, "progress");
+});
+
+test("review-ready exact revisions are not duplicated into Today progress", () => {
+  const fixture = buildFixture();
+  assert.equal(projectOwnerDecisions(records(fixture)).length, 1);
+  assert.equal(projectOwnerWorkState({
+    planningRecords: records(fixture).planningRecords,
+    reviewRecords: records(fixture).reviewRecords,
+    opportunityRecords: records(fixture).opportunityRecords,
+    workspaceId: WORKSPACE,
+  }).length, 0);
+});
+
+test("Today application reconstructs decisions and work state from one canonical inbox load", async () => {
+  const fixture = buildFixture();
+  const application = createTodayDecisionApplication({
+    contentPlanningRepository: createMemoryContentPlanningRepository(records(fixture).planningRecords),
+    contentReviewRepository: createMemoryContentReviewRepository(records(fixture).reviewRecords),
+    contentSignalRepository: createMemoryContentSignalRepository(records(fixture).signalRecords),
+    contentOpportunityRepository: createMemoryContentOpportunityRepository(records(fixture).opportunityRecords),
+    workspaceId: WORKSPACE,
+  });
+  const inbox = await application.listInbox();
+  assert.equal(inbox.decisions.length, 1);
+  assert.equal(inbox.workState.length, 0);
+  assert.deepEqual(await application.listDecisions(), inbox.decisions);
+  assert.deepEqual(await application.listWorkState(), inbox.workState);
 });

@@ -243,6 +243,138 @@ export function projectOwnerDecisions({
   return [...deduped.values()].sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt) || a.decisionId.localeCompare(b.decisionId));
 }
 
+
+export const TODAY_WORK_PRIORITIES = Object.freeze({
+  ATTENTION: "attention",
+  PROGRESS: "progress",
+});
+
+function workCopy(stage, destination) {
+  const label = destination === "x" ? "X" : "LinkedIn";
+  if (stage === "generation_failed") {
+    return {
+      priority: TODAY_WORK_PRIORITIES.ATTENTION,
+      label: "Draft generation failed",
+      explanation: `${label} did not produce a current revision. Open Plan to retry generation or inspect the provider, Voice, and strategy context.`,
+    };
+  }
+  if (stage === "media_required") {
+    return {
+      priority: TODAY_WORK_PRIORITIES.PROGRESS,
+      label: "Required media still pending",
+      explanation: `${label} text checks exist, but the approved strategy still requires media before this exact revision can become approval-ready.`,
+    };
+  }
+  if (stage === "checks_pending") {
+    return {
+      priority: TODAY_WORK_PRIORITIES.PROGRESS,
+      label: "Checks pending",
+      explanation: `${label} has an exact current revision, but evidence/authenticity checks have not completed yet.`,
+    };
+  }
+  if (stage === "generating") {
+    return {
+      priority: TODAY_WORK_PRIORITIES.PROGRESS,
+      label: "Draft generation in progress",
+      explanation: `${label} is marked as generating. If this state persists, open Plan to inspect or retry the exact destination draft.`,
+    };
+  }
+  return {
+    priority: TODAY_WORK_PRIORITIES.PROGRESS,
+    label: "Draft generation pending",
+    explanation: `${label} is included in the approved strategy and is waiting for its first exact destination revision.`,
+  };
+}
+
+export function projectOwnerWorkState({
+  planningRecords = [],
+  reviewRecords = [],
+  opportunityRecords = [],
+  workspaceId = "local-personal",
+} = {}) {
+  const ownerWorkspaceId = required(workspaceId, "workspaceId");
+  const planning = planningRecords.filter((record) => record?.workspaceId === ownerWorkspaceId);
+  const reviewState = reviewRecords.filter((record) => record?.workspaceId === ownerWorkspaceId);
+  const opportunities = opportunityRecords
+    .filter((record) => record?.workspaceId === ownerWorkspaceId && record?.kind === "ContentOpportunity")
+    .map(normalizeContentOpportunity);
+
+  const variants = planning.filter((record) => record?.kind === "PlatformVariant").map(normalizePlatformVariant);
+  const revisions = new Map(planning
+    .filter((record) => record?.kind === "PlatformVariantRevision")
+    .map(normalizePlatformVariantRevision)
+    .map((record) => [record.platformVariantRevisionId, record]));
+  const pieces = new Map(planning
+    .filter((record) => record?.kind === "ContentPiece")
+    .map(normalizeContentPiece)
+    .map((record) => [record.contentPieceId, record]));
+  const strategies = new Map(planning
+    .filter((record) => record?.kind === "NarrativeStrategy")
+    .map(normalizeNarrativeStrategy)
+    .map((record) => [record.narrativeStrategyId, record]));
+  const opportunityById = new Map(opportunities.map((record) => [record.opportunityId, record]));
+
+  const reviewedRevisionIds = new Set(
+    reviewState
+      .filter((record) => record?.kind === "PlatformVariantReview")
+      .map(normalizePlatformVariantReview)
+      .map((record) => record.platformVariantRevisionId),
+  );
+
+  const result = [];
+  for (const variant of variants) {
+    if ([VARIANT_STATUSES.OMITTED, VARIANT_STATUSES.APPROVED, VARIANT_STATUSES.REJECTED].includes(variant.status)) continue;
+    const strategy = strategies.get(variant.narrativeStrategyId);
+    const piece = pieces.get(variant.contentPieceId);
+    if (!strategy || !piece) continue;
+    const opportunity = opportunityById.get(strategy.opportunityId) || null;
+    const revision = variant.currentRevisionId ? revisions.get(variant.currentRevisionId) || null : null;
+
+    let stage = null;
+    if (variant.status === VARIANT_STATUSES.FAILED) {
+      stage = "generation_failed";
+    } else if (variant.status === VARIANT_STATUSES.PLANNED) {
+      stage = "draft_pending";
+    } else if (variant.status === VARIANT_STATUSES.GENERATING) {
+      stage = "generating";
+    } else if (variant.status === VARIANT_STATUSES.REVIEW && revision) {
+      if (requiredMediaPending(strategy, revision)) {
+        stage = "media_required";
+      } else if (!reviewedRevisionIds.has(revision.platformVariantRevisionId)) {
+        stage = "checks_pending";
+      }
+    }
+    if (!stage) continue;
+
+    const copy = workCopy(stage, variant.destination);
+    result.push(Object.freeze({
+      workId: `platform-work:${variant.platformVariantId}:${variant.currentRevisionId || "none"}:${stage}`,
+      workspaceId: ownerWorkspaceId,
+      platformVariantId: variant.platformVariantId,
+      platformVariantRevisionId: variant.currentRevisionId || null,
+      contentPieceId: piece.contentPieceId,
+      narrativeStrategyId: strategy.narrativeStrategyId,
+      opportunityId: opportunity?.opportunityId || strategy.opportunityId,
+      destination: variant.destination,
+      variantStatus: variant.status,
+      stage,
+      priority: copy.priority,
+      label: copy.label,
+      explanation: copy.explanation,
+      strategyTitle: strategy.title,
+      opportunityTitle: opportunity?.title || null,
+      updatedAt: variant.updatedAt,
+    }));
+  }
+
+  return result.sort((left, right) => (
+    (left.priority === TODAY_WORK_PRIORITIES.ATTENTION ? 0 : 1)
+      - (right.priority === TODAY_WORK_PRIORITIES.ATTENTION ? 0 : 1)
+    || String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""))
+    || left.workId.localeCompare(right.workId)
+  ));
+}
+
 export function createTodayDecisionApplication({
   contentPlanningRepository,
   contentReviewRepository,
@@ -256,21 +388,39 @@ export function createTodayDecisionApplication({
   const opportunities = assertPort("contentOpportunityRepository", contentOpportunityRepository);
   const ownerWorkspaceId = required(workspaceId, "workspaceId");
 
-  async function listDecisions() {
+  async function loadState() {
     const [planningRecords, reviewRecords, signalRecords, opportunityRecords] = await Promise.all([
       planning.list(),
       reviews.list(),
       signals.list(),
       opportunities.list(),
     ]);
-    return projectOwnerDecisions({
-      planningRecords,
-      reviewRecords,
-      signalRecords,
-      opportunityRecords,
-      workspaceId: ownerWorkspaceId,
+    return { planningRecords, reviewRecords, signalRecords, opportunityRecords };
+  }
+
+  async function listInbox() {
+    const records = await loadState();
+    return Object.freeze({
+      decisions: projectOwnerDecisions({
+        ...records,
+        workspaceId: ownerWorkspaceId,
+      }),
+      workState: projectOwnerWorkState({
+        planningRecords: records.planningRecords,
+        reviewRecords: records.reviewRecords,
+        opportunityRecords: records.opportunityRecords,
+        workspaceId: ownerWorkspaceId,
+      }),
     });
   }
 
-  return { listDecisions };
+  async function listDecisions() {
+    return (await listInbox()).decisions;
+  }
+
+  async function listWorkState() {
+    return (await listInbox()).workState;
+  }
+
+  return { listInbox, listDecisions, listWorkState };
 }

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
-import { mergeTodayDecisions } from "../lib/application/todayDecisionSources.mjs";
+import { mergeTodayDecisions, mergeTodayWorkState } from "../lib/application/todayDecisionSources.mjs";
 import { createBrowserHostedTodayDecisionClient } from "../lib/infrastructure/browserHostedTodayDecisionClient.mjs";
 import { createBrowserHostedPlatformReviewClient } from "../lib/infrastructure/browserHostedPlatformReviewClient.mjs";
 import { createBrowserHostedChangeRequestClient } from "../lib/infrastructure/browserHostedChangeRequestClient.mjs";
@@ -70,6 +70,35 @@ function RevisionPreview({ item }) {
   return <p className={styles.revisionCopy}>{item.content}</p>;
 }
 
+function TodayWorkStateSection({ items, label, description, tone }) {
+  if (!items.length) return null;
+  return (
+    <section className={styles.workStateSection} aria-label={label.toLowerCase()} data-priority={tone}>
+      <div className={styles.queueHeader}>
+        <div><span>{label}</span><p>{description}</p></div>
+        <small>{items.length} item{items.length === 1 ? "" : "s"}</small>
+      </div>
+      <div className={styles.workStateList}>
+        {items.map((item) => (
+          <article className={styles.workStateCard} key={item.workId} data-stage={item.stage}>
+            <div className={styles.workStateMeta}>
+              <span>{destinationLabel(item.destination)}</span>
+              <span>{sourceLabel(item)}</span>
+              <span>{titleCase(item.variantStatus)}</span>
+            </div>
+            <div className={styles.workStateCopy}>
+              <strong>{item.label}</strong>
+              <p>{item.strategyTitle || item.opportunityTitle || "Editorial work"}</p>
+              <small>{item.explanation}</small>
+            </div>
+            {item.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunityId)}`}>Open Plan</Link>}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function TodayExactMediaPreview({ item, onState, hostedPreviewAdapter }) {
   const handleState = useCallback((next) => onState(item.decisionId, next), [item.decisionId, onState]);
   return (
@@ -83,6 +112,7 @@ function TodayExactMediaPreview({ item, onState, hostedPreviewAdapter }) {
 
 export default function TodayWorkspace() {
   const [decisions, setDecisions] = useState([]);
+  const [workState, setWorkState] = useState([]);
   const [localDecisionStatus, setLocalDecisionStatus] = useState("loading");
   const [hostedDecisionStatus, setHostedDecisionStatus] = useState("loading");
   const [hostedDecisionError, setHostedDecisionError] = useState(null);
@@ -118,17 +148,20 @@ export default function TodayWorkspace() {
 
   const reload = useCallback(async () => {
     const [localResult, hostedResult] = await Promise.allSettled([
-      todayApplication.listDecisions(),
-      hostedTodayClient.listDecisions(),
+      todayApplication.listInbox(),
+      hostedTodayClient.listInbox(),
     ]);
 
-    const local = localResult.status === "fulfilled" ? localResult.value : [];
+    const local = localResult.status === "fulfilled" ? localResult.value.decisions : [];
     const hosted = hostedResult.status === "fulfilled" ? hostedResult.value.decisions : [];
+    const localWork = localResult.status === "fulfilled" ? localResult.value.workState : [];
+    const hostedWork = hostedResult.status === "fulfilled" ? hostedResult.value.workState : [];
 
     setLocalDecisionStatus(localResult.status === "fulfilled" ? "ready" : "error");
     setHostedDecisionStatus(hostedResult.status === "fulfilled" ? "ready" : "error");
     setHostedDecisionError(hostedResult.status === "rejected" ? hostedResult.reason : null);
     setDecisions(mergeTodayDecisions({ local, hosted }));
+    setWorkState(mergeTodayWorkState({ local: localWork, hosted: hostedWork }));
 
     if (localResult.status === "rejected") {
       setMessage({ type: "error", text: localResult.reason?.message || "SignalFlow could not reconstruct direct-create review decisions." });
@@ -250,11 +283,14 @@ export default function TodayWorkspace() {
     }
   }
 
+  const attentionWork = workState.filter((item) => item.priority === "attention");
+  const progressWork = workState.filter((item) => item.priority !== "attention");
   const inboxLoading = localDecisionStatus === "loading" || hostedDecisionStatus === "loading" || opportunityCount === null;
   const allClear = !inboxLoading
     && localDecisionStatus === "ready"
     && hostedDecisionStatus === "ready"
     && decisions.length === 0
+    && workState.length === 0
     && opportunityCount === 0;
 
   return (
@@ -270,21 +306,24 @@ export default function TodayWorkspace() {
         </header>
 
         {message && <div className={`${styles.message} ${styles[`message_${message.type}`] || ""}`} role="status">{message.text}</div>}
-        <TodayOpportunityQueue onStatus={setMessage} onCountChange={setOpportunityCount} />
         {hostedDecisionStatus === "error" && (
           <div className={`${styles.message} ${styles.message_error}`} role="status">{hostedUnavailableText(hostedDecisionError)}</div>
         )}
 
-        {inboxLoading ? (
+        {inboxLoading && (
           <section className={styles.loading} aria-live="polite">Reconstructing what needs your judgment…</section>
-        ) : allClear ? (
-          <section className={styles.empty}>
-            <span>ALL CLEAR</span>
-            <h2>Nothing needs your judgment.</h2>
-            <p>No ranked opportunity or reviewed draft currently needs your decision. You can keep working instead of watching a dashboard.</p>
-            <div><Link href="/signals">Capture a signal</Link><Link href="/plan">Open Plan</Link></div>
-          </section>
-        ) : decisions.length > 0 ? (
+        )}
+
+        {!inboxLoading && (
+          <TodayWorkStateSection
+            items={attentionWork}
+            label="ATTENTION REQUIRED"
+            description="Production could not safely advance these destination drafts. Nothing is approval-ready until the underlying failure is resolved."
+            tone="attention"
+          />
+        )}
+
+        {!inboxLoading && decisions.length > 0 && (
           <>
             {[
               {
@@ -384,7 +423,27 @@ export default function TodayWorkspace() {
               </section>
             ))}
           </>
-        ) : null}
+        )}
+
+        <TodayOpportunityQueue onStatus={setMessage} onCountChange={setOpportunityCount} />
+
+        {!inboxLoading && (
+          <TodayWorkStateSection
+            items={progressWork}
+            label="IN PROGRESS"
+            description="Persistent editorial production state that is not ready for your judgment yet. SignalFlow keeps it visible without turning it into a fake approval task."
+            tone="progress"
+          />
+        )}
+
+        {!inboxLoading && allClear && (
+          <section className={styles.empty}>
+            <span>ALL CLEAR</span>
+            <h2>Nothing needs your judgment.</h2>
+            <p>No ranked opportunity, production exception, or reviewed draft currently needs your decision. You can keep working instead of watching a dashboard.</p>
+            <div><Link href="/signals">Capture a signal</Link><Link href="/plan">Open Plan</Link></div>
+          </section>
+        )}
       </main>
     </WorkspaceShell>
   );

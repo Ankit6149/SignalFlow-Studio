@@ -315,7 +315,7 @@ export default function SignalsWorkspace() {
       await reload();
       setMessage({
         type: "success",
-        text: "Signal saved in this browser. Nothing was generated or published. Use Prepare for review when you want SignalFlow to handle the safe middle work; Find ideas remains available when you want to inspect the plan yourself.",
+        text: "Signal saved in this browser. Nothing was generated or published. Use Create campaign when you want SignalFlow to handle the safe middle work; Find ideas remains available when you want to inspect the plan yourself.",
       });
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "The signal could not be saved." });
@@ -343,7 +343,7 @@ export default function SignalsWorkspace() {
     setPrepareBusyId(signalId);
     setMessage({
       type: "info",
-      text: "Preparing this Signal for judgment. SignalFlow will stop in Plan if confidence, evidence, Voice, privacy, or strategy boundaries are not strong enough.",
+      text: "Creating a campaign from this Signal. SignalFlow will stop in Plan or Voice instead of making unsafe assumptions when confidence, evidence, identity, privacy, or strategy boundaries need your judgment.",
     });
     try {
       const result = await autopilotApplication.prepareSignal(signalId);
@@ -450,7 +450,7 @@ export default function SignalsWorkspace() {
           <div>
             <p className={styles.eyebrow}>SIGNALS · OWNER ALPHA</p>
             <h1 id="signals-title">Capture the work. Let SignalFlow prepare the decision.</h1>
-            <p>A Signal is context worth keeping: a thought, release, lesson, milestone, question, or event. Save it without forcing content. When you choose Prepare for review, SignalFlow can do the middle work and return the final judgment to Today.</p>
+            <p>A Signal is context worth keeping: a thought, release, lesson, milestone, question, or event. Save it without forcing content. Create campaign lets SignalFlow do the safe middle work and return the final judgment to Today; it stops in Plan or Voice when your decision is needed.</p>
           </div>
           <div className={styles.principleCard}>
             <span>OWNER-FIRST CONTRACT</span>
@@ -637,7 +637,7 @@ export default function SignalsWorkspace() {
                           <div className={styles.signalActions}>
                             {isActive && (
                               <>
-                                <button type="button" className={styles.ideaButton} onClick={() => prepareForReview(signal.signalId)} disabled={busy}>{prepareBusyId === signal.signalId ? "Preparing…" : "Prepare for review"}</button>
+                                <button type="button" className={styles.ideaButton} onClick={() => prepareForReview(signal.signalId)} disabled={busy}>{prepareBusyId === signal.signalId ? "Creating…" : "Create campaign"}</button>
                                 <button type="button" className={styles.quietButton} onClick={() => findIdeas(signal.signalId)} disabled={busy} title="Open the opportunity and plan manually">{ideaBusyId === signal.signalId ? "Finding ideas…" : "Find ideas"}</button>
                               </>
                             )}

@@ -44,6 +44,38 @@ function normalizeDecision(input) {
   });
 }
 
+function normalizeWorkItem(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    const error = new Error("Hosted Today returned an invalid work-state record.");
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  const priority = required(input.priority, "workState.priority", 40).toLowerCase();
+  if (!["attention", "progress"].includes(priority)) {
+    const error = new Error("Hosted Today returned an unsupported work-state priority.");
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  const destination = required(input.destination, "workState.destination", 40).toLowerCase();
+  if (!["linkedin", "x"].includes(destination)) {
+    const error = new Error("Hosted Today returned an unsupported work-state destination.");
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  return Object.freeze({
+    ...input,
+    workId: required(input.workId, "workState.workId"),
+    platformVariantId: required(input.platformVariantId, "workState.platformVariantId"),
+    opportunityId: required(input.opportunityId, "workState.opportunityId"),
+    stage: required(input.stage, "workState.stage", 80),
+    label: required(input.label, "workState.label", 160),
+    explanation: required(input.explanation, "workState.explanation", 1200),
+    destination,
+    priority,
+    origin: "hosted",
+  });
+}
+
 async function parseResponse(response) {
   const raw = await response.text();
   let data = null;
@@ -61,8 +93,8 @@ async function parseResponse(response) {
     error.status = response.status;
     throw error;
   }
-  if (!Array.isArray(data.decisions)) {
-    const error = new Error("Hosted Today API returned an invalid decisions contract.");
+  if (!Array.isArray(data.decisions) || !Array.isArray(data.workState)) {
+    const error = new Error("Hosted Today API returned an invalid inbox contract.");
     error.code = "hosted_today_contract_invalid";
     throw error;
   }
@@ -72,7 +104,7 @@ async function parseResponse(response) {
 export function createBrowserHostedTodayDecisionClient({ fetchImpl = globalThis.fetch } = {}) {
   const fetcher = requireFetch(fetchImpl);
 
-  async function listDecisions() {
+  async function listInbox() {
     const response = await fetcher("/api/today/decisions", {
       method: "GET",
       credentials: "same-origin",
@@ -82,10 +114,18 @@ export function createBrowserHostedTodayDecisionClient({ fetchImpl = globalThis.
     return Object.freeze({
       workspaceId: required(data.workspaceId, "workspaceId"),
       decisions: data.decisions.map(normalizeDecision),
+      workState: data.workState.map(normalizeWorkItem),
     });
   }
 
-  return Object.freeze({ listDecisions });
+  async function listDecisions() {
+    return listInbox();
+  }
+
+  return Object.freeze({ listInbox, listDecisions });
 }
 
-export { normalizeDecision as normalizeHostedTodayDecision };
+export {
+  normalizeDecision as normalizeHostedTodayDecision,
+  normalizeWorkItem as normalizeHostedTodayWorkItem,
+};

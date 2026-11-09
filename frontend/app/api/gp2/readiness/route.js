@@ -1,4 +1,5 @@
 import { requireOwnerAccess } from "../../_auth";
+import { PROVIDERS } from "../../../../lib/ai/types.js";
 import { probeCdpBrowserAccess } from "../../../../lib/server/cdpBrowserAccess.mjs";
 import { gp2ReadinessStatus } from "../../../../lib/server/gp2Readiness.mjs";
 import { probeVercelGatewayAccess } from "../../../../lib/server/vercelGatewayAccess.mjs";
@@ -25,7 +26,10 @@ export async function GET(request) {
     const runtimeOidc = readVercelRuntimeOidcToken(request, process.env);
     const gatewayCredential = String(process.env.AI_GATEWAY_API_KEY || runtimeOidc || "").trim();
     const gatewayAccess = gatewayCredential
-      ? await probeVercelGatewayAccess({ credential: gatewayCredential })
+      ? await probeVercelGatewayAccess({
+          credential: gatewayCredential,
+          modelId: String(process.env.VERCEL_AI_GATEWAY_MODEL || PROVIDERS.vercel_gateway?.defaultModel || "").trim(),
+        })
       : null;
 
     const requestUrl = new URL(request.url);

@@ -90,8 +90,9 @@ export function selectHostedInferenceProvider({
 /**
  * Runtime selector used by hosted inference routes. It avoids a Gateway probe
  * when an explicit/configured direct provider already wins. Otherwise the
- * non-generation credits endpoint is probed once before choosing Gateway, so a
- * forbidden Gateway cannot mask a configured direct remote fallback.
+ * authenticated model-availability endpoint is probed once before choosing
+ * Gateway, so an ineligible/forbidden Gateway cannot mask a configured direct
+ * remote fallback.
  */
 export async function selectOperationalHostedInferenceProvider({
   requestedProvider = "",
@@ -112,7 +113,10 @@ export async function selectOperationalHostedInferenceProvider({
   let gatewayAccess = null;
   let gatewayOperational = false;
   if (gatewayCredential) {
-    gatewayAccess = await probeGatewayAccess({ credential: gatewayCredential });
+    gatewayAccess = await probeGatewayAccess({
+      credential: gatewayCredential,
+      modelId: String(env?.VERCEL_AI_GATEWAY_MODEL || PROVIDERS.vercel_gateway?.defaultModel || "").trim(),
+    });
     gatewayOperational = gatewayAccess?.available === true;
   }
 

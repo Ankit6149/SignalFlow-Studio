@@ -40,12 +40,36 @@ test("Today separates blocked work from approval-ready judgment using real revie
   assert.doesNotMatch(component, />NEEDS YOU</);
 });
 
+test("Today DOM order follows attention, approval, opportunity, then progress", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  const operationalAttention = component.indexOf('items={attentionWork}');
+  const decisionQueue = component.indexOf('decisions.length > 0');
+  const opportunityQueue = component.lastIndexOf('<TodayOpportunityQueue');
+  const progress = component.indexOf('items={progressWork}');
+  assert.ok(operationalAttention >= 0);
+  assert.ok(decisionQueue > operationalAttention);
+  assert.ok(opportunityQueue > decisionQueue);
+  assert.ok(progress > opportunityQueue);
+  assert.match(component, /label="ATTENTION REQUIRED"/);
+  assert.match(component, /label="IN PROGRESS"/);
+  assert.match(component, /workState\.length === 0/);
+});
+
+test("Today production state stays truthful about generation, checks, and required media", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  assert.match(component, /mergeTodayWorkState/);
+  assert.match(component, /item\.variantStatus/);
+  assert.match(component, /item\.explanation/);
+  assert.match(component, /\/plan\?opportunity=\$\{encodeURIComponent\(item\.opportunityId\)\}/);
+  assert.doesNotMatch(component, /scheduled publication|publish at|calendar slot/i);
+});
+
 test("Today delegates to application services and binds judgment to the exact visible revision", async () => {
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /createBrowserTodayDecisionApplication/);
   assert.match(component, /createBrowserPlatformReviewApplication/);
   assert.match(component, /createBrowserPlatformChangeRequestApplication/);
-  assert.match(component, /todayApplication\.listDecisions\(\)/);
+  assert.match(component, /todayApplication\.listInbox\(\)/);
   assert.match(component, /reviewApplication\.approveRevision\(item\.platformVariantId, item\.platformVariantRevisionId/);
   assert.match(component, /reviewApplication\.rejectRevision\(item\.platformVariantId, item\.platformVariantRevisionId/);
   assert.match(component, /expectedCurrentRevisionId:\s*item\.platformVariantRevisionId/);

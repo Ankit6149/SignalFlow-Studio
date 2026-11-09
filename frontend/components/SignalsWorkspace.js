@@ -115,6 +115,72 @@ function planRoute(result) {
   return opportunityId ? `/plan?opportunity=${encodeURIComponent(opportunityId)}` : "/plan";
 }
 
+function SignalProvenanceDetails({ signal }) {
+  const eventRef = signal.externalEventRef || null;
+  const hasSourceRefs = Boolean(
+    signal.sourceConnectionId
+    || signal.sourceRevision
+    || eventRef
+    || signal.sourceArtifactIds?.length
+    || signal.assetIds?.length,
+  );
+
+  return (
+    <details className={styles.provenanceDetails}>
+      <summary>Source + assets{hasSourceRefs ? "" : " · no attached references"}</summary>
+      <div className={styles.provenanceGrid}>
+        <section>
+          <span>Source</span>
+          <strong>{SOURCE_LABELS[signal.sourceType] || titleCase(signal.sourceType)}</strong>
+          <p>{signal.provenance?.ingestionMethod ? titleCase(signal.provenance.ingestionMethod) : "Canonical Signal record"}</p>
+        </section>
+        <section>
+          <span>Captured</span>
+          <strong>{formatDate(signal.provenance?.capturedAt || signal.observedAt)}</strong>
+          {signal.provenance?.actorRef && <p className={styles.referenceValue}>{signal.provenance.actorRef}</p>}
+        </section>
+        {signal.sourceConnectionId && (
+          <section>
+            <span>Connection</span>
+            <strong className={styles.referenceValue}>{signal.sourceConnectionId}</strong>
+          </section>
+        )}
+        {signal.sourceRevision && (
+          <section>
+            <span>Source revision</span>
+            <strong className={styles.referenceValue}>{signal.sourceRevision}</strong>
+          </section>
+        )}
+        {eventRef && (
+          <section>
+            <span>External event</span>
+            <strong>{titleCase(eventRef.provider)}</strong>
+            <p className={styles.referenceValue}>{eventRef.eventId}</p>
+            {eventRef.idempotencyKey && <p className={styles.referenceValue}>Idempotency · {eventRef.idempotencyKey}</p>}
+          </section>
+        )}
+        {signal.sourceArtifactIds?.length > 0 && (
+          <section>
+            <span>Source artifacts · {signal.sourceArtifactIds.length}</span>
+            <div className={styles.referenceList}>
+              {signal.sourceArtifactIds.map((sourceArtifactId) => <code key={sourceArtifactId}>{sourceArtifactId}</code>)}
+            </div>
+          </section>
+        )}
+        {signal.assetIds?.length > 0 && (
+          <section>
+            <span>Attached assets · {signal.assetIds.length}</span>
+            <div className={styles.referenceList}>
+              {signal.assetIds.map((assetId) => <code key={assetId}>{assetId}</code>)}
+            </div>
+          </section>
+        )}
+      </div>
+      {!hasSourceRefs && <p className={styles.provenanceEmpty}>This Signal has no connected source, artifact, event, or asset references attached.</p>}
+    </details>
+  );
+}
+
 export default function SignalsWorkspace() {
   const [form, setForm] = useState(defaultForm);
   const [signals, setSignals] = useState([]);
@@ -560,6 +626,7 @@ export default function SignalsWorkspace() {
                             <p>No opportunity has been evaluated from this Signal yet.</p>
                           )}
                         </div>
+                        <SignalProvenanceDetails signal={signal} />
                         <div className={styles.signalFoot}>
                           <div>
                             <span>Observed {formatDate(signal.observedAt)}</span>

@@ -106,6 +106,10 @@ test("browser readiness panel uses protected safe contract and keeps technical c
   assert.match(panel, /runtimeStatusLabel/);
   assert.match(panel, /gatewayStatusLabel/);
   assert.match(panel, /GATEWAY_STATUSES/);
+  assert.match(panel, /model_ineligible/);
+  assert.match(panel, /model_unavailable/);
+  assert.match(panel, /configured generation model is not eligible/);
+  assert.match(panel, /current Gateway catalog/);
   assert.match(panel, /team or project access denied/);
   assert.match(panel, /Fix Gateway access in Vercel, or configure one approved direct hosted provider/);
   assert.match(panel, /approved server-only WSS CDP browser endpoint/);

@@ -1,6 +1,6 @@
 # SignalFlow Studio — Current Execution State
 
-> **Authoritative execution frontier as of 2026-10-11.**
+> **Authoritative execution frontier as of 2026-11-10.**
 >
 > This is the only short-lived repository status document. Architecture/product documents describe target design; this file records what is merged, deployed, accepted, blocked, and next.
 >
@@ -13,11 +13,11 @@
 | Item | Current truth |
 | --- | --- |
 | Default branch | `master` |
-| Latest product-code checkpoint | `0d14796ecfbeb106eaaf42b5e8f985f79ada9c23` — #409 GP2 readiness blocker guidance |
-| Dependency-security checkpoint | `5c43ef3b431ca7fae43acab32093dcc07a027277` — #410 Next.js 16.4.0 / patched production dependency baseline, included in current `master` |
-| Runtime checkpoint | #409 is READY in production at `dpl_FyZKcCXvCxQgNWsKKvFqiXQe18FP` |
-| Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — immutable reconciliation tag created by #405 |
-| Runtime/code relationship | **Aligned at #409.** Current READY production matches current code-bearing `master`; documentation-only commits may advance `master` without a new deployment when the Vercel guard proves `frontend/` is unchanged. |
+| Latest product-code checkpoint | `612875aef4104a679a3e59c9b46215952fce2870` — #412 AI Gateway model-eligibility readiness |
+| Dependency-security checkpoint | `97e56344a36e051cea170f3b85267f10d3ce7f10` — #413 Next.js 16.4.5 / current critical-high production audit baseline, included in current `master` |
+| Runtime checkpoint | #412 is READY in production at `dpl_3r5QKunB2djGsdeo1gX7nDQQ7uEY` |
+| Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — immutable repository-reconciliation tag created by #405 |
+| Runtime/code relationship | **Aligned at #412.** Current READY production matches current code-bearing `master`; documentation-only commits may advance `master` without a new deployment when the Vercel guard proves `frontend/` is unchanged. |
 | Intentional branches | `master`; `feat/refine-workspace-loader-gate-c-20260915` only |
 | Open PRs | #315 only — reserved / DO NOT MERGE |
 | Golden Path 1 | Accepted |
@@ -73,7 +73,9 @@ Further splitting purely to reduce line count is not a cleanup objective.
 - if the comparison cannot prove equivalence, the guard fails open to a normal build rather than risking a missed runtime deployment;
 - feature-branch commits continue to produce CANCELED non-production deployment records unless explicitly marked for preview;
 - #407 and #408 proved docs-only `master` commits are canceled before a redundant production runtime build;
-- #410 and #409 contained real frontend changes and therefore each received a normal exact-SHA production deployment.
+- real frontend changes continue to receive exact-SHA production deployments while docs-only merges are skipped;
+- #413 restored the production security baseline on Next.js 16.4.5 after newly disclosed critical advisories;
+- #412 then deployed the current AI Gateway model-eligibility readiness check on top of that patched baseline.
 
 
 ### CSS ownership
@@ -130,12 +132,14 @@ Repository implementation is no longer the primary GP2 blocker.
 
 ### Hosted inference
 
-- the Vercel AI Gateway adapter and readiness probe use the currently documented Bearer/OIDC contract;
-- production history shows the Gateway returning HTTP 403 at the team/account authorization layer when no direct provider fallback is configured;
-- project OIDC configuration was idempotently normalized to enabled/team issuer through the connected Vercel project API, but the available project read surface does not echo that field and the connected account cannot list environment-variable metadata, so this is **not** proof that Gateway authorization is fixed;
-- the fail-closed inference gate remains correct;
-- one approved direct hosted provider remains a valid fallback through the existing provider-selection boundary;
-- #409 now exposes the safe Gateway denial state to the owner instead of reducing it to an ambiguous missing-setting code.
+- the Vercel AI Gateway adapter uses the documented Bearer/OIDC contract and the generation path remains fail-closed;
+- #412 replaced the older team-credit-balance readiness proxy with Vercel's authenticated `/v1/models?include_availability` contract;
+- readiness now evaluates the **actual configured generation model** (`VERCEL_AI_GATEWAY_MODEL`, otherwise SignalFlow's Gateway default) and proceeds only when Vercel marks that model eligible;
+- missing, ineligible, unknown, invalid-response, 401, 403, 429, unreachable and upstream-error states all remain blocked;
+- a configured direct hosted provider can still satisfy the existing explicit fallback boundary; no fake/template generation is introduced;
+- the live public Gateway catalog on 2026-11-10 still contains SignalFlow's default `google/gemini-2.5-flash-lite`, so no model migration was justified;
+- project OIDC was previously normalized through the connected Vercel project API, but project environment-variable metadata remains inaccessible to the current connector (403), so the protected owner readiness check is still required to prove **this deployment's** live inference admission;
+- #412 is exact-SHA deployed and its post-deploy runtime-error scan is clean.
 
 ### Hosted screenshot capture
 
@@ -146,11 +150,11 @@ Repository implementation is no longer the primary GP2 blocker.
 
 ### Immediate Gate-C sequence
 
-1. obtain working hosted inference authorization or configure one approved direct hosted provider;
+1. run the protected GP2 readiness check and require hosted inference to report genuinely eligible/operational;
 2. configure the approved remote CDP authority and pass the live worker probe;
 3. retry recoverable persisted opportunity work through the existing recovery action;
 4. verify exact ProjectContextSnapshot + ranked opportunity production evidence;
-5. refresh reserved #315 from then-current `master`;
+5. refresh reserved #315 from then-current `master` (currently 96 master commits behind with 2 unique intended commits);
 6. run #315 as the meaningful positive GitHub event;
 7. complete exact screenshot/media binding, recovery/noise controls, and sanitized GP2 acceptance evidence.
 
@@ -180,7 +184,8 @@ Current repository settings verified from GitHub:
 - topics still include stale `autoposting`, `post-generator`, `gif-generator`, `fastapi`, and related legacy terms;
 - merge commit, rebase, and squash are all enabled;
 - `delete_branch_on_merge` is disabled;
-- connected GitHub App cannot read/write the administration endpoints needed to prove/configure master protection/rulesets.
+- current live branch metadata confirms `master` is **not protected**;
+- the connected GitHub surface can read this repository/admin truth but still exposes no write operation for repository About/topics, merge-policy settings, or branch-protection/ruleset configuration.
 
 Desired admin state:
 
@@ -193,11 +198,11 @@ These cannot be truthfully marked done from the current connector surface.
 
 ## Vercel / release truth
 
-The latest product-code checkpoint (#404) is exact-SHA deployed and READY in production. The final reconciliation PR (#405) changes only documentation/governance files, so Git commit identity may advance without changing product runtime behavior.
+The latest code-bearing checkpoint (#412) is exact-SHA deployed and READY in production at `dpl_3r5QKunB2djGsdeo1gX7nDQQ7uEY`. The immediately preceding #413 security checkpoint is also exact-SHA deployed and restored the production audit gate before #412 was refreshed and rerun.
 
-Use the immutable `repo-hygiene-2026-10-05` tag as the repository reconciliation checkpoint instead of repeatedly editing this file merely to echo its own merge SHA. Exact deployment SHA remains observable in Vercel when release evidence is required.
+The non-production Vercel ignore-build policy remains effective: both #412/#413 feature-branch records were CANCELED rather than retained as READY preview artifacts. Documentation-only master merges should likewise be skipped when the frontend project diff is empty.
 
-Vercel preview failures caused by Hobby deployment-rate limits remain separate from GitHub CI failures. A quota-limited preview is not evidence of a code regression.
+Use the immutable `repo-hygiene-2026-10-05` tag for the repository-reconciliation milestone; use live Vercel deployment identity for current runtime evidence.
 
 ## Next product execution
 

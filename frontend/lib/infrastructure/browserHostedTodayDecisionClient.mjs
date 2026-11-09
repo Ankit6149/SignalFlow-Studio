@@ -76,6 +76,50 @@ function normalizeWorkItem(input) {
   });
 }
 
+
+function normalizeComingUpItem(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    const error = new Error("Hosted Today returned an invalid coming-up record.");
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  const schedulingState = required(input.schedulingState, "comingUp.schedulingState", 80).toLowerCase();
+  if (schedulingState !== "not_scheduled") {
+    const error = new Error("Hosted Today returned an unsupported coming-up scheduling state.");
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  const destinations = Array.isArray(input.destinations) ? input.destinations.map((item) => {
+    const destination = required(item?.destination, "comingUp.destination", 40).toLowerCase();
+    if (!["linkedin", "x"].includes(destination)) {
+      const error = new Error("Hosted Today returned an unsupported coming-up destination.");
+      error.code = "hosted_today_contract_invalid";
+      throw error;
+    }
+    return Object.freeze({
+      destination,
+      platformVariantId: required(item.platformVariantId, "comingUp.platformVariantId"),
+      platformVariantRevisionId: required(item.platformVariantRevisionId, "comingUp.platformVariantRevisionId"),
+      status: "approved",
+    });
+  }) : [];
+  if (!destinations.length) {
+    const error = new Error("Hosted Today coming-up records require at least one approved destination.");
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  return Object.freeze({
+    ...input,
+    comingUpId: required(input.comingUpId, "comingUpId"),
+    contentPieceId: required(input.contentPieceId, "comingUp.contentPieceId"),
+    narrativeStrategyId: required(input.narrativeStrategyId, "comingUp.narrativeStrategyId"),
+    opportunityId: required(input.opportunityId, "comingUp.opportunityId"),
+    schedulingState,
+    destinations: Object.freeze(destinations),
+    origin: "hosted",
+  });
+}
+
 async function parseResponse(response) {
   const raw = await response.text();
   let data = null;
@@ -93,7 +137,7 @@ async function parseResponse(response) {
     error.status = response.status;
     throw error;
   }
-  if (!Array.isArray(data.decisions) || !Array.isArray(data.workState)) {
+  if (!Array.isArray(data.decisions) || !Array.isArray(data.workState) || !Array.isArray(data.comingUp)) {
     const error = new Error("Hosted Today API returned an invalid inbox contract.");
     error.code = "hosted_today_contract_invalid";
     throw error;
@@ -115,6 +159,7 @@ export function createBrowserHostedTodayDecisionClient({ fetchImpl = globalThis.
       workspaceId: required(data.workspaceId, "workspaceId"),
       decisions: data.decisions.map(normalizeDecision),
       workState: data.workState.map(normalizeWorkItem),
+      comingUp: data.comingUp.map(normalizeComingUpItem),
     });
   }
 
@@ -128,4 +173,5 @@ export function createBrowserHostedTodayDecisionClient({ fetchImpl = globalThis.
 export {
   normalizeDecision as normalizeHostedTodayDecision,
   normalizeWorkItem as normalizeHostedTodayWorkItem,
+  normalizeComingUpItem as normalizeHostedTodayComingUpItem,
 };

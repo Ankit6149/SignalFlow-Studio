@@ -375,6 +375,75 @@ export function projectOwnerWorkState({
   ));
 }
 
+
+export function projectOwnerComingUp({
+  planningRecords = [],
+  opportunityRecords = [],
+  workspaceId = "local-personal",
+} = {}) {
+  const ownerWorkspaceId = required(workspaceId, "workspaceId");
+  const planning = planningRecords.filter((record) => record?.workspaceId === ownerWorkspaceId);
+  const opportunities = opportunityRecords
+    .filter((record) => record?.workspaceId === ownerWorkspaceId && record?.kind === "ContentOpportunity")
+    .map(normalizeContentOpportunity);
+
+  const strategies = new Map(planning
+    .filter((record) => record?.kind === "NarrativeStrategy")
+    .map(normalizeNarrativeStrategy)
+    .map((record) => [record.narrativeStrategyId, record]));
+  const pieces = new Map(planning
+    .filter((record) => record?.kind === "ContentPiece")
+    .map(normalizeContentPiece)
+    .map((record) => [record.contentPieceId, record]));
+  const opportunityById = new Map(opportunities.map((record) => [record.opportunityId, record]));
+  const grouped = new Map();
+
+  for (const variant of planning
+    .filter((record) => record?.kind === "PlatformVariant")
+    .map(normalizePlatformVariant)) {
+    if (variant.status !== VARIANT_STATUSES.APPROVED || !variant.currentRevisionId) continue;
+    const strategy = strategies.get(variant.narrativeStrategyId);
+    const piece = pieces.get(variant.contentPieceId);
+    if (!strategy || !piece) continue;
+    const opportunity = opportunityById.get(strategy.opportunityId) || null;
+    const key = piece.contentPieceId;
+    const existing = grouped.get(key) || {
+      comingUpId: `coming-up:${key}`,
+      workspaceId: ownerWorkspaceId,
+      contentPieceId: piece.contentPieceId,
+      narrativeStrategyId: strategy.narrativeStrategyId,
+      opportunityId: opportunity?.opportunityId || strategy.opportunityId,
+      opportunityTitle: opportunity?.title || null,
+      strategyTitle: strategy.title,
+      canonicalIntent: piece.canonicalIntent,
+      purpose: piece.purpose,
+      schedulingState: "not_scheduled",
+      destinations: [],
+      updatedAt: variant.updatedAt,
+    };
+    existing.destinations.push({
+      destination: variant.destination,
+      platformVariantId: variant.platformVariantId,
+      platformVariantRevisionId: variant.currentRevisionId,
+      status: variant.status,
+    });
+    if (String(variant.updatedAt || "") > String(existing.updatedAt || "")) {
+      existing.updatedAt = variant.updatedAt;
+    }
+    grouped.set(key, existing);
+  }
+
+  return [...grouped.values()]
+    .map((item) => Object.freeze({
+      ...item,
+      destinations: Object.freeze([...item.destinations].sort((left, right) => left.destination.localeCompare(right.destination))),
+    }))
+    .sort((left, right) => (
+      String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""))
+      || left.comingUpId.localeCompare(right.comingUpId)
+    ));
+}
+
 export function createTodayDecisionApplication({
   contentPlanningRepository,
   contentReviewRepository,
@@ -411,6 +480,11 @@ export function createTodayDecisionApplication({
         opportunityRecords: records.opportunityRecords,
         workspaceId: ownerWorkspaceId,
       }),
+      comingUp: projectOwnerComingUp({
+        planningRecords: records.planningRecords,
+        opportunityRecords: records.opportunityRecords,
+        workspaceId: ownerWorkspaceId,
+      }),
     });
   }
 
@@ -422,5 +496,9 @@ export function createTodayDecisionApplication({
     return (await listInbox()).workState;
   }
 
-  return { listInbox, listDecisions, listWorkState };
+  async function listComingUp() {
+    return (await listInbox()).comingUp;
+  }
+
+  return { listInbox, listDecisions, listWorkState, listComingUp };
 }

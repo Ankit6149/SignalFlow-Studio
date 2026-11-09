@@ -4,9 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { mergeTodayDecisions, mergeTodayWorkState, hostedTodayIsResolved } from "../lib/application/todayDecisionSources.mjs";
+import { mergeTodayComingUp, mergeTodayDecisions, mergeTodayWorkState, hostedTodayIsResolved } from "../lib/application/todayDecisionSources.mjs";
 import {
   createBrowserHostedTodayDecisionClient,
+  normalizeHostedTodayComingUpItem,
   normalizeHostedTodayDecision,
   normalizeHostedTodayWorkItem,
 } from "../lib/infrastructure/browserHostedTodayDecisionClient.mjs";
@@ -45,6 +46,27 @@ function workItem(overrides = {}) {
   };
 }
 
+function comingUpItem(overrides = {}) {
+  return {
+    comingUpId: "coming-up:piece-1",
+    contentPieceId: "piece-1",
+    narrativeStrategyId: "strategy-1",
+    opportunityId: "opportunity-1",
+    strategyTitle: "Architecture decision",
+    canonicalIntent: "Explain the exact approved architecture decision.",
+    purpose: "Share the implementation lesson.",
+    schedulingState: "not_scheduled",
+    destinations: [{
+      destination: "linkedin",
+      platformVariantId: "variant-approved-1",
+      platformVariantRevisionId: "revision-approved-1",
+      status: "approved",
+    }],
+    updatedAt: "2026-09-02T11:00:00.000Z",
+    ...overrides,
+  };
+}
+
 test("hosted Today browser contract marks canonical server decisions as hosted", () => {
   const normalized = normalizeHostedTodayDecision(decision());
   assert.equal(normalized.origin, "hosted");
@@ -66,6 +88,7 @@ test("hosted Today browser client is owner-session aware and non-cacheable", asy
         workspaceId: "owner-workspace",
         decisions: [decision()],
         workState: [workItem()],
+        comingUp: [comingUpItem()],
       }), { status: 200, headers: { "content-type": "application/json" } });
     },
   });
@@ -74,6 +97,8 @@ test("hosted Today browser client is owner-session aware and non-cacheable", asy
   assert.equal(result.decisions[0].origin, "hosted");
   assert.equal(result.workState.length, 1);
   assert.equal(result.workState[0].origin, "hosted");
+  assert.equal(result.comingUp.length, 1);
+  assert.equal(result.comingUp[0].origin, "hosted");
   assert.equal(calls[0].url, "/api/today/decisions");
   assert.equal(calls[0].options.credentials, "same-origin");
   assert.equal(calls[0].options.cache, "no-store");
@@ -94,6 +119,24 @@ test("hosted Today work-state contract is bounded and merges hosted canonical st
   assert.equal(merged.length, 1);
   assert.equal(merged[0].origin, "hosted");
   assert.equal(merged[0].explanation, "canonical hosted copy");
+});
+
+test("hosted Today coming-up contract stays approved-only, unscheduled, and prefers hosted canonical projection", () => {
+  const normalized = normalizeHostedTodayComingUpItem(comingUpItem());
+  assert.equal(normalized.origin, "hosted");
+  assert.equal(normalized.schedulingState, "not_scheduled");
+  assert.equal(normalized.destinations[0].platformVariantRevisionId, "revision-approved-1");
+  assert.throws(
+    () => normalizeHostedTodayComingUpItem(comingUpItem({ schedulingState: "scheduled" })),
+    (error) => error?.code === "hosted_today_contract_invalid",
+  );
+
+  const local = comingUpItem({ canonicalIntent: "browser copy" });
+  const hosted = comingUpItem({ canonicalIntent: "canonical hosted copy" });
+  const merged = mergeTodayComingUp({ local: [local], hosted: [hosted] });
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].origin, "hosted");
+  assert.equal(merged[0].canonicalIntent, "canonical hosted copy");
 });
 
 test("Today decision merging preserves both sources and prefers hosted canonical state on identical decision identity", () => {
@@ -128,6 +171,7 @@ test("hosted Today route stays owner-only, no-store, and derives decisions inste
   assert.match(route, /cache-control": "private, no-store, max-age=0"/);
   assert.match(route, /apps\.todayApplication\.listInbox\(\)/);
   assert.match(route, /workState: inbox\.workState/);
+  assert.match(route, /comingUp: inbox\.comingUp/);
   assert.doesNotMatch(route, /INSERT|UPDATE|DELETE/);
 });
 
@@ -153,6 +197,7 @@ test("Today dispatches hosted judgments to hosted persistence and exact-media ad
   assert.match(today, /hostedTodayClient\.listInbox\(\)/);
   assert.match(today, /mergeTodayDecisions\(\{ local, hosted \}\)/);
   assert.match(today, /mergeTodayWorkState\(\{ local: localWork, hosted: hostedWork \}\)/);
+  assert.match(today, /mergeTodayComingUp\(\{ local: localComingUp, hosted: hostedComingUp \}\)/);
   assert.match(today, /item\.origin === "hosted"/);
   assert.match(today, /hostedReviewClient\.approveRevision/);
   assert.match(today, /visibleMedia: mediaState\?\.visibleMedia \|\| \[\]/);

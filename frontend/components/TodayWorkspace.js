@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
-import { mergeTodayDecisions, mergeTodayWorkState } from "../lib/application/todayDecisionSources.mjs";
+import { mergeTodayComingUp, mergeTodayDecisions, mergeTodayWorkState } from "../lib/application/todayDecisionSources.mjs";
 import { createBrowserHostedTodayDecisionClient } from "../lib/infrastructure/browserHostedTodayDecisionClient.mjs";
 import { createBrowserHostedPlatformReviewClient } from "../lib/infrastructure/browserHostedPlatformReviewClient.mjs";
 import { createBrowserHostedChangeRequestClient } from "../lib/infrastructure/browserHostedChangeRequestClient.mjs";
@@ -99,6 +99,42 @@ function TodayWorkStateSection({ items, label, description, tone }) {
   );
 }
 
+function TodayComingUpSection({ items }) {
+  if (!items.length) return null;
+  return (
+    <section className={styles.comingUpSection} aria-label="coming up">
+      <div className={styles.queueHeader}>
+        <div>
+          <span>COMING UP</span>
+          <p>Approved exact destination revisions that are editorially ready for a future schedule or publication step. Durable scheduling is not enabled yet, so no date is implied.</p>
+        </div>
+        <small>{items.length} piece{items.length === 1 ? "" : "s"}</small>
+      </div>
+      <div className={styles.comingUpList}>
+        {items.map((item) => (
+          <article className={styles.comingUpCard} key={item.comingUpId}>
+            <div className={styles.comingUpMeta}>
+              <span>APPROVED</span>
+              <span>NOT SCHEDULED</span>
+              <span>{sourceLabel(item)}</span>
+            </div>
+            <div className={styles.comingUpCopy}>
+              <strong>{item.strategyTitle || item.opportunityTitle || "Approved editorial piece"}</strong>
+              <p>{item.canonicalIntent || item.purpose}</p>
+              <div className={styles.comingUpDestinations}>
+                {item.destinations.map((destination) => (
+                  <span key={destination.platformVariantId}>{destinationLabel(destination.destination)} · exact revision approved</span>
+                ))}
+              </div>
+            </div>
+            <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunityId)}`}>Open Plan</Link>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function TodayExactMediaPreview({ item, onState, hostedPreviewAdapter }) {
   const handleState = useCallback((next) => onState(item.decisionId, next), [item.decisionId, onState]);
   return (
@@ -113,6 +149,7 @@ function TodayExactMediaPreview({ item, onState, hostedPreviewAdapter }) {
 export default function TodayWorkspace() {
   const [decisions, setDecisions] = useState([]);
   const [workState, setWorkState] = useState([]);
+  const [comingUp, setComingUp] = useState([]);
   const [localDecisionStatus, setLocalDecisionStatus] = useState("loading");
   const [hostedDecisionStatus, setHostedDecisionStatus] = useState("loading");
   const [hostedDecisionError, setHostedDecisionError] = useState(null);
@@ -156,12 +193,15 @@ export default function TodayWorkspace() {
     const hosted = hostedResult.status === "fulfilled" ? hostedResult.value.decisions : [];
     const localWork = localResult.status === "fulfilled" ? localResult.value.workState : [];
     const hostedWork = hostedResult.status === "fulfilled" ? hostedResult.value.workState : [];
+    const localComingUp = localResult.status === "fulfilled" ? localResult.value.comingUp : [];
+    const hostedComingUp = hostedResult.status === "fulfilled" ? hostedResult.value.comingUp : [];
 
     setLocalDecisionStatus(localResult.status === "fulfilled" ? "ready" : "error");
     setHostedDecisionStatus(hostedResult.status === "fulfilled" ? "ready" : "error");
     setHostedDecisionError(hostedResult.status === "rejected" ? hostedResult.reason : null);
     setDecisions(mergeTodayDecisions({ local, hosted }));
     setWorkState(mergeTodayWorkState({ local: localWork, hosted: hostedWork }));
+    setComingUp(mergeTodayComingUp({ local: localComingUp, hosted: hostedComingUp }));
 
     if (localResult.status === "rejected") {
       setMessage({ type: "error", text: localResult.reason?.message || "SignalFlow could not reconstruct direct-create review decisions." });
@@ -435,6 +475,8 @@ export default function TodayWorkspace() {
             tone="progress"
           />
         )}
+
+        {!inboxLoading && <TodayComingUpSection items={comingUp} />}
 
         {!inboxLoading && allClear && (
           <section className={styles.empty}>

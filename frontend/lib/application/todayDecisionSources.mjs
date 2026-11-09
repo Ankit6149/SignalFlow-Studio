@@ -46,6 +46,30 @@ export function mergeTodayWorkState({ local = [], hosted = [] } = {}) {
   ));
 }
 
+
+function normalizeOriginComingUp(item, origin) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+  const comingUpId = String(item.comingUpId || "").trim();
+  if (!comingUpId) return null;
+  return Object.freeze({ ...item, comingUpId, origin });
+}
+
+export function mergeTodayComingUp({ local = [], hosted = [] } = {}) {
+  const merged = new Map();
+  for (const item of Array.isArray(local) ? local : []) {
+    const normalized = normalizeOriginComingUp(item, "local");
+    if (normalized) merged.set(normalized.comingUpId, normalized);
+  }
+  for (const item of Array.isArray(hosted) ? hosted : []) {
+    const normalized = normalizeOriginComingUp(item, "hosted");
+    if (normalized) merged.set(normalized.comingUpId, normalized);
+  }
+  return [...merged.values()].sort((left, right) => (
+    String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""))
+    || left.comingUpId.localeCompare(right.comingUpId)
+  ));
+}
+
 export function hostedTodayIsResolved(status) {
   return status === "ready";
 }

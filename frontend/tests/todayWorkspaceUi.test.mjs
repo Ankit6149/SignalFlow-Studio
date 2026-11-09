@@ -40,19 +40,32 @@ test("Today separates blocked work from approval-ready judgment using real revie
   assert.doesNotMatch(component, />NEEDS YOU</);
 });
 
-test("Today DOM order follows attention, approval, opportunity, then progress", async () => {
+test("Today DOM order follows attention, approval, opportunity, progress, then coming up", async () => {
   const component = await source("../components/TodayWorkspace.js");
   const operationalAttention = component.indexOf('items={attentionWork}');
   const decisionQueue = component.indexOf('decisions.length > 0');
   const opportunityQueue = component.lastIndexOf('<TodayOpportunityQueue');
   const progress = component.indexOf('items={progressWork}');
+  const comingUp = component.indexOf('<TodayComingUpSection items={comingUp}');
   assert.ok(operationalAttention >= 0);
   assert.ok(decisionQueue > operationalAttention);
   assert.ok(opportunityQueue > decisionQueue);
   assert.ok(progress > opportunityQueue);
+  assert.ok(comingUp > progress);
   assert.match(component, /label="ATTENTION REQUIRED"/);
   assert.match(component, /label="IN PROGRESS"/);
   assert.match(component, /workState\.length === 0/);
+});
+
+test("Today Coming up stays truthful about approved exact work without pretending scheduling exists", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  assert.match(component, /COMING UP/);
+  assert.match(component, /NOT SCHEDULED/);
+  assert.match(component, /Durable scheduling is not enabled yet/);
+  assert.match(component, /item\.destinations\.map/);
+  assert.match(component, /exact revision approved/);
+  assert.match(component, /mergeTodayComingUp/);
+  assert.doesNotMatch(component, /scheduledAt|exactPublishAt|calendar slot/);
 });
 
 test("Today production state stays truthful about generation, checks, and required media", async () => {

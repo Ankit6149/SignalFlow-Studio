@@ -4,10 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { mergeTodayDecisions, hostedTodayIsResolved } from "../lib/application/todayDecisionSources.mjs";
+import { mergeTodayDecisions, mergeTodayWorkState, hostedTodayIsResolved } from "../lib/application/todayDecisionSources.mjs";
 import {
   createBrowserHostedTodayDecisionClient,
   normalizeHostedTodayDecision,
+  normalizeHostedTodayWorkItem,
 } from "../lib/infrastructure/browserHostedTodayDecisionClient.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -25,6 +26,21 @@ function decision(overrides = {}) {
     reviewedAt: "2026-09-02T10:00:00.000Z",
     mediaBindings: [],
     findings: [],
+    ...overrides,
+  };
+}
+
+function workItem(overrides = {}) {
+  return {
+    workId: "platform-work:variant-1:none:generation_failed",
+    platformVariantId: "variant-1",
+    opportunityId: "opportunity-1",
+    destination: "linkedin",
+    priority: "attention",
+    stage: "generation_failed",
+    label: "Draft generation failed",
+    explanation: "LinkedIn did not produce a current revision.",
+    updatedAt: "2026-09-02T10:30:00.000Z",
     ...overrides,
   };
 }
@@ -49,15 +65,35 @@ test("hosted Today browser client is owner-session aware and non-cacheable", asy
         ok: true,
         workspaceId: "owner-workspace",
         decisions: [decision()],
+        workState: [workItem()],
       }), { status: 200, headers: { "content-type": "application/json" } });
     },
   });
   const result = await client.listDecisions();
   assert.equal(result.decisions.length, 1);
   assert.equal(result.decisions[0].origin, "hosted");
+  assert.equal(result.workState.length, 1);
+  assert.equal(result.workState[0].origin, "hosted");
   assert.equal(calls[0].url, "/api/today/decisions");
   assert.equal(calls[0].options.credentials, "same-origin");
   assert.equal(calls[0].options.cache, "no-store");
+});
+
+test("hosted Today work-state contract is bounded and merges hosted canonical state over mirrored local state", () => {
+  const normalized = normalizeHostedTodayWorkItem(workItem());
+  assert.equal(normalized.origin, "hosted");
+  assert.equal(normalized.priority, "attention");
+  assert.throws(
+    () => normalizeHostedTodayWorkItem(workItem({ priority: "urgent" })),
+    (error) => error?.code === "hosted_today_contract_invalid",
+  );
+
+  const local = workItem({ explanation: "browser copy" });
+  const hosted = workItem({ explanation: "canonical hosted copy" });
+  const merged = mergeTodayWorkState({ local: [local], hosted: [hosted] });
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].origin, "hosted");
+  assert.equal(merged[0].explanation, "canonical hosted copy");
 });
 
 test("Today decision merging preserves both sources and prefers hosted canonical state on identical decision identity", () => {
@@ -90,7 +126,8 @@ test("hosted Today route stays owner-only, no-store, and derives decisions inste
   const route = read("app/api/today/decisions/route.js");
   assert.match(route, /requireOwnerAccess\(request\)/);
   assert.match(route, /cache-control": "private, no-store, max-age=0"/);
-  assert.match(route, /apps\.todayApplication\.listDecisions\(\)/);
+  assert.match(route, /apps\.todayApplication\.listInbox\(\)/);
+  assert.match(route, /workState: inbox\.workState/);
   assert.doesNotMatch(route, /INSERT|UPDATE|DELETE/);
 });
 
@@ -112,7 +149,10 @@ test("Today dispatches hosted judgments to hosted persistence and exact-media ad
   assert.match(today, /createBrowserHostedChangeRequestClient/);
   assert.match(today, /createBrowserHostedExactMediaPreviewAdapter/);
   assert.match(today, /Promise\.allSettled/);
+  assert.match(today, /todayApplication\.listInbox\(\)/);
+  assert.match(today, /hostedTodayClient\.listInbox\(\)/);
   assert.match(today, /mergeTodayDecisions\(\{ local, hosted \}\)/);
+  assert.match(today, /mergeTodayWorkState\(\{ local: localWork, hosted: hostedWork \}\)/);
   assert.match(today, /item\.origin === "hosted"/);
   assert.match(today, /hostedReviewClient\.approveRevision/);
   assert.match(today, /visibleMedia: mediaState\?\.visibleMedia \|\| \[\]/);

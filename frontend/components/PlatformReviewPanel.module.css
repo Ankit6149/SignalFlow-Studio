@@ -301,9 +301,74 @@
   color: #7f382e;
 }
 
+.hostedHistory {
+  margin-top: .8rem;
+  border-top: 1px solid rgba(23,23,20,.09);
+}
+
+.hostedHistory > summary {
+  min-height: 2.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  cursor: pointer;
+  color: #5f5a50;
+  font-size: .62rem;
+  font-weight: 740;
+}
+
+.hostedHistory > summary small { color: #918a7e; font-size: .54rem; font-weight: 560; }
+.hostedHistoryBody { padding: 0 0 .7rem; }
+.hostedHistoryRail { display: flex; gap: .35rem; overflow-x: auto; padding: .05rem 0 .55rem; scrollbar-width: thin; }
+
+.hostedHistoryRail button {
+  flex: 0 0 auto;
+  min-width: 8.4rem;
+  min-height: 3.55rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  gap: .18rem .45rem;
+  padding: .48rem .58rem;
+  border: 1px solid rgba(23,23,20,.1);
+  border-radius: .42rem;
+  background: rgba(255,253,248,.48);
+  color: #514c43;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hostedHistoryRail button > span { grid-row: 1 / 3; align-self: center; color: #8b6a28; font-size: .63rem; font-weight: 820; }
+.hostedHistoryRail button strong { font-size: .57rem; }
+.hostedHistoryRail button small { color: #8b8478; font-size: .48rem; }
+.hostedHistoryRail button[data-selected="true"] { border-color: rgba(139,106,40,.42); background: rgba(238,227,201,.28); }
+
+.hostedHistorySelection { border: 1px solid rgba(23,23,20,.09); border-radius: .5rem; background: rgba(255,253,248,.58); }
+.hostedHistorySelection > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .7rem .75rem; border-bottom: 1px solid rgba(23,23,20,.07); }
+.hostedHistorySelection > header > div { min-width: 0; }
+.hostedHistorySelection > header span,
+.hostedCompare > section > span { color: #8b6a28; font-size: .49rem; font-weight: 820; letter-spacing: .08em; }
+.hostedHistorySelection > header strong { display: block; margin-top: .2rem; font-size: .66rem; }
+.hostedHistorySelection > header p { margin: .2rem 0 0; color: #8c8579; font-size: .5rem; }
+.hostedHistorySelection > header button { min-height: 2.15rem; padding: 0 .65rem; border: 1px solid rgba(139,106,40,.32); border-radius: .4rem; background: transparent; color: #74571f; font: inherit; font-size: .54rem; font-weight: 720; cursor: pointer; }
+.hostedHistorySelection > header button:disabled { opacity: .42; cursor: not-allowed; }
+
+.historyContext { margin: .65rem .75rem 0; padding: .55rem .62rem; border-left: 2px solid #8b6a28; background: rgba(238,227,201,.18); color: #736d62; font-size: .54rem; line-height: 1.45; }
+
+.hostedCompare { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem; padding: .7rem .75rem; }
+.hostedCompare section { min-width: 0; padding: .58rem .62rem; border: 1px solid rgba(23,23,20,.07); border-radius: .4rem; background: #fffdf8; }
+.hostedCompare section > p { max-height: 14rem; overflow: auto; margin: .35rem 0 0; color: #4d4941; font-size: .59rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.hostedMediaIdentity { display: grid; gap: .22rem; margin-top: .55rem; padding-top: .5rem; border-top: 1px solid rgba(23,23,20,.07); }
+.hostedMediaIdentity > strong { color: #777166; font-size: .5rem; }
+.hostedMediaIdentity code { display: block; overflow-wrap: anywhere; word-break: break-word; color: #70695f; font-family: ui-monospace,SFMono-Regular,Consolas,monospace; font-size: .48rem; }
+.hostedMediaIdentity small { color: #918a7e; font-size: .5rem; }
+
 .reviewPanel button:focus-visible,
 .reviewPanel textarea:focus-visible,
-.reviewPanel input:focus-visible {
+.reviewPanel input:focus-visible,
+.reviewPanel summary:focus-visible {
   outline: 2px solid #8b6a28;
   outline-offset: 2px;
 }
@@ -324,4 +389,7 @@
   .actions > div { width: 100%; flex-wrap: wrap; }
   .approveButton { width: 100%; }
   .changeRequestMeta { align-items: flex-start; }
+  .hostedHistorySelection > header { align-items: stretch; flex-direction: column; }
+  .hostedHistorySelection > header button { align-self: flex-start; }
+  .hostedCompare { grid-template-columns: 1fr; }
 }

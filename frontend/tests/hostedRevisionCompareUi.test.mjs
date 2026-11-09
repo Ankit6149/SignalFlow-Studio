@@ -36,7 +36,7 @@ test("restore from hosted comparison remains an explicit new-current action pinn
   assert.match(component, /Restore as new current/);
   assert.match(component, /client\.restoreRevision\(variant\.platformVariantId, sourceRevision\.platformVariantRevisionId/);
   assert.match(component, /expectedCurrentRevisionId: revisionId/);
-  assert.match(component, /Restored revision .* is now a new immutable current child/);
+  assert.match(component, /was restored as a new immutable current child/);
 });
 
 test("hosted revision comparison remains keyboard-visible, wrap-safe and single-column on narrow screens", async () => {

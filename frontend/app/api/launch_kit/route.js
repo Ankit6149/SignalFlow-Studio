@@ -273,7 +273,14 @@ export async function POST(request) {
               const remoteArtifact = sourceArtifactFromFetchResult(fetchResult, {
                 workspaceId: sourceWorkspaceId,
               });
-              if (remoteArtifact) canonicalSources.sourceArtifacts.push(remoteArtifact);
+              if (remoteArtifact) {
+                canonicalSources = validateSourceGraph({
+                  workspaceId: sourceWorkspaceId,
+                  assets: canonicalSources.assets,
+                  sourceArtifacts: [...canonicalSources.sourceArtifacts, remoteArtifact],
+                  processingRecords: canonicalSources.processingRecords,
+                });
+              }
             }
             if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
           }

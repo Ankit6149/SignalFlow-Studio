@@ -13,6 +13,17 @@ function required(value, field, maxLength = 400) {
   return normalized;
 }
 
+function optionalSafeToken(value, field, maxLength = 240) {
+  if (value === undefined || value === null || value === "") return null;
+  const normalized = String(value).trim();
+  if (!normalized || normalized.length > maxLength || !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/.test(normalized)) {
+    const error = new Error(`Hosted Today returned an invalid ${field}.`);
+    error.code = "hosted_today_contract_invalid";
+    throw error;
+  }
+  return normalized;
+}
+
 function normalizeDecision(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     const error = new Error("Hosted Today returned an invalid decision record.");
@@ -66,12 +77,17 @@ function normalizeWorkItem(input) {
     ...input,
     workId: required(input.workId, "workState.workId"),
     platformVariantId: required(input.platformVariantId, "workState.platformVariantId"),
+    contentPieceId: required(input.contentPieceId, "workState.contentPieceId"),
     opportunityId: required(input.opportunityId, "workState.opportunityId"),
     stage: required(input.stage, "workState.stage", 80),
     label: required(input.label, "workState.label", 160),
     explanation: required(input.explanation, "workState.explanation", 1200),
     destination,
     priority,
+    failureCode: optionalSafeToken(input.failureCode, "workState.failureCode"),
+    retryable: input.retryable === true,
+    recoveryAction: optionalSafeToken(input.recoveryAction, "workState.recoveryAction"),
+    correlationId: optionalSafeToken(input.correlationId, "workState.correlationId"),
     origin: "hosted",
   });
 }

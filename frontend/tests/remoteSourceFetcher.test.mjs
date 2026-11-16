@@ -87,7 +87,7 @@ test("verified public fetch projects into canonical usable SourceArtifact", asyn
   assert.equal(artifact.sourceReference.canonicalUrl, "https://example.com/docs");
   assert.equal(artifact.usability.state, "usable_evidence");
   assert.equal(artifact.usability.evidenceState, "verified");
-  assert.equal(artifact.contentHash, result.contentHash);
+  assert.equal(artifact.contentHash, `sha256:${result.contentHash}`);
 });
 
 test("blocked and reference-only results cannot become usable SourceArtifacts", async () => {
@@ -109,6 +109,7 @@ test("private, reserved, internal, and unsafe DNS destinations fail before trans
     "http://127.0.0.1/admin",
     "http://169.254.169.254/latest/meta-data",
     "http://[::1]/",
+    "http://[::ffff:7f00:1]/",
     "https://localhost/",
     "https://service.internal/",
   ]) {

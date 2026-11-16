@@ -179,6 +179,24 @@
 }
 .message[data-tone="ready"] { border-color: rgba(81,105,77,.14); background: rgba(113, 145, 106, 0.09); color: #51694d; }
 
+.bootstrapOutcome {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(81,105,77,.16);
+  border-radius: .68rem;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  background: rgba(113,145,106,.055);
+}
+.bootstrapOutcome > div:first-child { min-width: 0; }
+.bootstrapOutcome > div:first-child > span { display:block; color:#51694d; font-size:.55rem; font-weight:850; letter-spacing:.11em; }
+.bootstrapOutcome strong { display:block; margin-top:.24rem; color:#171714; font-size:.86rem; }
+.bootstrapOutcome p { margin:.24rem 0 0; color:#777166; font-size:.64rem; line-height:1.45; }
+.bootstrapOutcome small { display:block; margin-top:.34rem; color:#777166; font-size:.59rem; line-height:1.48; }
+.bootstrapOutcomeActions { display:flex; gap:.45rem; flex-wrap:wrap; justify-content:flex-end; }
+
 .loadingState {
   margin-top: 1.05rem;
   min-height: 4rem;
@@ -304,6 +322,8 @@
   .journeyStep { min-height: 3.7rem; }
   .cardActions button { flex: 1 1 auto; }
   .pickerHeading { flex-direction: column; }
+  .bootstrapOutcome { grid-template-columns: 1fr; align-items: stretch; }
+  .bootstrapOutcomeActions { justify-content: flex-start; }
 }
 
 @media (max-width: 480px) {

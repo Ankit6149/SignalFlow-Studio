@@ -77,6 +77,14 @@ test("Today production state stays truthful about generation, checks, and requir
   assert.doesNotMatch(component, /scheduled publication|publish at|calendar slot/i);
 });
 
+test("Today capture progress and terminal failures stay visible without a generic capture retry button", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  assert.match(component, /item\.stage === "generation_failed" && item\.retryable/);
+  assert.doesNotMatch(component, /item\.stage\.startsWith\("capture_"\)[\s\S]{0,240}Retry destination/);
+  assert.match(component, /item\.correlationId/);
+  assert.match(component, /Open Plan/);
+});
+
 test("Today retries only explicitly retryable destination failures through canonical services", async () => {
   const component = await source("../components/TodayWorkspace.js");
   const css = await source("../components/TodayWorkspace.module.css");

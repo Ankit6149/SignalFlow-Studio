@@ -111,6 +111,7 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
         reason: "Owner approved the exact visible hosted NarrativeStrategy.",
       });
       setPlan(next);
+      setActiveContentPieceId(next.contentPiece?.contentPieceId || next.pieceBundles?.[0]?.contentPiece?.contentPieceId || "");
       setStatus("ready");
       setMessage({ type: "success", text: "Exact strategy approved. SignalFlow is continuing destination generation, required visual proof and exact checks automatically. Anything still shown below is recovery work, not a routine next step." });
     } catch (error) {

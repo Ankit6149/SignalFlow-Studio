@@ -76,30 +76,39 @@ export function parseSourceLinkCandidates(value) {
     if (!normalized.ok) {
       entries.push(Object.freeze({
         kind: "link",
+        sourceKind: "link",
+        displayName: "Invalid link",
         input: token,
         canonicalUrl: null,
         status: SOURCE_HEALTH_ENTRY_STATUSES.INVALID,
         issueCode: normalized.code,
+        recoveryAction: recoveryAction(SOURCE_HEALTH_ENTRY_STATUSES.INVALID, normalized.code),
       }));
       continue;
     }
     if (seen.has(normalized.canonicalUrl)) {
       entries.push(Object.freeze({
         kind: "link",
+        sourceKind: "link",
+        displayName: normalized.canonicalUrl,
         input: token,
         canonicalUrl: normalized.canonicalUrl,
         status: SOURCE_HEALTH_ENTRY_STATUSES.DUPLICATE,
         issueCode: "duplicate_link",
+        recoveryAction: recoveryAction(SOURCE_HEALTH_ENTRY_STATUSES.DUPLICATE, "duplicate_link"),
       }));
       continue;
     }
     seen.add(normalized.canonicalUrl);
     entries.push(Object.freeze({
       kind: "link",
+      sourceKind: "link",
+      displayName: normalized.canonicalUrl,
       input: token,
       canonicalUrl: normalized.canonicalUrl,
       status: SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION,
       issueCode: null,
+      recoveryAction: recoveryAction(SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION),
     }));
   }
   return Object.freeze(entries);
@@ -215,15 +224,25 @@ export function createSourceHealthReport({
 } = {}) {
   const entries = [];
   if (text(notes)) {
-    entries.push(Object.freeze({ kind: "notes", status: SOURCE_HEALTH_ENTRY_STATUSES.USABLE, issueCode: null }));
+    entries.push(Object.freeze({
+      kind: "notes",
+      sourceKind: "note",
+      displayName: "Campaign brief",
+      status: SOURCE_HEALTH_ENTRY_STATUSES.USABLE,
+      issueCode: null,
+      recoveryAction: "",
+    }));
   }
 
   const documents = normalizeDocuments(documentText);
   for (let index = 0; index < documents.length; index += 1) {
     entries.push(Object.freeze({
       kind: "document",
+      sourceKind: "upload",
+      displayName: `Extracted document ${index + 1}`,
       status: SOURCE_HEALTH_ENTRY_STATUSES.USABLE,
       issueCode: null,
+      recoveryAction: "",
       index,
     }));
   }
@@ -299,7 +318,7 @@ export function createSourceHealthReport({
   const reason = status === SOURCE_HEALTH_STATUSES.READY
     ? "At least one source is verified usable evidence."
     : status === SOURCE_HEALTH_STATUSES.NEEDS_VERIFICATION
-      ? "Remote or repository sources must be verified by the server before they can count as evidence."
+      ? "Sources still need server verification or processing before they can count as evidence."
       : hasCandidates
         ? "No supplied source became usable evidence."
         : "Add a brief, repository, supported text source, or public link.";

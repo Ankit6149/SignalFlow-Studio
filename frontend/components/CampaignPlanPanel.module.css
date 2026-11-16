@@ -574,8 +574,21 @@
   cursor: wait;
 }
 
+.productionSequence {
+  border-top: 1px solid rgba(23,23,20,.08);
+}
 .productionStage {
   border-top: 1px solid rgba(23, 23, 20, 0.08);
+  scroll-margin-top: 1rem;
+}
+.productionStage:first-child { border-top: 0; }
+.productionStage[data-active="true"] {
+  background: rgba(238,227,201,.08);
+}
+.productionStage:focus { outline:none; }
+.productionStage:focus-visible {
+  outline:2px solid #8b6a28;
+  outline-offset:-2px;
 }
 
 .approvedState {

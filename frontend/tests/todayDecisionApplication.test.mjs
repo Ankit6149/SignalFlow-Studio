@@ -347,8 +347,68 @@ test("Today work state elevates a failed destination generation without inventin
   assert.equal(work.length, 1);
   assert.equal(work[0].stage, "generation_failed");
   assert.equal(work[0].priority, "attention");
+  assert.equal(work[0].retryable, false);
+  assert.equal(work[0].failureCode, null);
+  assert.equal(work[0].recoveryAction, null);
   assert.match(work[0].explanation, /did not produce a current revision/i);
   assert.doesNotMatch(work[0].explanation, /timeout|quota|credential/i);
+});
+
+test("Today exposes retry only from persisted retryable generation failure metadata", () => {
+  const fixture = buildFixture();
+  const failed = normalizePlatformVariant({
+    ...fixture.variant,
+    status: "failed",
+    currentRevisionId: null,
+    generationFailure: {
+      code: "provider_unavailable",
+      retryable: true,
+      recoveryAction: "retry_destination",
+      correlationId: "provider-safe-ref",
+      failedAt: T3,
+    },
+    updatedAt: T3,
+  });
+  const [item] = projectOwnerWorkState({
+    planningRecords: [fixture.strategy, fixture.piece, failed, fixture.revision],
+    reviewRecords: [],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(item.retryable, true);
+  assert.equal(item.failureCode, "provider_unavailable");
+  assert.equal(item.recoveryAction, "retry_destination");
+  assert.equal(item.correlationId, "provider-safe-ref");
+  assert.match(item.label, /retry available/i);
+  assert.match(item.explanation, /transient/i);
+});
+
+test("Today explains non-retryable route failures without offering retry semantics", () => {
+  const fixture = buildFixture();
+  const failed = normalizePlatformVariant({
+    ...fixture.variant,
+    status: "failed",
+    currentRevisionId: null,
+    generationFailure: {
+      code: "inference_route_unavailable",
+      retryable: false,
+      recoveryAction: "choose_provider",
+      correlationId: "provider-route-ref",
+      failedAt: T3,
+    },
+    updatedAt: T3,
+  });
+  const [item] = projectOwnerWorkState({
+    planningRecords: [fixture.strategy, fixture.piece, failed, fixture.revision],
+    reviewRecords: [],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(item.retryable, false);
+  assert.equal(item.failureCode, "inference_route_unavailable");
+  assert.equal(item.recoveryAction, "choose_provider");
+  assert.match(item.explanation, /supported provider route/i);
+  assert.doesNotMatch(item.label, /retry available/i);
 });
 
 test("Today work state reconstructs planned generation and exact-check progress from canonical variant state", () => {

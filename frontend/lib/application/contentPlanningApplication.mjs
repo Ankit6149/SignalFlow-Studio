@@ -12,6 +12,7 @@ import {
   createNarrativeStrategy,
   createPlannedPlatformVariant,
   createPrimaryContentPiece,
+  createSequencedContentPiece,
   normalizeContentPiece,
   normalizeNarrativeStrategy,
   normalizePlatformVariant,
@@ -167,6 +168,19 @@ export function createContentPlanningApplication({
     return assertOwned(normalizeNarrativeStrategy(stored));
   }
 
+  async function listContentPiecesForStrategy(strategyId) {
+    const all = await plans.list();
+    return all
+      .filter((record) => record.kind === "ContentPiece" && record.narrativeStrategyId === strategyId)
+      .map(normalizeContentPiece)
+      .sort((left, right) => (
+        left.sequenceOrder - right.sequenceOrder
+        || left.createdAt.localeCompare(right.createdAt)
+        || left.contentPieceId.localeCompare(right.contentPieceId)
+      ));
+  }
+
+
   async function requireSourceSignal(opportunity) {
     const signalId = opportunity.signalIds?.[0];
     if (!signalId) throw new Error("This opportunity has no source Signal.");
@@ -317,7 +331,7 @@ export function createContentPlanningApplication({
     const approved = await plans.upsert(approveNarrativeStrategy(strategy, now, decision));
 
     const existing = await plans.list();
-    let piece = existing.find((record) => record.kind === "ContentPiece" && record.narrativeStrategyId === approved.narrativeStrategyId);
+    let piece = existing.find((record) => record.kind === "ContentPiece" && record.narrativeStrategyId === approved.narrativeStrategyId && (record.sequenceRole || "primary") === "primary");
     if (!piece) {
       piece = await plans.upsert(createPrimaryContentPiece({
         contentPieceId: appIds.create("piece"),
@@ -347,18 +361,93 @@ export function createContentPlanningApplication({
     return { strategy: approved, contentPiece: piece, variants };
   }
 
+  async function addContentPiece(strategyId, {
+    purpose,
+    canonicalIntent,
+    sequenceRole = "follow_up",
+    timingIntent = null,
+    destinations = [],
+    claims = [],
+    evidenceRefs = [],
+  } = {}) {
+    const strategy = await requireStrategy(strategyId);
+    if (strategy.status !== STRATEGY_STATUSES.APPROVED) {
+      throw new Error("Add follow-up content only after the NarrativeStrategy is approved.");
+    }
+    const selectedDestinations = [...new Set((Array.isArray(destinations) ? destinations : [])
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter(Boolean))];
+    if (!selectedDestinations.length) throw new TypeError("Choose at least one destination for the follow-up ContentPiece.");
+    for (const destination of selectedDestinations) {
+      if (!["linkedin", "x"].includes(destination)) throw new TypeError(`Unsupported ContentPiece destination: ${destination}.`);
+      const plan = strategy.destinationPlan.find((item) => item.destination === destination);
+      if (!plan || plan.decision === "exclude") {
+        throw new Error(`${destination} is excluded by the approved NarrativeStrategy. Revise the strategy before adding this destination.`);
+      }
+    }
+
+    const existingPieces = await listContentPiecesForStrategy(strategy.narrativeStrategyId);
+    const nextOrder = Math.max(0, ...existingPieces.map((item) => item.sequenceOrder)) + 1;
+    const now = appClock.now();
+    const piece = await plans.upsert(createSequencedContentPiece({
+      contentPieceId: appIds.create("piece"),
+      strategy,
+      opportunityId: strategy.opportunityId,
+      purpose: required(purpose, "purpose"),
+      sequenceRole: String(sequenceRole || "follow_up").trim().toLowerCase(),
+      sequenceOrder: nextOrder,
+      timingIntent,
+      canonicalIntent: required(canonicalIntent, "canonicalIntent"),
+      claims,
+      evidenceRefs,
+      createdAt: now,
+    }));
+
+    const variants = [];
+    for (const destination of selectedDestinations) {
+      variants.push(await plans.upsert(createPlannedPlatformVariant({
+        platformVariantId: appIds.create("variant"),
+        contentPiece: piece,
+        strategy,
+        destination,
+        createdAt: now,
+      })));
+    }
+    return Object.freeze({
+      contentPiece: normalizeContentPiece(piece),
+      variants: variants.map(normalizePlatformVariant),
+    });
+  }
+
   async function getPlanBundle(opportunityId) {
     const strategy = await currentStrategyForOpportunity(opportunityId);
-    if (!strategy) return { strategy: null, contentPiece: null, variants: [] };
+    if (!strategy) return { strategy: null, contentPiece: null, contentPieces: [], variants: [], pieceBundles: [] };
     const all = await plans.list();
-    const contentPiece = all.find((record) => record.kind === "ContentPiece" && record.narrativeStrategyId === strategy.narrativeStrategyId) || null;
-    const variants = contentPiece
-      ? all.filter((record) => record.kind === "PlatformVariant" && record.contentPieceId === contentPiece.contentPieceId).map(normalizePlatformVariant)
+    const contentPieces = all
+      .filter((record) => record.kind === "ContentPiece" && record.narrativeStrategyId === strategy.narrativeStrategyId)
+      .map(normalizeContentPiece)
+      .sort((left, right) => (
+        left.sequenceOrder - right.sequenceOrder
+        || left.createdAt.localeCompare(right.createdAt)
+        || left.contentPieceId.localeCompare(right.contentPieceId)
+      ));
+    const primary = contentPieces.find((record) => record.sequenceRole === "primary") || contentPieces[0] || null;
+    const pieceBundles = contentPieces.map((piece) => ({
+      contentPiece: piece,
+      variants: all
+        .filter((record) => record.kind === "PlatformVariant" && record.contentPieceId === piece.contentPieceId)
+        .map(normalizePlatformVariant)
+        .sort((left, right) => left.destination.localeCompare(right.destination)),
+    }));
+    const variants = primary
+      ? (pieceBundles.find((item) => item.contentPiece.contentPieceId === primary.contentPieceId)?.variants || [])
       : [];
     return {
       strategy,
-      contentPiece: contentPiece ? normalizeContentPiece(contentPiece) : null,
+      contentPiece: primary,
+      contentPieces,
       variants,
+      pieceBundles,
     };
   }
 
@@ -366,7 +455,9 @@ export function createContentPlanningApplication({
     buildStrategy,
     reviseStrategy,
     approveStrategy,
+    addContentPiece,
     currentStrategyForOpportunity,
+    listContentPiecesForStrategy,
     getPlanBundle,
   };
 }

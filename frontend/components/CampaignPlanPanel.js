@@ -23,6 +23,15 @@ function formFromStrategy(strategy) {
   };
 }
 
+function emptyPieceForm() {
+  return {
+    purpose: "",
+    canonicalIntent: "",
+    timingIntent: "",
+    destinations: [],
+  };
+}
+
 function titleCase(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -48,13 +57,16 @@ function destinationReviewStatus({ variant, currentRevision }) {
 }
 
 export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
-  const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, variants: [] });
-  const [generationBundle, setGenerationBundle] = useState(null);
+  const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, contentPieces: [], variants: [], pieceBundles: [] });
+  const [generationBundles, setGenerationBundles] = useState({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(formFromStrategy(null));
+  const [activeContentPieceId, setActiveContentPieceId] = useState("");
   const [activeVariantId, setActiveVariantId] = useState("");
+  const [addingPiece, setAddingPiece] = useState(false);
+  const [pieceForm, setPieceForm] = useState(emptyPieceForm);
 
   const application = useMemo(() => createBrowserContentPlanningApplication({
     getStorage: () => window.localStorage,
@@ -67,19 +79,35 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
 
   const reload = useCallback(async () => {
     if (!opportunity?.opportunityId) {
-      setBundle({ strategy: null, contentPiece: null, variants: [] });
-      setGenerationBundle(null);
+      setBundle({ strategy: null, contentPiece: null, contentPieces: [], variants: [], pieceBundles: [] });
+      setGenerationBundles({});
+      setActiveContentPieceId("");
       return;
     }
     try {
       const next = await application.getPlanBundle(opportunity.opportunityId);
       setBundle(next);
       if (next.strategy && !editing) setForm(formFromStrategy(next.strategy));
-      if (next.contentPiece) {
-        setGenerationBundle(await generationApplication.getGenerationBundle(next.contentPiece.contentPieceId));
-      } else {
-        setGenerationBundle(null);
-      }
+
+      const nextPieceBundles = next.pieceBundles?.length
+        ? next.pieceBundles
+        : next.contentPiece
+          ? [{ contentPiece: next.contentPiece, variants: next.variants || [] }]
+          : [];
+      const loaded = {};
+      await Promise.all(nextPieceBundles.map(async ({ contentPiece: piece }) => {
+        try {
+          loaded[piece.contentPieceId] = await generationApplication.getGenerationBundle(piece.contentPieceId);
+        } catch {
+          loaded[piece.contentPieceId] = null;
+        }
+      }));
+      setGenerationBundles(loaded);
+      setActiveContentPieceId((current) => (
+        current && nextPieceBundles.some(({ contentPiece: piece }) => piece.contentPieceId === current)
+          ? current
+          : (next.contentPiece?.contentPieceId || nextPieceBundles[0]?.contentPiece?.contentPieceId || "")
+      ));
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "SignalFlow could not load this campaign plan." });
     }
@@ -87,8 +115,20 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
 
   useEffect(() => { reload(); }, [reload]);
 
+  const pieceBundles = bundle.pieceBundles?.length
+    ? bundle.pieceBundles
+    : bundle.contentPiece
+      ? [{ contentPiece: bundle.contentPiece, variants: bundle.variants || [] }]
+      : [];
+  const activePieceBundle = pieceBundles.find(({ contentPiece: piece }) => piece.contentPieceId === activeContentPieceId)
+    || pieceBundles[0]
+    || null;
+  const activeContentPiece = activePieceBundle?.contentPiece || null;
+  const activePieceVariants = activePieceBundle?.variants || [];
+  const activeGenerationBundle = activeContentPiece ? generationBundles[activeContentPiece.contentPieceId] || null : null;
+
   useEffect(() => {
-    const rows = generationBundle?.variants || bundle.variants.map((variant) => ({ variant }));
+    const rows = activeGenerationBundle?.variants || activePieceVariants.map((variant) => ({ variant }));
     if (!rows.length) {
       setActiveVariantId("");
       return;
@@ -98,7 +138,7 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
         ? current
         : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
     ));
-  }, [bundle.variants, generationBundle]);
+  }, [activeContentPieceId, activeGenerationBundle, activePieceBundle]);
 
   async function run(action, successText = "") {
     setBusy(true);

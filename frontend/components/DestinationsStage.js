@@ -28,6 +28,7 @@ export default function DestinationsStage({
   composeReady,
   sourceAndChannelsReady,
   sourceSignals,
+  sourceHealth,
 }) {
   return (
     <>
@@ -252,25 +253,35 @@ export default function DestinationsStage({
                 <span>Campaign readiness</span>
                 <h3>
                   {!sourceAndChannelsReady
-                    ? "Choose source and destinations."
-                    : providerReadiness.ready
-                      ? "Ready to shape the campaign."
-                      : "Connect a model route."}
+                    ? "Choose valid source evidence and destinations."
+                    : sourceHealth?.status === "needs_verification"
+                      ? "Ready to verify source and build."
+                      : providerReadiness.ready
+                        ? "Ready to shape the campaign."
+                        : "Connect a model route."}
                 </h3>
               </div>
-              <b className={composeReady ? "is-ready" : ""}>
-                {composeReady ? "Ready" : providerReadiness.ready ? "Needs source" : "Needs model"}
+              <b className={composeReady && sourceHealth?.status === "ready" ? "is-ready" : ""}>
+                {sourceHealth?.status === "needs_verification" && providerReadiness.ready
+                  ? "Verify on build"
+                  : composeReady
+                    ? "Ready"
+                    : providerReadiness.ready
+                      ? "Needs source"
+                      : "Needs model"}
               </b>
             </div>
             <p>
               {!sourceAndChannelsReady
-                ? "Add product evidence and select at least one destination."
-                : providerReadiness.ready
-                  ? "SignalFlow has enough context and a real model route to build editable drafts."
-                  : providerReadiness.reason}
+                ? sourceHealth?.reason || "Add product evidence and select at least one destination."
+                : sourceHealth?.status === "needs_verification"
+                  ? "SignalFlow will verify remote or repository sources before any model call. If none becomes usable evidence, generation stops with a precise source reason."
+                  : providerReadiness.ready
+                    ? "SignalFlow has verified usable context and a real model route to build editable drafts."
+                    : providerReadiness.reason}
             </p>
             <div className="compose-readiness__metrics">
-              <div><strong>{sourceSignals}</strong><span>source signals</span></div>
+              <div><strong>{sourceSignals}</strong><span>{sourceHealth?.status === "needs_verification" ? "source candidates" : "source signals"}</span></div>
               <div><strong>{channels.length}</strong><span>destinations</span></div>
               <div><strong>{provider.label}</strong><span>generation route</span></div>
             </div>

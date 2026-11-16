@@ -14,6 +14,11 @@ import {
 import { projectGenerationMediaItem } from "../domain/sourceArtifacts.mjs";
 import { generateCampaign as generateStudioCampaign } from "./studioApiClient.mjs";
 import { channelMeta } from "./studioCatalog.mjs";
+import {
+  createSourceHealthReport,
+  parseSourceLinkCandidates,
+  SOURCE_HEALTH_STATUSES,
+} from "../source/sourceHealth.mjs";
 
 export function providerRecoveryMessage(providerError) {
   const action = String(providerError?.recoveryAction || "");
@@ -75,8 +80,16 @@ export function useCampaignGenerationController({
   }, [regenerationDialogOpen]);
 
   async function requestGeneration(requestedChannels, signal = null) {
-    if (!form.notes.trim() && !form.links.trim() && !form.repo.trim() && documentText.length === 0) {
-      throw new Error("Add a brief, link, repository, or extractable text file before generating.");
+    const sourceHealth = createSourceHealthReport({
+      notes: form.notes,
+      repoUrl: form.repo,
+      documentText,
+      sourceArtifacts: files.map((file) => file.sourceArtifact).filter(Boolean),
+      linkCandidates: parseSourceLinkCandidates(form.links),
+      verificationComplete: false,
+    });
+    if (sourceHealth.status === SOURCE_HEALTH_STATUSES.BLOCKED) {
+      throw new Error(sourceHealth.reason);
     }
     if (!providerReadiness.ready) {
       navigateStudioFlow("destinations");

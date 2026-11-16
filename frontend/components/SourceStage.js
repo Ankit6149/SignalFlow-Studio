@@ -11,6 +11,7 @@ export default function SourceStage({
   onFiles,
   files,
   sourceArtifactSummary,
+  sourceHealth,
   onRemoveFile,
 }) {
   return (
@@ -50,6 +51,15 @@ export default function SourceStage({
             onChange={(event) => onUpdateForm("links", event.target.value)}
             placeholder="Docs, landing page, research links…"
           />
+          {sourceHealth?.entries?.some((item) => item.kind === "link") && (
+            <small role="status">
+              {sourceHealth.counts.needsVerification > 0
+                ? `${sourceHealth.counts.needsVerification} unique public link${sourceHealth.counts.needsVerification === 1 ? "" : "s"} will be verified securely before generation.`
+                : sourceHealth.counts.invalid > 0
+                  ? "Fix invalid or credential-bearing links before continuing."
+                  : "Duplicate links are ignored."}
+            </small>
+          )}
         </label>
         <label className="field">
           <span>GitHub repository</span>

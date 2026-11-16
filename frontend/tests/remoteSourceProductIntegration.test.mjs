@@ -10,6 +10,7 @@ test("all current public-link entry paths converge on the hardened server bounda
   const wrapper = await source("../lib/context/linkFetcher.js");
   const linkRoute = await source("../app/api/context/links/route.js");
   const generationRoute = await source("../app/api/launch_kit/route.js");
+  const preparation = await source("../lib/source/generationSourcePreparation.mjs");
   const mcp = await source("../../mcp/lib/tools.mjs");
 
   assert.match(wrapper, /createRemoteSourceFetcher/);
@@ -18,14 +19,15 @@ test("all current public-link entry paths converge on the hardened server bounda
   assert.match(linkRoute, /fetchUrlContent\(url, \{ signal: request\.signal \}\)/);
   assert.match(linkRoute, /Cache-Control": "private, no-store, max-age=0"/);
 
-  const fetchIndex = generationRoute.indexOf("await fetchUrlContent(url, { signal: request.signal })");
-  const usableIndex = generationRoute.indexOf("fetchResult.evidenceUsable === true", fetchIndex);
-  const promptIndex = generationRoute.indexOf("linksContext.push(fetchResult)", usableIndex);
+  assert.match(generationRoute, /prepareRemoteLinkEvidence\(/);
+  const fetchIndex = preparation.indexOf("await fetchUrlContentImpl(candidate.canonicalUrl");
+  const usableIndex = preparation.indexOf("fetchResult.evidenceUsable === true", fetchIndex);
+  const promptIndex = preparation.indexOf("linksContext.push(fetchResult)", usableIndex);
   assert.ok(fetchIndex >= 0);
   assert.ok(usableIndex > fetchIndex);
   assert.ok(promptIndex > usableIndex, "generation may only receive remote text after the hardened result is usable evidence");
-  assert.match(generationRoute, /sourceArtifactFromFetchResult/);
-  assert.match(generationRoute, /validateSourceGraph\(\{[\s\S]*sourceArtifacts: \[\.\.\.canonicalSources\.sourceArtifacts, remoteArtifact\]/);
+  assert.match(preparation, /sourceArtifactFromFetchResult/);
+  assert.match(preparation, /validateSourceGraph\(\{[\s\S]*sourceArtifacts: \[\.\.\.nextSources\.sourceArtifacts, remoteArtifact\]/);
 
   assert.match(mcp, /docs_url: String\(args\.links \|\| ""\)\.trim\(\)/);
   assert.match(mcp, /signalFlowRequest\("\/api\/launch_kit"/);

@@ -42,6 +42,11 @@ import { useCampaignReviewController } from "../lib/studio/useCampaignReviewCont
 import {
   useCampaignEditorSession,
 } from "../lib/studio/CampaignEditorSessionContext.js";
+import {
+  createSourceHealthReport,
+  parseSourceLinkCandidates,
+  SOURCE_HEALTH_STATUSES,
+} from "../lib/source/sourceHealth.mjs";
 
 function generationProgressLabel(status) {
   const labels = {
@@ -186,13 +191,18 @@ export default function StudioRootController() {
         : currentPost.length > activeMeta.limit
     )
   );
-  const sourceSignals = [
-    form.notes.trim(),
-    form.links.trim(),
-    form.repo.trim(),
-    ...documentText,
-  ].filter(Boolean).length;
-const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
+  const sourceHealth = useMemo(() => createSourceHealthReport({
+    notes: form.notes,
+    repoUrl: form.repo,
+    documentText,
+    sourceArtifacts: files.map((file) => file.sourceArtifact).filter(Boolean),
+    linkCandidates: parseSourceLinkCandidates(form.links),
+    verificationComplete: false,
+  }), [form.notes, form.links, form.repo, documentText, files]);
+  const sourceSignals = sourceHealth.counts.usable + sourceHealth.counts.needsVerification;
+  const sourceCanProceed = sourceHealth.status === SOURCE_HEALTH_STATUSES.READY
+    || sourceHealth.status === SOURCE_HEALTH_STATUSES.NEEDS_VERIFICATION;
+  const sourceAndChannelsReady = sourceCanProceed && channels.length > 0;
   const composeReady = sourceAndChannelsReady && providerReadiness.ready;
   const connectedOfficialCount = Array.from(OFFICIAL_CONNECTORS).filter(
     (id) =>
@@ -387,7 +397,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
 
   function navigateStudioFlow(targetStage) {
     const nextStage = resolveStudioStage(targetStage, {
-      hasSource: sourceSignals > 0,
+      hasSource: sourceCanProceed,
       hasResult: Boolean(result),
     });
     setStage(nextStage);
@@ -480,7 +490,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
           <nav className="studio-flow" aria-label="Campaign creation steps">
             <button
               type="button"
-              className={stage === "source" ? "is-active" : sourceSignals > 0 ? "is-complete" : ""}
+              className={stage === "source" ? "is-active" : sourceCanProceed ? "is-complete" : ""}
               onClick={() => navigateStudioFlow("source")}
               aria-current={stage === "source" ? "step" : undefined}
             >
@@ -491,7 +501,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
               type="button"
               className={stage === "destinations" ? "is-active" : stage === "review" ? "is-complete" : ""}
               onClick={() => navigateStudioFlow("destinations")}
-              disabled={sourceSignals === 0}
+              disabled={!sourceCanProceed}
               aria-current={stage === "destinations" ? "step" : undefined}
             >
               <span className="studio-flow__index">02</span>
@@ -518,6 +528,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
               onFiles={handleFiles}
               files={files}
               sourceArtifactSummary={sourceArtifactSummary}
+              sourceHealth={sourceHealth}
               onRemoveFile={removeFile}
             />
 
@@ -547,6 +558,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
                 composeReady={composeReady}
                 sourceAndChannelsReady={sourceAndChannelsReady}
                 sourceSignals={sourceSignals}
+                sourceHealth={sourceHealth}
               />
 
               {stage !== "destinations" && (
@@ -673,7 +685,7 @@ const sourceAndChannelsReady = sourceSignals > 0 && channels.length > 0;
                   type="button"
                   className="button button--champagne button--premium"
                   onClick={() => navigateStudioFlow("destinations")}
-                  disabled={sourceSignals === 0}
+                  disabled={!sourceCanProceed}
                 >
                   Continue to destinations <ArrowIcon />
                 </button>

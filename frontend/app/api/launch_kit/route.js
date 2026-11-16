@@ -10,15 +10,13 @@ import {
 } from "../../../lib/domain/sourceArtifacts.mjs";
 import { ingestGitHubRepo } from "../../../lib/context/github";
 import { ingestLocalRepo } from "../../../lib/context/localRepo";
-import { fetchUrlContent, sourceArtifactFromFetchResult } from "../../../lib/context/linkFetcher";
+import { prepareRemoteLinkEvidence } from "../../../lib/source/generationSourcePreparation.mjs";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 import { ProviderError, providerErrorPayload } from "../../../lib/ai/providerErrors.mjs";
 import { readGenerationRequestBody } from "../../../lib/server/generationRequestBody.mjs";
 import {
   createSourceHealthReport,
-  parseSourceLinkCandidates,
-  SOURCE_HEALTH_ENTRY_STATUSES,
   SOURCE_HEALTH_STATUSES,
 } from "../../../lib/source/sourceHealth.mjs";
 
@@ -167,7 +165,6 @@ export async function POST(request) {
     const audience = normalizeTextInput(body.audience) || "developers, founders, and creators";
     const repoUrl = normalizeTextInput(body.repo);
     const docsUrl = normalizeTextInput(body.docs_url) || normalizeTextInput(body.research_url);
-    const linkCandidates = parseSourceLinkCandidates(docsUrl);
     const appUrl = normalizeTextInput(body.app_url) || normalizeTextInput(body.appUrl);
     const enableAutoCapture = Boolean(body.enable_auto_capture || body.enableAutoCapture);
 
@@ -202,8 +199,9 @@ export async function POST(request) {
 
     const warnings = [];
     let repoContext = null;
-    const linksContext = [];
-    const linkFetchResults = [];
+    let linksContext = [];
+    let linkCandidates = [];
+    let linkFetchResults = [];
     let canonicalSources = { assets: [], sourceArtifacts: [], processingRecords: [] };
     let sourceWorkspaceId = "request-workspace";
     const suppliedAssets = Array.isArray(body.assets) ? body.assets : [];
@@ -272,27 +270,17 @@ export async function POST(request) {
     }
 
     if (docsUrl) {
-      const fetchableLinks = linkCandidates.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION);
-      for (const candidate of fetchableLinks) {
-        const fetchResult = await fetchUrlContent(candidate.canonicalUrl, { signal: request.signal });
-        if (!fetchResult) continue;
-        linkFetchResults.push(fetchResult);
-        if (fetchResult.evidenceUsable === true) {
-          linksContext.push(fetchResult);
-          const remoteArtifact = sourceArtifactFromFetchResult(fetchResult, {
-            workspaceId: sourceWorkspaceId,
-          });
-          if (remoteArtifact) {
-            canonicalSources = validateSourceGraph({
-              workspaceId: sourceWorkspaceId,
-              assets: canonicalSources.assets,
-              sourceArtifacts: [...canonicalSources.sourceArtifacts, remoteArtifact],
-              processingRecords: canonicalSources.processingRecords,
-            });
-          }
-        }
-        if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
-      }
+      const remotePreparation = await prepareRemoteLinkEvidence({
+        docsUrl,
+        sourceWorkspaceId,
+        canonicalSources,
+        signal: request.signal,
+      });
+      linkCandidates = remotePreparation.linkCandidates;
+      linkFetchResults = remotePreparation.linkFetchResults;
+      linksContext = remotePreparation.linksContext;
+      canonicalSources = remotePreparation.canonicalSources;
+      warnings.push(...remotePreparation.warnings);
     }
 
     const sourceHealth = createSourceHealthReport({

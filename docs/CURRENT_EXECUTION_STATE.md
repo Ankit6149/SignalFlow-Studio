@@ -1,25 +1,27 @@
 # SignalFlow Studio — Current Execution State
 
-> **Authoritative execution frontier as of 2026-11-10.**
+> **Authoritative execution frontier as of 2026-11-17.**
 >
 > This is the only short-lived repository status document. Architecture/product documents describe target design; this file records what is merged, deployed, accepted, blocked, and next.
 >
 > Truth order: live runtime → deployed production SHA → `master` → acceptance evidence → capability/execution docs → roadmap/README → historical notes.
 >
 > Planned ≠ coded ≠ merged ≠ deployed ≠ accepted.
+>
+> 2026-11-17 reconciliation basis: fetched Git refs at `master` `29c639eb` (#435), observed remote heads and open PRs, the latest GitHub-recorded Production deployment, and locally executed repository gates. It did not run the protected owner GP2 readiness check, configure a remote CDP authority, or perform any credential-backed GP2/GP3 acceptance step; those remain explicitly unproven below.
 
 ## Current checkpoint
 
 | Item | Current truth |
 | --- | --- |
 | Default branch | `master` |
-| Latest product-code checkpoint | `612875aef4104a679a3e59c9b46215952fce2870` — #412 AI Gateway model-eligibility readiness |
+| Latest product-code checkpoint | `29c639ebbd3df760f171369445bd76fd1d6d9f4c` — #435 Align links-only readiness across Studio API and MCP (22 merges after the previously documented #412 checkpoint) |
 | Dependency-security checkpoint | `97e56344a36e051cea170f3b85267f10d3ce7f10` — #413 Next.js 16.4.5 / current critical-high production audit baseline, included in current `master` |
-| Runtime checkpoint | #412 is READY in production at `dpl_3r5QKunB2djGsdeo1gX7nDQQ7uEY` |
+| Runtime checkpoint | Latest GitHub-recorded successful Production deployment is `98aff7a07b5f2bfd7fd7e1dcfc92aeb88b8c6d91` (#434), GitHub deployment `7835905047`, state `success` at 2026-11-16T20:44:54Z. No GitHub deployment object for #435 existed when checked. The previously documented #412 deployment (`dpl_3r5QKunB2djGsdeo1gX7nDQQ7uEY`) is historical evidence, not the current checkpoint. |
 | Post-reconciliation checkpoint | `repo-hygiene-2026-10-05` — immutable repository-reconciliation tag created by #405 |
-| Runtime/code relationship | **Aligned at #412.** Current READY production matches current code-bearing `master`; documentation-only commits may advance `master` without a new deployment when the Vercel guard proves `frontend/` is unchanged. |
-| Intentional branches | `master`; `feat/refine-workspace-loader-gate-c-20260915` only |
-| Open PRs | #315 only — reserved / DO NOT MERGE |
+| Runtime/code relationship | **Not proven aligned at #435.** `master` is one product-code merge beyond the latest GitHub-recorded successful Production deployment (#434). Do not infer that production runs #435 until a deployment identity for that SHA (or a later one) is recorded. |
+| Observed remote branches | `master`; reserved `feat/refine-workspace-loader-gate-c-20260915`; active `feat/hosted-content-sequence-parity-20261117` (8 branch-only commits); active `feat/source-health-workspace-20261117` (7 branch-only commits); `fix/windows-test-file-url-paths` (open PR #436). See Branch / PR hygiene below. |
+| Open PRs | #315 reserved draft / DO NOT MERGE; #436 Windows test-harness path fix (locally verified, unmerged) |
 | Golden Path 1 | Accepted |
 | Golden Path 2 | Active; not owner-accepted |
 | Golden Path 3 | Not accepted end to end |
@@ -28,6 +30,7 @@
 | Landing rebuild | #135 closed complete |
 | CSS architecture | #44 architecture complete; #404 live desktop overflow defect fixed/verified; explicit tablet/mobile + 200% zoom capture remains acceptance-only |
 | No-Playwright rule | Preserved; unsupported Playwright capture remains absent |
+| Local verification (2026-11-17, Windows, at `29c639e`) | Frontend suite 1,015 pass / 2 fail on unmodified `master` — both are the Windows file-URL test-harness conversions fixed by #436 (with #436: 1,023/1,023 pass); GP2 preflight 194/194; MCP 30/31 (the `SIGTERM` clean-exit expectation fails under Windows process semantics); Python 9/9; public-metadata check pass; production dependency audit 0 vulnerabilities; production build pass; function-trace audit pass (46 routes). GitHub Actions results were not used as evidence for this reconciliation. |
 
 ## Repository hygiene outcome
 
@@ -41,7 +44,7 @@ The repository reconciliation sprint removed competing implementations and stale
 - Python remains utility-only for maintained scan/render/record paths;
 - Studio network transport, static catalog, stage presentation, provider routing, owner/connectors, route-surviving editor state, persistence/export, generation, publishing/manual handoff, source intake, and Review coordination each have explicit owners;
 - `/`, `/studio`, `/library`, `/connections`, and `/settings` have explicit route ownership;
-- `StudioRootController.js` is **714 lines**, down from the earlier monolithic application controller, and now serves as Create composition/orchestration rather than a hidden second application.
+- `StudioRootController.js` is **725 lines** at this checkpoint, down from the earlier monolithic application controller, and now serves as Create composition/orchestration rather than a hidden second application.
 
 Current controller boundaries:
 
@@ -75,7 +78,8 @@ Further splitting purely to reduce line count is not a cleanup objective.
 - #407 and #408 proved docs-only `master` commits are canceled before a redundant production runtime build;
 - real frontend changes continue to receive exact-SHA production deployments while docs-only merges are skipped;
 - #413 restored the production security baseline on Next.js 16.4.5 after newly disclosed critical advisories;
-- #412 then deployed the current AI Gateway model-eligibility readiness check on top of that patched baseline.
+- #412 then deployed the AI Gateway model-eligibility readiness check on top of that patched baseline (historical deployment evidence);
+- 22 further merges (#414–#435) have since landed on `master` without dependency-manifest changes after #413; the latest GitHub-recorded successful Production deployment is #434, and #435 had no GitHub deployment object when checked on 2026-11-17.
 
 
 ### CSS ownership
@@ -94,10 +98,15 @@ A live production audit exposed desktop horizontal overflow on Library/Connectio
 
 The repository had dozens of cleanup/history branches. #402 added fail-closed branch pruning and #403 explicitly retired the final three superseded refs after forensic comparison.
 
-Current branch set is intentionally only:
+Remote branch set observed on 2026-11-17 (recheck before acting on it; this document's own reconciliation branch is excluded because it is deleted after merge):
 
-- `master`;
-- `feat/refine-workspace-loader-gate-c-20260915` — reserved #315 Gate-C event.
+- `master` — default branch at `29c639e` (#435);
+- `feat/refine-workspace-loader-gate-c-20260915` — reserved #315 Gate-C event (2 branch-only commits; 118 `master`-only commits at this snapshot);
+- `feat/hosted-content-sequence-parity-20261117` — 8 branch-only commits, no open PR observed: unproven unique work, not stale;
+- `feat/source-health-workspace-20261117` — 7 branch-only commits, no open PR observed: unproven unique work, not stale;
+- `fix/windows-test-file-url-paths` — open PR #436.
+
+A branch is not “useless” merely because it has no open PR yet. Delete only refs proven merged or zero-ahead under the branch-hygiene rule below.
 
 The branch-pruner never deletes the default branch, the reserved Gate-C branch, open-PR heads, or unproven unique work.
 
@@ -124,7 +133,7 @@ Current active frontier:
 - #209 — shared UI consolidation parent;
 - #222 — repository onboarding/project-context outcome.
 
-Everything else is explicitly classified as blocked, partially implemented, later, or close-with-evidence.
+Everything else is explicitly classified as blocked, partially implemented, later, or close-with-evidence. This reconciliation verified that every issue in the active frontier above (and #340) remains open; it did not recompute the full 94-issue `ISSUE_TRIAGE.md` ledger, whose snapshot date remains 2026-10-05.
 
 ## GP2 live blocker boundary
 
@@ -137,9 +146,9 @@ Repository implementation is no longer the primary GP2 blocker.
 - readiness now evaluates the **actual configured generation model** (`VERCEL_AI_GATEWAY_MODEL`, otherwise SignalFlow's Gateway default) and proceeds only when Vercel marks that model eligible;
 - missing, ineligible, unknown, invalid-response, 401, 403, 429, unreachable and upstream-error states all remain blocked;
 - a configured direct hosted provider can still satisfy the existing explicit fallback boundary; no fake/template generation is introduced;
-- the live public Gateway catalog on 2026-11-10 still contains SignalFlow's default `google/gemini-2.5-flash-lite`, so no model migration was justified;
+- the live public Gateway catalog on 2026-11-10 still contained SignalFlow's default `google/gemini-2.5-flash-lite` (historical observation; not rechecked in the 2026-11-17 reconciliation), so no model migration was justified then;
 - project OIDC was previously normalized through the connected Vercel project API, but project environment-variable metadata remains inaccessible to the current connector (403), so the protected owner readiness check is still required to prove **this deployment's** live inference admission;
-- #412 is exact-SHA deployed and its post-deploy runtime-error scan is clean.
+- #412 was exact-SHA deployed with a clean post-deploy runtime-error scan (historical). Production has since recorded a successful #434 deployment, but no fresh protected owner readiness run was performed in this reconciliation, so live inference admission for the current runtime remains unproven.
 
 ### Hosted screenshot capture
 
@@ -154,7 +163,7 @@ Repository implementation is no longer the primary GP2 blocker.
 2. configure the approved remote CDP authority and pass the live worker probe;
 3. retry recoverable persisted opportunity work through the existing recovery action;
 4. verify exact ProjectContextSnapshot + ranked opportunity production evidence;
-5. refresh reserved #315 from then-current `master`; the reserved branch retains 2 unique intended commits, while its behind-count is live PR evidence and must be rechecked immediately before Gate C;
+5. refresh reserved #315 from then-current `master`; at the 2026-11-17 snapshot it retained 2 branch-only commits against 118 `master`-only commits, and both counts are live evidence that must be rechecked immediately before Gate C;
 6. run #315 as the meaningful positive GitHub event;
 7. complete exact screenshot/media binding, recovery/noise controls, and sanitized GP2 acceptance evidence.
 
@@ -170,7 +179,7 @@ Before it can merge:
 2. verify hosted inference authorization and operation;
 3. verify live bounded screenshot/CDP path;
 4. refresh the reserved branch from then-current `master`;
-5. pass normal CI/build/security gates;
+5. pass the repository build/security/test gates with locally reproducible evidence (do not rely on a hosted check mark alone);
 6. prepare the acceptance observer/evidence path;
 7. complete positive-event and low-value/noise-control evidence.
 
@@ -178,9 +187,9 @@ Do not treat deployment readiness as owner acceptance.
 
 ## GitHub administration blockers
 
-Current repository settings verified from GitHub:
+Repository settings rechecked read-only from GitHub on 2026-11-17 (no administration writes were attempted in this reconciliation):
 
-- About description still says “Local-first autoposting workspace…”;
+- About description still says “Local-first autoposting workspace that turns one description, data, screenshots, and screen recordings into formatted social media posting packages.”;
 - topics still include stale `autoposting`, `post-generator`, `gif-generator`, `fastapi`, and related legacy terms;
 - merge commit, rebase, and squash are all enabled;
 - `delete_branch_on_merge` is disabled;
@@ -198,7 +207,7 @@ These cannot be truthfully marked done from the current connector surface.
 
 ## Vercel / release truth
 
-The latest code-bearing checkpoint (#412) is exact-SHA deployed and READY in production at `dpl_3r5QKunB2djGsdeo1gX7nDQQ7uEY`. The immediately preceding #413 security checkpoint is also exact-SHA deployed and restored the production audit gate before #412 was refreshed and rerun.
+Historical checkpoints: #412 was exact-SHA deployed and READY in production at `dpl_3r5QKunB2djGsdeo1gX7nDQQ7uEY`, following the also-deployed #413 security baseline. Current truth at the 2026-11-17 snapshot: `master` is `29c639eb` (#435), while the latest GitHub-recorded successful Production deployment is `98aff7a` (#434, GitHub deployment `7835905047`, success at 2026-11-16T20:44:54Z). No GitHub deployment object for #435 existed when checked, so production must not be claimed to run #435.
 
 The non-production Vercel ignore-build policy remains effective: both #412/#413 feature-branch records were CANCELED rather than retained as READY preview artifacts. Documentation-only master merges should likewise be skipped when the frontend project diff is empty.
 
@@ -210,8 +219,10 @@ After repository hygiene closeout, do not restart cleanup/refactor loops without
 
 Execution returns to the product frontier:
 
-1. reverify GP2 runtime prerequisites;
-2. refresh reserved #315 only when those prerequisites are ready;
-3. execute positive + noise-control GP2 owner acceptance;
-4. then resume the explicitly triaged product backlog.
+1. independently review/merge #436 if the owner wants the Windows local test suite fully green (test harness only; it does not advance any Golden Path);
+2. record the production deployment identity for #435 or a later SHA, then reverify GP2 runtime prerequisites against that exact runtime;
+3. configure the approved remote CDP authority and pass the live worker probe;
+4. refresh reserved #315 only when those prerequisites are ready;
+5. execute positive + noise-control GP2 owner acceptance;
+6. only after GP2 acceptance, sequence GP3 (#168) and the explicitly triaged product backlog.
 

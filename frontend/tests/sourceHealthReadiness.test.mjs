@@ -180,6 +180,28 @@ test("invalid and credential-bearing links are blocked consistently during share
   assert.equal(normalized.ok, false);
 });
 
+test("ordinary invalid links are reported but do not block mixed usable evidence", () => {
+  const validation = validateGenerationInputs({
+    notes: "Known product evidence.",
+    docs_url: "ftp://example.com/file https://example.com/docs",
+    channels: ["linkedin"],
+  });
+  assert.equal(validation.valid, true);
+  assert.equal(validation.sourceHealth.status, SOURCE_HEALTH_STATUSES.READY);
+  assert.equal(validation.sourceHealth.counts.invalid, 1);
+  assert.equal(validation.sourceHealth.counts.needsVerification, 1);
+});
+
+test("credential-bearing links remain blocking even when another source is usable", () => {
+  const validation = validateGenerationInputs({
+    notes: "Known product evidence.",
+    docs_url: "https://example.com/private?token=secret",
+    channels: ["linkedin"],
+  });
+  assert.equal(validation.valid, false);
+  assert.match(validation.errors.join(" "), /credentials or signed access parameters/i);
+});
+
 test("empty source payload is blocked by the same report used for links", () => {
   const validation = validateGenerationInputs({ channels: ["linkedin"] });
   assert.equal(validation.valid, false);

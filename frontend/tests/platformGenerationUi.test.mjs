@@ -11,7 +11,9 @@ test("Plan exposes generation and exact review through application services, not
   assert.match(component, /createBrowserPlatformGenerationApplication/);
   assert.match(component, /generateReadyVariants/);
   assert.match(component, /PlatformReviewPanel/);
-  assert.match(component, /DRAFT REVIEW · EXACT REVISIONS/);
+  assert.match(component, /DRAFT REVIEW · PIECE/);
+  assert.match(component, /generateReadyVariants\(piece\.contentPieceId\)/);
+  assert.match(component, /<ContentPieceProduction/);
   assert.doesNotMatch(component, /\/api\/launch_kit/);
   assert.doesNotMatch(component, /generateJSON|OPENAI_API_KEY|GEMINI_API_KEY|ANTHROPIC_API_KEY/);
 });

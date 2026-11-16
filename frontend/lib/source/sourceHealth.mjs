@@ -137,6 +137,7 @@ export function createSourceHealthReport({
   }
 
   for (const artifact of Array.isArray(sourceArtifacts) ? sourceArtifacts : []) {
+    if (Array.isArray(linkResults) && artifact?.sourceKind === "link") continue;
     entries.push(Object.freeze({
       kind: "source_artifact",
       sourceArtifactId: text(artifact?.sourceArtifactId) || null,

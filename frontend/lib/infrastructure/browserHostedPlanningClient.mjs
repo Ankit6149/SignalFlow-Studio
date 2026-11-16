@@ -30,10 +30,25 @@ async function parseResponse(response) {
 }
 
 function normalizePlan(plan = {}) {
+  const contentPieces = Array.isArray(plan.contentPieces) ? plan.contentPieces.map(normalizeContentPiece) : [];
+  const primary = plan.contentPiece ? normalizeContentPiece(plan.contentPiece) : (contentPieces[0] || null);
+  const pieceBundles = Array.isArray(plan.pieceBundles)
+    ? plan.pieceBundles.map((item) => Object.freeze({
+        contentPiece: normalizeContentPiece(item.contentPiece),
+        variants: Array.isArray(item.variants) ? item.variants.map(normalizePlatformVariant) : [],
+      }))
+    : primary
+      ? [Object.freeze({
+          contentPiece: primary,
+          variants: Array.isArray(plan.variants) ? plan.variants.map(normalizePlatformVariant) : [],
+        })]
+      : [];
   return Object.freeze({
     strategy: plan.strategy ? normalizeNarrativeStrategy(plan.strategy) : null,
-    contentPiece: plan.contentPiece ? normalizeContentPiece(plan.contentPiece) : null,
+    contentPiece: primary,
+    contentPieces: Object.freeze(contentPieces.length ? contentPieces : (primary ? [primary] : [])),
     variants: Array.isArray(plan.variants) ? plan.variants.map(normalizePlatformVariant) : [],
+    pieceBundles: Object.freeze(pieceBundles),
   });
 }
 
@@ -90,5 +105,17 @@ export function createBrowserHostedPlanningClient({ fetchImpl = globalThis.fetch
     return normalizePlan(data.plan || {});
   }
 
-  return Object.freeze({ getPlanBundle, buildStrategy, reviseStrategy, approveStrategy });
+  async function addContentPiece(opportunityId, strategy, contentPiece) {
+    const current = normalizeNarrativeStrategy(strategy);
+    const data = await request("POST", {
+      action: "add_content_piece",
+      opportunityId,
+      strategyId: current.narrativeStrategyId,
+      expectedStrategyRevision: current.strategyRevision,
+      contentPiece,
+    });
+    return normalizePlan(data.plan || {});
+  }
+
+  return Object.freeze({ getPlanBundle, buildStrategy, reviseStrategy, approveStrategy, addContentPiece });
 }

@@ -1,3 +1,5 @@
+import { parseGitHubUrl } from "../context/githubUrl.mjs";
+
 export const SOURCE_HEALTH_REPORT_VERSION = 1;
 
 export const SOURCE_HEALTH_STATUSES = Object.freeze({
@@ -151,14 +153,23 @@ export function createSourceHealthReport({
   }
 
   if (text(repoUrl)) {
+    const validRepository = Boolean(parseGitHubUrl(text(repoUrl)));
     entries.push(Object.freeze({
       kind: "repository",
-      status: repoContext
-        ? SOURCE_HEALTH_ENTRY_STATUSES.USABLE
-        : verificationComplete
-          ? SOURCE_HEALTH_ENTRY_STATUSES.FAILED
-          : SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION,
-      issueCode: repoContext ? null : verificationComplete ? "repository_unavailable" : null,
+      status: !validRepository
+        ? SOURCE_HEALTH_ENTRY_STATUSES.INVALID
+        : repoContext
+          ? SOURCE_HEALTH_ENTRY_STATUSES.USABLE
+          : verificationComplete
+            ? SOURCE_HEALTH_ENTRY_STATUSES.FAILED
+            : SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION,
+      issueCode: !validRepository
+        ? "invalid_repository"
+        : repoContext
+          ? null
+          : verificationComplete
+            ? "repository_unavailable"
+            : null,
     }));
   }
 

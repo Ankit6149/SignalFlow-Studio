@@ -14,6 +14,14 @@ import {
   isPrivateAddress,
   normalizeHttpUrl,
 } from "./urlSafety.mjs";
+import {
+  EVIDENCE_STATES,
+  INGESTION_METHODS,
+  normalizeSourceArtifact,
+  PROCESSING_STATES,
+  SOURCE_KINDS,
+  SOURCE_USABILITY_STATES,
+} from "../domain/sourceArtifacts.mjs";
 
 export const SOURCE_FETCH_RESULT_VERSION = 1;
 
@@ -356,6 +364,60 @@ function failureResult({
     redirectCount,
     timing: Object.freeze({ durationMs: Math.max(0, endedAt - startedAt) }),
   });
+}
+
+export function sourceArtifactFromFetchResult(result, {
+  workspaceId,
+  projectId = null,
+  campaignId = null,
+  now = new Date().toISOString(),
+} = {}) {
+  if (!result || result.status !== SOURCE_FETCH_STATUSES.USABLE_EVIDENCE || result.evidenceUsable !== true) {
+    return null;
+  }
+  return normalizeSourceArtifact({
+    workspaceId,
+    projectId,
+    campaignId,
+    sourceKind: SOURCE_KINDS.LINK,
+    ingestionMethod: INGESTION_METHODS.REMOTE_FETCH,
+    sourceReference: {
+      canonicalUrl: result.finalCanonicalUrl || result.canonicalUrl,
+      title: result.title,
+      safetyVerification: "verified",
+    },
+    originalName: result.title || result.finalCanonicalUrl || result.canonicalUrl || "Remote source",
+    mimeType: result.mimeType,
+    byteSize: result.decodedBytes,
+    contentHash: result.contentHash,
+    extraction: {
+      state: PROCESSING_STATES.COMPLETE,
+      textHash: result.contentHash,
+      charCount: result.extractedChars,
+      truncated: result.extractionStatus === "truncated",
+      processor: { name: "signalflow_remote_text", version: "1" },
+      issueCodes: result.issueCodes,
+    },
+    usability: {
+      state: SOURCE_USABILITY_STATES.USABLE_EVIDENCE,
+      evidenceState: EVIDENCE_STATES.VERIFIED,
+      issueCodes: result.issueCodes,
+    },
+    privacy: {
+      classification: "public",
+      containsPersonalData: false,
+      exportAllowed: true,
+      processingAllowed: true,
+    },
+    provenance: [{
+      eventType: "ingested",
+      method: INGESTION_METHODS.REMOTE_FETCH,
+      actorType: "system",
+      occurredAt: now,
+    }],
+    createdAt: now,
+    updatedAt: now,
+  }, { workspaceId, projectId, campaignId, now });
 }
 
 export function createPinnedNodeTransport({

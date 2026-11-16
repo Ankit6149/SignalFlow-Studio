@@ -26,6 +26,12 @@ function required(value, field) {
   return normalized;
 }
 
+function optionalListSource(name, source) {
+  if (!source) return null;
+  if (typeof source.list !== "function") throw new TypeError(`${name}.list must be a function.`);
+  return source;
+}
+
 function byNewest(records, field) {
   return [...records].sort((a, b) => String(b[field] || "").localeCompare(String(a[field] || "")))[0] || null;
 }
@@ -630,7 +636,7 @@ export function createTodayDecisionApplication({
   const reviews = assertPort("contentReviewRepository", contentReviewRepository);
   const signals = assertPort("contentSignalRepository", contentSignalRepository);
   const opportunities = assertPort("contentOpportunityRepository", contentOpportunityRepository);
-  const durableJobs = durableJobRepository ? assertPort("durableJobRepository", durableJobRepository) : null;
+  const durableJobs = optionalListSource("durableJobRepository", durableJobRepository);
   const ownerWorkspaceId = required(workspaceId, "workspaceId");
 
   async function loadState() {

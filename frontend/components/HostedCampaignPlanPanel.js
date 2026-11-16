@@ -9,6 +9,15 @@ function label(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function emptyPieceForm() {
+  return {
+    purpose: "",
+    canonicalIntent: "",
+    timingIntent: "",
+    destinations: [],
+  };
+}
+
 function currentAngle(opportunity) {
   if (!opportunity?.selectedAngleId) return null;
   if (opportunity.selectedAngleId === "custom") return opportunity.customAngle
@@ -32,6 +41,9 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
   const [plan, setPlan] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState(null);
+  const [activeContentPieceId, setActiveContentPieceId] = useState("");
+  const [addingPiece, setAddingPiece] = useState(false);
+  const [pieceForm, setPieceForm] = useState(emptyPieceForm);
 
   const opportunityId = entry?.opportunity?.opportunityId || "";
   const selectedAngleId = entry?.opportunity?.selectedAngleId || "";
@@ -56,6 +68,11 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
         }
         if (!active) return;
         setPlan(next);
+        setActiveContentPieceId((current) => (
+          current && next.pieceBundles?.some((item) => item.contentPiece.contentPieceId === current)
+            ? current
+            : (next.contentPiece?.contentPieceId || next.pieceBundles?.[0]?.contentPiece?.contentPieceId || "")
+        ));
         setStatus("ready");
       } catch (error) {
         if (!active) return;
@@ -99,6 +116,67 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
     } catch (error) {
       setStatus("error");
       setMessage({ type: "error", text: error?.message || "SignalFlow could not approve this narrative plan.", code: error?.code });
+    }
+  }
+
+  function beginAddPiece() {
+    const destinations = (plan?.strategy?.destinationPlan || [])
+      .filter((item) => item.decision !== "exclude")
+      .map((item) => item.destination);
+    setPieceForm({ ...emptyPieceForm(), destinations });
+    setAddingPiece(true);
+  }
+
+  function togglePieceDestination(destination) {
+    setPieceForm((current) => ({
+      ...current,
+      destinations: current.destinations.includes(destination)
+        ? current.destinations.filter((item) => item !== destination)
+        : [...current.destinations, destination],
+    }));
+  }
+
+  function focusContentPiece(contentPieceId) {
+    if (!contentPieceId) return;
+    setActiveContentPieceId(contentPieceId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`hosted-content-piece-${contentPieceId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  async function saveFollowUp(event) {
+    event.preventDefault();
+    if (!plan?.strategy) return;
+    setStatus("revising");
+    setMessage(null);
+    try {
+      const next = await application.addHostedContentPiece(entry, plan.strategy, {
+        purpose: pieceForm.purpose,
+        canonicalIntent: pieceForm.canonicalIntent,
+        timingIntent: pieceForm.timingIntent || null,
+        destinations: pieceForm.destinations,
+      });
+      setPlan(next);
+      const added = next.contentPieces?.[next.contentPieces.length - 1] || null;
+      setAddingPiece(false);
+      setPieceForm(emptyPieceForm());
+      setStatus("ready");
+      if (added) {
+        setActiveContentPieceId(added.contentPieceId);
+        requestAnimationFrame(() => focusContentPiece(added.contentPieceId));
+      }
+      setMessage({
+        type: "success",
+        text: added
+          ? `Follow-up piece ${added.sequenceOrder} is durable and its selected destination work is preparing independently.`
+          : "The hosted content sequence was updated.",
+      });
+    } catch (error) {
+      setStatus("error");
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not add that hosted follow-up piece.", code: error?.code });
     }
   }
 
@@ -224,12 +302,81 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
 
       {approved && plan.contentPiece ? (
         <>
-          <div className={styles.approvedState}>
-            <span>CANONICAL CONTENT PIECE</span>
-            <strong>{plan.contentPiece.canonicalIntent}</strong>
-            <p>The exact approved strategy is durable. SignalFlow automatically prepares non-omitted LinkedIn/X revisions, required screenshot proof and exact critics. Controls appear below only when preserved work needs recovery or owner correction.</p>
+          <section className={styles.contentSequence} aria-label="Hosted content sequence">
+            <div className={styles.sequenceHeading}>
+              <div>
+                <span>CONTENT SEQUENCE</span>
+                <p>Each connected-source piece keeps its own intent, exact destination revisions and approvals. Order is editorial intent—not a publication schedule.</p>
+              </div>
+              {!addingPiece && <button type="button" onClick={beginAddPiece} disabled={status === "revising"}>Add follow-up</button>}
+            </div>
+
+            <div className={styles.sequenceList}>
+              {(plan.pieceBundles || []).map(({ contentPiece: piece, variants }) => {
+                const active = piece.contentPieceId === activeContentPieceId;
+                const destinations = variants.filter((variant) => variant.status !== "omitted").map((variant) => variant.destination === "x" ? "X" : label(variant.destination));
+                return (
+                  <button
+                    type="button"
+                    key={piece.contentPieceId}
+                    data-active={active}
+                    aria-pressed={active}
+                    onClick={() => focusContentPiece(piece.contentPieceId)}
+                  >
+                    <span>PIECE {piece.sequenceOrder} · {label(piece.sequenceRole)}</span>
+                    <strong>{piece.purpose}</strong>
+                    <p>{piece.canonicalIntent}</p>
+                    <small>{piece.timingIntent || (piece.sequenceRole === "primary" ? "Primary story" : "No exact timing set")} · {destinations.length ? destinations.join(" + ") : "No active destination"}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            {addingPiece && (
+              <form className={styles.followUpForm} onSubmit={saveFollowUp}>
+                <div className={styles.followUpHeading}>
+                  <div><span>ADD FOLLOW-UP PIECE</span><strong>Plan another communication unit without rewriting the primary story.</strong></div>
+                  <button type="button" onClick={() => { setAddingPiece(false); setPieceForm(emptyPieceForm()); }} disabled={status === "revising"}>Cancel</button>
+                </div>
+                <label><span>Purpose</span><input value={pieceForm.purpose} onChange={(event) => setPieceForm((current) => ({ ...current, purpose: event.target.value }))} placeholder="Explain the implementation lesson after the primary story" /></label>
+                <label><span>Canonical intent</span><textarea rows={3} value={pieceForm.canonicalIntent} onChange={(event) => setPieceForm((current) => ({ ...current, canonicalIntent: event.target.value }))} placeholder="What this piece should communicate without repeating the first post" /></label>
+                <label><span>Timing intent · not a schedule</span><input value={pieceForm.timingIntent} onChange={(event) => setPieceForm((current) => ({ ...current, timingIntent: event.target.value }))} placeholder="Later, after the primary story has landed" /></label>
+                <fieldset>
+                  <legend>Destinations</legend>
+                  {strategy.destinationPlan.filter((item) => item.decision !== "exclude").map((item) => (
+                    <label key={item.destination}>
+                      <input type="checkbox" checked={pieceForm.destinations.includes(item.destination)} onChange={() => togglePieceDestination(item.destination)} />
+                      <span>{item.destination === "x" ? "X" : label(item.destination)}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <button type="submit" className={styles.addPieceButton} disabled={status === "revising" || !pieceForm.purpose.trim() || !pieceForm.canonicalIntent.trim() || pieceForm.destinations.length === 0}>
+                  {status === "revising" ? "Adding…" : "Add to sequence"}
+                </button>
+              </form>
+            )}
+          </section>
+
+          <div className={styles.productionSequence}>
+            {(plan.pieceBundles || []).map(({ contentPiece: piece }) => (
+              <section
+                className={styles.pieceProduction}
+                key={piece.contentPieceId}
+                id={`hosted-content-piece-${piece.contentPieceId}`}
+                data-active={piece.contentPieceId === activeContentPieceId}
+                tabIndex={-1}
+                onFocusCapture={() => setActiveContentPieceId(piece.contentPieceId)}
+                aria-label={`Hosted content piece ${piece.sequenceOrder} production`}
+              >
+                <div className={styles.approvedState}>
+                  <span>PIECE {piece.sequenceOrder} · {label(piece.sequenceRole)}</span>
+                  <strong>{piece.canonicalIntent}</strong>
+                  <p>{piece.timingIntent || "No exact publication time is implied."}</p>
+                </div>
+                <HostedPlatformDraftsPanel contentPiece={piece} strategy={strategy} />
+              </section>
+            ))}
           </div>
-          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} strategy={strategy} />
         </>
       ) : (
         <div className={styles.actions}>

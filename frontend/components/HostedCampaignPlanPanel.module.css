@@ -155,6 +155,128 @@
   gap: 0.35rem;
 }
 
+.contentSequence {
+  padding: .9rem 0 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+.sequenceHeading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem;
+}
+.sequenceHeading > div { min-width:0; }
+.sequenceHeading span,
+.followUpHeading span,
+.followUpForm > label > span,
+.followUpForm legend {
+  display:block;
+  font-size:.68rem;
+  font-weight:700;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  opacity:.72;
+}
+.sequenceHeading p {
+  max-width:46rem;
+  margin:.3rem 0 0;
+  font-size:.82rem;
+  opacity:.72;
+}
+.sequenceHeading > button,
+.followUpHeading > button {
+  flex:0 0 auto;
+  min-height:2.25rem;
+  padding:.45rem .7rem;
+  border:1px solid color-mix(in srgb,currentColor 18%,transparent);
+  border-radius:.58rem;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+}
+.sequenceList {
+  margin-top:.7rem;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+  gap:.5rem;
+}
+.sequenceList > button {
+  min-width:0;
+  padding:.7rem .75rem;
+  border:1px solid color-mix(in srgb,currentColor 13%,transparent);
+  border-radius:.65rem;
+  background:color-mix(in srgb,var(--workspace-surface,#fffdf8) 96%,transparent);
+  color:inherit;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.sequenceList > button[data-active="true"] {
+  border-color:color-mix(in srgb,var(--workspace-accent,#9d7a32) 48%,transparent);
+  background:color-mix(in srgb,var(--workspace-accent,#9d7a32) 9%,var(--workspace-surface,#fffdf8));
+}
+.sequenceList span { font-size:.66rem; font-weight:700; letter-spacing:.06em; opacity:.7; }
+.sequenceList strong { display:block; margin-top:.3rem; font-size:.88rem; line-height:1.35; }
+.sequenceList p { margin:.28rem 0 0; font-size:.78rem; line-height:1.45; opacity:.78; }
+.sequenceList small { display:block; margin-top:.35rem; font-size:.7rem; opacity:.65; }
+.followUpForm {
+  margin-top:.75rem;
+  padding:.8rem;
+  border:1px solid color-mix(in srgb,currentColor 12%,transparent);
+  border-radius:.65rem;
+  display:grid;
+  gap:.6rem;
+}
+.followUpHeading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+.followUpHeading strong { display:block; margin-top:.25rem; font-size:.86rem; }
+.followUpForm > label { display:grid; gap:.28rem; }
+.followUpForm input[type="text"],
+.followUpForm input:not([type]),
+.followUpForm textarea {
+  width:100%;
+  padding:.6rem .65rem;
+  border:1px solid color-mix(in srgb,currentColor 18%,transparent);
+  border-radius:.55rem;
+  background:var(--workspace-paper,#fffdf8);
+  color:inherit;
+  font:inherit;
+}
+.followUpForm textarea { resize:vertical; }
+.followUpForm fieldset {
+  margin:0;
+  padding:.55rem .65rem;
+  border:1px solid color-mix(in srgb,currentColor 12%,transparent);
+  border-radius:.55rem;
+  display:flex;
+  gap:.8rem;
+  flex-wrap:wrap;
+}
+.followUpForm fieldset label { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; }
+.addPieceButton {
+  justify-self:end;
+  min-height:2.35rem;
+  padding:.5rem .8rem;
+  border:0;
+  border-radius:.58rem;
+  background:var(--workspace-ink,#171511);
+  color:var(--workspace-paper,#fffdf8);
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+.productionSequence { display:grid; gap:.8rem; }
+.pieceProduction {
+  min-width:0;
+  scroll-margin-top:1rem;
+  border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);
+}
+.pieceProduction[data-active="true"] {
+  background:color-mix(in srgb,var(--workspace-accent,#9d7a32) 4%,transparent);
+}
+.pieceProduction:focus { outline:none; }
+.pieceProduction:focus-visible { outline:2px solid currentColor; outline-offset:3px; }
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -185,6 +307,11 @@
 .actions button:focus-visible,
 .panel > button:focus-visible,
 .destinationDecision select:focus-visible,
+.sequenceHeading button:focus-visible,
+.sequenceList button:focus-visible,
+.followUpForm button:focus-visible,
+.followUpForm input:focus-visible,
+.followUpForm textarea:focus-visible,
 .primaryLink:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
@@ -207,6 +334,20 @@
   .destinationRows > div {
     grid-template-columns: 1fr;
     gap: 0.25rem;
+  }
+
+  .sequenceHeading,
+  .followUpHeading {
+    flex-direction:column;
+  }
+
+  .sequenceList {
+    grid-template-columns:1fr;
+  }
+
+  .addPieceButton {
+    width:100%;
+    justify-self:stretch;
   }
 }
 

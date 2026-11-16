@@ -44,7 +44,7 @@ UI/public claims use the last applicable truthful state, not the most optimistic
 | Bounded StyleMemory consumption + exact draft memory provenance | Available when a permitted generation route is configured | Available when configured | Available when configured | Available when configured |
 | Browser-local NarrativeStrategy/ContentPiece/LinkedIn-X PlatformVariant planning | Available when a permitted model route is configured | Available when configured | Available when configured | Available when configured |
 | Generated read-only LinkedIn/X `PlatformVariantRevision` | Available when a permitted model route is configured | Available when configured | Available when configured | Available when configured |
-| Hardened remote URL evidence fetch (#127) | Not implemented | Not implemented | Not implemented | Not implemented |
+| Hardened remote URL evidence fetch (#127) | Available for supported public text/HTML through the same fail-closed server boundary | Available | Available | Available |
 | Complete source-health diagnostics (#128) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Remote evidence revalidation/version adoption (#129) | Not implemented | Not implemented | Not implemented | Not implemented |
 | Retention/deletion background enforcement | Not implemented | Not implemented | Not implemented | Not implemented |

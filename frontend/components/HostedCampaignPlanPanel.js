@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import HostedPlatformDraftsPanel from "./HostedPlatformDraftsPanel";
 import styles from "./HostedCampaignPlanPanel.module.css";
 
@@ -18,6 +18,14 @@ function currentAngle(opportunity) {
   return selected ? { angleId: selected.angleId, title: selected.title || "", summary: selected.summary || "", approach: selected.approach || selected.summary || "" } : null;
 }
 
+function emptyPieceForm() {
+  return { purpose: "", canonicalIntent: "", timingIntent: "", destinations: [] };
+}
+
+function destinationLabel(value) {
+  return value === "x" ? "X" : label(value);
+}
+
 function strategyMatchesOpportunity(strategy, opportunity) {
   if (!strategy) return false;
   const angle = currentAngle(opportunity);
@@ -32,9 +40,18 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
   const [plan, setPlan] = useState(null);
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState(null);
+  const [showPieceForm, setShowPieceForm] = useState(false);
+  const [pieceForm, setPieceForm] = useState(emptyPieceForm);
+  const [activeContentPieceId, setActiveContentPieceId] = useState("");
 
   const opportunityId = entry?.opportunity?.opportunityId || "";
   const selectedAngleId = entry?.opportunity?.selectedAngleId || "";
+  const allowedDestinations = useMemo(() => (
+    (plan?.strategy?.destinationPlan || []).filter((item) => item.decision !== "exclude")
+  ), [plan?.strategy?.destinationPlan]);
+  const pieceBundles = plan?.pieceBundles?.length
+    ? plan.pieceBundles
+    : (plan?.contentPiece ? [{ contentPiece: plan.contentPiece, variants: plan.variants || [] }] : []);
 
   useEffect(() => {
     let active = true;
@@ -70,6 +87,58 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
     void load();
     return () => { active = false; };
   }, [application, entry, opportunityId, selectedAngleId]);
+
+  useEffect(() => {
+    if (!pieceBundles.length) {
+      setActiveContentPieceId("");
+      return;
+    }
+    setActiveContentPieceId((current) => (
+      current && pieceBundles.some(({ contentPiece }) => contentPiece.contentPieceId === current)
+        ? current
+        : pieceBundles[0].contentPiece.contentPieceId
+    ));
+  }, [pieceBundles.length, plan?.strategy?.narrativeStrategyId]);
+
+  function focusContentPiece(contentPieceId) {
+    if (!contentPieceId) return;
+    setActiveContentPieceId(contentPieceId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`hosted-content-piece-${contentPieceId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function togglePieceDestination(destination) {
+    setPieceForm((current) => ({
+      ...current,
+      destinations: current.destinations.includes(destination)
+        ? current.destinations.filter((item) => item !== destination)
+        : [...current.destinations, destination],
+    }));
+  }
+
+  async function addFollowUp(event) {
+    event.preventDefault();
+    if (!plan?.strategy) return;
+    setStatus("revising");
+    setMessage(null);
+    try {
+      const next = await application.addHostedContentPiece(entry, plan.strategy, pieceForm);
+      setPlan(next);
+      const newest = next.contentPieces?.[next.contentPieces.length - 1] || null;
+      setPieceForm(emptyPieceForm());
+      setShowPieceForm(false);
+      setStatus("ready");
+      setMessage({ type: "success", text: "Follow-up ContentPiece added to the canonical hosted plan. Its destination work is independent from the existing pieces." });
+      if (newest) requestAnimationFrame(() => focusContentPiece(newest.contentPieceId));
+    } catch (error) {
+      setStatus("error");
+      setMessage({ type: "error", text: error?.message || "SignalFlow could not add the hosted follow-up piece.", code: error?.code });
+    }
+  }
 
   async function rebuild() {
     setStatus("building");
@@ -224,12 +293,83 @@ export default function HostedCampaignPlanPanel({ application, entry }) {
 
       {approved && plan.contentPiece ? (
         <>
-          <div className={styles.approvedState}>
-            <span>CANONICAL CONTENT PIECE</span>
-            <strong>{plan.contentPiece.canonicalIntent}</strong>
-            <p>The exact approved strategy is durable. SignalFlow automatically prepares non-omitted LinkedIn/X revisions, required screenshot proof and exact critics. Controls appear below only when preserved work needs recovery or owner correction.</p>
+          <div className={styles.sequenceSection} aria-label="Hosted content sequence">
+            <div className={styles.sequenceHeader}>
+              <div>
+                <span>CONTENT SEQUENCE</span>
+                <p>Each piece is a separate communication unit with independent destination revisions. Order and timing intent are editorial planning only—not a publication schedule.</p>
+              </div>
+              <button type="button" onClick={() => setShowPieceForm((value) => !value)} disabled={status === "revising"}>
+                {showPieceForm ? "Cancel" : "Add follow-up"}
+              </button>
+            </div>
+
+            <div className={styles.sequenceList}>
+              {pieceBundles.map(({ contentPiece }, index) => (
+                <button
+                  type="button"
+                  key={contentPiece.contentPieceId}
+                  data-active={contentPiece.contentPieceId === activeContentPieceId}
+                  aria-pressed={contentPiece.contentPieceId === activeContentPieceId}
+                  onClick={() => focusContentPiece(contentPiece.contentPieceId)}
+                >
+                  <span>{String(index + 1).padStart(2, "0")} · {label(contentPiece.sequenceRole)}</span>
+                  <strong>{contentPiece.canonicalIntent}</strong>
+                  <p>{contentPiece.purpose}</p>
+                  <small>{contentPiece.timingIntent ? `Timing intent · ${contentPiece.timingIntent}` : "No exact timing set"}</small>
+                </button>
+              ))}
+            </div>
+
+            {showPieceForm && (
+              <form className={styles.followUpForm} onSubmit={addFollowUp}>
+                <label>
+                  <span>PURPOSE</span>
+                  <input value={pieceForm.purpose} onChange={(event) => setPieceForm((current) => ({ ...current, purpose: event.target.value }))} placeholder="e.g. Explain the implementation lesson" required />
+                </label>
+                <label>
+                  <span>CANONICAL INTENT</span>
+                  <textarea rows={3} value={pieceForm.canonicalIntent} onChange={(event) => setPieceForm((current) => ({ ...current, canonicalIntent: event.target.value }))} placeholder="What should this follow-up communicate independently?" required />
+                </label>
+                <label>
+                  <span>TIMING INTENT · NOT A SCHEDULE</span>
+                  <input value={pieceForm.timingIntent} onChange={(event) => setPieceForm((current) => ({ ...current, timingIntent: event.target.value }))} placeholder="e.g. after the launch explanation, if still useful" />
+                </label>
+                <fieldset>
+                  <legend>DESTINATIONS</legend>
+                  {allowedDestinations.map((item) => (
+                    <label key={item.destination}>
+                      <input type="checkbox" checked={pieceForm.destinations.includes(item.destination)} onChange={() => togglePieceDestination(item.destination)} />
+                      <span>{destinationLabel(item.destination)}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <button type="submit" className={styles.primaryButton} disabled={status === "revising" || !pieceForm.purpose.trim() || !pieceForm.canonicalIntent.trim() || !pieceForm.destinations.length}>
+                  {status === "revising" ? "Adding…" : "Add follow-up piece"}
+                </button>
+              </form>
+            )}
           </div>
-          <HostedPlatformDraftsPanel contentPiece={plan.contentPiece} strategy={strategy} />
+
+          <div className={styles.productionSequence}>
+            {pieceBundles.map(({ contentPiece }, index) => (
+              <section
+                key={contentPiece.contentPieceId}
+                id={`hosted-content-piece-${contentPiece.contentPieceId}`}
+                className={styles.productionPiece}
+                data-active={contentPiece.contentPieceId === activeContentPieceId}
+                tabIndex={-1}
+                onFocusCapture={() => setActiveContentPieceId(contentPiece.contentPieceId)}
+              >
+                <div className={styles.approvedState}>
+                  <span>CONTENT PIECE {index + 1} · {label(contentPiece.sequenceRole)}</span>
+                  <strong>{contentPiece.canonicalIntent}</strong>
+                  <p>{contentPiece.purpose}{contentPiece.timingIntent ? ` · Timing intent: ${contentPiece.timingIntent}` : ""}</p>
+                </div>
+                <HostedPlatformDraftsPanel contentPiece={contentPiece} strategy={strategy} />
+              </section>
+            ))}
+          </div>
         </>
       ) : (
         <div className={styles.actions}>

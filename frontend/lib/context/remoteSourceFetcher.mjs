@@ -88,6 +88,13 @@ function safeCanonicalUrl(input) {
 
 function assertPortableRequestUrl(input) {
   const url = input instanceof URL ? new URL(input.toString()) : normalizeHttpUrl(input);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new RemoteSourceFetchError(
+      "unsupported_url_protocol",
+      "Only HTTP and HTTPS remote sources are supported.",
+      { status: SOURCE_FETCH_STATUSES.BLOCKED },
+    );
+  }
   if (url.username || url.password) {
     throw new RemoteSourceFetchError(
       "credentialed_url_forbidden",
@@ -117,6 +124,29 @@ function assertPortableRequestUrl(input) {
   return url;
 }
 
+function mappedIpv4FromIpv6(address) {
+  const value = String(address || "").toLowerCase().replace(/^\[|\]$/g, "").split("%")[0];
+  const match = value.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (!match) return null;
+  const high = Number.parseInt(match[1], 16);
+  const low = Number.parseInt(match[2], 16);
+  return [
+    (high >>> 8) & 255,
+    high & 255,
+    (low >>> 8) & 255,
+    low & 255,
+  ].join(".");
+}
+
+function addressBlocked(address) {
+  const mapped = mappedIpv4FromIpv6(address);
+  if (mapped) return isPrivateAddress(mapped);
+  const value = String(address || "").toLowerCase().replace(/^\[|\]$/g, "").split("%")[0];
+  if (value.startsWith("64:ff9b:") || value.startsWith("2002:") || value.startsWith("3fff:")) return true;
+  if (/^2001:0{0,3}:/i.test(value)) return true;
+  return isPrivateAddress(value);
+}
+
 function normalizeResolvedAnswer(answer) {
   if (typeof answer === "string") {
     const family = net.isIP(answer);
@@ -140,7 +170,7 @@ async function vettedResolution(url, resolveHost) {
 
   const directFamily = net.isIP(hostname);
   if (directFamily) {
-    if (isPrivateAddress(hostname)) {
+    if (addressBlocked(hostname)) {
       throw new RemoteSourceFetchError(
         "private_address_blocked",
         "Private or reserved network destinations are blocked.",
@@ -160,7 +190,7 @@ async function vettedResolution(url, resolveHost) {
   if (!answers.length) {
     throw new RemoteSourceFetchError("dns_resolution_failed", "The source hostname did not resolve to a public address.");
   }
-  if (answers.some(({ address }) => isPrivateAddress(address))) {
+  if (answers.some(({ address }) => addressBlocked(address))) {
     throw new RemoteSourceFetchError(
       "unsafe_dns_answer",
       "The source hostname resolved to a private or reserved destination.",

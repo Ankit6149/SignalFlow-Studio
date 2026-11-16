@@ -199,6 +199,8 @@ export default function StudioRootController() {
     linkCandidates: parseSourceLinkCandidates(form.links),
     verificationComplete: false,
   }), [form.notes, form.links, form.repo, documentText, files]);
+  const persistedSourceHealth = result?.sourceHealth?.schemaVersion === 1 ? result.sourceHealth : null;
+  const displayedSourceHealth = persistedSourceHealth && !isCampaignStale ? persistedSourceHealth : sourceHealth;
   const sourceSignals = sourceHealth.counts.usable + sourceHealth.counts.needsVerification;
   const sourceCanProceed = sourceHealth.status === SOURCE_HEALTH_STATUSES.READY
     || sourceHealth.status === SOURCE_HEALTH_STATUSES.NEEDS_VERIFICATION;
@@ -528,7 +530,9 @@ export default function StudioRootController() {
               onFiles={handleFiles}
               files={files}
               sourceArtifactSummary={sourceArtifactSummary}
-              sourceHealth={sourceHealth}
+              sourceHealth={displayedSourceHealth}
+              persistedSourceHealth={persistedSourceHealth}
+              sourceHealthStale={Boolean(isCampaignStale && persistedSourceHealth)}
               onRemoveFile={removeFile}
             />
 

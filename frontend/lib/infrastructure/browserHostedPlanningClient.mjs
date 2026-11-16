@@ -30,10 +30,21 @@ async function parseResponse(response) {
 }
 
 function normalizePlan(plan = {}) {
+  const contentPieces = Array.isArray(plan.contentPieces)
+    ? plan.contentPieces.map(normalizeContentPiece)
+    : (plan.contentPiece ? [normalizeContentPiece(plan.contentPiece)] : []);
+  const pieceBundles = Array.isArray(plan.pieceBundles)
+    ? plan.pieceBundles.map((bundle) => Object.freeze({
+        contentPiece: normalizeContentPiece(bundle.contentPiece),
+        variants: Array.isArray(bundle.variants) ? bundle.variants.map(normalizePlatformVariant) : [],
+      }))
+    : [];
   return Object.freeze({
     strategy: plan.strategy ? normalizeNarrativeStrategy(plan.strategy) : null,
-    contentPiece: plan.contentPiece ? normalizeContentPiece(plan.contentPiece) : null,
+    contentPiece: plan.contentPiece ? normalizeContentPiece(plan.contentPiece) : (contentPieces[0] || null),
+    contentPieces: Object.freeze(contentPieces),
     variants: Array.isArray(plan.variants) ? plan.variants.map(normalizePlatformVariant) : [],
+    pieceBundles: Object.freeze(pieceBundles),
   });
 }
 
@@ -90,5 +101,20 @@ export function createBrowserHostedPlanningClient({ fetchImpl = globalThis.fetch
     return normalizePlan(data.plan || {});
   }
 
-  return Object.freeze({ getPlanBundle, buildStrategy, reviseStrategy, approveStrategy });
+  async function addContentPiece(opportunityId, strategy, input = {}) {
+    const current = normalizeNarrativeStrategy(strategy);
+    const data = await request("POST", {
+      action: "add_content_piece",
+      opportunityId,
+      strategyId: current.narrativeStrategyId,
+      expectedStrategyRevision: current.strategyRevision,
+      purpose: String(input.purpose || "").trim(),
+      canonicalIntent: String(input.canonicalIntent || "").trim(),
+      timingIntent: String(input.timingIntent || "").trim() || null,
+      destinations: Array.isArray(input.destinations) ? input.destinations : [],
+    });
+    return normalizePlan(data.plan || {});
+  }
+
+  return Object.freeze({ getPlanBundle, buildStrategy, reviseStrategy, approveStrategy, addContentPiece });
 }

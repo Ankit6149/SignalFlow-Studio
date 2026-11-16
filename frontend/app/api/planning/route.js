@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 45;
 
 const MAX_BODY_BYTES = 64 * 1024;
-const ACTIONS = new Set(["build_strategy", "approve_strategy", "revise_strategy"]);
+const ACTIONS = new Set(["build_strategy", "approve_strategy", "revise_strategy", "add_content_piece"]);
 const PATCH_FIELDS = new Set([
   "title",
   "coreIdea",
@@ -208,6 +208,27 @@ export async function POST(request) {
       const strategy = await planningApplication.reviseStrategy(strategyId, boundedPatch(body.patch));
       const plan = await planningApplication.getPlanBundle(opportunityId);
       return json({ ok: true, workspaceId, opportunityId, strategy, plan });
+    }
+
+    if (action === "add_content_piece") {
+      const destinations = Array.isArray(body.destinations)
+        ? body.destinations.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+        : [];
+      if (!destinations.length || destinations.some((item) => !["linkedin", "x"].includes(item))) {
+        const error = new Error("Choose at least one supported destination for the follow-up ContentPiece.");
+        error.code = "planning_invalid_request";
+        error.status = 400;
+        throw error;
+      }
+      const result = await planningApplication.addContentPiece(strategyId, {
+        purpose: String(body.purpose || "").trim(),
+        canonicalIntent: String(body.canonicalIntent || "").trim(),
+        sequenceRole: "follow_up",
+        timingIntent: String(body.timingIntent || "").trim() || null,
+        destinations,
+      });
+      const plan = await planningApplication.getPlanBundle(opportunityId);
+      return json({ ok: true, workspaceId, opportunityId, ...result, plan });
     }
 
     const result = await planningApplication.approveStrategy(strategyId, {

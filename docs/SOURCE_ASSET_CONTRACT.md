@@ -2,7 +2,7 @@
 
 SignalFlow Studio uses one versioned source graph across browser uploads, API requests, MCP, repository ingestion, trusted-local references, extension capture, campaign snapshots, portable transfer, and future hosted adapters.
 
-This document is the implementation and migration runbook for issue #86. It does not claim that every ingestion algorithm or source workspace is complete. Hardened remote fetching is tracked in #127, links-only readiness in #22, the full source-health UI in #128, immutable remote evidence versions in #129, the Asset Library in #87, processing adapters in #88, and retention/deletion enforcement in #89.
+This document is the implementation and migration runbook for issue #86. It does not claim that every ingestion algorithm or source workspace is complete. Hardened public-text remote fetching is implemented under #127; links-only product readiness remains tracked in #22, the full source-health UI in #128, immutable remote evidence versions in #129, the Asset Library in #87, processing adapters in #88, and retention/deletion enforcement in #89.
 
 ## Why the contract exists
 
@@ -114,7 +114,7 @@ Canonical URL references:
 - reject credential/signature query keys;
 - do not become `usable_evidence` merely because a URL is syntactically valid.
 
-Remote links and extension pages remain `reference_only` until the hardened fetch boundary verifies them. Issue #127 owns DNS, SSRF, redirect, timeout, MIME, decompression, extraction, and network safety. The contract fails if an unverified remote URL is mislabeled usable evidence.
+Remote links and extension pages remain `reference_only` until the hardened fetch boundary verifies them. The #127 boundary now owns DNS pinning, SSRF and reserved-address rejection, redirect revalidation, timeout, MIME/download/encoding checks, encoded and decoded byte limits, bounded extraction, and redacted diagnostics. The contract fails if an unverified remote URL is mislabeled usable evidence. Authenticated/private-site fetching and later evidence refresh/version adoption are outside that boundary.
 
 ### Repository references
 

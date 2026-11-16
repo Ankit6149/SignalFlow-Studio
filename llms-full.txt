@@ -147,7 +147,7 @@ SignalFlow uses versioned Asset, SourceArtifact, and AssetProcessing records for
 
 Browser uploads create canonical records after reading the browser File; runtime File objects and local paths are not persisted. Campaign fingerprints use SourceArtifact version references rather than editable display metadata. API and MCP validate one workspace-scoped graph and project legacy `media_items` only at the generation compatibility edge.
 
-Remote URL records cannot become usable evidence until a hardened network fetch verifies them. The full source-health workspace, remote evidence revalidation, OCR/transcription/visual processing adapters, Asset Library, and retention/deletion enforcement remain unfinished separate capabilities.
+Remote URL records become usable evidence only after the hardened server fetch boundary verifies them. Supported public text/HTML fetches pin a vetted DNS answer into the actual request, revalidate every redirect hop, reject private/reserved/credential-bearing destinations, enforce timeout/MIME/encoded/decoded/extraction budgets, and keep blocked/reference-only results out of generation. Authenticated private-site ingestion, the full source-health workspace, remote evidence revalidation, OCR/transcription/visual processing adapters, Asset Library, and retention/deletion enforcement remain unfinished separate capabilities.
 
 ## Portable transfer and recovery
 

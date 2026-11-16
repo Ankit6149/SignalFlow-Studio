@@ -482,11 +482,10 @@ Future cloud persistence must continue to implement application/domain ports rat
 
 ## Current source and asset truth
 
-Implemented foundations include canonical versioned Asset/SourceArtifact/AssetProcessing records, browser-side handling for supported inputs, owner-scoped hosted private Asset persistence where configured, bounded CaptureRecipe/CaptureJob contracts, and screenshot execution/quality/derivative foundations used by the active GP2 work.
+Implemented foundations include canonical versioned Asset/SourceArtifact/AssetProcessing records, browser-side handling for supported inputs, a fail-closed hardened public-text URL fetch boundary with DNS pinning/redirect revalidation/timeout/MIME/byte budgets, owner-scoped hosted private Asset persistence where configured, bounded CaptureRecipe/CaptureJob contracts, and screenshot execution/quality/derivative foundations used by the active GP2 work.
 
 Still incomplete or not broadly accepted include:
 
-- hardened remote URL ingestion across all source paths;
 - complete source-health diagnostics and remote evidence revalidation;
 - general OCR/transcription/visual-analysis processors;
 - acknowledged full extension screenshot/recording ingestion;

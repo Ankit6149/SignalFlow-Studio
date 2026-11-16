@@ -104,6 +104,9 @@ export async function GET(request) {
       },
       providers,
       connectorCapabilities: buildConnectorCapabilities({ isOwner: ownerAuthorized }),
+      sourceCapabilities: {
+        hardenedRemoteFetch: true,
+      },
       cloud: {
         accounts: false,
         workspaces: false,

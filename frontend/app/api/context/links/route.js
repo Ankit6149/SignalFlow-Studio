@@ -20,7 +20,7 @@ export async function POST(request) {
     const results = [];
     for (const url of urls) {
       if (url) {
-        const fetched = await fetchUrlContent(url);
+        const fetched = await fetchUrlContent(url, { signal: request.signal });
         if (fetched) {
           results.push(fetched);
         }
@@ -29,7 +29,10 @@ export async function POST(request) {
 
     return new Response(JSON.stringify({ linksContext: results }), {
       status: 200,
-      headers: { "Content-Type": "application/json" }
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, no-store, max-age=0",
+      }
     });
   } catch (err) {
     return internalErrorResponse("context.links", err, {

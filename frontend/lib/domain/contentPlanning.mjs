@@ -69,6 +69,14 @@ function enumValue(value, allowed, fallback, field) {
   return normalized;
 }
 
+function positiveInteger(value, fallback, field) {
+  const candidate = value === undefined || value === null || value === "" ? fallback : Number(value);
+  if (!Number.isInteger(candidate) || candidate < 1 || candidate > 1000) {
+    throw new TypeError(`${field} must be an integer between 1 and 1000.`);
+  }
+  return candidate;
+}
+
 function list(values, { maxItems = 80, maxLength = 1600 } = {}) {
   if (values === undefined || values === null) return [];
   if (!Array.isArray(values)) throw new TypeError("Content planning list must be an array.");
@@ -282,6 +290,8 @@ export function normalizeContentPiece(input = {}) {
     opportunityId: id(parsed.opportunityId, "ContentPiece.opportunityId"),
     purpose: text(parsed.purpose, "Communicate the selected narrative clearly and authentically.", 1200),
     sequenceRole: text(parsed.sequenceRole, "primary", 80).toLowerCase(),
+    sequenceOrder: positiveInteger(parsed.sequenceOrder, 1, "ContentPiece.sequenceOrder"),
+    timingIntent: optionalText(parsed.timingIntent, 400),
     canonicalIntent: text(parsed.canonicalIntent, "", 2400),
     claims: list(parsed.claims, { maxItems: 30, maxLength: 1200 }),
     evidenceRefs: list(parsed.evidenceRefs, { maxItems: 50, maxLength: 240 }),
@@ -291,7 +301,19 @@ export function normalizeContentPiece(input = {}) {
   });
 }
 
-export function createPrimaryContentPiece({ contentPieceId, strategy, opportunityId, createdAt } = {}) {
+export function createSequencedContentPiece({
+  contentPieceId,
+  strategy,
+  opportunityId,
+  purpose,
+  sequenceRole = "follow_up",
+  sequenceOrder = 1,
+  timingIntent = null,
+  canonicalIntent,
+  claims = [],
+  evidenceRefs = [],
+  createdAt,
+} = {}) {
   const normalized = normalizeNarrativeStrategy(strategy);
   if (normalized.status !== STRATEGY_STATUSES.APPROVED) throw new TypeError("ContentPiece creation requires an approved NarrativeStrategy.");
   return normalizeContentPiece({
@@ -299,14 +321,33 @@ export function createPrimaryContentPiece({ contentPieceId, strategy, opportunit
     workspaceId: normalized.workspaceId,
     narrativeStrategyId: normalized.narrativeStrategyId,
     opportunityId,
-    purpose: normalized.audienceTakeaway,
-    sequenceRole: "primary",
-    canonicalIntent: normalized.coreIdea,
-    claims: normalized.factualConstraints,
-    evidenceRefs: [],
+    purpose,
+    sequenceRole,
+    sequenceOrder,
+    timingIntent,
+    canonicalIntent,
+    claims,
+    evidenceRefs,
     status: CONTENT_PIECE_STATUSES.PLANNED,
     createdAt,
     updatedAt: createdAt,
+  });
+}
+
+export function createPrimaryContentPiece({ contentPieceId, strategy, opportunityId, createdAt } = {}) {
+  const normalized = normalizeNarrativeStrategy(strategy);
+  return createSequencedContentPiece({
+    contentPieceId,
+    strategy: normalized,
+    opportunityId,
+    purpose: normalized.audienceTakeaway,
+    sequenceRole: "primary",
+    sequenceOrder: 1,
+    timingIntent: null,
+    canonicalIntent: normalized.coreIdea,
+    claims: normalized.factualConstraints,
+    evidenceRefs: [],
+    createdAt,
   });
 }
 

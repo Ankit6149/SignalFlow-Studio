@@ -118,7 +118,10 @@ export function validateGenerationInputs(body = {}) {
     for (const entry of linkCandidates) {
       if (entry.issueCode === "credential_link") {
         errors.push("Research/docs links cannot contain credentials or signed access parameters.");
-      } else if (entry.status === "invalid") {
+      } else if (
+        entry.status === "invalid"
+        && sourceHealth.status === SOURCE_HEALTH_STATUSES.BLOCKED
+      ) {
         errors.push(`Invalid research/docs link URL: "${entry.input}".`);
       }
     }

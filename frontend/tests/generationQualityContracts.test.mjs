@@ -232,6 +232,7 @@ test("provider failures normalize into safe actionable recovery contracts", () =
     [{ status: 429, message: "insufficient_quota" }, PROVIDER_ERROR_CODES.QUOTA_EXCEEDED, false, "check_quota"],
     [{ status: 402, message: "payment required" }, PROVIDER_ERROR_CODES.PAYMENT_REQUIRED, false, "check_billing"],
     [{ name: "AbortError", message: "request timed out" }, PROVIDER_ERROR_CODES.TIMEOUT, true, "retry_destination"],
+    [{ code: "inference_route_unavailable", status: 503, message: "no configured route" }, PROVIDER_ERROR_CODES.ROUTE_UNAVAILABLE, false, "choose_provider"],
     [{ status: 503, message: "provider body with private prompt text" }, PROVIDER_ERROR_CODES.UNAVAILABLE, true, "retry_destination"],
   ];
 

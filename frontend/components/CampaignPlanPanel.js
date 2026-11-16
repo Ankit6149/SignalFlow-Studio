@@ -39,6 +39,14 @@ function revisionProvenance(revision) {
   return `${provider} · ${model}`;
 }
 
+function destinationReviewStatus({ variant, currentRevision }) {
+  if (variant.status === "omitted") return "Omitted";
+  if (!currentRevision) return variant.status === "failed" ? "Generation failed" : "Draft pending";
+  if (variant.status === "approved") return "Approved";
+  if (variant.status === "rejected") return "Rejected";
+  return "Review";
+}
+
 export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, variants: [] });
   const [generationBundle, setGenerationBundle] = useState(null);
@@ -46,6 +54,7 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(formFromStrategy(null));
+  const [activeVariantId, setActiveVariantId] = useState("");
 
   const application = useMemo(() => createBrowserContentPlanningApplication({
     getStorage: () => window.localStorage,
@@ -77,6 +86,19 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   }, [application, editing, generationApplication, opportunity?.opportunityId]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  useEffect(() => {
+    const rows = generationBundle?.variants || bundle.variants.map((variant) => ({ variant }));
+    if (!rows.length) {
+      setActiveVariantId("");
+      return;
+    }
+    setActiveVariantId((current) => (
+      current && rows.some(({ variant }) => variant.platformVariantId === current)
+        ? current
+        : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
+    ));
+  }, [bundle.variants, generationBundle]);
 
   async function run(action, successText = "") {
     setBusy(true);
@@ -188,6 +210,24 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   const generationRows = generationBundle?.variants || variants.map((variant) => ({ variant, currentRevision: null, history: [] }));
   const pendingGenerationCount = generationRows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
 
+  function focusDestination(platformVariantId) {
+    if (!platformVariantId) return;
+    setActiveVariantId(platformVariantId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`local-review-${platformVariantId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function moveDestination(offset) {
+    if (!generationRows.length) return;
+    const currentIndex = Math.max(0, generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId));
+    const nextIndex = Math.max(0, Math.min(generationRows.length - 1, currentIndex + offset));
+    focusDestination(generationRows[nextIndex]?.variant.platformVariantId);
+  }
+
   return (
     <section className={styles.panel} aria-labelledby="campaign-plan-title">
       <header className={styles.header}>
@@ -286,8 +326,37 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
 
               <div className={styles.draftStage} aria-label="Platform draft review">
                 <div className={styles.subhead}><span>DRAFT REVIEW · EXACT REVISIONS</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time.</p></div>
+                {generationRows.length > 1 && (
+                  <nav className={styles.reviewNavigator} aria-label="Direct-create destination review navigation">
+                    <div className={styles.reviewNavList}>
+                      {generationRows.map((entry) => {
+                        const variantId = entry.variant.platformVariantId;
+                        const active = variantId === activeVariantId;
+                        return (
+                          <button type="button" key={variantId} data-active={active} aria-pressed={active} onClick={() => focusDestination(variantId)}>
+                            <strong>{destinationLabel(entry.variant.destination)}</strong>
+                            <small>{destinationReviewStatus(entry)}</small>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className={styles.reviewNavActions}>
+                      <button type="button" onClick={() => moveDestination(-1)} disabled={!activeVariantId || generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) <= 0}>Previous</button>
+                      <span>{Math.max(1, generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) + 1)} of {generationRows.length}</span>
+                      <button type="button" onClick={() => moveDestination(1)} disabled={!activeVariantId || generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) >= generationRows.length - 1}>Next</button>
+                    </div>
+                  </nav>
+                )}
                 {generationRows.map(({ variant, currentRevision, history }) => (
-                  <article className={styles.draftRow} key={variant.platformVariantId} data-status={variant.status}>
+                  <article
+                    className={styles.draftRow}
+                    key={variant.platformVariantId}
+                    id={`local-review-${variant.platformVariantId}`}
+                    data-status={variant.status}
+                    data-active={variant.platformVariantId === activeVariantId}
+                    tabIndex={-1}
+                    onFocusCapture={() => setActiveVariantId(variant.platformVariantId)}
+                  >
                     <div className={styles.draftMeta}>
                       <strong>{destinationLabel(variant.destination)}</strong>
                       <span>{titleCase(variant.status)}</span>

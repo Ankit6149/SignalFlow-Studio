@@ -8,11 +8,12 @@ async function source(path) {
 
 test("direct-create exact Review exposes destination navigation over canonical planned rows", async () => {
   const component = await source("../components/CampaignPlanPanel.js");
-  assert.match(component, /aria-label="Direct-create destination review navigation"/);
+  assert.match(component, /Direct-create destination review navigation for piece/);
   assert.match(component, /destinationReviewStatus\(entry\)/);
   assert.match(component, />Previous<\/button>/);
   assert.match(component, />Next<\/button>/);
-  assert.match(component, /aria-pressed=\{active\}/);
+  assert.match(component, /aria-pressed=\{selected\}/);
+  assert.match(component, /function ContentPieceProduction/);
 });
 
 test("direct-create review navigation preserves mounted PlatformReviewPanel state", async () => {
@@ -21,8 +22,8 @@ test("direct-create review navigation preserves mounted PlatformReviewPanel stat
   assert.match(component, /local-review-/);
   assert.match(component, /target\.focus\(\{ preventScroll: true \}\)/);
   assert.match(component, /target\.scrollIntoView\(\{ block: "start" \}\)/);
-  assert.match(component, /generationRows\.map\(\(\{ variant, currentRevision, history \}\) => \(/);
-  assert.doesNotMatch(component, /generationRows\.filter\([^\n]*activeVariantId/);
+  assert.match(component, /rows\.map\(\(\{ variant, currentRevision, history \}\) => \(/);
+  assert.doesNotMatch(component, /rows\.filter\([^\n]*activeVariantId/);
   assert.match(component, /<PlatformReviewPanel variant=\{variant\} revision=\{currentRevision\}/);
   assert.match(component, /tabIndex=\{-1\}/);
 });
@@ -32,7 +33,7 @@ test("direct-create navigator reports only real destination states", async () =>
   for (const label of ["Omitted", "Generation failed", "Draft pending", "Approved", "Rejected", "Review"]) {
     assert.ok(component.includes(`"${label}"`), `missing status: ${label}`);
   }
-  assert.match(component, /generationRows\.length > 1/);
+  assert.match(component, /rows\.length > 1/);
   assert.doesNotMatch(component, /instagram|threads|reddit|youtube|tiktok/i);
 });
 

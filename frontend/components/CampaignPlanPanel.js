@@ -23,6 +23,15 @@ function formFromStrategy(strategy) {
   };
 }
 
+function emptyPieceForm() {
+  return {
+    purpose: "",
+    canonicalIntent: "",
+    timingIntent: "",
+    destinations: [],
+  };
+}
+
 function titleCase(value) {
   return String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -47,14 +56,141 @@ function destinationReviewStatus({ variant, currentRevision }) {
   return "Review";
 }
 
+function ContentPieceProduction({
+  pieceBundle,
+  generationBundle,
+  busy,
+  active,
+  onActivate,
+  onGenerate,
+  onChanged,
+}) {
+  const piece = pieceBundle.contentPiece;
+  const variants = pieceBundle.variants || [];
+  const rows = generationBundle?.variants || variants.map((variant) => ({ variant, currentRevision: null, history: [] }));
+  const pendingGenerationCount = rows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
+
+  useEffect(() => {
+    if (!rows.length) {
+      setActiveVariantId("");
+      return;
+    }
+    setActiveVariantId((current) => (
+      current && rows.some(({ variant }) => variant.platformVariantId === current)
+        ? current
+        : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
+    ));
+  }, [generationBundle, piece.contentPieceId, variants]);
+
+  function focusDestination(platformVariantId) {
+    if (!platformVariantId) return;
+    setActiveVariantId(platformVariantId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`local-review-${platformVariantId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function moveDestination(offset) {
+    if (!rows.length) return;
+    const currentIndex = Math.max(0, rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId));
+    const nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + offset));
+    focusDestination(rows[nextIndex]?.variant.platformVariantId);
+  }
+
+  return (
+    <section
+      className={styles.productionStage}
+      id={`content-piece-${piece.contentPieceId}`}
+      data-active={active}
+      tabIndex={-1}
+      onFocusCapture={() => onActivate(piece.contentPieceId)}
+      aria-label={`Content piece ${piece.sequenceOrder} review`}
+    >
+      <div className={styles.approvedState}>
+        <div>
+          <span>PIECE {piece.sequenceOrder} · {titleCase(piece.sequenceRole)}</span>
+          <strong>{piece.purpose}</strong>
+          <p>{piece.canonicalIntent}{piece.timingIntent ? ` · Timing intent: ${piece.timingIntent}` : ""}</p>
+        </div>
+        {pendingGenerationCount > 0 ? (
+          <button type="button" className={styles.generateButton} onClick={() => onGenerate(piece)} disabled={busy}>
+            {busy ? "Working…" : `Generate ${pendingGenerationCount} draft${pendingGenerationCount === 1 ? "" : "s"}`}
+          </button>
+        ) : <small className={styles.readyLabel}>Piece drafts available for review</small>}
+      </div>
+
+      <div className={styles.draftStage} aria-label={`Platform draft review for piece ${piece.sequenceOrder}`}>
+        <div className={styles.subhead}><span>DRAFT REVIEW · PIECE {piece.sequenceOrder}</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time and do not mutate another ContentPiece.</p></div>
+        {rows.length > 1 && (
+          <nav className={styles.reviewNavigator} aria-label={`Direct-create destination review navigation for piece ${piece.sequenceOrder}`}>
+            <div className={styles.reviewNavList}>
+              {rows.map((entry) => {
+                const variantId = entry.variant.platformVariantId;
+                const selected = variantId === activeVariantId;
+                return (
+                  <button type="button" key={variantId} data-active={selected} aria-pressed={selected} onClick={() => focusDestination(variantId)}>
+                    <strong>{destinationLabel(entry.variant.destination)}</strong>
+                    <small>{destinationReviewStatus(entry)}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <div className={styles.reviewNavActions}>
+              <button type="button" onClick={() => moveDestination(-1)} disabled={!activeVariantId || rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) <= 0}>Previous</button>
+              <span>{Math.max(1, rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) + 1)} of {rows.length}</span>
+              <button type="button" onClick={() => moveDestination(1)} disabled={!activeVariantId || rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) >= rows.length - 1}>Next</button>
+            </div>
+          </nav>
+        )}
+        {rows.map(({ variant, currentRevision, history }) => (
+          <article
+            className={styles.draftRow}
+            key={variant.platformVariantId}
+            id={`local-review-${variant.platformVariantId}`}
+            data-status={variant.status}
+            data-active={variant.platformVariantId === activeVariantId}
+            tabIndex={-1}
+            onFocusCapture={() => setActiveVariantId(variant.platformVariantId)}
+          >
+            <div className={styles.draftMeta}>
+              <strong>{destinationLabel(variant.destination)}</strong>
+              <span>{titleCase(variant.status)}</span>
+              {currentRevision && <small>revision {currentRevision.revisionNumber} · strategy r{currentRevision.strategyRevision}</small>}
+            </div>
+            {variant.status === "omitted" ? (
+              <p className={styles.draftPlaceholder}>{variant.omittedReason || "This destination is intentionally absent from the approved plan."}</p>
+            ) : currentRevision ? (
+              <div className={styles.draftContent}>
+                {currentRevision.format === "thread" ? (
+                  <ol>{currentRevision.segments.map((segment, index) => <li key={`${currentRevision.platformVariantRevisionId}-${index}`}><b>{index + 1}</b><p>{segment}</p></li>)}</ol>
+                ) : <p>{currentRevision.content}</p>}
+                <small>{revisionProvenance(currentRevision)} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
+                <PlatformReviewPanel variant={variant} revision={currentRevision} onChanged={onChanged} />
+              </div>
+            ) : (
+              <p className={styles.draftPlaceholder}>{variant.status === "failed" ? "Generation failed for this destination. Other pieces and destinations remain intact." : "No generated revision yet."}</p>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
-  const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, variants: [] });
-  const [generationBundle, setGenerationBundle] = useState(null);
+  const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, contentPieces: [], variants: [], pieceBundles: [] });
+  const [generationBundles, setGenerationBundles] = useState({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(formFromStrategy(null));
+  const [activeContentPieceId, setActiveContentPieceId] = useState("");
   const [activeVariantId, setActiveVariantId] = useState("");
+  const [addingPiece, setAddingPiece] = useState(false);
+  const [pieceForm, setPieceForm] = useState(emptyPieceForm);
 
   const application = useMemo(() => createBrowserContentPlanningApplication({
     getStorage: () => window.localStorage,
@@ -67,19 +203,35 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
 
   const reload = useCallback(async () => {
     if (!opportunity?.opportunityId) {
-      setBundle({ strategy: null, contentPiece: null, variants: [] });
-      setGenerationBundle(null);
+      setBundle({ strategy: null, contentPiece: null, contentPieces: [], variants: [], pieceBundles: [] });
+      setGenerationBundles({});
+      setActiveContentPieceId("");
       return;
     }
     try {
       const next = await application.getPlanBundle(opportunity.opportunityId);
       setBundle(next);
       if (next.strategy && !editing) setForm(formFromStrategy(next.strategy));
-      if (next.contentPiece) {
-        setGenerationBundle(await generationApplication.getGenerationBundle(next.contentPiece.contentPieceId));
-      } else {
-        setGenerationBundle(null);
-      }
+
+      const nextPieceBundles = next.pieceBundles?.length
+        ? next.pieceBundles
+        : next.contentPiece
+          ? [{ contentPiece: next.contentPiece, variants: next.variants || [] }]
+          : [];
+      const loaded = {};
+      await Promise.all(nextPieceBundles.map(async ({ contentPiece: piece }) => {
+        try {
+          loaded[piece.contentPieceId] = await generationApplication.getGenerationBundle(piece.contentPieceId);
+        } catch {
+          loaded[piece.contentPieceId] = null;
+        }
+      }));
+      setGenerationBundles(loaded);
+      setActiveContentPieceId((current) => (
+        current && nextPieceBundles.some(({ contentPiece: piece }) => piece.contentPieceId === current)
+          ? current
+          : (next.contentPiece?.contentPieceId || nextPieceBundles[0]?.contentPiece?.contentPieceId || "")
+      ));
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "SignalFlow could not load this campaign plan." });
     }
@@ -87,18 +239,26 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
 
   useEffect(() => { reload(); }, [reload]);
 
-  useEffect(() => {
-    const rows = generationBundle?.variants || bundle.variants.map((variant) => ({ variant }));
-    if (!rows.length) {
-      setActiveVariantId("");
-      return;
-    }
-    setActiveVariantId((current) => (
-      current && rows.some(({ variant }) => variant.platformVariantId === current)
-        ? current
-        : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
-    ));
-  }, [bundle.variants, generationBundle]);
+  const pieceBundles = bundle.pieceBundles?.length
+    ? bundle.pieceBundles
+    : bundle.contentPiece
+      ? [{ contentPiece: bundle.contentPiece, variants: bundle.variants || [] }]
+      : [];
+  const activePieceBundle = pieceBundles.find(({ contentPiece: piece }) => piece.contentPieceId === activeContentPieceId)
+    || pieceBundles[0]
+    || null;
+  const activeContentPiece = activePieceBundle?.contentPiece || null;
+
+  function focusContentPiece(contentPieceId) {
+    if (!contentPieceId) return;
+    setActiveContentPieceId(contentPieceId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`content-piece-${contentPieceId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
 
   async function run(action, successText = "") {
     setBusy(true);
@@ -148,11 +308,10 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   }
 
   async function approve() {
-    const result = await run(
+    await run(
       () => application.approveStrategy(bundle.strategy.narrativeStrategyId),
-      "Campaign plan approved. The canonical ContentPiece and permitted LinkedIn/X variant records are ready for generation.",
+      "Campaign plan approved. The primary ContentPiece and permitted LinkedIn/X variant records are ready for generation.",
     );
-    if (result) setBundle(result);
   }
 
   async function setDestinationDecision(destination, decision) {
@@ -166,18 +325,62 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     );
   }
 
-  async function generateDrafts() {
-    if (!bundle.contentPiece) return;
+  function beginAddPiece() {
+    const allowed = (bundle.strategy?.destinationPlan || [])
+      .filter((item) => item.decision !== "exclude")
+      .map((item) => item.destination);
+    setPieceForm({ ...emptyPieceForm(), destinations: allowed });
+    setAddingPiece(true);
+  }
+
+  function togglePieceDestination(destination) {
+    setPieceForm((current) => ({
+      ...current,
+      destinations: current.destinations.includes(destination)
+        ? current.destinations.filter((item) => item !== destination)
+        : [...current.destinations, destination],
+    }));
+  }
+
+  async function saveFollowUp(event) {
+    event.preventDefault();
+    if (!bundle.strategy) return;
     setBusy(true);
     setMessage(null);
     try {
-      const result = await generationApplication.generateReadyVariants(bundle.contentPiece.contentPieceId);
-      setGenerationBundle(result.bundle);
+      const result = await application.addContentPiece(bundle.strategy.narrativeStrategyId, {
+        purpose: pieceForm.purpose,
+        canonicalIntent: pieceForm.canonicalIntent,
+        timingIntent: pieceForm.timingIntent || null,
+        destinations: pieceForm.destinations,
+      });
+      setActiveContentPieceId(result.contentPiece.contentPieceId);
+      setAddingPiece(false);
+      setPieceForm(emptyPieceForm());
+      await reload();
+      setMessage({
+        type: "success",
+        text: `Follow-up piece ${result.contentPiece.sequenceOrder} added to the canonical sequence. It has its own destination variants and can be generated/reviewed independently.`,
+      });
+    } catch (error) {
+      setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not add that follow-up piece." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generateDrafts(piece = activeContentPiece) {
+    if (!piece) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await generationApplication.generateReadyVariants(piece.contentPieceId);
+      setGenerationBundles((current) => ({ ...current, [piece.contentPieceId]: result.bundle }));
       await reload();
       if (result.failed.length && result.generated.length) {
         setMessage({
           type: "warning",
-          text: `${result.generated.length} platform draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without affecting the successful revision.`,
+          text: `${result.generated.length} platform draft${result.generated.length === 1 ? "" : "s"} generated for piece ${piece.sequenceOrder}. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without affecting the successful revision or another piece.`,
         });
       } else if (result.failed.length) {
         setMessage({
@@ -185,9 +388,9 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
           text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" "),
         });
       } else if (result.generated.length) {
-        setMessage({ type: "success", text: "LinkedIn/X drafts generated as immutable review revisions. Run checks on each exact revision before approval." });
+        setMessage({ type: "success", text: `Piece ${piece.sequenceOrder} drafts were generated as immutable review revisions. Each destination remains independently reviewable.` });
       } else {
-        setMessage({ type: "success", text: "Every non-omitted destination already has a current draft revision." });
+        setMessage({ type: "success", text: "Every non-omitted destination for this piece already has a current draft revision." });
       }
     } catch (error) {
       setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not generate platform drafts." });
@@ -206,27 +409,7 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     );
   }
 
-  const { strategy, contentPiece, variants } = bundle;
-  const generationRows = generationBundle?.variants || variants.map((variant) => ({ variant, currentRevision: null, history: [] }));
-  const pendingGenerationCount = generationRows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
-
-  function focusDestination(platformVariantId) {
-    if (!platformVariantId) return;
-    setActiveVariantId(platformVariantId);
-    requestAnimationFrame(() => {
-      const target = document.getElementById(`local-review-${platformVariantId}`);
-      if (!target) return;
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: "start" });
-    });
-  }
-
-  function moveDestination(offset) {
-    if (!generationRows.length) return;
-    const currentIndex = Math.max(0, generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId));
-    const nextIndex = Math.max(0, Math.min(generationRows.length - 1, currentIndex + offset));
-    focusDestination(generationRows[nextIndex]?.variant.platformVariantId);
-  }
+  const { strategy, contentPiece } = bundle;
 
   return (
     <section className={styles.panel} aria-labelledby="campaign-plan-title">
@@ -315,69 +498,94 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
             <div><span>BOUNDARIES / FACTS</span><p>{[...strategy.factualConstraints, ...strategy.boundaryConstraints].length} explicit planning constraints carried forward.</p><small>Identity snapshot: {strategy.identityContextSnapshotId.slice(-12)}</small></div>
           </div>
 
-          {contentPiece ? (
-            <div className={styles.productionStage}>
-              <div className={styles.approvedState}>
-                <div><span>PLAN APPROVED</span><strong>One canonical ContentPiece is ready.</strong><p>Generate only the non-omitted LinkedIn/X variants. Each revision is reviewed and approved independently.</p></div>
-                {pendingGenerationCount > 0 ? (
-                  <button type="button" className={styles.generateButton} onClick={generateDrafts} disabled={busy}>{busy ? "Generating…" : `Generate ${pendingGenerationCount} draft${pendingGenerationCount === 1 ? "" : "s"}`}</button>
-                ) : <small className={styles.readyLabel}>Drafts available for review</small>}
+          {contentPiece && (
+            <section className={styles.contentSequence} aria-label="Content sequence">
+              <div className={styles.sequenceHeader}>
+                <div>
+                  <span>CONTENT SEQUENCE</span>
+                  <p>Each piece has its own intent, destination variants, immutable revisions and approvals. Order is editorial intent—not a publication schedule.</p>
+                </div>
+                {!addingPiece && <button type="button" onClick={beginAddPiece} disabled={busy}>Add follow-up</button>}
               </div>
 
-              <div className={styles.draftStage} aria-label="Platform draft review">
-                <div className={styles.subhead}><span>DRAFT REVIEW · EXACT REVISIONS</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time.</p></div>
-                {generationRows.length > 1 && (
-                  <nav className={styles.reviewNavigator} aria-label="Direct-create destination review navigation">
-                    <div className={styles.reviewNavList}>
-                      {generationRows.map((entry) => {
-                        const variantId = entry.variant.platformVariantId;
-                        const active = variantId === activeVariantId;
-                        return (
-                          <button type="button" key={variantId} data-active={active} aria-pressed={active} onClick={() => focusDestination(variantId)}>
-                            <strong>{destinationLabel(entry.variant.destination)}</strong>
-                            <small>{destinationReviewStatus(entry)}</small>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className={styles.reviewNavActions}>
-                      <button type="button" onClick={() => moveDestination(-1)} disabled={!activeVariantId || generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) <= 0}>Previous</button>
-                      <span>{Math.max(1, generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) + 1)} of {generationRows.length}</span>
-                      <button type="button" onClick={() => moveDestination(1)} disabled={!activeVariantId || generationRows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) >= generationRows.length - 1}>Next</button>
-                    </div>
-                  </nav>
-                )}
-                {generationRows.map(({ variant, currentRevision, history }) => (
-                  <article
-                    className={styles.draftRow}
-                    key={variant.platformVariantId}
-                    id={`local-review-${variant.platformVariantId}`}
-                    data-status={variant.status}
-                    data-active={variant.platformVariantId === activeVariantId}
-                    tabIndex={-1}
-                    onFocusCapture={() => setActiveVariantId(variant.platformVariantId)}
-                  >
-                    <div className={styles.draftMeta}>
-                      <strong>{destinationLabel(variant.destination)}</strong>
-                      <span>{titleCase(variant.status)}</span>
-                      {currentRevision && <small>revision {currentRevision.revisionNumber} · strategy r{currentRevision.strategyRevision}</small>}
-                    </div>
-                    {variant.status === "omitted" ? (
-                      <p className={styles.draftPlaceholder}>{variant.omittedReason || "This destination is intentionally absent from the approved plan."}</p>
-                    ) : currentRevision ? (
-                      <div className={styles.draftContent}>
-                        {currentRevision.format === "thread" ? (
-                          <ol>{currentRevision.segments.map((segment, index) => <li key={`${currentRevision.platformVariantRevisionId}-${index}`}><b>{index + 1}</b><p>{segment}</p></li>)}</ol>
-                        ) : <p>{currentRevision.content}</p>}
-                        <small>{revisionProvenance(currentRevision)} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
-                        <PlatformReviewPanel variant={variant} revision={currentRevision} onChanged={reload} />
-                      </div>
-                    ) : (
-                      <p className={styles.draftPlaceholder}>{variant.status === "failed" ? "Generation failed for this destination. The other platform remains intact." : "No generated revision yet."}</p>
-                    )}
-                  </article>
-                ))}
+              <div className={styles.sequenceList}>
+                {pieceBundles.map(({ contentPiece: piece, variants: pieceVariants }) => {
+                  const active = piece.contentPieceId === activeContentPiece?.contentPieceId;
+                  const destinations = pieceVariants.filter((variant) => variant.status !== "omitted").map((variant) => destinationLabel(variant.destination));
+                  return (
+                    <button
+                      type="button"
+                      key={piece.contentPieceId}
+                      data-active={active}
+                      aria-pressed={active}
+                      onClick={() => focusContentPiece(piece.contentPieceId)}
+                    >
+                      <span>PIECE {piece.sequenceOrder} · {titleCase(piece.sequenceRole)}</span>
+                      <strong>{piece.purpose}</strong>
+                      <p>{piece.canonicalIntent}</p>
+                      <small>
+                        {piece.timingIntent || (piece.sequenceRole === "primary" ? "Primary story" : "No exact timing set")}
+                        {" · "}
+                        {destinations.length ? destinations.join(" + ") : "No active destination"}
+                      </small>
+                    </button>
+                  );
+                })}
               </div>
+
+              {addingPiece && (
+                <form className={styles.followUpForm} onSubmit={saveFollowUp}>
+                  <div className={styles.followUpHeading}>
+                    <div><span>ADD FOLLOW-UP PIECE</span><strong>Plan another communication unit without duplicating the primary story.</strong></div>
+                    <button type="button" onClick={() => { setAddingPiece(false); setPieceForm(emptyPieceForm()); }} disabled={busy}>Cancel</button>
+                  </div>
+                  <label>
+                    <span>Purpose</span>
+                    <input value={pieceForm.purpose} onChange={(event) => setPieceForm((current) => ({ ...current, purpose: event.target.value }))} placeholder="Explain the implementation lesson after the architecture story" />
+                  </label>
+                  <label>
+                    <span>Canonical intent</span>
+                    <textarea rows={3} value={pieceForm.canonicalIntent} onChange={(event) => setPieceForm((current) => ({ ...current, canonicalIntent: event.target.value }))} placeholder="What this piece should communicate without repeating the primary post" />
+                  </label>
+                  <label>
+                    <span>Timing intent · not a schedule</span>
+                    <input value={pieceForm.timingIntent} onChange={(event) => setPieceForm((current) => ({ ...current, timingIntent: event.target.value }))} placeholder="Later, after the primary story has landed" />
+                  </label>
+                  <fieldset>
+                    <legend>Destinations</legend>
+                    {strategy.destinationPlan.filter((item) => item.decision !== "exclude").map((item) => (
+                      <label key={item.destination}>
+                        <input type="checkbox" checked={pieceForm.destinations.includes(item.destination)} onChange={() => togglePieceDestination(item.destination)} />
+                        <span>{destinationLabel(item.destination)}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                  <button
+                    type="submit"
+                    className={styles.addPieceButton}
+                    disabled={busy || !pieceForm.purpose.trim() || !pieceForm.canonicalIntent.trim() || pieceForm.destinations.length === 0}
+                  >
+                    {busy ? "Adding…" : "Add to sequence"}
+                  </button>
+                </form>
+              )}
+            </section>
+          )}
+
+          {contentPiece ? (
+            <div className={styles.productionSequence}>
+              {pieceBundles.map((pieceBundle) => (
+                <ContentPieceProduction
+                  key={pieceBundle.contentPiece.contentPieceId}
+                  pieceBundle={pieceBundle}
+                  generationBundle={generationBundles[pieceBundle.contentPiece.contentPieceId] || null}
+                  busy={busy}
+                  active={pieceBundle.contentPiece.contentPieceId === activeContentPiece?.contentPieceId}
+                  onActivate={setActiveContentPieceId}
+                  onGenerate={generateDrafts}
+                  onChanged={reload}
+                />
+              ))}
             </div>
           ) : (
             <footer className={styles.actions}>

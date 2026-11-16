@@ -27,14 +27,14 @@ test("Studio, API and generation controller consume the same SourceHealthReport 
   assert.match(controller, /sourceHealth\.status === SOURCE_HEALTH_STATUSES\.BLOCKED/);
 
   const validationIndex = route.indexOf("validateGenerationInputs(body)");
-  const fetchIndex = route.indexOf("await fetchUrlContent(candidate.canonicalUrl");
-  const finalHealthIndex = route.indexOf("const sourceHealth = createSourceHealthReport", fetchIndex);
+  const prepareIndex = route.indexOf("await prepareRemoteLinkEvidence({");
+  const finalHealthIndex = route.indexOf("const sourceHealth = createSourceHealthReport", prepareIndex);
   const finalGateIndex = route.indexOf('code: "source_not_ready"', finalHealthIndex);
   const streamIndex = route.indexOf("return streamGeneration({", finalGateIndex);
   const modelIndex = route.indexOf("const result = await generateStudioPackage({", finalGateIndex);
   assert.ok(validationIndex >= 0);
-  assert.ok(fetchIndex > validationIndex);
-  assert.ok(finalHealthIndex > fetchIndex);
+  assert.ok(prepareIndex > validationIndex);
+  assert.ok(finalHealthIndex > prepareIndex);
   assert.ok(finalGateIndex > finalHealthIndex);
   assert.ok(streamIndex > finalGateIndex);
   assert.ok(modelIndex > finalGateIndex);
@@ -50,11 +50,14 @@ test("launch kit reports source health in validation failures, blocked verificat
   assert.match(route, /JSON\.stringify\(\{ \.\.\.result, warnings: allWarnings, sourceHealth \}\)/);
 });
 
-test("remote candidates are deduplicated before the hardened fetcher and all outcomes remain in source health", async () => {
+test("remote candidates are deduplicated inside the shared preparation boundary and all outcomes remain in source health", async () => {
   const route = await source("../app/api/launch_kit/route.js");
-  assert.match(route, /parseSourceLinkCandidates\(docsUrl\)/);
-  assert.match(route, /linkCandidates\.filter\(\(item\) => item\.status === SOURCE_HEALTH_ENTRY_STATUSES\.NEEDS_VERIFICATION\)/);
-  assert.match(route, /linkFetchResults\.push\(fetchResult\)/);
+  const preparation = await source("../lib/source/generationSourcePreparation.mjs");
+  assert.match(route, /prepareRemoteLinkEvidence/);
+  assert.match(preparation, /parseSourceLinkCandidates\(docsUrl\)/);
+  assert.match(preparation, /linkCandidates\.filter/);
+  assert.match(preparation, /SOURCE_HEALTH_ENTRY_STATUSES\.NEEDS_VERIFICATION/);
+  assert.match(preparation, /linkFetchResults\.push\(fetchResult\)/);
   assert.match(route, /linkResults: docsUrl \? linkFetchResults : null/);
 });
 

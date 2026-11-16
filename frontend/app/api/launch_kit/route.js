@@ -10,7 +10,7 @@ import {
 } from "../../../lib/domain/sourceArtifacts.mjs";
 import { ingestGitHubRepo } from "../../../lib/context/github";
 import { ingestLocalRepo } from "../../../lib/context/localRepo";
-import { fetchUrlContent } from "../../../lib/context/linkFetcher";
+import { fetchUrlContent, sourceArtifactFromFetchResult } from "../../../lib/context/linkFetcher";
 import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 import { ProviderError, providerErrorPayload } from "../../../lib/ai/providerErrors.mjs";
@@ -196,6 +196,7 @@ export async function POST(request) {
     let repoContext = null;
     const linksContext = [];
     let canonicalSources = { assets: [], sourceArtifacts: [], processingRecords: [] };
+    let sourceWorkspaceId = "request-workspace";
     const suppliedAssets = Array.isArray(body.assets) ? body.assets : [];
     const suppliedArtifacts = Array.isArray(body.source_artifacts || body.sourceArtifacts)
       ? (body.source_artifacts || body.sourceArtifacts)
@@ -215,8 +216,9 @@ export async function POST(request) {
             code: "cross_workspace_reference",
           });
         }
+        sourceWorkspaceId = declaredWorkspaces[0] || "request-workspace";
         canonicalSources = validateSourceGraph({
-          workspaceId: declaredWorkspaces[0] || "request-workspace",
+          workspaceId: sourceWorkspaceId,
           assets: suppliedAssets,
           sourceArtifacts: suppliedArtifacts,
           processingRecords: suppliedProcessing,
@@ -268,6 +270,10 @@ export async function POST(request) {
           if (fetchResult) {
             if (fetchResult.evidenceUsable === true) {
               linksContext.push(fetchResult);
+              const remoteArtifact = sourceArtifactFromFetchResult(fetchResult, {
+                workspaceId: sourceWorkspaceId,
+              });
+              if (remoteArtifact) canonicalSources.sourceArtifacts.push(remoteArtifact);
             }
             if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
           }

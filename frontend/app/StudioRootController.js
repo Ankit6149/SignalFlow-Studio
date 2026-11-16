@@ -490,7 +490,7 @@ export default function StudioRootController() {
           <nav className="studio-flow" aria-label="Campaign creation steps">
             <button
               type="button"
-              className={stage === "source" ? "is-active" : sourceSignals > 0 ? "is-complete" : ""}
+              className={stage === "source" ? "is-active" : sourceCanProceed ? "is-complete" : ""}
               onClick={() => navigateStudioFlow("source")}
               aria-current={stage === "source" ? "step" : undefined}
             >

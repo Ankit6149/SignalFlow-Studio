@@ -83,23 +83,36 @@ function cancelledError() {
 async function withDeadline(action, timeoutMs, parentSignal = null) {
   if (parentSignal?.aborted) throw cancelledError();
   const controller = new AbortController();
-  let timedOut = false;
-  const onParentAbort = () => controller.abort();
-  parentSignal?.addEventListener?.("abort", onParentAbort, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
-  try {
-    return await action(controller.signal);
-  } catch (error) {
-    if (parentSignal?.aborted) throw cancelledError();
-    if (timedOut) throw deadlineError();
-    throw error;
-  } finally {
-    clearTimeout(timer);
-    parentSignal?.removeEventListener?.("abort", onParentAbort);
-  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      parentSignal?.removeEventListener?.("abort", onParentAbort);
+      fn(value);
+    };
+    const onParentAbort = () => {
+      controller.abort();
+      finish(reject, cancelledError());
+    };
+    const timer = setTimeout(() => {
+      controller.abort();
+      finish(reject, deadlineError());
+    }, timeoutMs);
+
+    parentSignal?.addEventListener?.("abort", onParentAbort, { once: true });
+    Promise.resolve()
+      .then(() => action(controller.signal))
+      .then(
+        (value) => finish(resolve, value),
+        (error) => {
+          if (parentSignal?.aborted) finish(reject, cancelledError());
+          else finish(reject, error);
+        },
+      );
+  });
 }
 
 function safeCanonicalUrl(input) {

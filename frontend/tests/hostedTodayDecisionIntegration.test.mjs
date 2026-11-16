@@ -140,6 +140,24 @@ test("hosted Today work-state contract is bounded and merges hosted canonical st
   assert.equal(merged[0].explanation, "canonical hosted copy");
 });
 
+test("hosted Today work contract accepts bounded capture state without inventing manual retry", () => {
+  const normalized = normalizeHostedTodayWorkItem(workItem({
+    workId: "capture-work:capture-job-1",
+    stage: "capture_retrying",
+    priority: "progress",
+    label: "Screenshot capture retrying",
+    explanation: "LinkedIn screenshot capture is retrying from durable state.",
+    failureCode: "worker_unavailable",
+    retryable: false,
+    recoveryAction: null,
+    correlationId: "capture-job-1",
+  }));
+  assert.equal(normalized.stage, "capture_retrying");
+  assert.equal(normalized.retryable, false);
+  assert.equal(normalized.failureCode, "worker_unavailable");
+  assert.equal(normalized.correlationId, "capture-job-1");
+});
+
 test("hosted Today coming-up contract stays approved-only, unscheduled, and prefers hosted canonical projection", () => {
   const normalized = normalizeHostedTodayComingUpItem(comingUpItem());
   assert.equal(normalized.origin, "hosted");
@@ -176,10 +194,13 @@ test("hosted review dependencies compose Today and bounded change requests over 
   const dependencies = read("lib/server/hostedPlatformReviewDependencies.mjs");
   assert.match(dependencies, /createPlatformChangeRequestApplication/);
   assert.match(dependencies, /createTodayDecisionApplication/);
+  assert.match(dependencies, /createPostgresDurableJobRepository/);
   assert.match(dependencies, /const changeApplication = createPlatformChangeRequestApplication/);
   assert.match(dependencies, /const todayApplication = createTodayDecisionApplication/);
   assert.match(dependencies, /contentPlanningRepository,/);
   assert.match(dependencies, /contentReviewRepository,/);
+  assert.match(dependencies, /const durableJobRepository = createPostgresDurableJobRepository/);
+  assert.match(dependencies, /durableJobRepository,/);
   assert.match(dependencies, /contentSignalRepository: opportunityCore\.contentSignalRepository/);
   assert.match(dependencies, /contentOpportunityRepository: opportunityCore\.contentOpportunityRepository/);
 });

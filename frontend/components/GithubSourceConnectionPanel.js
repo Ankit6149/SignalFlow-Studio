@@ -73,6 +73,7 @@ export default function GithubSourceConnectionPanel() {
   const [repositories, setRepositories] = useState([]);
   const [repositoryConnectionId, setRepositoryConnectionId] = useState("");
   const [message, setMessage] = useState(null);
+  const [bootstrapOutcome, setBootstrapOutcome] = useState(null);
   const [ownerKey, setOwnerKey] = useState("");
   const [showOwnerKey, setShowOwnerKey] = useState(false);
 
@@ -206,11 +207,18 @@ export default function GithubSourceConnectionPanel() {
       const reuseText = body.reused ? " Existing project understanding was reused." : ` Project context v${body.context?.version || 1} is ready.`;
 
       if (body.firstOpportunity?.opportunityId) {
+        setBootstrapOutcome({
+          projectName,
+          evidenceCount: body.evidenceCount || 0,
+          reused: Boolean(body.reused),
+          contextVersion: body.context?.version || 1,
+          opportunityId: body.firstOpportunity.opportunityId,
+          opportunityTitle: body.firstOpportunity.title || "First editorial opportunity",
+        });
         setMessage({
           tone: "ready",
-          text: `${projectName} is connected and understood from ${body.evidenceCount || 0} bounded evidence items.${reuseText} SignalFlow found the first editorial decision and is opening it now.`,
+          text: `${projectName} is connected and understood from ${body.evidenceCount || 0} bounded evidence items.${reuseText} SignalFlow found a first editorial decision. Choose whether to review it now or leave it for later.`,
         });
-        window.location.assign(`/plan?opportunity=${encodeURIComponent(body.firstOpportunity.opportunityId)}&from=github`);
         return body;
       }
 
@@ -222,6 +230,14 @@ export default function GithubSourceConnectionPanel() {
         return body;
       }
 
+      setBootstrapOutcome({
+        projectName,
+        evidenceCount: body.evidenceCount || 0,
+        reused: Boolean(body.reused),
+        contextVersion: body.context?.version || 1,
+        opportunityId: null,
+        opportunityTitle: "",
+      });
       setMessage({
         tone: "ready",
         text: `${projectName} is connected and understood from ${body.evidenceCount || 0} bounded evidence items.${reuseText} SignalFlow can reuse this context for future work automatically.`,
@@ -279,6 +295,20 @@ export default function GithubSourceConnectionPanel() {
 
     void initialize();
   }, []);
+
+  function openFirstOpportunity() {
+    if (!bootstrapOutcome?.opportunityId) return;
+    window.location.assign(`/plan?opportunity=${encodeURIComponent(bootstrapOutcome.opportunityId)}&from=github`);
+  }
+
+  function deferBootstrapOutcome() {
+    const projectName = bootstrapOutcome?.projectName || "The repository";
+    setBootstrapOutcome(null);
+    setMessage({
+      tone: "ready",
+      text: `${projectName} stays connected. Project understanding is preserved and future meaningful GitHub work can reuse it automatically.`,
+    });
+  }
 
   async function startInstallation() {
     setBusy("install");
@@ -382,6 +412,30 @@ export default function GithubSourceConnectionPanel() {
       </div>
 
       {message && <div className={styles.message} data-tone={message.tone} role="status">{message.text}</div>}
+
+      {bootstrapOutcome && (
+        <div className={styles.bootstrapOutcome} aria-label="Repository understanding result">
+          <div>
+            <span>PROJECT CONTEXT READY</span>
+            <strong>{bootstrapOutcome.projectName}</strong>
+            <p>
+              Version {bootstrapOutcome.contextVersion} · {bootstrapOutcome.evidenceCount} bounded evidence item{bootstrapOutcome.evidenceCount === 1 ? "" : "s"}
+              {bootstrapOutcome.reused ? " · existing context reused" : " · new context saved"}
+            </p>
+            {bootstrapOutcome.opportunityId
+              ? <small>{bootstrapOutcome.opportunityTitle}. Nothing will be approved or published until you choose it.</small>
+              : <small>No immediate story was forced. SignalFlow will reuse this project understanding when meaningful work arrives.</small>}
+          </div>
+          <div className={styles.bootstrapOutcomeActions}>
+            {bootstrapOutcome.opportunityId && (
+              <button type="button" className={styles.primaryButton} onClick={openFirstOpportunity}>Review opportunity</button>
+            )}
+            <button type="button" className={styles.secondaryButton} onClick={deferBootstrapOutcome}>
+              {bootstrapOutcome.opportunityId ? "Not now" : "Done"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className={styles.loadingState}><span className={styles.loadingDot} /> Checking the secure GitHub connection…</div>

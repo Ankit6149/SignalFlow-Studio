@@ -201,7 +201,7 @@ export default function StudioRootController() {
   }), [form.notes, form.links, form.repo, documentText, files]);
   const persistedSourceHealth = result?.sourceHealth?.schemaVersion === 1 ? result.sourceHealth : null;
   const displayedSourceHealth = persistedSourceHealth && !isCampaignStale ? persistedSourceHealth : sourceHealth;
-  const sourceSignals = sourceHealth.counts.usable + sourceHealth.counts.needsVerification;
+  const sourceSignals = sourceHealth.counts.usable + sourceHealth.counts.needsVerification + (sourceHealth.counts.processing || 0);
   const sourceCanProceed = sourceHealth.status === SOURCE_HEALTH_STATUSES.READY
     || sourceHealth.status === SOURCE_HEALTH_STATUSES.NEEDS_VERIFICATION;
   const sourceAndChannelsReady = sourceCanProceed && channels.length > 0;

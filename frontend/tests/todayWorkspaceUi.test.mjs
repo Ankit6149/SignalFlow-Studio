@@ -77,6 +77,23 @@ test("Today production state stays truthful about generation, checks, and requir
   assert.doesNotMatch(component, /scheduled publication|publish at|calendar slot/i);
 });
 
+test("Today retries only explicitly retryable destination failures through canonical services", async () => {
+  const component = await source("../components/TodayWorkspace.js");
+  const css = await source("../components/TodayWorkspace.module.css");
+  assert.match(component, /createBrowserPlatformGenerationApplication/);
+  assert.match(component, /createBrowserHostedGp2PreparationClient/);
+  assert.match(component, /async function retryWork\(item\)/);
+  assert.match(component, /item\?\.stage !== "generation_failed" \|\| item\?\.retryable !== true/);
+  assert.match(component, /hostedPreparationClient\.prepareContentPiece\(item\.contentPieceId\)/);
+  assert.match(component, /generationApplication\.generateVariant\(item\.platformVariantId\)/);
+  assert.match(component, /item\.stage === "generation_failed" && item\.retryable/);
+  assert.match(component, /Retry destination/);
+  assert.match(component, /item\.correlationId/);
+  assert.match(component, /Recovery ref/);
+  assert.match(css, /\.workStateActions/);
+  assert.match(css, /\.workStateCopy code/);
+});
+
 test("Today delegates to application services and binds judgment to the exact visible revision", async () => {
   const component = await source("../components/TodayWorkspace.js");
   assert.match(component, /createBrowserTodayDecisionApplication/);

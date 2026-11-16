@@ -16,6 +16,7 @@ import {
   normalizePlatformVariantRevision,
 } from "../domain/platformVariantRevisions.mjs";
 import { createInferenceTask, INFERENCE_TASK_TYPES } from "../inference/inferenceTasks.mjs";
+import { normalizeProviderError, providerErrorPayload } from "../ai/providerErrors.mjs";
 
 function required(value, field) {
   const normalized = String(value || "").trim();
@@ -274,8 +275,17 @@ export function createPlatformGenerationApplication({
       await plans.upsert(attachPlatformVariantRevision(variant, persistedRevision, now));
       return persistedRevision;
     } catch (error) {
-      await plans.upsert(markPlatformVariantGenerationFailed(variant, appClock.now()));
-      throw error;
+      const normalizedError = normalizeProviderError(error);
+      const failure = providerErrorPayload(normalizedError);
+      const failedAt = appClock.now();
+      await plans.upsert(markPlatformVariantGenerationFailed(variant, failedAt, {
+        code: failure.code,
+        retryable: failure.retryable,
+        recoveryAction: failure.recoveryAction,
+        correlationId: failure.correlationId || null,
+        failedAt,
+      }));
+      throw normalizedError;
     }
   }
 

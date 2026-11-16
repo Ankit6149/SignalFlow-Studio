@@ -129,6 +129,36 @@ function normalizeMediaRequirements(values = []) {
   }).filter(Boolean));
 }
 
+function safeFailureToken(value, field, { required = true, maxLength = 180 } = {}) {
+  const normalized = text(value, "", maxLength);
+  if (!normalized && !required) return null;
+  if (!normalized || !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/.test(normalized)) {
+    throw new TypeError(`${field} must be a bounded safe token.`);
+  }
+  return normalized;
+}
+
+function normalizeGenerationFailure(value, status, fallbackTime) {
+  if (status !== VARIANT_STATUSES.FAILED || !value) return null;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("PlatformVariant.generationFailure must be an object.");
+  }
+  return portableClone({
+    code: safeFailureToken(value.code, "PlatformVariant.generationFailure.code"),
+    retryable: value.retryable === true,
+    recoveryAction: safeFailureToken(
+      value.recoveryAction || "inspect_configuration",
+      "PlatformVariant.generationFailure.recoveryAction",
+    ),
+    correlationId: safeFailureToken(
+      value.correlationId,
+      "PlatformVariant.generationFailure.correlationId",
+      { required: false, maxLength: 240 },
+    ),
+    failedAt: timestamp(value.failedAt, fallbackTime, "PlatformVariant.generationFailure.failedAt"),
+  });
+}
+
 export function normalizeStrategyProposal(input = {}) {
   return portableClone({
     title: text(input.title, "Narrative plan", 240),
@@ -285,19 +315,22 @@ export function normalizePlatformVariant(input = {}) {
   const createdAt = timestamp(parsed.createdAt, null, "PlatformVariant.createdAt");
   if (!createdAt) throw new TypeError("PlatformVariant.createdAt is required.");
   const destination = enumValue(parsed.destination, DESTINATIONS, "linkedin", "PlatformVariant.destination");
+  const status = enumValue(parsed.status, VARIANT_STATUS_VALUES, VARIANT_STATUSES.PLANNED, "PlatformVariant.status");
+  const updatedAt = timestamp(parsed.updatedAt, createdAt, "PlatformVariant.updatedAt");
   return createDomainRecord("PlatformVariant", {
     platformVariantId: id(parsed.platformVariantId, "PlatformVariant.platformVariantId"),
     workspaceId: id(parsed.workspaceId, "PlatformVariant.workspaceId"),
     contentPieceId: id(parsed.contentPieceId, "PlatformVariant.contentPieceId"),
     narrativeStrategyId: id(parsed.narrativeStrategyId, "PlatformVariant.narrativeStrategyId"),
     destination,
-    status: enumValue(parsed.status, VARIANT_STATUS_VALUES, VARIANT_STATUSES.PLANNED, "PlatformVariant.status"),
+    status,
     identityContextSnapshotId: id(parsed.identityContextSnapshotId, "PlatformVariant.identityContextSnapshotId", false),
     adaptationIntent: optionalText(parsed.adaptationIntent, 1600),
     currentRevisionId: id(parsed.currentRevisionId, "PlatformVariant.currentRevisionId", false),
     omittedReason: optionalText(parsed.omittedReason, 1200),
+    generationFailure: normalizeGenerationFailure(parsed.generationFailure, status, updatedAt),
     createdAt,
-    updatedAt: timestamp(parsed.updatedAt, createdAt, "PlatformVariant.updatedAt"),
+    updatedAt,
   });
 }
 

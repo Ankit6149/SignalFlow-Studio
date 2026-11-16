@@ -7,6 +7,7 @@ const SAFE_CODES = Object.freeze({
   PAYMENT_REQUIRED: "provider_payment_required",
   TIMEOUT: "provider_timeout",
   CANCELLED: "provider_request_cancelled",
+  ROUTE_UNAVAILABLE: "inference_route_unavailable",
   REQUEST_BUDGET_EXCEEDED: "generation_request_budget_exceeded",
   OUTPUT_TOKEN_BUDGET_EXCEEDED: "generation_output_token_budget_exceeded",
   UNAVAILABLE: "provider_unavailable",
@@ -40,6 +41,9 @@ function classify(error) {
   }
   if (error?.code === "provider_request_cancelled") {
     return { code: SAFE_CODES.CANCELLED, retryable: true, action: "retry_destination" };
+  }
+  if (error?.code === "inference_route_unavailable") {
+    return { code: SAFE_CODES.ROUTE_UNAVAILABLE, retryable: false, action: "choose_provider" };
   }
   if (error?.code === "generation_request_budget_exceeded") {
     return { code: SAFE_CODES.REQUEST_BUDGET_EXCEEDED, retryable: false, action: "reduce_destinations" };
@@ -94,6 +98,7 @@ function safeMessage(code, provider) {
     case SAFE_CODES.PAYMENT_REQUIRED: return `${label} requires billing or credits before generation can continue.`;
     case SAFE_CODES.TIMEOUT: return `${label} did not respond within the request limit.`;
     case SAFE_CODES.CANCELLED: return "Generation was cancelled before the provider request completed.";
+    case SAFE_CODES.ROUTE_UNAVAILABLE: return "No permitted inference route is currently available for this generation task.";
     case SAFE_CODES.REQUEST_BUDGET_EXCEEDED: return "Generation reached the configured provider-request budget. Reduce destinations or retry only the affected destination.";
     case SAFE_CODES.OUTPUT_TOKEN_BUDGET_EXCEEDED: return "The planned model output exceeds SignalFlow's generation token budget. Reduce destinations or lower the requested output size.";
     case SAFE_CODES.UNAVAILABLE: return `${label} is temporarily unavailable.`;

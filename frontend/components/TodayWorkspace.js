@@ -5,11 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createBrowserPlatformReviewApplication } from "../lib/application/browserPlatformReviewApplication.mjs";
 import { createBrowserPlatformChangeRequestApplication } from "../lib/application/browserPlatformChangeRequestApplication.mjs";
+import { createBrowserPlatformGenerationApplication } from "../lib/application/browserPlatformGenerationApplication.mjs";
 import { mergeTodayComingUp, mergeTodayDecisions, mergeTodayWorkState } from "../lib/application/todayDecisionSources.mjs";
 import { createBrowserHostedTodayDecisionClient } from "../lib/infrastructure/browserHostedTodayDecisionClient.mjs";
 import { createBrowserHostedPlatformReviewClient } from "../lib/infrastructure/browserHostedPlatformReviewClient.mjs";
 import { createBrowserHostedChangeRequestClient } from "../lib/infrastructure/browserHostedChangeRequestClient.mjs";
 import { createBrowserHostedExactMediaPreviewAdapter } from "../lib/infrastructure/browserHostedExactMediaPreviewAdapter.mjs";
+import { createBrowserHostedGp2PreparationClient } from "../lib/infrastructure/browserHostedGp2PreparationClient.mjs";
 import ExactMediaRevisionPreview from "./ExactMediaRevisionPreview";
 import RevisionHistoryPanel from "./RevisionHistoryPanel";
 import TodayOpportunityQueue from "./TodayOpportunityQueue";
@@ -70,7 +72,7 @@ function RevisionPreview({ item }) {
   return <p className={styles.revisionCopy}>{item.content}</p>;
 }
 
-function TodayWorkStateSection({ items, label, description, tone }) {
+function TodayWorkStateSection({ items, label, description, tone, onRetry, busyId }) {
   if (!items.length) return null;
   return (
     <section className={styles.workStateSection} aria-label={label.toLowerCase()} data-priority={tone}>
@@ -79,21 +81,32 @@ function TodayWorkStateSection({ items, label, description, tone }) {
         <small>{items.length} item{items.length === 1 ? "" : "s"}</small>
       </div>
       <div className={styles.workStateList}>
-        {items.map((item) => (
-          <article className={styles.workStateCard} key={item.workId} data-stage={item.stage}>
-            <div className={styles.workStateMeta}>
-              <span>{destinationLabel(item.destination)}</span>
-              <span>{sourceLabel(item)}</span>
-              <span>{titleCase(item.variantStatus)}</span>
-            </div>
-            <div className={styles.workStateCopy}>
-              <strong>{item.label}</strong>
-              <p>{item.strategyTitle || item.opportunityTitle || "Editorial work"}</p>
-              <small>{item.explanation}</small>
-            </div>
-            {item.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunityId)}`}>Open Plan</Link>}
-          </article>
-        ))}
+        {items.map((item) => {
+          const retrying = busyId === item.workId;
+          return (
+            <article className={styles.workStateCard} key={item.workId} data-stage={item.stage}>
+              <div className={styles.workStateMeta}>
+                <span>{destinationLabel(item.destination)}</span>
+                <span>{sourceLabel(item)}</span>
+                <span>{titleCase(item.variantStatus)}</span>
+              </div>
+              <div className={styles.workStateCopy}>
+                <strong>{item.label}</strong>
+                <p>{item.strategyTitle || item.opportunityTitle || "Editorial work"}</p>
+                <small>{item.explanation}</small>
+                {item.correlationId && <code>Recovery ref · {item.correlationId}</code>}
+              </div>
+              <div className={styles.workStateActions}>
+                {item.stage === "generation_failed" && item.retryable && (
+                  <button type="button" onClick={() => onRetry?.(item)} disabled={retrying}>
+                    {retrying ? "Retrying…" : "Retry destination"}
+                  </button>
+                )}
+                {item.opportunityId && <Link href={`/plan?opportunity=${encodeURIComponent(item.opportunityId)}`}>Open Plan</Link>}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -174,9 +187,14 @@ export default function TodayWorkspace() {
     getStorage: () => window.localStorage,
     workspaceId: LOCAL_WORKSPACE_ID,
   }), []);
+  const generationApplication = useMemo(() => createBrowserPlatformGenerationApplication({
+    getStorage: () => window.localStorage,
+    workspaceId: LOCAL_WORKSPACE_ID,
+  }), []);
   const hostedTodayClient = useMemo(() => createBrowserHostedTodayDecisionClient(), []);
   const hostedReviewClient = useMemo(() => createBrowserHostedPlatformReviewClient(), []);
   const hostedChangeClient = useMemo(() => createBrowserHostedChangeRequestClient(), []);
+  const hostedPreparationClient = useMemo(() => createBrowserHostedGp2PreparationClient(), []);
   const hostedPreviewAdapter = useMemo(() => createBrowserHostedExactMediaPreviewAdapter(), []);
 
   const handleMediaPreviewState = useCallback((decisionId, next) => {
@@ -227,6 +245,32 @@ export default function TodayWorkspace() {
           : (error?.message || "SignalFlow could not save that decision."),
       });
       return false;
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function retryWork(item) {
+    if (item?.stage !== "generation_failed" || item?.retryable !== true) return;
+    setBusyId(item.workId);
+    setMessage(null);
+    try {
+      if (item.origin === "hosted") {
+        await hostedPreparationClient.prepareContentPiece(item.contentPieceId);
+      } else {
+        await generationApplication.generateVariant(item.platformVariantId);
+      }
+      await reload();
+      setMessage({
+        type: "success",
+        text: `${destinationLabel(item.destination)} recovery ran against canonical state. Today has refreshed the exact current status; successful work on other destinations was left intact.`,
+      });
+    } catch (error) {
+      await reload();
+      setMessage({
+        type: "error",
+        text: error?.message || `${destinationLabel(item.destination)} could not be retried safely.`,
+      });
     } finally {
       setBusyId("");
     }
@@ -360,6 +404,8 @@ export default function TodayWorkspace() {
             label="ATTENTION REQUIRED"
             description="Production could not safely advance these destination drafts. Nothing is approval-ready until the underlying failure is resolved."
             tone="attention"
+            onRetry={retryWork}
+            busyId={busyId}
           />
         )}
 
@@ -473,6 +519,8 @@ export default function TodayWorkspace() {
             label="IN PROGRESS"
             description="Persistent editorial production state that is not ready for your judgment yet. SignalFlow keeps it visible without turning it into a fake approval task."
             tone="progress"
+            onRetry={retryWork}
+            busyId={busyId}
           />
         )}
 

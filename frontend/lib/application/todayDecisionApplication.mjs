@@ -249,13 +249,31 @@ export const TODAY_WORK_PRIORITIES = Object.freeze({
   PROGRESS: "progress",
 });
 
-function workCopy(stage, destination) {
+function generationFailureGuidance(failure, label) {
+  if (!failure) return `${label} did not produce a current revision. Open Plan to inspect the provider, Voice, and strategy context before retrying.`;
+  if (failure.retryable === true) {
+    return `${label} stopped on a transient generation failure. The existing strategy and other destination work remain safe; retry this destination when ready.`;
+  }
+  const action = String(failure.recoveryAction || "");
+  if (action === "replace_key") return `${label} cannot retry until the configured provider credential is corrected.`;
+  if (action === "check_permissions") return `${label} cannot retry until the provider or model permission is corrected.`;
+  if (action === "check_billing") return `${label} cannot retry until provider billing or credits are available.`;
+  if (action === "check_quota") return `${label} cannot retry until provider quota is available.`;
+  if (action === "wait_then_retry") return `${label} is rate-limited. Wait for the provider limit to clear before retrying.`;
+  if (action === "reduce_destinations") return `${label} hit a generation budget guard. Reduce the requested destination work before retrying.`;
+  if (action === "choose_model") return `${label} needs a supported available model before generation can continue.`;
+  if (action === "choose_provider") return `${label} needs a supported provider route before generation can continue.`;
+  if (action === "retry_or_choose_model") return `${label} returned an unusable output contract. Inspect the model route before another deliberate retry.`;
+  return `${label} generation failed and is not marked safe for automatic retry. Inspect the generation configuration before continuing.`;
+}
+
+function workCopy(stage, destination, failure = null) {
   const label = destination === "x" ? "X" : "LinkedIn";
   if (stage === "generation_failed") {
     return {
       priority: TODAY_WORK_PRIORITIES.ATTENTION,
-      label: "Draft generation failed",
-      explanation: `${label} did not produce a current revision. Open Plan to retry generation or inspect the provider, Voice, and strategy context.`,
+      label: failure?.retryable ? "Draft generation failed · retry available" : "Draft generation failed",
+      explanation: generationFailureGuidance(failure, label),
     };
   }
   if (stage === "media_required") {
@@ -346,7 +364,8 @@ export function projectOwnerWorkState({
     }
     if (!stage) continue;
 
-    const copy = workCopy(stage, variant.destination);
+    const generationFailure = variant.generationFailure || null;
+    const copy = workCopy(stage, variant.destination, generationFailure);
     result.push(Object.freeze({
       workId: `platform-work:${variant.platformVariantId}:${variant.currentRevisionId || "none"}:${stage}`,
       workspaceId: ownerWorkspaceId,
@@ -361,6 +380,10 @@ export function projectOwnerWorkState({
       priority: copy.priority,
       label: copy.label,
       explanation: copy.explanation,
+      failureCode: generationFailure?.code || null,
+      retryable: generationFailure?.retryable === true,
+      recoveryAction: generationFailure?.recoveryAction || null,
+      correlationId: generationFailure?.correlationId || null,
       strategyTitle: strategy.title,
       opportunityTitle: opportunity?.title || null,
       updatedAt: variant.updatedAt,

@@ -279,6 +279,60 @@ test("one platform failure does not delete or invalidate the successful platform
   assert.ok(linkedin.currentRevision);
   assert.equal(x.variant.status, "failed");
   assert.equal(x.currentRevision, null);
+  assert.equal(x.variant.generationFailure.code, "provider_unknown_failure");
+  assert.equal(x.variant.generationFailure.retryable, false);
+  assert.equal("message" in x.variant.generationFailure, false);
+});
+
+test("failed generation persists only bounded recovery metadata and transient failures become retryable", async () => {
+  const { application } = await fixture({
+    inferenceAdapter: {
+      async execute({ input }) {
+        if (input.variant.destination === "x") {
+          const error = new Error("raw upstream detail that must not be persisted");
+          error.status = 503;
+          throw error;
+        }
+        return {
+          output: { format: "single_post", content: "LinkedIn survives the X outage.", segments: [] },
+          provenance: { taskId: "task-linkedin", provider: "test", model: "test", routeKind: "remote", generatedAt: NOW },
+        };
+      },
+    },
+  });
+  const result = await application.generateReadyVariants("piece-1");
+  const x = result.bundle.variants.find((entry) => entry.variant.destination === "x").variant;
+  assert.equal(x.status, "failed");
+  assert.equal(x.generationFailure.code, "provider_unavailable");
+  assert.equal(x.generationFailure.retryable, true);
+  assert.equal(x.generationFailure.recoveryAction, "retry_destination");
+  assert.match(x.generationFailure.correlationId, /^provider-/);
+  assert.equal("message" in x.generationFailure, false);
+  assert.equal(JSON.stringify(x).includes("raw upstream detail"), false);
+});
+
+test("missing inference route is durable but never exposed as a blind retry", async () => {
+  const { application } = await fixture({
+    inferenceAdapter: {
+      async execute({ input }) {
+        if (input.variant.destination === "x") {
+          const error = new Error("No route");
+          error.code = "inference_route_unavailable";
+          error.status = 503;
+          throw error;
+        }
+        return {
+          output: { format: "single_post", content: "LinkedIn remains available.", segments: [] },
+          provenance: { taskId: "task-linkedin", provider: "test", model: "test", routeKind: "remote", generatedAt: NOW },
+        };
+      },
+    },
+  });
+  const result = await application.generateReadyVariants("piece-1");
+  const x = result.bundle.variants.find((entry) => entry.variant.destination === "x").variant;
+  assert.equal(x.generationFailure.code, "inference_route_unavailable");
+  assert.equal(x.generationFailure.retryable, false);
+  assert.equal(x.generationFailure.recoveryAction, "choose_provider");
 });
 
 test("explicitly omitted destination never invokes the platform writer", async () => {

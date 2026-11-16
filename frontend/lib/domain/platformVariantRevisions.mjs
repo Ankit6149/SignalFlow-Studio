@@ -446,15 +446,18 @@ export function attachPlatformVariantRevision(variantInput, revisionInput, now) 
     status: VARIANT_STATUSES.REVIEW,
     currentRevisionId: revision.platformVariantRevisionId,
     identityContextSnapshotId: revision.identityContextSnapshotId,
+    generationFailure: null,
     updatedAt: now,
   });
 }
 
-export function markPlatformVariantGenerationFailed(variantInput, now) {
+export function markPlatformVariantGenerationFailed(variantInput, now, failure = null) {
   const variant = normalizePlatformVariant(variantInput);
+  const nextStatus = variant.currentRevisionId ? VARIANT_STATUSES.REVIEW : VARIANT_STATUSES.FAILED;
   return normalizePlatformVariant({
     ...variant,
-    status: variant.currentRevisionId ? VARIANT_STATUSES.REVIEW : VARIANT_STATUSES.FAILED,
+    status: nextStatus,
+    generationFailure: nextStatus === VARIANT_STATUSES.FAILED ? failure : null,
     updatedAt: now,
   });
 }

@@ -7,6 +7,11 @@ import {
   GENERATION_LIMITS,
   generationLimitIssue,
 } from "./generationLimits.mjs";
+import {
+  createSourceHealthReport,
+  parseSourceLinkCandidates,
+  SOURCE_HEALTH_STATUSES,
+} from "../source/sourceHealth.mjs";
 
 /**
  * Validates the generation inputs from the client.
@@ -92,8 +97,17 @@ export function validateGenerationInputs(body = {}) {
     }
   }
 
-  if (!notes && !repo && !documentText) {
-    errors.push("You must provide at least one input context: a Description notes brief, a GitHub repo URL, or pasted document text.");
+  const linkCandidates = parseSourceLinkCandidates(researchUrl);
+  const sourceHealth = createSourceHealthReport({
+    notes,
+    repoUrl: repo,
+    documentText: documentItems,
+    sourceArtifacts,
+    linkCandidates,
+    verificationComplete: false,
+  });
+  if (sourceHealth.status === SOURCE_HEALTH_STATUSES.BLOCKED && sourceHealth.counts.invalid === 0) {
+    errors.push(sourceHealth.reason);
   }
 
   if (repo && !parseGitHubUrl(repo)) {
@@ -101,22 +115,19 @@ export function validateGenerationInputs(body = {}) {
   }
 
   if (researchUrl) {
-    urls.forEach((entry) => {
-      const candidate = /^https?:\/\//i.test(entry) ? entry : `https://${entry}`;
-      try {
-        const url = new URL(candidate);
-        if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
-          throw new TypeError("Unsupported URL");
-        }
-      } catch {
-        errors.push(`Invalid research/docs link URL: "${entry}".`);
+    for (const entry of linkCandidates) {
+      if (entry.status === "invalid") {
+        errors.push(`Invalid research/docs link URL: "${entry.input}".`);
+      } else if (entry.issueCode === "credential_link") {
+        errors.push("Research/docs links cannot contain credentials or signed access parameters.");
       }
-    });
+    }
   }
 
   return {
     valid: errors.length === 0,
     errors,
     limitIssues,
+    sourceHealth,
   };
 }

@@ -188,11 +188,10 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   }
 
   async function approve() {
-    const result = await run(
+    await run(
       () => application.approveStrategy(bundle.strategy.narrativeStrategyId),
-      "Campaign plan approved. The canonical ContentPiece and permitted LinkedIn/X variant records are ready for generation.",
+      "Campaign plan approved. The primary ContentPiece and permitted LinkedIn/X variant records are ready for generation.",
     );
-    if (result) setBundle(result);
   }
 
   async function setDestinationDecision(destination, decision) {
@@ -206,18 +205,62 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     );
   }
 
-  async function generateDrafts() {
-    if (!bundle.contentPiece) return;
+  function beginAddPiece() {
+    const allowed = (bundle.strategy?.destinationPlan || [])
+      .filter((item) => item.decision !== "exclude")
+      .map((item) => item.destination);
+    setPieceForm({ ...emptyPieceForm(), destinations: allowed });
+    setAddingPiece(true);
+  }
+
+  function togglePieceDestination(destination) {
+    setPieceForm((current) => ({
+      ...current,
+      destinations: current.destinations.includes(destination)
+        ? current.destinations.filter((item) => item !== destination)
+        : [...current.destinations, destination],
+    }));
+  }
+
+  async function saveFollowUp(event) {
+    event.preventDefault();
+    if (!bundle.strategy) return;
     setBusy(true);
     setMessage(null);
     try {
-      const result = await generationApplication.generateReadyVariants(bundle.contentPiece.contentPieceId);
-      setGenerationBundle(result.bundle);
+      const result = await application.addContentPiece(bundle.strategy.narrativeStrategyId, {
+        purpose: pieceForm.purpose,
+        canonicalIntent: pieceForm.canonicalIntent,
+        timingIntent: pieceForm.timingIntent || null,
+        destinations: pieceForm.destinations,
+      });
+      setActiveContentPieceId(result.contentPiece.contentPieceId);
+      setAddingPiece(false);
+      setPieceForm(emptyPieceForm());
+      await reload();
+      setMessage({
+        type: "success",
+        text: `Follow-up piece ${result.contentPiece.sequenceOrder} added to the canonical sequence. It has its own destination variants and can be generated/reviewed independently.`,
+      });
+    } catch (error) {
+      setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not add that follow-up piece." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generateDrafts() {
+    if (!activeContentPiece) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await generationApplication.generateReadyVariants(activeContentPiece.contentPieceId);
+      setGenerationBundles((current) => ({ ...current, [activeContentPiece.contentPieceId]: result.bundle }));
       await reload();
       if (result.failed.length && result.generated.length) {
         setMessage({
           type: "warning",
-          text: `${result.generated.length} platform draft${result.generated.length === 1 ? "" : "s"} generated. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without affecting the successful revision.`,
+          text: `${result.generated.length} platform draft${result.generated.length === 1 ? "" : "s"} generated for piece ${activeContentPiece.sequenceOrder}. ${result.failed.map((item) => destinationLabel(item.destination)).join(", ")} failed without affecting the successful revision or another piece.`,
         });
       } else if (result.failed.length) {
         setMessage({
@@ -225,9 +268,9 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
           text: result.failed.map((item) => `${destinationLabel(item.destination)}: ${item.message}`).join(" "),
         });
       } else if (result.generated.length) {
-        setMessage({ type: "success", text: "LinkedIn/X drafts generated as immutable review revisions. Run checks on each exact revision before approval." });
+        setMessage({ type: "success", text: `Piece ${activeContentPiece.sequenceOrder} drafts were generated as immutable review revisions. Each destination remains independently reviewable.` });
       } else {
-        setMessage({ type: "success", text: "Every non-omitted destination already has a current draft revision." });
+        setMessage({ type: "success", text: "Every non-omitted destination for this piece already has a current draft revision." });
       }
     } catch (error) {
       setMessage({ type: "error", code: error?.code || "", text: error?.message || "SignalFlow could not generate platform drafts." });
@@ -246,8 +289,8 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     );
   }
 
-  const { strategy, contentPiece, variants } = bundle;
-  const generationRows = generationBundle?.variants || variants.map((variant) => ({ variant, currentRevision: null, history: [] }));
+  const { strategy, contentPiece } = bundle;
+  const generationRows = activeGenerationBundle?.variants || activePieceVariants.map((variant) => ({ variant, currentRevision: null, history: [] }));
   const pendingGenerationCount = generationRows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
 
   function focusDestination(platformVariantId) {

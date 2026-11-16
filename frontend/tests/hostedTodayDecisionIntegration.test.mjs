@@ -35,12 +35,17 @@ function workItem(overrides = {}) {
   return {
     workId: "platform-work:variant-1:none:generation_failed",
     platformVariantId: "variant-1",
+    contentPieceId: "piece-1",
     opportunityId: "opportunity-1",
     destination: "linkedin",
     priority: "attention",
     stage: "generation_failed",
-    label: "Draft generation failed",
-    explanation: "LinkedIn did not produce a current revision.",
+    label: "Draft generation failed · retry available",
+    explanation: "LinkedIn stopped on a transient generation failure.",
+    failureCode: "provider_unavailable",
+    retryable: true,
+    recoveryAction: "retry_destination",
+    correlationId: "provider-safe-ref",
     updatedAt: "2026-09-02T10:30:00.000Z",
     ...overrides,
   };
@@ -108,8 +113,22 @@ test("hosted Today work-state contract is bounded and merges hosted canonical st
   const normalized = normalizeHostedTodayWorkItem(workItem());
   assert.equal(normalized.origin, "hosted");
   assert.equal(normalized.priority, "attention");
+  assert.equal(normalized.contentPieceId, "piece-1");
+  assert.equal(normalized.retryable, true);
+  assert.equal(normalized.failureCode, "provider_unavailable");
+  assert.equal(normalized.recoveryAction, "retry_destination");
+  assert.equal(normalized.correlationId, "provider-safe-ref");
   assert.throws(
     () => normalizeHostedTodayWorkItem(workItem({ priority: "urgent" })),
+    (error) => error?.code === "hosted_today_contract_invalid",
+  );
+
+  assert.throws(
+    () => normalizeHostedTodayWorkItem(workItem({ contentPieceId: "" })),
+    (error) => error?.code === "hosted_today_contract_invalid",
+  );
+  assert.throws(
+    () => normalizeHostedTodayWorkItem(workItem({ failureCode: "bad failure payload!" })),
     (error) => error?.code === "hosted_today_contract_invalid",
   );
 
@@ -192,6 +211,8 @@ test("Today dispatches hosted judgments to hosted persistence and exact-media ad
   assert.match(today, /createBrowserHostedPlatformReviewClient/);
   assert.match(today, /createBrowserHostedChangeRequestClient/);
   assert.match(today, /createBrowserHostedExactMediaPreviewAdapter/);
+  assert.match(today, /createBrowserHostedGp2PreparationClient/);
+  assert.match(today, /hostedPreparationClient\.prepareContentPiece\(item\.contentPieceId\)/);
   assert.match(today, /Promise\.allSettled/);
   assert.match(today, /todayApplication\.listInbox\(\)/);
   assert.match(today, /hostedTodayClient\.listInbox\(\)/);

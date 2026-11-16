@@ -452,15 +452,19 @@ export async function executeTool(name, args = {}, options = {}) {
     }
 
     const ok = errors.length === 0;
+    const sourceHealth = validation.sourceHealth || null;
     return {
       content: textContent(ok
-        ? "SignalFlow campaign input is valid and can proceed to generation."
+        ? sourceHealth?.status === "needs_verification"
+          ? "SignalFlow campaign input is valid; remote or repository source candidates will be verified before any model call."
+          : "SignalFlow campaign input is valid and has usable source evidence."
         : `SignalFlow campaign input needs correction: ${errors[0] || "validation failed"}`),
       structuredContent: {
         ok,
         errors,
         limitIssues: validation.limitIssues,
         sourceIssue,
+        sourceHealth,
         sourceSummary: {
           assets: canonicalSources.assets.length,
           sourceArtifacts: canonicalSources.sourceArtifacts.length,

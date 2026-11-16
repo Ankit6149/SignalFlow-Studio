@@ -1,6 +1,7 @@
 import {
   createRemoteSourceFetcher,
   SOURCE_FETCH_STATUSES,
+  sourceArtifactFromFetchResult,
 } from "./remoteSourceFetcher.mjs";
 
 let defaultFetcher = null;
@@ -32,4 +33,5 @@ export async function fetchUrlContent(urlStr, {
 export {
   createRemoteSourceFetcher,
   SOURCE_FETCH_STATUSES,
+  sourceArtifactFromFetchResult,
 };

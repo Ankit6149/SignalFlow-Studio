@@ -15,6 +15,11 @@ export const SOURCE_HEALTH_ENTRY_STATUSES = Object.freeze({
   FAILED: "failed",
   INVALID: "invalid",
   DUPLICATE: "duplicate",
+  PROCESSING: "processing",
+  UNSUPPORTED: "unsupported",
+  BLOCKED: "blocked",
+  TRUNCATED: "truncated",
+  STALE: "stale",
 });
 
 const SENSITIVE_QUERY = /(^|[-_])(token|key|signature|sig|credential|authorization|expires|x-amz-)/i;
@@ -100,22 +105,101 @@ export function parseSourceLinkCandidates(value) {
   return Object.freeze(entries);
 }
 
+function recoveryAction(status, issueCode = "") {
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION) return "Build or verify this source before relying on it as evidence.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.PROCESSING) return "Wait for source processing to complete, then retry generation.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.REFERENCE_ONLY) return "Add extractable evidence or keep this source as context only.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.UNSUPPORTED) return "Replace this source with a supported text, document, image, or repository input.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.BLOCKED) return "Use a public, policy-safe source or remove this blocked source.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.INVALID) return "Correct the source address or identifier.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.DUPLICATE) return "No action needed; SignalFlow uses the first canonical copy.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.TRUNCATED) return "Review the retained extraction; narrow or split the source if missing detail matters.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.STALE) return "Refresh or re-ingest this source before using it for new claims.";
+  if (status === SOURCE_HEALTH_ENTRY_STATUSES.FAILED) {
+    if (issueCode === "source_fetch_timeout") return "Retry later or replace the source with another public evidence URL.";
+    return "Retry the source or replace it with evidence SignalFlow can verify.";
+  }
+  return "";
+}
+
+function artifactHealthStatus(artifact) {
+  if (artifact?.stale === true || artifact?.usability?.stale === true) return SOURCE_HEALTH_ENTRY_STATUSES.STALE;
+  if (usableArtifact(artifact)) {
+    return artifact?.extraction?.truncated
+      ? SOURCE_HEALTH_ENTRY_STATUSES.TRUNCATED
+      : SOURCE_HEALTH_ENTRY_STATUSES.USABLE;
+  }
+  const usability = String(artifact?.usability?.state || "");
+  if (usability === "processing") return SOURCE_HEALTH_ENTRY_STATUSES.PROCESSING;
+  if (usability === "reference_only") return SOURCE_HEALTH_ENTRY_STATUSES.REFERENCE_ONLY;
+  if (usability === "unsupported") return SOURCE_HEALTH_ENTRY_STATUSES.UNSUPPORTED;
+  return SOURCE_HEALTH_ENTRY_STATUSES.FAILED;
+}
+
+function safeArtifactEntry(artifact) {
+  const status = artifactHealthStatus(artifact);
+  const issueCode = artifact?.usability?.issueCodes?.[0]
+    || artifact?.extraction?.issueCodes?.[0]
+    || null;
+  const canonicalUrl = artifact?.sourceReference?.canonicalUrl
+    && /^https?:\/\//i.test(String(artifact.sourceReference.canonicalUrl))
+      ? String(artifact.sourceReference.canonicalUrl)
+      : null;
+  return Object.freeze({
+    kind: "source_artifact",
+    sourceArtifactId: text(artifact?.sourceArtifactId) || null,
+    sourceKind: text(artifact?.sourceKind) || "source",
+    displayName: text(artifact?.sourceReference?.title || artifact?.originalName || artifact?.sourceKind || "Source"),
+    canonicalUrl,
+    mimeType: text(artifact?.mimeType) || null,
+    byteSize: Number.isFinite(Number(artifact?.byteSize)) ? Math.max(0, Number(artifact.byteSize)) : null,
+    extractionState: text(artifact?.extraction?.state) || null,
+    extractionChars: Number.isFinite(Number(artifact?.extraction?.charCount))
+      ? Math.max(0, Number(artifact.extraction.charCount))
+      : null,
+    truncated: artifact?.extraction?.truncated === true,
+    usabilityState: text(artifact?.usability?.state) || null,
+    evidenceState: text(artifact?.usability?.evidenceState) || null,
+    status,
+    issueCode,
+    recoveryAction: recoveryAction(status, issueCode),
+  });
+}
+
 function usableArtifact(artifact) {
   return artifact?.usability?.state === "usable_evidence"
     && artifact?.usability?.evidenceState === "verified";
 }
 
 function linkResultEntry(result) {
+  const rawStatus = String(result?.status || "");
   const status = result?.evidenceUsable === true
-    ? SOURCE_HEALTH_ENTRY_STATUSES.USABLE
-    : result?.status === "reference_only"
+    ? result?.extractionStatus === "truncated"
+      ? SOURCE_HEALTH_ENTRY_STATUSES.TRUNCATED
+      : SOURCE_HEALTH_ENTRY_STATUSES.USABLE
+    : rawStatus === "reference_only"
       ? SOURCE_HEALTH_ENTRY_STATUSES.REFERENCE_ONLY
-      : SOURCE_HEALTH_ENTRY_STATUSES.FAILED;
+      : rawStatus === "unsupported"
+        ? SOURCE_HEALTH_ENTRY_STATUSES.UNSUPPORTED
+        : rawStatus === "blocked_for_safety"
+          ? SOURCE_HEALTH_ENTRY_STATUSES.BLOCKED
+          : SOURCE_HEALTH_ENTRY_STATUSES.FAILED;
+  const issueCode = result?.issueCodes?.[0] || null;
   return Object.freeze({
     kind: "link",
+    sourceKind: "link",
+    displayName: result?.title || result?.finalCanonicalUrl || result?.canonicalUrl || "Public link",
     canonicalUrl: result?.finalCanonicalUrl || result?.canonicalUrl || null,
     status,
-    issueCode: result?.issueCodes?.[0] || null,
+    issueCode,
+    mimeType: result?.mimeType || null,
+    encodedBytes: Number.isFinite(Number(result?.encodedBytes)) ? Math.max(0, Number(result.encodedBytes)) : null,
+    decodedBytes: Number.isFinite(Number(result?.decodedBytes)) ? Math.max(0, Number(result.decodedBytes)) : null,
+    extractionChars: Number.isFinite(Number(result?.extractedChars)) ? Math.max(0, Number(result.extractedChars)) : null,
+    extractionState: result?.extractionStatus || null,
+    truncated: result?.extractionStatus === "truncated",
+    redirectCount: Number.isFinite(Number(result?.redirectCount)) ? Math.max(0, Number(result.redirectCount)) : 0,
+    recoveryAction: recoveryAction(status, issueCode),
   });
 }
 
@@ -146,36 +230,34 @@ export function createSourceHealthReport({
 
   for (const artifact of Array.isArray(sourceArtifacts) ? sourceArtifacts : []) {
     if (Array.isArray(linkResults) && artifact?.sourceKind === "link") continue;
-    entries.push(Object.freeze({
-      kind: "source_artifact",
-      sourceArtifactId: text(artifact?.sourceArtifactId) || null,
-      status: usableArtifact(artifact)
-        ? SOURCE_HEALTH_ENTRY_STATUSES.USABLE
-        : artifact?.usability?.state === "reference_only"
-          ? SOURCE_HEALTH_ENTRY_STATUSES.REFERENCE_ONLY
-          : SOURCE_HEALTH_ENTRY_STATUSES.FAILED,
-      issueCode: artifact?.usability?.issueCodes?.[0] || null,
-    }));
+    entries.push(safeArtifactEntry(artifact));
   }
 
   if (text(repoUrl)) {
-    const validRepository = Boolean(parseGitHubUrl(text(repoUrl)));
+    const parsedRepository = parseGitHubUrl(text(repoUrl));
+    const status = !parsedRepository
+      ? SOURCE_HEALTH_ENTRY_STATUSES.INVALID
+      : repoContext
+        ? SOURCE_HEALTH_ENTRY_STATUSES.USABLE
+        : verificationComplete
+          ? SOURCE_HEALTH_ENTRY_STATUSES.FAILED
+          : SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION;
+    const issueCode = !parsedRepository
+      ? "invalid_repository"
+      : repoContext
+        ? null
+        : verificationComplete
+          ? "repository_unavailable"
+          : null;
     entries.push(Object.freeze({
       kind: "repository",
-      status: !validRepository
-        ? SOURCE_HEALTH_ENTRY_STATUSES.INVALID
-        : repoContext
-          ? SOURCE_HEALTH_ENTRY_STATUSES.USABLE
-          : verificationComplete
-            ? SOURCE_HEALTH_ENTRY_STATUSES.FAILED
-            : SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION,
-      issueCode: !validRepository
-        ? "invalid_repository"
-        : repoContext
-          ? null
-          : verificationComplete
-            ? "repository_unavailable"
-            : null,
+      sourceKind: "repository",
+      displayName: parsedRepository ? `${parsedRepository.owner}/${parsedRepository.repo}` : "Repository",
+      canonicalUrl: parsedRepository?.canonicalUrl || null,
+      status,
+      issueCode,
+      selectedFileCount: Array.isArray(repoContext?.files) ? repoContext.files.length : null,
+      recoveryAction: recoveryAction(status, issueCode),
     }));
   }
 
@@ -194,10 +276,15 @@ export function createSourceHealthReport({
   }
 
   const counts = Object.freeze({
-    usable: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.USABLE).length,
+    usable: entries.filter((item) => [SOURCE_HEALTH_ENTRY_STATUSES.USABLE, SOURCE_HEALTH_ENTRY_STATUSES.TRUNCATED].includes(item.status)).length,
     needsVerification: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION).length,
     referenceOnly: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.REFERENCE_ONLY).length,
+    processing: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.PROCESSING).length,
     failed: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.FAILED).length,
+    unsupported: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.UNSUPPORTED).length,
+    blocked: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.BLOCKED).length,
+    truncated: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.TRUNCATED).length,
+    stale: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.STALE).length,
     invalid: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.INVALID).length,
     duplicate: entries.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.DUPLICATE).length,
   });
@@ -205,7 +292,7 @@ export function createSourceHealthReport({
   const hasCandidates = entries.length > 0;
   const status = counts.usable > 0
     ? SOURCE_HEALTH_STATUSES.READY
-    : counts.needsVerification > 0 && !verificationComplete
+    : (counts.needsVerification > 0 || counts.processing > 0) && !verificationComplete
       ? SOURCE_HEALTH_STATUSES.NEEDS_VERIFICATION
       : SOURCE_HEALTH_STATUSES.BLOCKED;
 

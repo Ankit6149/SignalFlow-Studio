@@ -56,6 +56,130 @@ function destinationReviewStatus({ variant, currentRevision }) {
   return "Review";
 }
 
+function ContentPieceProduction({
+  pieceBundle,
+  generationBundle,
+  busy,
+  active,
+  onActivate,
+  onGenerate,
+  onChanged,
+}) {
+  const piece = pieceBundle.contentPiece;
+  const variants = pieceBundle.variants || [];
+  const rows = generationBundle?.variants || variants.map((variant) => ({ variant, currentRevision: null, history: [] }));
+  const pendingGenerationCount = rows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
+
+  useEffect(() => {
+    if (!rows.length) {
+      setActiveVariantId("");
+      return;
+    }
+    setActiveVariantId((current) => (
+      current && rows.some(({ variant }) => variant.platformVariantId === current)
+        ? current
+        : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
+    ));
+  }, [generationBundle, piece.contentPieceId, variants]);
+
+  function focusDestination(platformVariantId) {
+    if (!platformVariantId) return;
+    setActiveVariantId(platformVariantId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`local-review-${platformVariantId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function moveDestination(offset) {
+    if (!rows.length) return;
+    const currentIndex = Math.max(0, rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId));
+    const nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + offset));
+    focusDestination(rows[nextIndex]?.variant.platformVariantId);
+  }
+
+  return (
+    <section
+      className={styles.productionStage}
+      id={`content-piece-${piece.contentPieceId}`}
+      data-active={active}
+      tabIndex={-1}
+      onFocusCapture={() => onActivate(piece.contentPieceId)}
+      aria-label={`Content piece ${piece.sequenceOrder} review`}
+    >
+      <div className={styles.approvedState}>
+        <div>
+          <span>PIECE {piece.sequenceOrder} · {titleCase(piece.sequenceRole)}</span>
+          <strong>{piece.purpose}</strong>
+          <p>{piece.canonicalIntent}{piece.timingIntent ? ` · Timing intent: ${piece.timingIntent}` : ""}</p>
+        </div>
+        {pendingGenerationCount > 0 ? (
+          <button type="button" className={styles.generateButton} onClick={() => onGenerate(piece)} disabled={busy}>
+            {busy ? "Working…" : `Generate ${pendingGenerationCount} draft${pendingGenerationCount === 1 ? "" : "s"}`}
+          </button>
+        ) : <small className={styles.readyLabel}>Piece drafts available for review</small>}
+      </div>
+
+      <div className={styles.draftStage} aria-label={`Platform draft review for piece ${piece.sequenceOrder}`}>
+        <div className={styles.subhead}><span>DRAFT REVIEW · PIECE {piece.sequenceOrder}</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time and do not mutate another ContentPiece.</p></div>
+        {rows.length > 1 && (
+          <nav className={styles.reviewNavigator} aria-label={`Direct-create destination review navigation for piece ${piece.sequenceOrder}`}>
+            <div className={styles.reviewNavList}>
+              {rows.map((entry) => {
+                const variantId = entry.variant.platformVariantId;
+                const selected = variantId === activeVariantId;
+                return (
+                  <button type="button" key={variantId} data-active={selected} aria-pressed={selected} onClick={() => focusDestination(variantId)}>
+                    <strong>{destinationLabel(entry.variant.destination)}</strong>
+                    <small>{destinationReviewStatus(entry)}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <div className={styles.reviewNavActions}>
+              <button type="button" onClick={() => moveDestination(-1)} disabled={!activeVariantId || rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) <= 0}>Previous</button>
+              <span>{Math.max(1, rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) + 1)} of {rows.length}</span>
+              <button type="button" onClick={() => moveDestination(1)} disabled={!activeVariantId || rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) >= rows.length - 1}>Next</button>
+            </div>
+          </nav>
+        )}
+        {rows.map(({ variant, currentRevision, history }) => (
+          <article
+            className={styles.draftRow}
+            key={variant.platformVariantId}
+            id={`local-review-${variant.platformVariantId}`}
+            data-status={variant.status}
+            data-active={variant.platformVariantId === activeVariantId}
+            tabIndex={-1}
+            onFocusCapture={() => setActiveVariantId(variant.platformVariantId)}
+          >
+            <div className={styles.draftMeta}>
+              <strong>{destinationLabel(variant.destination)}</strong>
+              <span>{titleCase(variant.status)}</span>
+              {currentRevision && <small>revision {currentRevision.revisionNumber} · strategy r{currentRevision.strategyRevision}</small>}
+            </div>
+            {variant.status === "omitted" ? (
+              <p className={styles.draftPlaceholder}>{variant.omittedReason || "This destination is intentionally absent from the approved plan."}</p>
+            ) : currentRevision ? (
+              <div className={styles.draftContent}>
+                {currentRevision.format === "thread" ? (
+                  <ol>{currentRevision.segments.map((segment, index) => <li key={`${currentRevision.platformVariantRevisionId}-${index}`}><b>{index + 1}</b><p>{segment}</p></li>)}</ol>
+                ) : <p>{currentRevision.content}</p>}
+                <small>{revisionProvenance(currentRevision)} · {history.length} saved revision{history.length === 1 ? "" : "s"}</small>
+                <PlatformReviewPanel variant={variant} revision={currentRevision} onChanged={onChanged} />
+              </div>
+            ) : (
+              <p className={styles.draftPlaceholder}>{variant.status === "failed" ? "Generation failed for this destination. Other pieces and destinations remain intact." : "No generated revision yet."}</p>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
   const [bundle, setBundle] = useState({ strategy: null, contentPiece: null, contentPieces: [], variants: [], pieceBundles: [] });
   const [generationBundles, setGenerationBundles] = useState({});
@@ -124,21 +248,17 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
     || pieceBundles[0]
     || null;
   const activeContentPiece = activePieceBundle?.contentPiece || null;
-  const activePieceVariants = activePieceBundle?.variants || [];
-  const activeGenerationBundle = activeContentPiece ? generationBundles[activeContentPiece.contentPieceId] || null : null;
 
-  useEffect(() => {
-    const rows = activeGenerationBundle?.variants || activePieceVariants.map((variant) => ({ variant }));
-    if (!rows.length) {
-      setActiveVariantId("");
-      return;
-    }
-    setActiveVariantId((current) => (
-      current && rows.some(({ variant }) => variant.platformVariantId === current)
-        ? current
-        : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
-    ));
-  }, [activeContentPieceId, activeGenerationBundle, activePieceBundle]);
+  function focusContentPiece(contentPieceId) {
+    if (!contentPieceId) return;
+    setActiveContentPieceId(contentPieceId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`content-piece-${contentPieceId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
 
   async function run(action, successText = "") {
     setBusy(true);

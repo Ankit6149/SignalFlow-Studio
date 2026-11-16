@@ -398,17 +398,95 @@ export default function CampaignPlanPanel({ opportunity, selectedAngle }) {
             <div><span>BOUNDARIES / FACTS</span><p>{[...strategy.factualConstraints, ...strategy.boundaryConstraints].length} explicit planning constraints carried forward.</p><small>Identity snapshot: {strategy.identityContextSnapshotId.slice(-12)}</small></div>
           </div>
 
+          {contentPiece && (
+            <section className={styles.contentSequence} aria-label="Content sequence">
+              <div className={styles.sequenceHeader}>
+                <div>
+                  <span>CONTENT SEQUENCE</span>
+                  <p>Each piece has its own intent, destination variants, immutable revisions and approvals. Order is editorial intent—not a publication schedule.</p>
+                </div>
+                {!addingPiece && <button type="button" onClick={beginAddPiece} disabled={busy}>Add follow-up</button>}
+              </div>
+
+              <div className={styles.sequenceList}>
+                {pieceBundles.map(({ contentPiece: piece, variants: pieceVariants }) => {
+                  const active = piece.contentPieceId === activeContentPiece?.contentPieceId;
+                  const destinations = pieceVariants.filter((variant) => variant.status !== "omitted").map((variant) => destinationLabel(variant.destination));
+                  return (
+                    <button
+                      type="button"
+                      key={piece.contentPieceId}
+                      data-active={active}
+                      aria-pressed={active}
+                      onClick={() => { setActiveContentPieceId(piece.contentPieceId); setActiveVariantId(""); }}
+                    >
+                      <span>PIECE {piece.sequenceOrder} · {titleCase(piece.sequenceRole)}</span>
+                      <strong>{piece.purpose}</strong>
+                      <p>{piece.canonicalIntent}</p>
+                      <small>
+                        {piece.timingIntent || (piece.sequenceRole === "primary" ? "Primary story" : "No exact timing set")}
+                        {" · "}
+                        {destinations.length ? destinations.join(" + ") : "No active destination"}
+                      </small>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {addingPiece && (
+                <form className={styles.followUpForm} onSubmit={saveFollowUp}>
+                  <div className={styles.followUpHeading}>
+                    <div><span>ADD FOLLOW-UP PIECE</span><strong>Plan another communication unit without duplicating the primary story.</strong></div>
+                    <button type="button" onClick={() => { setAddingPiece(false); setPieceForm(emptyPieceForm()); }} disabled={busy}>Cancel</button>
+                  </div>
+                  <label>
+                    <span>Purpose</span>
+                    <input value={pieceForm.purpose} onChange={(event) => setPieceForm((current) => ({ ...current, purpose: event.target.value }))} placeholder="Explain the implementation lesson after the architecture story" />
+                  </label>
+                  <label>
+                    <span>Canonical intent</span>
+                    <textarea rows={3} value={pieceForm.canonicalIntent} onChange={(event) => setPieceForm((current) => ({ ...current, canonicalIntent: event.target.value }))} placeholder="What this piece should communicate without repeating the primary post" />
+                  </label>
+                  <label>
+                    <span>Timing intent · not a schedule</span>
+                    <input value={pieceForm.timingIntent} onChange={(event) => setPieceForm((current) => ({ ...current, timingIntent: event.target.value }))} placeholder="Later, after the primary story has landed" />
+                  </label>
+                  <fieldset>
+                    <legend>Destinations</legend>
+                    {strategy.destinationPlan.filter((item) => item.decision !== "exclude").map((item) => (
+                      <label key={item.destination}>
+                        <input type="checkbox" checked={pieceForm.destinations.includes(item.destination)} onChange={() => togglePieceDestination(item.destination)} />
+                        <span>{destinationLabel(item.destination)}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                  <button
+                    type="submit"
+                    className={styles.addPieceButton}
+                    disabled={busy || !pieceForm.purpose.trim() || !pieceForm.canonicalIntent.trim() || pieceForm.destinations.length === 0}
+                  >
+                    {busy ? "Adding…" : "Add to sequence"}
+                  </button>
+                </form>
+              )}
+            </section>
+          )}
+
           {contentPiece ? (
             <div className={styles.productionStage}>
               <div className={styles.approvedState}>
-                <div><span>PLAN APPROVED</span><strong>One canonical ContentPiece is ready.</strong><p>Generate only the non-omitted LinkedIn/X variants. Each revision is reviewed and approved independently.</p></div>
+                <div>
+                  <span>PIECE {activeContentPiece?.sequenceOrder || 1} · {titleCase(activeContentPiece?.sequenceRole || "primary")}</span>
+                  <strong>{activeContentPiece?.purpose || "Canonical ContentPiece"}</strong>
+                  <p>{activeContentPiece?.canonicalIntent || "Generate only the non-omitted destination variants."}{activeContentPiece?.timingIntent ? ` · Timing intent: ${activeContentPiece.timingIntent}` : ""}</p>
+                </div>
                 {pendingGenerationCount > 0 ? (
                   <button type="button" className={styles.generateButton} onClick={generateDrafts} disabled={busy}>{busy ? "Generating…" : `Generate ${pendingGenerationCount} draft${pendingGenerationCount === 1 ? "" : "s"}`}</button>
-                ) : <small className={styles.readyLabel}>Drafts available for review</small>}
+                ) : <small className={styles.readyLabel}>Piece drafts available for review</small>}
               </div>
 
               <div className={styles.draftStage} aria-label="Platform draft review">
-                <div className={styles.subhead}><span>DRAFT REVIEW · EXACT REVISIONS</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time.</p></div>
+                <div className={styles.subhead}><span>DRAFT REVIEW · PIECE {activeContentPiece?.sequenceOrder || 1}</span><p>Checks, edits, regeneration and approval are pinned to one immutable revision at a time and do not mutate another ContentPiece.</p></div>
                 {generationRows.length > 1 && (
                   <nav className={styles.reviewNavigator} aria-label="Direct-create destination review navigation">
                     <div className={styles.reviewNavList}>

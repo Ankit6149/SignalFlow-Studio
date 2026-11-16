@@ -12,6 +12,8 @@ export default function SourceStage({
   files,
   sourceArtifactSummary,
   sourceHealth,
+  persistedSourceHealth,
+  sourceHealthStale,
   onRemoveFile,
 }) {
   return (
@@ -93,6 +95,12 @@ export default function SourceStage({
           Browse
         </span>
       </div>
+
+      <SourceHealthWorkspace
+        report={sourceHealth}
+        persistedReport={persistedSourceHealth}
+        isStale={sourceHealthStale}
+      />
 
       {files.length > 0 && (
         <>

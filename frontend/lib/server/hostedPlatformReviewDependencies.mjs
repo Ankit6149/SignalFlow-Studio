@@ -8,6 +8,7 @@ import { createSystemClock, createSystemIdService } from "../domain/ports.mjs";
 import { createPostgresContentPlanningRepository } from "../infrastructure/postgresContentPlanningAdapter.mjs";
 import { createPostgresContentReviewRepository } from "../infrastructure/postgresContentReviewAdapter.mjs";
 import { createPostgresIdentityRepository } from "../infrastructure/postgresIdentityAdapter.mjs";
+import { createPostgresDurableJobRepository } from "../infrastructure/postgresDurableJobAdapter.mjs";
 import { createServerPlatformWorkflowInferenceAdapter } from "../infrastructure/serverInferenceAdapter.mjs";
 import { resolveOwnerWorkspaceId } from "./githubConnectionDependencies.mjs";
 import { createHostedOpportunityCore } from "./hostedOpportunityCore.mjs";
@@ -45,6 +46,10 @@ export function createProductionHostedPlatformReviewApplications({
     database: opportunityCore.database,
     workspaceId,
   });
+  const durableJobRepository = createPostgresDurableJobRepository({
+    database: opportunityCore.database,
+    workspaceId,
+  });
   const identityApplication = createIdentityApplication({
     identityRepository,
     workspaceId,
@@ -70,6 +75,7 @@ export function createProductionHostedPlatformReviewApplications({
   const reviewApplication = createPlatformReviewApplication({
     contentPlanningRepository,
     contentReviewRepository,
+    durableJobRepository,
     contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
     contentSignalRepository: opportunityCore.contentSignalRepository,
     identityRepository,
@@ -97,6 +103,7 @@ export function createProductionHostedPlatformReviewApplications({
     contentReviewRepository,
     contentSignalRepository: opportunityCore.contentSignalRepository,
     contentOpportunityRepository: opportunityCore.contentOpportunityRepository,
+    durableJobRepository,
     workspaceId,
   });
   const preparationReviewApplication = createExactReviewPreparationApplication({

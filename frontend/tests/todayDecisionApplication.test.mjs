@@ -18,12 +18,13 @@ import {
   createPlatformVariantApproval,
   createPlatformVariantReview,
 } from "../lib/domain/platformVariantReviews.mjs";
-import { createTodayDecisionApplication, projectOwnerComingUp, projectOwnerDecisions, projectOwnerWorkState } from "../lib/application/todayDecisionApplication.mjs";
+import { createTodayDecisionApplication, projectOwnerCaptureWorkState, projectOwnerComingUp, projectOwnerDecisions, projectOwnerWorkState } from "../lib/application/todayDecisionApplication.mjs";
 import { createBrowserTodayDecisionApplication } from "../lib/application/browserTodayDecisionApplication.mjs";
 import { createMemoryContentPlanningRepository } from "../lib/infrastructure/contentPlanningAdapters.mjs";
 import { createMemoryContentReviewRepository } from "../lib/infrastructure/contentReviewAdapters.mjs";
 import { createMemoryContentOpportunityRepository } from "../lib/infrastructure/contentOpportunityAdapters.mjs";
 import { createMemoryContentSignalRepository } from "../lib/infrastructure/contentSignalAdapters.mjs";
+import { JOB_STATUSES, JOB_TYPES, createMemoryDurableJobRepository, normalizeDurableJob } from "../lib/domain/durableJobs.mjs";
 
 const WORKSPACE = "local-personal";
 const T1 = "2026-08-17T15:00:00.000Z";
@@ -409,6 +410,123 @@ test("Today explains non-retryable route failures without offering retry semanti
   assert.equal(item.recoveryAction, "choose_provider");
   assert.match(item.explanation, /supported provider route/i);
   assert.doesNotMatch(item.label, /retry available/i);
+});
+
+test("Today projects durable capture retry state only for required media on the exact current revision", () => {
+  const fixture = buildFixture();
+  const strategy = {
+    ...fixture.strategy,
+    mediaRequirements: [{ type: "screenshot", reason: "Visible proof is required.", required: true }],
+  };
+  const job = normalizeDurableJob({
+    jobId: "capture-job-durable-1",
+    workspaceId: WORKSPACE,
+    resourceType: "capture_job",
+    resourceId: "capture-job-1",
+    jobType: JOB_TYPES.CAPTURE_SCREENSHOT,
+    inputVersion: 1,
+    inputRef: "capture-recipe-1",
+    idempotencyKey: "capture-idem-1",
+    status: JOB_STATUSES.RETRYING,
+    attemptCount: 2,
+    retryPolicy: { maxAttempts: 3, initialBackoffSeconds: 15, maxBackoffSeconds: 60 },
+    correlationId: fixture.revision.platformVariantRevisionId,
+    lastError: { code: "worker_unavailable", retryable: true, externalOutcomeUnknown: false, message: "worker unavailable" },
+    nextAttemptAt: T3,
+    createdAt: T1,
+    updatedAt: T2,
+  });
+  const work = projectOwnerCaptureWorkState({
+    planningRecords: [strategy, fixture.piece, fixture.variant, fixture.revision],
+    durableJobRecords: [job],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(work.length, 1);
+  assert.equal(work[0].stage, "capture_retrying");
+  assert.equal(work[0].priority, "progress");
+  assert.equal(work[0].platformVariantRevisionId, fixture.revision.platformVariantRevisionId);
+  assert.equal(work[0].retryable, false, "durable retry remains worker-owned instead of exposing a duplicate manual retry");
+  assert.match(work[0].explanation, /retrying from durable state/i);
+
+  const stale = normalizeDurableJob({ ...job, jobId: "capture-stale", idempotencyKey: "capture-stale", correlationId: "revision-no-longer-current" });
+  assert.equal(projectOwnerCaptureWorkState({
+    planningRecords: [strategy, fixture.piece, fixture.variant, fixture.revision],
+    durableJobRecords: [stale],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  }).length, 0);
+});
+
+test("terminal required capture failure becomes attention without a blind retry", () => {
+  const fixture = buildFixture();
+  const strategy = {
+    ...fixture.strategy,
+    mediaRequirements: [{ type: "screenshot", reason: "Visible proof is required.", required: true }],
+  };
+  const failed = normalizeDurableJob({
+    jobId: "capture-job-durable-failed",
+    workspaceId: WORKSPACE,
+    resourceType: "capture_job",
+    resourceId: "capture-job-failed",
+    jobType: JOB_TYPES.CAPTURE_SCREENSHOT,
+    inputVersion: 1,
+    inputRef: "capture-recipe-1",
+    idempotencyKey: "capture-idem-failed",
+    status: JOB_STATUSES.FAILED,
+    attemptCount: 1,
+    correlationId: fixture.revision.platformVariantRevisionId,
+    lastError: { code: "privacy_rule_triggered", retryable: false, externalOutcomeUnknown: false, message: "privacy rule triggered" },
+    createdAt: T1,
+    updatedAt: T3,
+    completedAt: T3,
+  });
+  const [item] = projectOwnerCaptureWorkState({
+    planningRecords: [strategy, fixture.piece, fixture.variant, fixture.revision],
+    durableJobRecords: [failed],
+    opportunityRecords: [fixture.opportunity],
+    workspaceId: WORKSPACE,
+  });
+  assert.equal(item.priority, "attention");
+  assert.equal(item.stage, "capture_failed");
+  assert.equal(item.failureCode, "privacy_rule_triggered");
+  assert.equal(item.retryable, false);
+  assert.equal(item.recoveryAction, "open_plan");
+  assert.match(item.explanation, /current text revision remains safe/i);
+});
+
+test("Today inbox replaces generic media-pending state with exact durable capture state", async () => {
+  const fixture = buildFixture();
+  const strategy = {
+    ...fixture.strategy,
+    mediaRequirements: [{ type: "screenshot", reason: "Visible proof is required.", required: true }],
+  };
+  const job = normalizeDurableJob({
+    jobId: "capture-job-inbox",
+    workspaceId: WORKSPACE,
+    resourceType: "capture_job",
+    resourceId: "capture-resource-inbox",
+    jobType: JOB_TYPES.CAPTURE_SCREENSHOT,
+    inputVersion: 1,
+    inputRef: "capture-recipe-1",
+    idempotencyKey: "capture-idem-inbox",
+    status: JOB_STATUSES.RUNNING,
+    attemptCount: 1,
+    correlationId: fixture.revision.platformVariantRevisionId,
+    createdAt: T1,
+    updatedAt: T2,
+  });
+  const application = createTodayDecisionApplication({
+    contentPlanningRepository: createMemoryContentPlanningRepository([strategy, fixture.piece, fixture.variant, fixture.revision]),
+    contentReviewRepository: createMemoryContentReviewRepository([fixture.review]),
+    contentSignalRepository: createMemoryContentSignalRepository([fixture.signal]),
+    contentOpportunityRepository: createMemoryContentOpportunityRepository([fixture.opportunity]),
+    durableJobRepository: createMemoryDurableJobRepository([job]),
+    workspaceId: WORKSPACE,
+  });
+  const inbox = await application.listInbox();
+  assert.equal(inbox.workState.filter((item) => item.stage === "media_required").length, 0);
+  assert.equal(inbox.workState.filter((item) => item.stage === "capture_running").length, 1);
 });
 
 test("Today work state reconstructs planned generation and exact-check progress from canonical variant state", () => {

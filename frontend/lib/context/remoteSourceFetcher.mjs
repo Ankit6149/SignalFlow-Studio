@@ -68,6 +68,40 @@ function nowMs(clock) {
   return typeof clock?.now === "function" ? Number(new Date(clock.now()).getTime()) : Date.now();
 }
 
+function deadlineError() {
+  return new RemoteSourceFetchError("source_fetch_timeout", "Remote source fetch timed out.", {
+    status: SOURCE_FETCH_STATUSES.TIMED_OUT,
+  });
+}
+
+function cancelledError() {
+  return new RemoteSourceFetchError("source_fetch_cancelled", "Remote source fetch was cancelled.", {
+    status: SOURCE_FETCH_STATUSES.CANCELLED,
+  });
+}
+
+async function withDeadline(action, timeoutMs, parentSignal = null) {
+  if (parentSignal?.aborted) throw cancelledError();
+  const controller = new AbortController();
+  let timedOut = false;
+  const onParentAbort = () => controller.abort();
+  parentSignal?.addEventListener?.("abort", onParentAbort, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    return await action(controller.signal);
+  } catch (error) {
+    if (parentSignal?.aborted) throw cancelledError();
+    if (timedOut) throw deadlineError();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    parentSignal?.removeEventListener?.("abort", onParentAbort);
+  }
+}
+
 function safeCanonicalUrl(input) {
   let url;
   try {
@@ -559,15 +593,23 @@ export function createRemoteSourceFetcher({
         }
         visited.add(visitKey);
 
-        const answers = await vettedResolution(url, resolveHost);
-        const selectedAddress = answers[0];
-        const response = await transport.request({
-          url,
-          resolvedAddress: selectedAddress,
-          timeoutMs: appliedLimits.timeoutMs,
-          maxCompressedBytes: appliedLimits.maxCompressedBytes,
+        const answers = await withDeadline(
+          () => vettedResolution(url, resolveHost),
+          appliedLimits.timeoutMs,
           signal,
-        });
+        );
+        const selectedAddress = answers[0];
+        const response = await withDeadline(
+          (hopSignal) => transport.request({
+            url,
+            resolvedAddress: selectedAddress,
+            timeoutMs: appliedLimits.timeoutMs,
+            maxCompressedBytes: appliedLimits.maxCompressedBytes,
+            signal: hopSignal,
+          }),
+          appliedLimits.timeoutMs,
+          signal,
+        );
         if (!Buffer.isBuffer(response?.body)) {
           throw new RemoteSourceFetchError("source_transport_invalid", "Remote source transport returned an invalid body.");
         }

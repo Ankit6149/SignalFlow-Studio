@@ -32,6 +32,9 @@ function normalizeDocuments(value) {
 export function normalizeSourceLinkCandidate(value) {
   const raw = text(value);
   if (!raw) return Object.freeze({ ok: false, code: "empty_link", canonicalUrl: null });
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) && !/^https?:\/\//i.test(raw)) {
+    return Object.freeze({ ok: false, code: "invalid_link", canonicalUrl: null });
+  }
   const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
   try {
     const url = new URL(candidate);

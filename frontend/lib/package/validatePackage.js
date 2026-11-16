@@ -116,10 +116,10 @@ export function validateGenerationInputs(body = {}) {
 
   if (researchUrl) {
     for (const entry of linkCandidates) {
-      if (entry.status === "invalid") {
-        errors.push(`Invalid research/docs link URL: "${entry.input}".`);
-      } else if (entry.issueCode === "credential_link") {
+      if (entry.issueCode === "credential_link") {
         errors.push("Research/docs links cannot contain credentials or signed access parameters.");
+      } else if (entry.status === "invalid") {
+        errors.push(`Invalid research/docs link URL: "${entry.input}".`);
       }
     }
   }

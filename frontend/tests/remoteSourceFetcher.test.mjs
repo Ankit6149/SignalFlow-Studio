@@ -228,6 +228,26 @@ test("encoded and decoded byte budgets fail closed", async () => {
   assert.equal(decodedResult.issueCodes[0], "decompressed_size_exceeded");
 });
 
+test("DNS and transfer deadlines are enforced even when injected dependencies ignore abort signals", async () => {
+  const dnsHang = fixture({
+    resolveHost: async () => new Promise(() => {}),
+    limits: { timeoutMs: 5 },
+  });
+  const dnsResult = await dnsHang.fetcher.fetchSource("https://example.com/hang");
+  assert.equal(dnsResult.status, SOURCE_FETCH_STATUSES.TIMED_OUT);
+  assert.equal(dnsResult.issueCodes[0], "source_fetch_timeout");
+  assert.equal(dnsHang.calls.length, 0);
+
+  const transferHang = fixture({
+    handler: async () => new Promise(() => {}),
+    limits: { timeoutMs: 5 },
+  });
+  const transferResult = await transferHang.fetcher.fetchSource("https://example.com/hang");
+  assert.equal(transferResult.status, SOURCE_FETCH_STATUSES.TIMED_OUT);
+  assert.equal(transferResult.issueCodes[0], "source_fetch_timeout");
+  assert.equal(transferHang.calls.length, 1);
+});
+
 test("MIME, download, binary mismatch, malformed encoding, and unsupported compression are bounded", async () => {
   const cases = [
     {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   CHANNEL_IDS,
@@ -139,7 +140,7 @@ async function sourceFiles(root) {
 }
 
 test("active runtime surfaces never emit the legacy hn identifier", async () => {
-  const frontendRoot = path.resolve(new URL("..", import.meta.url).pathname);
+  const frontendRoot = fileURLToPath(new URL("..", import.meta.url));
   const roots = ["app", "components", "lib"].map((name) => path.join(frontendRoot, name));
   const compatibilityFiles = new Set([
     path.join(frontendRoot, "lib", "ai", "channelGeneration.mjs"),

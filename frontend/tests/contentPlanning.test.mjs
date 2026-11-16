@@ -5,6 +5,8 @@ import {
   createNarrativeStrategy,
   createPlannedPlatformVariant,
   createPrimaryContentPiece,
+  createSequencedContentPiece,
+  normalizeContentPiece,
   reviseNarrativeStrategy,
 } from "../lib/domain/contentPlanning.mjs";
 import { createManualContentSignal } from "../lib/domain/contentSignals.mjs";
@@ -144,6 +146,45 @@ test("NarrativeStrategy is provider-free editorial state and ContentPiece requir
   const piece = createPrimaryContentPiece({ contentPieceId: "piece-1", strategy: approved, opportunityId: "opportunity-1", createdAt: NOW });
   assert.equal(piece.kind, "ContentPiece");
   assert.equal(piece.canonicalIntent, approved.coreIdea);
+  assert.equal(piece.sequenceOrder, 1);
+  assert.equal(piece.sequenceRole, "primary");
+  assert.equal(piece.timingIntent, null);
+
+  const migrated = normalizeContentPiece({ ...piece, sequenceOrder: undefined, timingIntent: undefined });
+  assert.equal(migrated.sequenceOrder, 1, "older ContentPiece records default safely to the primary order");
+});
+
+test("sequenced ContentPiece records carry editorial order without pretending an exact schedule exists", () => {
+  const approved = approveNarrativeStrategy(baseStrategy(), NOW);
+  const followUp = createSequencedContentPiece({
+    contentPieceId: "piece-follow-up",
+    strategy: approved,
+    opportunityId: "opportunity-1",
+    purpose: "Follow up with the implementation lesson.",
+    sequenceRole: "follow_up",
+    sequenceOrder: 2,
+    timingIntent: "After the primary architecture story has had time to land.",
+    canonicalIntent: "Show the implementation consequence without repeating the launch story.",
+    claims: ["The routing layer enforces the boundary."],
+    createdAt: NOW,
+  });
+  assert.equal(followUp.sequenceOrder, 2);
+  assert.equal(followUp.sequenceRole, "follow_up");
+  assert.match(followUp.timingIntent, /After the primary/i);
+  assert.equal("scheduledAt" in followUp, false);
+  assert.equal("publishAt" in followUp, false);
+  assert.throws(
+    () => createSequencedContentPiece({
+      contentPieceId: "piece-invalid-order",
+      strategy: approved,
+      opportunityId: "opportunity-1",
+      purpose: "Invalid order.",
+      sequenceOrder: 0,
+      canonicalIntent: "Invalid order.",
+      createdAt: NOW,
+    }),
+    /sequenceOrder/,
+  );
 });
 
 test("editing an approved strategy creates a new draft revision and invalidates approval", () => {
@@ -240,4 +281,41 @@ test("application persists strategy, reuses unchanged profile versions, and appr
   assert.deepEqual(bundle.variants.map((item) => item.destination).sort(), ["linkedin", "x"]);
   assert.equal(bundle.variants.find((item) => item.destination === "x").status, "omitted");
   assert.equal((await planningRepository.list()).filter((item) => item.kind === "PlatformVariant").length, 2);
+
+  await assert.rejects(
+    () => application.addContentPiece(first.narrativeStrategyId, {
+      purpose: "A short X-only follow-up.",
+      canonicalIntent: "Compress the lesson for X.",
+      destinations: ["x"],
+    }),
+    /excluded by the approved NarrativeStrategy/i,
+  );
+
+  const followUp = await application.addContentPiece(first.narrativeStrategyId, {
+    purpose: "Explain the implementation consequence after the primary story.",
+    canonicalIntent: "Show how the routing boundary changed the implementation without repeating the same opening.",
+    sequenceRole: "follow_up",
+    timingIntent: "After the primary story; no exact publication time is implied.",
+    destinations: ["linkedin"],
+  });
+  assert.equal(followUp.contentPiece.sequenceOrder, 2);
+  assert.equal(followUp.contentPiece.sequenceRole, "follow_up");
+  assert.equal(followUp.variants.length, 1);
+  assert.equal(followUp.variants[0].destination, "linkedin");
+
+  const secondFollowUp = await application.addContentPiece(first.narrativeStrategyId, {
+    purpose: "A later retrospective.",
+    canonicalIntent: "Reflect on what the privacy boundary changed after real usage.",
+    sequenceRole: "retrospective",
+    timingIntent: "Later, when new evidence exists.",
+    destinations: ["linkedin"],
+  });
+  assert.equal(secondFollowUp.contentPiece.sequenceOrder, 3);
+
+  const reopened = await application.getPlanBundle("opportunity-1");
+  assert.equal(reopened.contentPiece.sequenceRole, "primary");
+  assert.deepEqual(reopened.contentPieces.map((item) => item.sequenceOrder), [1, 2, 3]);
+  assert.deepEqual(reopened.pieceBundles.map((item) => item.contentPiece.sequenceRole), ["primary", "follow_up", "retrospective"]);
+  assert.equal(reopened.pieceBundles[1].variants.length, 1);
+  assert.equal(reopened.pieceBundles[1].variants[0].destination, "linkedin");
 });

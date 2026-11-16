@@ -14,6 +14,7 @@ import {
   normalizePlatformVariantReview,
   reviewAllowsApproval,
 } from "../domain/platformVariantReviews.mjs";
+import { JOB_STATUSES, JOB_TYPES, normalizeDurableJob } from "../domain/durableJobs.mjs";
 
 export const TODAY_DECISION_TYPES = Object.freeze({
   PLATFORM_REVIEW: "platform_review",
@@ -399,6 +400,156 @@ export function projectOwnerWorkState({
 }
 
 
+const CAPTURE_JOB_TYPES = new Set([JOB_TYPES.CAPTURE_SCREENSHOT, JOB_TYPES.CAPTURE_SCREENCAST]);
+const CAPTURE_ACTIVE_STATUSES = new Set([JOB_STATUSES.QUEUED, JOB_STATUSES.SCHEDULED, JOB_STATUSES.RUNNING, JOB_STATUSES.RETRYING, JOB_STATUSES.CANCEL_REQUESTED]);
+const CAPTURE_ATTENTION_STATUSES = new Set([JOB_STATUSES.FAILED, JOB_STATUSES.DEAD_LETTERED, JOB_STATUSES.CANCELLED, JOB_STATUSES.EXPIRED]);
+
+function captureWorkCopy(job, destination) {
+  const label = destination === "x" ? "X" : "LinkedIn";
+  const kind = job.jobType === JOB_TYPES.CAPTURE_SCREENCAST ? "screencast" : "screenshot";
+  if (job.status === JOB_STATUSES.RETRYING) {
+    return {
+      priority: TODAY_WORK_PRIORITIES.PROGRESS,
+      label: `${kind === "screenshot" ? "Screenshot" : "Screencast"} capture retrying`,
+      explanation: `${label} ${kind} capture hit ${job.lastError?.message || "a transient capture failure"} and is retrying from durable state. The current text revision remains safe.`,
+    };
+  }
+  if (job.status === JOB_STATUSES.RUNNING || job.status === JOB_STATUSES.CANCEL_REQUESTED) {
+    return {
+      priority: TODAY_WORK_PRIORITIES.PROGRESS,
+      label: job.status === JOB_STATUSES.CANCEL_REQUESTED ? "Capture cancellation pending" : `${kind === "screenshot" ? "Screenshot" : "Screencast"} capture running`,
+      explanation: job.status === JOB_STATUSES.CANCEL_REQUESTED
+        ? `${label} ${kind} capture has a durable cancellation request. Existing text and prior media remain safe while the worker acknowledges it.`
+        : `${label} ${kind} capture is running from durable state. Existing text and prior media remain available.`,
+    };
+  }
+  if ([JOB_STATUSES.QUEUED, JOB_STATUSES.SCHEDULED].includes(job.status)) {
+    return {
+      priority: TODAY_WORK_PRIORITIES.PROGRESS,
+      label: `${kind === "screenshot" ? "Screenshot" : "Screencast"} capture queued`,
+      explanation: `${label} ${kind} capture is durably queued and has not become an approval task yet.`,
+    };
+  }
+  if (job.status === JOB_STATUSES.DEAD_LETTERED) {
+    return {
+      priority: TODAY_WORK_PRIORITIES.ATTENTION,
+      label: "Capture retries exhausted",
+      explanation: `${label} ${kind} capture stopped after ${job.attemptCount} attempt${job.attemptCount === 1 ? "" : "s"}. Open Plan to inspect or change the capture setup; the current text revision remains safe.`,
+    };
+  }
+  if (job.status === JOB_STATUSES.CANCELLED) {
+    return {
+      priority: TODAY_WORK_PRIORITIES.ATTENTION,
+      label: "Required capture cancelled",
+      explanation: `${label} ${kind} capture was cancelled while required media is still missing. Open Plan to decide whether to prepare new media or revise the plan.`,
+    };
+  }
+  if (job.status === JOB_STATUSES.EXPIRED) {
+    return {
+      priority: TODAY_WORK_PRIORITIES.ATTENTION,
+      label: "Required capture expired",
+      explanation: `${label} ${kind} capture expired before required media was produced. Open Plan to inspect the current capture setup.`,
+    };
+  }
+  return {
+    priority: TODAY_WORK_PRIORITIES.ATTENTION,
+    label: `${kind === "screenshot" ? "Screenshot" : "Screencast"} capture failed`,
+    explanation: `${label} ${kind} capture stopped on ${job.lastError?.message || "a non-retryable capture failure"}. Open Plan to correct the capture setup; the current text revision remains safe.`,
+  };
+}
+
+export function projectOwnerCaptureWorkState({
+  planningRecords = [],
+  durableJobRecords = [],
+  opportunityRecords = [],
+  workspaceId = "local-personal",
+} = {}) {
+  const ownerWorkspaceId = required(workspaceId, "workspaceId");
+  const planning = planningRecords.filter((record) => record?.workspaceId === ownerWorkspaceId);
+  const opportunities = opportunityRecords
+    .filter((record) => record?.workspaceId === ownerWorkspaceId && record?.kind === "ContentOpportunity")
+    .map(normalizeContentOpportunity);
+  const variants = planning.filter((record) => record?.kind === "PlatformVariant").map(normalizePlatformVariant);
+  const revisions = new Map(planning
+    .filter((record) => record?.kind === "PlatformVariantRevision")
+    .map(normalizePlatformVariantRevision)
+    .map((record) => [record.platformVariantRevisionId, record]));
+  const strategies = new Map(planning
+    .filter((record) => record?.kind === "NarrativeStrategy")
+    .map(normalizeNarrativeStrategy)
+    .map((record) => [record.narrativeStrategyId, record]));
+  const pieces = new Map(planning
+    .filter((record) => record?.kind === "ContentPiece")
+    .map(normalizeContentPiece)
+    .map((record) => [record.contentPieceId, record]));
+  const opportunityById = new Map(opportunities.map((record) => [record.opportunityId, record]));
+  const currentByRevision = new Map();
+
+  for (const variant of variants) {
+    if (!variant.currentRevisionId) continue;
+    const revision = revisions.get(variant.currentRevisionId);
+    const strategy = strategies.get(variant.narrativeStrategyId);
+    const piece = pieces.get(variant.contentPieceId);
+    if (!revision || !strategy || !piece || !requiredMediaPending(strategy, revision)) continue;
+    currentByRevision.set(revision.platformVariantRevisionId, { variant, revision, strategy, piece });
+  }
+
+  const result = [];
+  for (const raw of durableJobRecords) {
+    if (raw?.workspaceId !== ownerWorkspaceId || raw?.kind !== "DurableJob") continue;
+    const job = normalizeDurableJob(raw);
+    if (!CAPTURE_JOB_TYPES.has(job.jobType) || job.resourceType !== "capture_job") continue;
+    if (!CAPTURE_ACTIVE_STATUSES.has(job.status) && !CAPTURE_ATTENTION_STATUSES.has(job.status)) continue;
+    const context = currentByRevision.get(job.correlationId);
+    if (!context) continue;
+    const { variant, revision, strategy, piece } = context;
+    const opportunity = opportunityById.get(strategy.opportunityId) || null;
+    const copy = captureWorkCopy(job, variant.destination);
+    result.push(Object.freeze({
+      workId: `capture-work:${job.jobId}`,
+      workspaceId: ownerWorkspaceId,
+      platformVariantId: variant.platformVariantId,
+      platformVariantRevisionId: revision.platformVariantRevisionId,
+      contentPieceId: piece.contentPieceId,
+      narrativeStrategyId: strategy.narrativeStrategyId,
+      opportunityId: opportunity?.opportunityId || strategy.opportunityId,
+      destination: variant.destination,
+      variantStatus: variant.status,
+      stage: `capture_${job.status}`,
+      priority: copy.priority,
+      label: copy.label,
+      explanation: copy.explanation,
+      failureCode: job.lastError?.code || null,
+      retryable: false,
+      recoveryAction: CAPTURE_ATTENTION_STATUSES.has(job.status) ? "open_plan" : null,
+      correlationId: job.jobId,
+      attemptCount: job.attemptCount,
+      nextAttemptAt: job.nextAttemptAt,
+      strategyTitle: strategy.title,
+      opportunityTitle: opportunity?.title || null,
+      updatedAt: job.updatedAt,
+    }));
+  }
+
+  return result.sort((left, right) => (
+    (left.priority === TODAY_WORK_PRIORITIES.ATTENTION ? 0 : 1)
+      - (right.priority === TODAY_WORK_PRIORITIES.ATTENTION ? 0 : 1)
+    || String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""))
+    || left.workId.localeCompare(right.workId)
+  ));
+}
+
+function mergeOwnerWorkState(baseWork, captureWork) {
+  const capturedRevisionIds = new Set(captureWork.map((item) => item.platformVariantRevisionId).filter(Boolean));
+  return [...baseWork.filter((item) => !(item.stage === "media_required" && capturedRevisionIds.has(item.platformVariantRevisionId))), ...captureWork]
+    .sort((left, right) => (
+      (left.priority === TODAY_WORK_PRIORITIES.ATTENTION ? 0 : 1)
+        - (right.priority === TODAY_WORK_PRIORITIES.ATTENTION ? 0 : 1)
+      || String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""))
+      || left.workId.localeCompare(right.workId)
+    ));
+}
+
 export function projectOwnerComingUp({
   planningRecords = [],
   opportunityRecords = [],
@@ -472,22 +623,25 @@ export function createTodayDecisionApplication({
   contentReviewRepository,
   contentSignalRepository,
   contentOpportunityRepository,
+  durableJobRepository = null,
   workspaceId = "local-personal",
 } = {}) {
   const planning = assertPort("contentPlanningRepository", contentPlanningRepository);
   const reviews = assertPort("contentReviewRepository", contentReviewRepository);
   const signals = assertPort("contentSignalRepository", contentSignalRepository);
   const opportunities = assertPort("contentOpportunityRepository", contentOpportunityRepository);
+  const durableJobs = durableJobRepository ? assertPort("durableJobRepository", durableJobRepository) : null;
   const ownerWorkspaceId = required(workspaceId, "workspaceId");
 
   async function loadState() {
-    const [planningRecords, reviewRecords, signalRecords, opportunityRecords] = await Promise.all([
+    const [planningRecords, reviewRecords, signalRecords, opportunityRecords, durableJobRecords] = await Promise.all([
       planning.list(),
       reviews.list(),
       signals.list(),
       opportunities.list(),
+      durableJobs ? durableJobs.list() : Promise.resolve([]),
     ]);
-    return { planningRecords, reviewRecords, signalRecords, opportunityRecords };
+    return { planningRecords, reviewRecords, signalRecords, opportunityRecords, durableJobRecords };
   }
 
   async function listInbox() {
@@ -497,12 +651,20 @@ export function createTodayDecisionApplication({
         ...records,
         workspaceId: ownerWorkspaceId,
       }),
-      workState: projectOwnerWorkState({
-        planningRecords: records.planningRecords,
-        reviewRecords: records.reviewRecords,
-        opportunityRecords: records.opportunityRecords,
-        workspaceId: ownerWorkspaceId,
-      }),
+      workState: mergeOwnerWorkState(
+        projectOwnerWorkState({
+          planningRecords: records.planningRecords,
+          reviewRecords: records.reviewRecords,
+          opportunityRecords: records.opportunityRecords,
+          workspaceId: ownerWorkspaceId,
+        }),
+        projectOwnerCaptureWorkState({
+          planningRecords: records.planningRecords,
+          durableJobRecords: records.durableJobRecords,
+          opportunityRecords: records.opportunityRecords,
+          workspaceId: ownerWorkspaceId,
+        }),
+      ),
       comingUp: projectOwnerComingUp({
         planningRecords: records.planningRecords,
         opportunityRecords: records.opportunityRecords,

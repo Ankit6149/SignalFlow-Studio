@@ -45,7 +45,7 @@ test("hosted Plan shows every canonical ContentPiece and creates follow-ups with
   assert.match(component, /plan\?\.pieceBundles\?\.length/);
   assert.match(component, /pieceBundles\.map\(\(\{ contentPiece \}, index\) =>/);
   assert.match(component, /<HostedPlatformDraftsPanel contentPiece=\{contentPiece\} strategy=\{strategy\}/);
-  assert.match(component, /strategy\.destinationPlan \|\| \[\]\)\.filter\(\(item\) => item\.decision !== "exclude"\)/);
+  assert.match(component, /\(plan\?\.strategy\?\.destinationPlan \|\| \[\]\)\.filter\(\(item\) => item\.decision !== "exclude"\)/);
 });
 
 test("hosted content sequence remains editorial-only, focus-safe and narrow-screen friendly", async () => {

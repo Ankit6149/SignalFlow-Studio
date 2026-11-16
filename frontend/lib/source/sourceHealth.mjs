@@ -38,8 +38,11 @@ export function normalizeSourceLinkCandidate(value) {
   const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
   try {
     const url = new URL(candidate);
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+    if (!["http:", "https:"].includes(url.protocol)) {
       return Object.freeze({ ok: false, code: "invalid_link", canonicalUrl: null });
+    }
+    if (url.username || url.password) {
+      return Object.freeze({ ok: false, code: "credential_link", canonicalUrl: null });
     }
     for (const key of url.searchParams.keys()) {
       if (SENSITIVE_QUERY.test(key)) {

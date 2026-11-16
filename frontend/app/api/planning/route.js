@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 45;
 
 const MAX_BODY_BYTES = 64 * 1024;
-const ACTIONS = new Set(["build_strategy", "approve_strategy", "revise_strategy"]);
+const ACTIONS = new Set(["build_strategy", "approve_strategy", "revise_strategy", "add_content_piece"]);
 const PATCH_FIELDS = new Set([
   "title",
   "coreIdea",
@@ -92,6 +92,41 @@ function boundedPatch(value) {
     throw error;
   }
   return patch;
+}
+
+function boundedText(value, field, maxLength, { required = true } = {}) {
+  const normalized = String(value || "").trim();
+  if ((!normalized && required) || normalized.length > maxLength) {
+    const error = new Error(`${field} is invalid.`);
+    error.code = "planning_invalid_request";
+    error.status = 400;
+    throw error;
+  }
+  return normalized || null;
+}
+
+function boundedContentPieceInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    const error = new Error("ContentPiece input must be an object.");
+    error.code = "planning_invalid_request";
+    error.status = 400;
+    throw error;
+  }
+  const destinations = Array.isArray(value.destinations)
+    ? [...new Set(value.destinations.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean))]
+    : [];
+  if (!destinations.length || destinations.length > 2 || destinations.some((item) => !["linkedin", "x"].includes(item))) {
+    const error = new Error("ContentPiece destinations must contain LinkedIn and/or X.");
+    error.code = "planning_invalid_request";
+    error.status = 400;
+    throw error;
+  }
+  return Object.freeze({
+    purpose: boundedText(value.purpose, "ContentPiece purpose", 1200),
+    canonicalIntent: boundedText(value.canonicalIntent, "ContentPiece canonical intent", 2400),
+    timingIntent: boundedText(value.timingIntent, "ContentPiece timing intent", 400, { required: false }),
+    destinations,
+  });
 }
 
 function requireExpectedRevision(body, strategy) {
@@ -208,6 +243,28 @@ export async function POST(request) {
       const strategy = await planningApplication.reviseStrategy(strategyId, boundedPatch(body.patch));
       const plan = await planningApplication.getPlanBundle(opportunityId);
       return json({ ok: true, workspaceId, opportunityId, strategy, plan });
+    }
+
+    if (action === "add_content_piece") {
+      const input = boundedContentPieceInput(body.contentPiece);
+      const result = await planningApplication.addContentPiece(strategyId, input);
+
+      let preparation = null;
+      try {
+        const production = createProductionHostedGp2PreparationApplication({
+          origin: new URL(request.url).origin,
+          database,
+        });
+        preparation = await production.preparationApplication.prepareContentPiece(result.contentPiece.contentPieceId);
+      } catch (error) {
+        preparation = failSoftPreparation({
+          ...result,
+          strategy: current.strategy,
+        }, error);
+      }
+
+      const plan = await planningApplication.getPlanBundle(opportunityId);
+      return json({ ok: true, workspaceId, opportunityId, ...result, preparation, plan });
     }
 
     const result = await planningApplication.approveStrategy(strategyId, {

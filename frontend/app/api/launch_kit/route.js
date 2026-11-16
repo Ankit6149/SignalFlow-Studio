@@ -155,6 +155,7 @@ export async function POST(request) {
         error: validation.limitIssues[0]?.message || "Validation failed",
         warnings: validation.errors,
         limitIssues: validation.limitIssues,
+        sourceHealth: validation.sourceHealth,
       }), {
         status: 400,
         headers: { "Content-Type": "application/json" },

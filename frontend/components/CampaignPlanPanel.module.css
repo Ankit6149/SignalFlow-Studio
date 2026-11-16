@@ -386,6 +386,171 @@
   font-size: 0.55rem;
 }
 
+.contentSequence {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(23,23,20,.08);
+}
+.sequenceHeader {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem;
+}
+.sequenceHeader > div { min-width:0; }
+.sequenceHeader span,
+.followUpHeading span,
+.followUpForm > label > span,
+.followUpForm legend {
+  color:#8b6a28;
+  font-size:.54rem;
+  font-weight:830;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.sequenceHeader p {
+  max-width:46rem;
+  margin:.25rem 0 0;
+  color:#80796e;
+  font-size:.58rem;
+  line-height:1.45;
+}
+.sequenceHeader > button,
+.followUpHeading > button {
+  flex:0 0 auto;
+  min-height:2.1rem;
+  padding:0 .62rem;
+  border:1px solid rgba(23,23,20,.13);
+  border-radius:.46rem;
+  background:#fffdf8;
+  color:#5c574f;
+  font:inherit;
+  font-size:.54rem;
+  font-weight:720;
+  cursor:pointer;
+}
+.sequenceList {
+  margin-top:.7rem;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+  gap:.45rem;
+}
+.sequenceList > button {
+  min-width:0;
+  padding:.72rem .76rem;
+  border:1px solid rgba(23,23,20,.1);
+  border-radius:.55rem;
+  background:#fffdf8;
+  color:#4d4941;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.sequenceList > button[data-active="true"] {
+  border-color:rgba(139,106,40,.45);
+  background:rgba(238,227,201,.24);
+}
+.sequenceList > button > span {
+  color:#8b6a28;
+  font-size:.48rem;
+  font-weight:820;
+  letter-spacing:.08em;
+}
+.sequenceList > button > strong {
+  display:block;
+  margin-top:.28rem;
+  font-size:.65rem;
+  line-height:1.35;
+}
+.sequenceList > button > p {
+  margin:.24rem 0 0;
+  color:#6e685e;
+  font-size:.56rem;
+  line-height:1.45;
+}
+.sequenceList > button > small {
+  display:block;
+  margin-top:.32rem;
+  color:#928b80;
+  font-size:.49rem;
+  line-height:1.4;
+}
+.followUpForm {
+  margin-top:.7rem;
+  padding:.78rem;
+  border:1px solid rgba(23,23,20,.09);
+  border-radius:.55rem;
+  background:rgba(255,253,248,.72);
+  display:grid;
+  gap:.55rem;
+}
+.followUpHeading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem;
+}
+.followUpHeading strong {
+  display:block;
+  margin-top:.22rem;
+  color:#4c4840;
+  font-size:.62rem;
+  line-height:1.4;
+}
+.followUpForm > label {
+  display:grid;
+  gap:.28rem;
+}
+.followUpForm input[type="text"],
+.followUpForm input:not([type]),
+.followUpForm textarea {
+  width:100%;
+  padding:.58rem .62rem;
+  border:1px solid rgba(23,23,20,.13);
+  border-radius:.44rem;
+  background:#fffdf8;
+  color:#2e2b27;
+  font:inherit;
+  font-size:.62rem;
+  line-height:1.45;
+}
+.followUpForm textarea { resize:vertical; }
+.followUpForm fieldset {
+  margin:0;
+  padding:.55rem .62rem;
+  border:1px solid rgba(23,23,20,.08);
+  border-radius:.44rem;
+  display:flex;
+  gap:.8rem;
+  flex-wrap:wrap;
+}
+.followUpForm legend { padding:0 .2rem; }
+.followUpForm fieldset label {
+  display:inline-flex;
+  align-items:center;
+  gap:.32rem;
+  color:#5d584f;
+  font-size:.57rem;
+}
+.addPieceButton {
+  justify-self:end;
+  min-height:2.2rem;
+  padding:0 .68rem;
+  border:1px solid #171714;
+  border-radius:.46rem;
+  background:#171714;
+  color:#fffdf8;
+  font:inherit;
+  font-size:.55rem;
+  font-weight:730;
+  cursor:pointer;
+}
+.addPieceButton:disabled,
+.sequenceHeader button:disabled,
+.followUpHeading button:disabled {
+  opacity:.42;
+  cursor:not-allowed;
+}
+
 .actions,
 .approvedState {
   padding: 0.95rem 1.25rem;
@@ -679,6 +844,7 @@
 
 .panel button:focus-visible,
 .panel textarea:focus-visible,
+.panel input:focus-visible,
 .panel select:focus-visible,
 .panel a:focus-visible {
   outline: 2px solid #8b6a28;
@@ -721,6 +887,21 @@
   .destinationItem p,
   .destinationItem small {
     grid-column: 1 / -1;
+  }
+
+  .sequenceHeader,
+  .followUpHeading {
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .sequenceList {
+    grid-template-columns:1fr;
+  }
+
+  .addPieceButton {
+    justify-self:stretch;
+    width:100%;
   }
 
   .draftStage .subhead {

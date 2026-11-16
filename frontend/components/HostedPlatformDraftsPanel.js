@@ -49,6 +49,21 @@ function screenshotMessage(result, destination) {
   return { type: "warning", text: `${label} capture is still pending; the current text revision remains unchanged.` };
 }
 
+function destinationReviewStatus(entry, requiredScreenshot) {
+  const variant = entry?.variant;
+  const revision = entry?.currentRevision;
+  if (!variant) return "Unavailable";
+  if (variant.status === "omitted") return "Omitted";
+  if (!revision) return variant.status === "failed" ? "Generation failed" : "Draft pending";
+  if (requiredScreenshot?.required === true && !revision.mediaBindings?.length) return "Media pending";
+  if (entry?.review?.approvalValid) return "Approved";
+  if (entry?.review?.decision?.decision === "rejected" && entry.review.decision.platformVariantRevisionId === revision.platformVariantRevisionId) return "Rejected";
+  const verdict = entry?.review?.review?.overallVerdict;
+  if (verdict === "block") return "Blocked";
+  if (entry?.review?.review) return "Needs judgment";
+  return "Draft ready";
+}
+
 function preparationMessage(result) {
   if (!result) return null;
   if (result.status === "ready_for_judgment") {
@@ -67,10 +82,12 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
   const [bundle, setBundle] = useState(null);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState(null);
+  const [activeVariantId, setActiveVariantId] = useState("");
   const client = useMemo(() => createBrowserHostedPlatformReviewClient(), []);
   const preparationClient = useMemo(() => createBrowserHostedGp2PreparationClient(), []);
   const contentPieceId = contentPiece?.contentPieceId || "";
   const requiredScreenshot = screenshotRequirement(strategy);
+  const rows = bundle?.variants || [];
 
   const reload = useCallback(async () => {
     if (!contentPieceId) {
@@ -114,6 +131,36 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
     void resumePreparation();
     return () => { active = false; };
   }, [contentPieceId, preparationClient, reload]);
+
+  useEffect(() => {
+    if (!rows.length) {
+      setActiveVariantId("");
+      return;
+    }
+    setActiveVariantId((current) => (
+      current && rows.some(({ variant }) => variant.platformVariantId === current)
+        ? current
+        : (rows.find(({ variant }) => variant.status !== "omitted") || rows[0]).variant.platformVariantId
+    ));
+  }, [bundle, rows.length]);
+
+  function focusDestination(platformVariantId) {
+    if (!platformVariantId) return;
+    setActiveVariantId(platformVariantId);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(`hosted-review-${platformVariantId}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function moveDestination(offset) {
+    if (!rows.length) return;
+    const currentIndex = Math.max(0, rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId));
+    const nextIndex = Math.max(0, Math.min(rows.length - 1, currentIndex + offset));
+    focusDestination(rows[nextIndex]?.variant.platformVariantId);
+  }
 
   async function generateReady() {
     if (!contentPieceId) return;
@@ -175,7 +222,6 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
 
   if (!contentPieceId) return null;
 
-  const rows = bundle?.variants || [];
   const pending = rows.filter(({ variant, currentRevision }) => variant.status !== "omitted" && !currentRevision).length;
   const loading = !bundle;
   const automaticallyPreparing = busy === "auto-prepare";
@@ -197,13 +243,48 @@ export default function HostedPlatformDraftsPanel({ contentPiece, strategy = nul
       {!loading && (
         <div className={styles.draftStage}>
           <div className={styles.subhead}><span>CONNECTED-SOURCE REVIEW · EXACT REVISIONS</span><p>SignalFlow runs exact evidence/authenticity checks automatically when the revision is judgment-ready. Required media is bound first; manual controls remain only as recovery.</p></div>
+          {rows.length > 1 && (
+            <nav className={styles.reviewNavigator} aria-label="Destination review navigation">
+              <div className={styles.reviewNavList}>
+                {rows.map((entry) => {
+                  const variantId = entry.variant.platformVariantId;
+                  const active = variantId === activeVariantId;
+                  return (
+                    <button
+                      type="button"
+                      key={variantId}
+                      data-active={active}
+                      aria-pressed={active}
+                      onClick={() => focusDestination(variantId)}
+                    >
+                      <strong>{destinationLabel(entry.variant.destination)}</strong>
+                      <small>{destinationReviewStatus(entry, requiredScreenshot)}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={styles.reviewNavActions}>
+                <button type="button" onClick={() => moveDestination(-1)} disabled={!activeVariantId || rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) <= 0}>Previous</button>
+                <span>{Math.max(1, rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) + 1)} of {rows.length}</span>
+                <button type="button" onClick={() => moveDestination(1)} disabled={!activeVariantId || rows.findIndex(({ variant }) => variant.platformVariantId === activeVariantId) >= rows.length - 1}>Next</button>
+              </div>
+            </nav>
+          )}
           {rows.map((entry) => {
             const { variant, currentRevision, history } = entry;
             const screenshotBusy = busy === `screenshot:${variant.platformVariantId}`;
             const needsScreenshot = Boolean(requiredScreenshot && currentRevision && !currentRevision.mediaBindings?.length);
             const requiredMediaPending = Boolean(requiredScreenshot?.required === true && needsScreenshot);
             return (
-              <article className={styles.draftRow} key={variant.platformVariantId} data-status={variant.status}>
+              <article
+                className={styles.draftRow}
+                key={variant.platformVariantId}
+                id={`hosted-review-${variant.platformVariantId}`}
+                data-status={variant.status}
+                data-active={variant.platformVariantId === activeVariantId}
+                tabIndex={-1}
+                onFocusCapture={() => setActiveVariantId(variant.platformVariantId)}
+              >
                 <div className={styles.draftMeta}>
                   <strong>{destinationLabel(variant.destination)}</strong>
                   <span>{titleCase(variant.status)}</span>

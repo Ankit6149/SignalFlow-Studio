@@ -15,6 +15,12 @@ import { generateStudioPackage } from "../../../lib/ai/generateStudioPackage";
 import { assertModelGenerationProvider } from "../../../lib/ai/generationPolicy.mjs";
 import { ProviderError, providerErrorPayload } from "../../../lib/ai/providerErrors.mjs";
 import { readGenerationRequestBody } from "../../../lib/server/generationRequestBody.mjs";
+import {
+  createSourceHealthReport,
+  parseSourceLinkCandidates,
+  SOURCE_HEALTH_ENTRY_STATUSES,
+  SOURCE_HEALTH_STATUSES,
+} from "../../../lib/source/sourceHealth.mjs";
 
 const OWNER_ONLY_ENDPOINT_PROVIDERS = new Set(["custom", "ollama", "lmstudio"]);
 
@@ -35,7 +41,7 @@ function safeGenerationFailure(error) {
   };
 }
 
-function streamGeneration({ generationInput, generationConfig, warnings }) {
+function streamGeneration({ generationInput, generationConfig, warnings, sourceHealth }) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
@@ -58,7 +64,7 @@ function streamGeneration({ generationInput, generationConfig, warnings }) {
             },
           });
           const allWarnings = Array.from(new Set([...warnings, ...(result.warnings || [])]));
-          write({ type: "result", data: { ...result, warnings: allWarnings } });
+          write({ type: "result", data: { ...result, warnings: allWarnings, sourceHealth } });
         } catch (error) {
           write({ type: "error", data: safeGenerationFailure(error) });
         } finally {
@@ -160,6 +166,7 @@ export async function POST(request) {
     const audience = normalizeTextInput(body.audience) || "developers, founders, and creators";
     const repoUrl = normalizeTextInput(body.repo);
     const docsUrl = normalizeTextInput(body.docs_url) || normalizeTextInput(body.research_url);
+    const linkCandidates = parseSourceLinkCandidates(docsUrl);
     const appUrl = normalizeTextInput(body.app_url) || normalizeTextInput(body.appUrl);
     const enableAutoCapture = Boolean(body.enable_auto_capture || body.enableAutoCapture);
 
@@ -195,6 +202,7 @@ export async function POST(request) {
     const warnings = [];
     let repoContext = null;
     const linksContext = [];
+    const linkFetchResults = [];
     let canonicalSources = { assets: [], sourceArtifacts: [], processingRecords: [] };
     let sourceWorkspaceId = "request-workspace";
     const suppliedAssets = Array.isArray(body.assets) ? body.assets : [];
@@ -263,31 +271,53 @@ export async function POST(request) {
     }
 
     if (docsUrl) {
-      const urls = docsUrl.split(/\s+/).filter(Boolean);
-      for (const url of urls) {
-        try {
-          const fetchResult = await fetchUrlContent(url, { signal: request.signal });
-          if (fetchResult) {
-            if (fetchResult.evidenceUsable === true) {
-              linksContext.push(fetchResult);
-              const remoteArtifact = sourceArtifactFromFetchResult(fetchResult, {
-                workspaceId: sourceWorkspaceId,
-              });
-              if (remoteArtifact) {
-                canonicalSources = validateSourceGraph({
-                  workspaceId: sourceWorkspaceId,
-                  assets: canonicalSources.assets,
-                  sourceArtifacts: [...canonicalSources.sourceArtifacts, remoteArtifact],
-                  processingRecords: canonicalSources.processingRecords,
-                });
-              }
-            }
-            if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
+      const fetchableLinks = linkCandidates.filter((item) => item.status === SOURCE_HEALTH_ENTRY_STATUSES.NEEDS_VERIFICATION);
+      for (const candidate of fetchableLinks) {
+        const fetchResult = await fetchUrlContent(candidate.canonicalUrl, { signal: request.signal });
+        if (!fetchResult) continue;
+        linkFetchResults.push(fetchResult);
+        if (fetchResult.evidenceUsable === true) {
+          linksContext.push(fetchResult);
+          const remoteArtifact = sourceArtifactFromFetchResult(fetchResult, {
+            workspaceId: sourceWorkspaceId,
+          });
+          if (remoteArtifact) {
+            canonicalSources = validateSourceGraph({
+              workspaceId: sourceWorkspaceId,
+              assets: canonicalSources.assets,
+              sourceArtifacts: [...canonicalSources.sourceArtifacts, remoteArtifact],
+              processingRecords: canonicalSources.processingRecords,
+            });
           }
-        } catch (error) {
-          warnings.push(`Scraping docs link "${url}" failed: ${error.message}.`);
         }
+        if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
       }
+    }
+
+    const sourceHealth = createSourceHealthReport({
+      notes,
+      repoUrl,
+      repoContext,
+      documentText,
+      sourceArtifacts: canonicalSources.sourceArtifacts,
+      linkCandidates,
+      linkResults: docsUrl ? linkFetchResults : null,
+      verificationComplete: true,
+    });
+    if (sourceHealth.status !== SOURCE_HEALTH_STATUSES.READY) {
+      return new Response(JSON.stringify({
+        ok: false,
+        code: "source_not_ready",
+        error: sourceHealth.reason,
+        warnings: Array.from(new Set(warnings)),
+        sourceHealth,
+      }), {
+        status: 422,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "private, no-store, max-age=0",
+        },
+      });
     }
 
     if (appUrl) {
@@ -319,7 +349,7 @@ export async function POST(request) {
     };
 
     if (request.headers.get("accept")?.includes("application/x-ndjson")) {
-      return streamGeneration({ generationInput, generationConfig, warnings });
+      return streamGeneration({ generationInput, generationConfig, warnings, sourceHealth });
     }
 
     const result = await generateStudioPackage({
@@ -328,7 +358,7 @@ export async function POST(request) {
     });
 
     const allWarnings = Array.from(new Set([...warnings, ...(result.warnings || [])]));
-    return new Response(JSON.stringify({ ...result, warnings: allWarnings }), {
+    return new Response(JSON.stringify({ ...result, warnings: allWarnings, sourceHealth }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

@@ -445,6 +445,13 @@ export function createPinnedNodeTransport({
         };
         const req = client.request(options, async (response) => {
           try {
+            const declaredLength = Number(response.headers?.["content-length"] || 0);
+            if (Number.isFinite(declaredLength) && declaredLength > maxCompressedBytes) {
+              response.destroy();
+              throw new RemoteSourceFetchError("compressed_size_exceeded", "Remote source response exceeded the encoded byte limit.", {
+                status: SOURCE_FETCH_STATUSES.OVERSIZED,
+              });
+            }
             const body = await boundedRawBody(response, maxCompressedBytes, signal);
             if (settled) return;
             settled = true;
@@ -531,6 +538,14 @@ export function createRemoteSourceFetcher({
           maxCompressedBytes: appliedLimits.maxCompressedBytes,
           signal,
         });
+        if (!Buffer.isBuffer(response?.body)) {
+          throw new RemoteSourceFetchError("source_transport_invalid", "Remote source transport returned an invalid body.");
+        }
+        if (response.body.length > appliedLimits.maxCompressedBytes) {
+          throw new RemoteSourceFetchError("compressed_size_exceeded", "Remote source response exceeded the encoded byte limit.", {
+            status: SOURCE_FETCH_STATUSES.OVERSIZED,
+          });
+        }
 
         if (REDIRECT_CODES.has(response.statusCode)) {
           const location = headerValue(response.headers, "location");

@@ -264,9 +264,11 @@ export async function POST(request) {
       const urls = docsUrl.split(/\s+/).filter(Boolean);
       for (const url of urls) {
         try {
-          const fetchResult = await fetchUrlContent(url);
+          const fetchResult = await fetchUrlContent(url, { signal: request.signal });
           if (fetchResult) {
-            linksContext.push(fetchResult);
+            if (fetchResult.evidenceUsable === true) {
+              linksContext.push(fetchResult);
+            }
             if (fetchResult.warnings?.length) warnings.push(...fetchResult.warnings);
           }
         } catch (error) {

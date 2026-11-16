@@ -231,6 +231,11 @@ export function createBrowserPlanOpportunityApplication({
     return hostedPlanning.approveStrategy(entry.opportunity.opportunityId, strategy, decision);
   }
 
+  async function addHostedContentPiece(entryInput, strategy, contentPiece) {
+    const entry = requireHostedEntry(entryInput);
+    return hostedPlanning.addContentPiece(entry.opportunity.opportunityId, strategy, contentPiece);
+  }
+
   return Object.freeze({
     listRankedOpportunities,
     selectAngle,
@@ -243,6 +248,7 @@ export function createBrowserPlanOpportunityApplication({
     buildHostedPlan,
     reviseHostedPlan,
     approveHostedPlan,
+    addHostedContentPiece,
     ensureHostedIdentity,
   });
 }
